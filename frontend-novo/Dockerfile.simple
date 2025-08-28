@@ -1,0 +1,21 @@
+# Use Node.js LTS version
+FROM node:20-alpine
+
+# Set working directory
+WORKDIR /app
+
+# Install dependencies
+COPY package*.json ./
+RUN npm ci --only=production && npm install
+
+# Copy application code
+COPY . .
+
+# Build the Next.js app
+RUN npm run build
+
+# Expose the port (Northflank will handle PORT env var)
+EXPOSE 3000
+
+# Start the application with proper port binding
+CMD ["sh", "-c", "npx next start -p ${PORT:-3000} -H 0.0.0.0"]
