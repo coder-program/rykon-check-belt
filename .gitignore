@@ -121,3 +121,10 @@ nginx/ssl/
 *.njsproj
 *.sln
 *.sw?
+
+
+node_modules
+.git
+.dockerignore
+Dockerfile
+frontend-novo/.next/cache
