@@ -1,0 +1,34 @@
+{
+  "name": "acesso-perfil-usuarios",
+  "version": "1.0.0",
+  "description": "Sistema base de autenticação e gerenciamento de usuários - Projeto reutilizável",
+  "main": "backend/dist/main.js",
+  "scripts": {
+    "dev:backend": "cd backend && npm run start:dev",
+    "dev:frontend": "cd frontend-novo && npm run dev",
+    "build:backend": "cd backend && npm run build",
+    "build:frontend": "cd frontend-novo && npm run build",
+    "seed": "cd backend && npm run seed",
+    "install:all": "npm install && cd backend && npm install && cd ../frontend-novo && npm install"
+  },
+  "keywords": [
+    "nestjs",
+    "react",
+    "authentication",
+    "jwt",
+    "users",
+    "permissions",
+    "typescript",
+    "base-project"
+  ],
+  "author": "Sistema Base",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/seu-usuario/acesso-perfil-usuarios.git"
+  },
+  "engines": {
+    "node": ">=16.0.0",
+    "npm": ">=7.0.0"
+  }
+}
