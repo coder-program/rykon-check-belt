@@ -9,6 +9,6 @@ export class Unidade {
   @Column()
   nome: string;
 
-  @OneToMany(() => Aluno, aluno => aluno.unidade)
+  @OneToMany(() => Aluno, (aluno) => aluno.unidade)
   alunos: Aluno[];
 }

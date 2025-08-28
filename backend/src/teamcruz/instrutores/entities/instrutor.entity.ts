@@ -9,6 +9,6 @@ export class Instrutor {
   @Column()
   nome: string;
 
-  @ManyToOne(() => Faixa, faixa => faixa.instrutores)
+  @ManyToOne(() => Faixa, (faixa) => faixa.instrutores)
   faixa: Faixa;
 }

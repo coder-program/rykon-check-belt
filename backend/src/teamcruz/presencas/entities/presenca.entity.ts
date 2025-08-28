@@ -9,6 +9,6 @@ export class Presenca {
   @Column()
   data: Date;
 
-  @ManyToOne(() => Aluno, aluno => aluno.presencas)
+  @ManyToOne(() => Aluno, (aluno) => aluno.presencas)
   aluno: Aluno;
 }

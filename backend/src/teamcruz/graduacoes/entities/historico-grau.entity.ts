@@ -13,9 +13,9 @@ export class HistoricoGrau {
   @Column()
   data: Date;
 
-  @ManyToOne(() => Aluno, aluno => aluno.historicoGraus)
+  @ManyToOne(() => Aluno, (aluno) => aluno.historicoGraus)
   aluno: Aluno;
 
-  @ManyToOne(() => Faixa, faixa => faixa.historicoGraus)
+  @ManyToOne(() => Faixa, (faixa) => faixa.historicoGraus)
   faixa: Faixa;
 }

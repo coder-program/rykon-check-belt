@@ -1,0 +1,12 @@
+[build]
+# Use the main Dockerfile for building
+dockerfile = "./Dockerfile"
+
+[build.buildArguments]
+# Add any build arguments if needed
+
+[runtime]
+# Environment variables (will be overridden by Northflank's env vars)
+[runtime.environment]
+NODE_ENV = "production"
+NEXT_TELEMETRY_DISABLED = "1"
