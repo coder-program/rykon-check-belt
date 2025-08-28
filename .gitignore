@@ -126,5 +126,4 @@ nginx/ssl/
 node_modules
 .git
 .dockerignore
-Dockerfile
 frontend-novo/.next/cache
