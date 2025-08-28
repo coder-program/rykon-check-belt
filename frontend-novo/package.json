@@ -5,8 +5,11 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start",
+    "start": "next start -p $PORT -H 0.0.0.0",
     "lint": "eslint"
+  },
+  "engines": {
+    "node": ">=18.17 <23"
   },
   "dependencies": {
     "@heroicons/react": "^2.2.0",
