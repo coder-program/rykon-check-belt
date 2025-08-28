@@ -45,12 +45,12 @@ const mockAulasAbertas = [
 ];
 
 const mockAlunos = [
-  { id: 1, nome: 'João Silva', matricula: 'TC001', faixa: 'Azul', graus: 3 },
-  { id: 2, nome: 'Maria Santos', matricula: 'TC002', faixa: 'Roxa', graus: 2 },
-  { id: 3, nome: 'Pedro Costa', matricula: 'TC003', faixa: 'Branca', graus: 1 },
-  { id: 4, nome: 'Ana Paula', matricula: 'TC004', faixa: 'Marrom', graus: 4 },
-  { id: 5, nome: 'Lucas Oliveira', matricula: 'TC005', faixa: 'Verde', graus: 2 },
-  { id: 6, nome: 'Carlos Pereira', matricula: 'TC006', faixa: 'Azul', graus: 1 },
+  { id: 1, nome: 'João Silva', matricula: 'TC001', faixa: 'Azul', graus: 3, cpf: '123.456.789-00', token: 'TKN001' },
+  { id: 2, nome: 'Maria Santos', matricula: 'TC002', faixa: 'Roxa', graus: 2, cpf: '987.654.321-00', token: 'TKN002' },
+  { id: 3, nome: 'Pedro Costa', matricula: 'TC003', faixa: 'Branca', graus: 1, cpf: '456.789.123-00', token: 'TKN003' },
+  { id: 4, nome: 'Ana Paula', matricula: 'TC004', faixa: 'Marrom', graus: 4, cpf: '789.123.456-00', token: 'TKN004' },
+  { id: 5, nome: 'Lucas Oliveira', matricula: 'TC005', faixa: 'Verde', graus: 2, cpf: '321.654.987-00', token: 'TKN005' },
+  { id: 6, nome: 'Carlos Pereira', matricula: 'TC006', faixa: 'Azul', graus: 1, cpf: '654.321.789-00', token: 'TKN006' },
 ];
 
 const mockGraduacoesHistorico = [
@@ -88,6 +88,12 @@ export default function DashboardNew() {
   const [selectedAula, setSelectedAula] = React.useState<any | null>(null);
   const [searchTerm, setSearchTerm] = React.useState("");
   const [selectedAlunos, setSelectedAlunos] = React.useState<any[]>([]);
+  const [presencasRegistradas, setPresencasRegistradas] = React.useState<any[]>([]);
+  const [totalPresencasHoje, setTotalPresencasHoje] = React.useState(mockData.stats.presencasHoje);
+  const [showQRModal, setShowQRModal] = React.useState(false);
+  const [showCPFModal, setShowCPFModal] = React.useState(false);
+  const [cpfInput, setCpfInput] = React.useState('');
+  const [selectedAlunoQR, setSelectedAlunoQR] = React.useState<any | null>(null);
 
   React.useEffect(() => {
     const t = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -101,6 +107,139 @@ export default function DashboardNew() {
     { id: 'graduacoes', label: 'Graduações', icon: Trophy },
     { id: 'aulas', label: 'Aulas', icon: Calendar },
   ];
+
+  // Função para registrar check-in e presença automaticamente
+  const handleCheckinAluno = (aluno: any, aula: any) => {
+    const jaPresente = selectedAlunos.some(a => a.id === aluno.id);
+    
+    if (!jaPresente) {
+      // Adiciona o aluno à lista de presentes
+      setSelectedAlunos(prev => [...prev, aluno]);
+      
+      // Registra a presença (simulado com localStorage)
+      const hoje = format(new Date(), 'yyyy-MM-dd');
+      const presencaKey = `presenca_${aluno.id}_${hoje}`;
+      
+      // Verifica se já não foi registrada hoje
+      const presencasHoje = JSON.parse(localStorage.getItem('presencas_hoje') || '[]');
+      
+      if (!presencasHoje.find((p: any) => p.alunoId === aluno.id && p.data === hoje)) {
+        const novaPresenca = {
+          id: Date.now(),
+          alunoId: aluno.id,
+          alunoNome: aluno.nome,
+          data: hoje,
+          hora: format(new Date(), 'HH:mm:ss'),
+          aula: `${aula.turma} - ${aula.horario}`,
+          instrutor: aula.instrutor
+        };
+        
+        presencasHoje.push(novaPresenca);
+        localStorage.setItem('presencas_hoje', JSON.stringify(presencasHoje));
+        
+        // Adiciona à lista de presenças registradas
+        setPresencasRegistradas(prev => [...prev, novaPresenca]);
+        
+        // Atualiza o contador total de presenças
+        setTotalPresencasHoje(prev => prev + 1);
+        
+        // Mostra notificação de sucesso
+        toast.success(
+          `✅ Check-in realizado!\n${aluno.nome} - Presença registrada`,
+          {
+            duration: 3000,
+            position: 'top-right',
+            style: {
+              background: '#10b981',
+              color: 'white',
+            },
+          }
+        );
+      } else {
+        toast.error(`${aluno.nome} já fez check-in hoje!`, {
+          duration: 2000,
+          position: 'top-right',
+        });
+      }
+    } else {
+      // Remove o aluno da lista (desfaz check-in)
+      setSelectedAlunos(prev => prev.filter(a => a.id !== aluno.id));
+      
+      // Remove a presença do localStorage
+      const hoje = format(new Date(), 'yyyy-MM-dd');
+      const presencasHoje = JSON.parse(localStorage.getItem('presencas_hoje') || '[]');
+      const novasPresencas = presencasHoje.filter((p: any) => !(p.alunoId === aluno.id && p.data === hoje));
+      localStorage.setItem('presencas_hoje', JSON.stringify(novasPresencas));
+      
+      setPresencasRegistradas(prev => prev.filter(p => p.alunoId !== aluno.id));
+      setTotalPresencasHoje(prev => Math.max(0, prev - 1));
+      
+      toast(`Check-in removido: ${aluno.nome}`, {
+        icon: '↩️',
+        duration: 2000,
+      });
+    }
+  };
+
+  // Função para finalizar check-in da aula
+  const finalizarCheckin = () => {
+    if (selectedAlunos.length > 0) {
+      toast.success(
+        `🎯 Check-in finalizado!\n${selectedAlunos.length} presenças registradas para ${selectedAula.turma}`,
+        {
+          duration: 4000,
+          position: 'top-center',
+          style: {
+            background: '#3b82f6',
+            color: 'white',
+            fontSize: '16px',
+          },
+        }
+      );
+      
+      // Salva histórico da aula
+      const historico = JSON.parse(localStorage.getItem('historico_aulas') || '[]');
+      historico.push({
+        id: Date.now(),
+        data: format(new Date(), 'yyyy-MM-dd HH:mm:ss'),
+        aula: `${selectedAula.turma} - ${selectedAula.horario}`,
+        instrutor: selectedAula.instrutor,
+        totalAlunos: selectedAlunos.length,
+        alunos: selectedAlunos.map(a => ({ id: a.id, nome: a.nome }))
+      });
+      localStorage.setItem('historico_aulas', JSON.stringify(historico));
+    }
+    
+    setSelectedAula(null);
+    setSelectedAlunos([]);
+    setSearchTerm('');
+  };
+
+  // Função para check-in por CPF
+  const handleCheckinByCPF = () => {
+    const cpfLimpo = cpfInput.replace(/\D/g, '');
+    const aluno = mockAlunos.find(a => a.cpf.replace(/\D/g, '') === cpfLimpo);
+    
+    if (aluno && selectedAula) {
+      handleCheckinAluno(aluno, selectedAula);
+      setShowCPFModal(false);
+      setCpfInput('');
+    } else {
+      toast.error('CPF não encontrado!', {
+        duration: 2000,
+        position: 'top-center',
+      });
+    }
+  };
+
+  // Carrega presenças do dia ao montar o componente
+  React.useEffect(() => {
+    const hoje = format(new Date(), 'yyyy-MM-dd');
+    const presencasHoje = JSON.parse(localStorage.getItem('presencas_hoje') || '[]');
+    const presencasDeHoje = presencasHoje.filter((p: any) => p.data === hoje);
+    setPresencasRegistradas(presencasDeHoje);
+    setTotalPresencasHoje(mockData.stats.presencasHoje + presencasDeHoje.length);
+  }, []);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-white to-blue-50">
@@ -391,21 +530,41 @@ export default function DashboardNew() {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-3">
-                    <div className="relative w-full md:w-96">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-base-content/50"/>
-                      <input
-                        className="input input-bordered w-full pl-10"
-                        placeholder="Buscar aluno por nome ou matrícula..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                      />
-                    </div>
-                    {selectedAlunos.length > 0 && (
-                      <button className="btn btn-primary" onClick={() => { setSelectedAula(null); setSelectedAlunos([]); }}>
-                        Finalizar Check-in ({selectedAlunos.length})
+                  <div className="space-y-3">
+                    {/* Botões de Check-in Alternativos */}
+                    <div className="flex items-center justify-center gap-3 mb-4 p-3 bg-blue-50 rounded-lg">
+                      <button 
+                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg flex items-center gap-2 transition-colors"
+                        onClick={() => setShowCPFModal(true)}
+                      >
+                        <UserIcon className="h-5 w-5"/>
+                        Check-in por CPF
                       </button>
-                    )}
+                      <button 
+                        className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-lg flex items-center gap-2 transition-colors"
+                        onClick={() => setShowQRModal(true)}
+                      >
+                        <QrCodeIcon className="h-5 w-5"/>
+                        Gerar QR Codes
+                      </button>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      <div className="relative w-full md:w-96">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-base-content/50"/>
+                        <input
+                          className="input input-bordered w-full pl-10"
+                          placeholder="Buscar aluno por nome ou matrícula..."
+                          value={searchTerm}
+                          onChange={(e) => setSearchTerm(e.target.value)}
+                        />
+                      </div>
+                      {selectedAlunos.length > 0 && (
+                        <button className="btn btn-primary" onClick={finalizarCheckin}>
+                          Finalizar Check-in ({selectedAlunos.length})
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -415,7 +574,7 @@ export default function DashboardNew() {
                         const marcado = selectedAlunos.some(a => a.id === aluno.id);
                         return (
                           <div key={aluno.id} className={`card ${marcado ? 'border-green-500 bg-green-50' : 'bg-white border-gray-200'} border-2 hover:border-blue-500 cursor-pointer shadow-sm hover:shadow-md transition-all`} onClick={() => {
-                            setSelectedAlunos(prev => marcado ? prev.filter(a => a.id !== aluno.id) : [...prev, aluno]);
+                            handleCheckinAluno(aluno, selectedAula);
                           }}>
                             <div className="card-body p-4">
                               <div className="flex items-center justify-between">
@@ -588,6 +747,62 @@ export default function DashboardNew() {
           )}
         </AnimatePresence>
       </div>
+
+      {/* Modal de Check-in por CPF */}
+      {showCPFModal && (
+        <div className="modal modal-open">
+          <div className="modal-box">
+            <h3 className="font-bold text-lg mb-4">Check-in por CPF</h3>
+            <p className="text-sm text-gray-600 mb-4">Digite o CPF do aluno para fazer check-in</p>
+            <input
+              type="text"
+              placeholder="Digite o CPF (ex: 123.456.789-00)"
+              className="input input-bordered w-full"
+              value={cpfInput}
+              onChange={(e) => setCpfInput(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && handleCheckinByCPF()}
+              autoFocus
+            />
+            <div className="text-xs text-gray-500 mt-2">CPFs disponíveis para teste:</div>
+            <div className="text-xs text-gray-400 mt-1">
+              {mockAlunos.map(a => (
+                <div key={a.id}>{a.nome}: {a.cpf}</div>
+              ))}
+            </div>
+            <div className="modal-action">
+              <button className="btn btn-ghost" onClick={() => {setShowCPFModal(false); setCpfInput('');}}>Cancelar</button>
+              <button className="btn btn-primary" onClick={handleCheckinByCPF}>Confirmar Check-in</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de QR Codes */}
+      {showQRModal && (
+        <div className="modal modal-open">
+          <div className="modal-box max-w-4xl">
+            <h3 className="font-bold text-lg mb-4">QR Codes dos Alunos</h3>
+            <p className="text-sm text-gray-600 mb-4">QR Codes para check-in via celular</p>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 max-h-96 overflow-y-auto">
+              {mockAlunos.map((aluno) => (
+                <div key={aluno.id} className="border rounded-lg p-3 text-center">
+                  <QRCodeSVG 
+                    value={`CHECKIN:${aluno.token}:${aluno.id}`}
+                    size={100}
+                    className="mx-auto mb-2"
+                  />
+                  <p className="text-sm font-semibold">{aluno.nome}</p>
+                  <p className="text-xs text-gray-500">{aluno.matricula}</p>
+                  <p className="text-xs text-gray-400">Token: {aluno.token}</p>
+                </div>
+              ))}
+            </div>
+            <div className="modal-action">
+              <button className="btn" onClick={() => setShowQRModal(false)}>Fechar</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
