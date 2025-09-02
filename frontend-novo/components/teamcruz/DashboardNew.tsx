@@ -8,8 +8,12 @@ import toast, { Toaster } from 'react-hot-toast';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { QRCodeSVG } from 'qrcode.react';
-import { Shield, Users, Activity, Award, Calendar, Clock, Zap, CheckCircle, Trophy, Star, Bell, Search, GraduationCap } from 'lucide-react';
+import { Shield, Users, Activity, Award, Calendar, Clock, Zap, CheckCircle, Trophy, Star, Bell, Search, GraduationCap, ShoppingBag, ExternalLink, Package, Tag, MapPin, AlertTriangle, Settings, Building2, TrendingUp, FileText, Megaphone, Share2 } from 'lucide-react';
 import { QrCodeIcon, CameraIcon, UserIcon, ArrowLeftIcon } from '@heroicons/react/24/outline';
+import { useGeolocation } from '@/hooks/useGeolocation';
+import ConfiguracoesModal from './ConfiguracoesModal';
+import CampanhasManager from './CampanhasManager';
+import RedeSocialTeam from './RedeSocialTeam';
 
 // Dados mockados equivalentes ao CRA
 const mockData = {
@@ -94,11 +98,32 @@ export default function DashboardNew() {
   const [showCPFModal, setShowCPFModal] = React.useState(false);
   const [cpfInput, setCpfInput] = React.useState('');
   const [selectedAlunoQR, setSelectedAlunoQR] = React.useState<any | null>(null);
+  const [showLocationModal, setShowLocationModal] = React.useState(false);
+  const [showConfigModal, setShowConfigModal] = React.useState(false);
+  const [selectedUnidade, setSelectedUnidade] = React.useState('unidade-1');
+  
+  // Hook de geolocalização
+  const { 
+    isInAcademy, 
+    getCurrentPosition, 
+    validateCheckinLocation, 
+    isLoading: locationLoading,
+    error: locationError,
+    latitude,
+    longitude 
+  } = useGeolocation();
 
   React.useEffect(() => {
     const t = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(t);
   }, []);
+  
+  // Solicita localização ao entrar na aba de check-in
+  React.useEffect(() => {
+    if (selectedTab === 'checkin') {
+      getCurrentPosition();
+    }
+  }, [selectedTab, getCurrentPosition]);
 
   const tabs = [
     { id: 'overview', label: 'Visão Geral', icon: Activity },
@@ -106,10 +131,45 @@ export default function DashboardNew() {
     { id: 'alunos', label: 'Alunos', icon: Users },
     { id: 'graduacoes', label: 'Graduações', icon: Trophy },
     { id: 'aulas', label: 'Aulas', icon: Calendar },
+    { id: 'social', label: 'Comunidade', icon: Share2 },
+    { id: 'campanhas', label: 'Campanhas', icon: Megaphone },
+    { id: 'loja', label: 'Loja Virtual', icon: ShoppingBag },
   ];
 
   // Função para registrar check-in e presença automaticamente
-  const handleCheckinAluno = (aluno: any, aula: any) => {
+  const handleCheckinAluno = (aluno: any, aula: any, skipLocationCheck: boolean = false) => {
+    // Valida localização antes do check-in (exceto se skipLocationCheck for true)
+    if (!skipLocationCheck) {
+      const locationValidation = validateCheckinLocation();
+      
+      if (!locationValidation.valid) {
+        // Se requer confirmação do instrutor
+        if (locationValidation.requireConfirmation) {
+          const confirmed = window.confirm(
+            `${locationValidation.message}\n\nDeseja continuar com o check-in mesmo assim?\n(Requer autorização do instrutor)`
+          );
+          
+          if (!confirmed) {
+            toast.error('Check-in cancelado', {
+              duration: 2000,
+              position: 'top-center',
+              icon: '📍',
+            });
+            return;
+          }
+        } else {
+          // Mostra modal para ativar localização
+          toast.error(locationValidation.message, {
+            duration: 3000,
+            position: 'top-center',
+            icon: '📍',
+          });
+          setShowLocationModal(true);
+          return;
+        }
+      }
+    }
+    
     const jaPresente = selectedAlunos.some(a => a.id === aluno.id);
     
     if (!jaPresente) {
@@ -269,6 +329,13 @@ export default function DashboardNew() {
               {format(currentTime, 'HH:mm:ss')}
             </p>
           </div>
+          <button 
+            onClick={() => setShowConfigModal(true)}
+            className="btn btn-ghost btn-circle"
+            title="Configurações"
+          >
+            <Settings className="h-5 w-5" />
+          </button>
           <div className="indicator">
             <Bell className="h-5 w-5" />
             <span className="indicator-item badge badge-error badge-xs animate-pulse"></span>
@@ -531,6 +598,37 @@ export default function DashboardNew() {
                   </div>
 
                   <div className="space-y-3">
+                    {/* Indicador de Localização */}
+                    {selectedAula && (
+                      <div className={`flex items-center justify-between p-3 rounded-lg ${
+                        isInAcademy === true ? 'bg-green-50 border border-green-300' : 
+                        isInAcademy === false ? 'bg-yellow-50 border border-yellow-300' :
+                        'bg-gray-50 border border-gray-300'
+                      }`}>
+                        <div className="flex items-center gap-2">
+                          <MapPin className={`h-5 w-5 ${
+                            isInAcademy === true ? 'text-green-600' : 
+                            isInAcademy === false ? 'text-yellow-600' :
+                            'text-gray-600'
+                          }`} />
+                          <span className="text-sm font-medium">
+                            {isInAcademy === true ? '✅ Você está dentro da academia' : 
+                             isInAcademy === false ? '⚠️ Você está fora da academia' :
+                             locationLoading ? '📍 Obtendo localização...' :
+                             '📍 Localização não disponível'}
+                          </span>
+                        </div>
+                        {!locationLoading && (
+                          <button 
+                            className="text-xs text-blue-600 hover:underline"
+                            onClick={getCurrentPosition}
+                          >
+                            Atualizar
+                          </button>
+                        )}
+                      </div>
+                    )}
+                    
                     {/* Botões de Check-in Alternativos */}
                     <div className="flex items-center justify-center gap-3 mb-4 p-3 bg-blue-50 rounded-lg">
                       <button 
@@ -680,6 +778,189 @@ export default function DashboardNew() {
             </motion.div>
           )}
 
+          {selectedTab === 'loja' && (
+            <motion.div key="loja" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-6">
+              {/* Banner Principal da Loja */}
+              <Card className="bg-gradient-to-r from-red-600 to-black text-white border-0">
+                <CardContent className="p-8">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h2 className="text-3xl font-bold mb-2 flex items-center gap-3">
+                        <ShoppingBag className="h-8 w-8" />
+                        Loja Virtual TeamCruz
+                      </h2>
+                      <p className="text-lg opacity-90 mb-4">
+                        Equipamentos, uniformes e produtos oficiais da equipe
+                      </p>
+                      <a 
+                        href="https://www.teamcruz.com.br" 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 bg-white text-red-600 px-6 py-3 rounded-lg font-bold hover:bg-gray-100 transition-colors"
+                      >
+                        Acessar Loja Virtual
+                        <ExternalLink className="h-5 w-5" />
+                      </a>
+                    </div>
+                    <div className="hidden lg:block">
+                      <Package className="h-32 w-32 opacity-20" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Promoções Ativas */}
+              <Card className="bg-white border border-blue-200">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Tag className="h-5 w-5 text-red-600" />
+                    Promoções Ativas
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="bg-gradient-to-br from-yellow-50 to-yellow-100 rounded-lg p-4 border-2 border-yellow-300">
+                      <div className="flex items-start justify-between mb-2">
+                        <span className="bg-red-600 text-white text-xs font-bold px-2 py-1 rounded">-20%</span>
+                        <Tag className="h-4 w-4 text-yellow-600" />
+                      </div>
+                      <h3 className="font-bold text-gray-900">Kit Iniciante</h3>
+                      <p className="text-sm text-gray-600 mt-1">Kimono + Faixa + Sacola</p>
+                      <p className="text-2xl font-bold text-red-600 mt-2">R$ 199,90</p>
+                      <p className="text-xs text-gray-500 line-through">R$ 249,90</p>
+                    </div>
+                    
+                    <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-4 border-2 border-blue-300">
+                      <div className="flex items-start justify-between mb-2">
+                        <span className="bg-green-600 text-white text-xs font-bold px-2 py-1 rounded">NOVO</span>
+                        <Package className="h-4 w-4 text-blue-600" />
+                      </div>
+                      <h3 className="font-bold text-gray-900">Rashguard TeamCruz</h3>
+                      <p className="text-sm text-gray-600 mt-1">Camiseta de competição</p>
+                      <p className="text-2xl font-bold text-blue-600 mt-2">R$ 89,90</p>
+                      <p className="text-xs text-green-600">Lançamento</p>
+                    </div>
+                    
+                    <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg p-4 border-2 border-purple-300">
+                      <div className="flex items-start justify-between mb-2">
+                        <span className="bg-purple-600 text-white text-xs font-bold px-2 py-1 rounded">COMBO</span>
+                        <ShoppingBag className="h-4 w-4 text-purple-600" />
+                      </div>
+                      <h3 className="font-bold text-gray-900">Pack Competidor</h3>
+                      <p className="text-sm text-gray-600 mt-1">3 kimonos + acessórios</p>
+                      <p className="text-2xl font-bold text-purple-600 mt-2">R$ 549,90</p>
+                      <p className="text-xs text-purple-600">Economize R$ 150</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Categorias de Produtos */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <Card className="bg-white border border-blue-200">
+                  <CardHeader>
+                    <CardTitle>Categorias Populares</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {[
+                        { nome: 'Kimonos', qtd: 24, icon: '🥋' },
+                        { nome: 'Faixas', qtd: 12, icon: '🎗️' },
+                        { nome: 'Proteções', qtd: 18, icon: '🛡️' },
+                        { nome: 'Acessórios', qtd: 35, icon: '🎒' },
+                        { nome: 'Suplementos', qtd: 8, icon: '💊' },
+                      ].map((cat, idx) => (
+                        <a
+                          key={idx}
+                          href="https://www.teamcruz.com.br"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-blue-50 transition-colors cursor-pointer"
+                        >
+                          <div className="flex items-center gap-3">
+                            <span className="text-2xl">{cat.icon}</span>
+                            <span className="font-medium text-gray-900">{cat.nome}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm text-gray-500">{cat.qtd} produtos</span>
+                            <ExternalLink className="h-4 w-4 text-gray-400" />
+                          </div>
+                        </a>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-white border border-blue-200">
+                  <CardHeader>
+                    <CardTitle>Benefícios Exclusivos</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <div className="flex items-start gap-3">
+                        <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+                          <span className="text-lg">✨</span>
+                        </div>
+                        <div>
+                          <h4 className="font-semibold text-gray-900">10% OFF para Alunos</h4>
+                          <p className="text-sm text-gray-600">Desconto exclusivo em todos os produtos</p>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-start gap-3">
+                        <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                          <span className="text-lg">🚚</span>
+                        </div>
+                        <div>
+                          <h4 className="font-semibold text-gray-900">Frete Grátis</h4>
+                          <p className="text-sm text-gray-600">Em compras acima de R$ 199</p>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-start gap-3">
+                        <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center flex-shrink-0">
+                          <span className="text-lg">🎁</span>
+                        </div>
+                        <div>
+                          <h4 className="font-semibold text-gray-900">Pontos de Fidelidade</h4>
+                          <p className="text-sm text-gray-600">Acumule pontos e troque por produtos</p>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-start gap-3">
+                        <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
+                          <span className="text-lg">💳</span>
+                        </div>
+                        <div>
+                          <h4 className="font-semibold text-gray-900">Parcelamento</h4>
+                          <p className="text-sm text-gray-600">Em até 12x sem juros</p>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="mt-6 p-4 bg-gradient-to-r from-red-50 to-yellow-50 rounded-lg border border-red-200">
+                      <p className="text-sm text-gray-700 text-center">
+                        <strong>Código Promocional:</strong> <code className="bg-white px-2 py-1 rounded text-red-600 font-mono">ALUNO10</code>
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </motion.div>
+          )}
+
+          {selectedTab === 'social' && (
+            <motion.div key="social" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
+              <RedeSocialTeam />
+            </motion.div>
+          )}
+
+          {selectedTab === 'campanhas' && (
+            <motion.div key="campanhas" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
+              <CampanhasManager />
+            </motion.div>
+          )}
+
           {selectedTab === 'aulas' && (
             <motion.div key="aulas" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-6">
               <Card className="bg-white border border-blue-200">
@@ -777,6 +1058,65 @@ export default function DashboardNew() {
         </div>
       )}
 
+      {/* Modal de Localização */}
+      {showLocationModal && (
+        <div className="modal modal-open">
+          <div className="modal-box">
+            <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
+              <MapPin className="h-5 w-5 text-red-600" />
+              Ativação de Localização Necessária
+            </h3>
+            <div className="space-y-4">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="h-5 w-5 text-yellow-600 mt-1" />
+                <div>
+                  <p className="text-sm text-gray-700">
+                    Para fazer check-in, você precisa estar dentro da academia.
+                  </p>
+                  <p className="text-xs text-gray-500 mt-2">
+                    Por favor, ative a localização do seu dispositivo e certifique-se de estar na academia.
+                  </p>
+                </div>
+              </div>
+              
+              <div className="bg-blue-50 p-3 rounded-lg">
+                <p className="text-xs text-blue-800 font-medium mb-2">Como ativar a localização:</p>
+                <ol className="text-xs text-blue-700 space-y-1">
+                  <li>1. Abra as configurações do navegador</li>
+                  <li>2. Procure por "Localização" ou "Privacidade"</li>
+                  <li>3. Permita o acesso à localização para este site</li>
+                  <li>4. Recarregue a página se necessário</li>
+                </ol>
+              </div>
+              
+              {locationError && (
+                <div className="bg-red-50 p-3 rounded-lg">
+                  <p className="text-xs text-red-700">{locationError}</p>
+                </div>
+              )}
+            </div>
+            
+            <div className="modal-action">
+              <button 
+                className="btn btn-ghost" 
+                onClick={() => setShowLocationModal(false)}
+              >
+                Cancelar
+              </button>
+              <button 
+                className="btn btn-primary" 
+                onClick={() => {
+                  getCurrentPosition();
+                  setShowLocationModal(false);
+                }}
+              >
+                Tentar Novamente
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Modal de QR Codes */}
       {showQRModal && (
         <div className="modal modal-open">
@@ -803,6 +1143,12 @@ export default function DashboardNew() {
           </div>
         </div>
       )}
+
+      {/* Modal de Configurações */}
+      <ConfiguracoesModal 
+        isOpen={showConfigModal}
+        onClose={() => setShowConfigModal(false)}
+      />
     </div>
   );
 }
