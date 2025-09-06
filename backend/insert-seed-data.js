@@ -33,9 +33,9 @@ async function insertSeedData() {
       ('operacao', 'Operação', 'Permissão de operação específica', 3)
       RETURNING id, codigo
     `);
-    
+
     const tiposByCode = {};
-    tiposResult.rows.forEach(row => tiposByCode[row.codigo] = row.id);
+    tiposResult.rows.forEach((row) => (tiposByCode[row.codigo] = row.id));
     console.log('✅ Tipos de permissão criados');
 
     // Inserir níveis de permissão
@@ -50,12 +50,13 @@ async function insertSeedData() {
     `);
 
     const niveisByCode = {};
-    niveisResult.rows.forEach(row => niveisByCode[row.codigo] = row.id);
+    niveisResult.rows.forEach((row) => (niveisByCode[row.codigo] = row.id));
     console.log('✅ Níveis de permissão criados');
 
     // Inserir permissões
     console.log('📝 Inserindo permissões...');
-    await client.query(`
+    await client.query(
+      `
       INSERT INTO permissoes (codigo, nome, descricao, tipo_id, nivel_id, modulo) VALUES
       ('usuarios.read', 'Visualizar Usuários', 'Permissão para visualizar usuários', $1, $2, 'usuarios'),
       ('usuarios.create', 'Criar Usuários', 'Permissão para criar usuários', $3, $4, 'usuarios'),
@@ -63,14 +64,22 @@ async function insertSeedData() {
       ('usuarios.delete', 'Deletar Usuários', 'Permissão para deletar usuários', $7, $8, 'usuarios'),
       ('permissoes.read', 'Visualizar Permissões', 'Permissão para visualizar permissões', $9, $10, 'permissoes'),
       ('admin.all', 'Acesso Total', 'Acesso total ao sistema', $11, $12, 'sistema')
-    `, [
-      tiposByCode.funcionalidade, niveisByCode.leitura,
-      tiposByCode.funcionalidade, niveisByCode.escrita,
-      tiposByCode.operacao, niveisByCode.escrita,
-      tiposByCode.operacao, niveisByCode.exclusao,
-      tiposByCode.funcionalidade, niveisByCode.leitura,
-      tiposByCode.modulo, niveisByCode.administracao
-    ]);
+    `,
+      [
+        tiposByCode.funcionalidade,
+        niveisByCode.leitura,
+        tiposByCode.funcionalidade,
+        niveisByCode.escrita,
+        tiposByCode.operacao,
+        niveisByCode.escrita,
+        tiposByCode.operacao,
+        niveisByCode.exclusao,
+        tiposByCode.funcionalidade,
+        niveisByCode.leitura,
+        tiposByCode.modulo,
+        niveisByCode.administracao,
+      ],
+    );
     console.log('✅ Permissões criadas');
 
     // Criar perfis
@@ -83,45 +92,56 @@ async function insertSeedData() {
       ('Visualizador', 'Perfil somente leitura para consultas')
       RETURNING id, nome
     `);
-    
+
     const perfisByNome = {};
-    perfisResult.rows.forEach(row => perfisByNome[row.nome] = row.id);
+    perfisResult.rows.forEach((row) => (perfisByNome[row.nome] = row.id));
     console.log('✅ Perfis criados');
 
     // Buscar permissões por código
-    const permissoesResult = await client.query('SELECT id, codigo FROM permissoes');
+    const permissoesResult = await client.query(
+      'SELECT id, codigo FROM permissoes',
+    );
     const permissoesByCodigo = {};
-    permissoesResult.rows.forEach(row => permissoesByCodigo[row.codigo] = row.id);
+    permissoesResult.rows.forEach(
+      (row) => (permissoesByCodigo[row.codigo] = row.id),
+    );
 
     // Configurar permissões por perfil
     const perfisPermissoes = {
-      'Administrador': [
-        'usuarios.read', 'usuarios.create', 'usuarios.update', 'usuarios.delete',
-        'permissoes.read', 'admin.all'
+      Administrador: [
+        'usuarios.read',
+        'usuarios.create',
+        'usuarios.update',
+        'usuarios.delete',
+        'permissoes.read',
+        'admin.all',
       ],
-      'Gestor': [
-        'usuarios.read', 'usuarios.create', 'usuarios.update',
-        'permissoes.read'
+      Gestor: [
+        'usuarios.read',
+        'usuarios.create',
+        'usuarios.update',
+        'permissoes.read',
       ],
-      'Operador': [
-        'usuarios.read', 'usuarios.create'
-      ],
-      'Visualizador': [
-        'usuarios.read'
-      ]
+      Operador: ['usuarios.read', 'usuarios.create'],
+      Visualizador: ['usuarios.read'],
     };
 
     // Associar permissões aos perfis
     console.log('📝 Associando permissões aos perfis...');
-    for (const [nomePeril, codigosPermissoes] of Object.entries(perfisPermissoes)) {
+    for (const [nomePeril, codigosPermissoes] of Object.entries(
+      perfisPermissoes,
+    )) {
       const perfilId = perfisByNome[nomePeril];
-      
+
       for (const codigoPermissao of codigosPermissoes) {
         const permissaoId = permissoesByCodigo[codigoPermissao];
         if (permissaoId) {
-          await client.query(`
+          await client.query(
+            `
             INSERT INTO perfil_permissoes (perfil_id, permissao_id) VALUES ($1, $2)
-          `, [perfilId, permissaoId]);
+          `,
+            [perfilId, permissaoId],
+          );
         }
       }
       console.log(`  ✅ ${nomePeril}: ${codigosPermissoes.length} permissões`);
@@ -129,7 +149,7 @@ async function insertSeedData() {
 
     // Criar usuários de exemplo
     console.log('📝 Criando usuários de exemplo...');
-    
+
     const usuarios = [
       {
         username: 'admin',
@@ -138,51 +158,64 @@ async function insertSeedData() {
         nome: 'Administrador do Sistema',
         cpf: '12345678901',
         telefone: '11999999999',
-        perfil: 'Administrador'
+        perfil: 'Administrador',
       },
       {
         username: 'gestor',
-        email: 'gestor@sistema.com', 
+        email: 'gestor@sistema.com',
         password: await bcrypt.hash('gestor123', 10),
         nome: 'João Silva Gestor',
         cpf: '11111111111',
         telefone: '11988888888',
-        perfil: 'Gestor'
+        perfil: 'Gestor',
       },
       {
         username: 'operador',
         email: 'operador@sistema.com',
-        password: await bcrypt.hash('operador123', 10), 
+        password: await bcrypt.hash('operador123', 10),
         nome: 'Maria Santos Operadora',
         cpf: '22222222222',
         telefone: '11977777777',
-        perfil: 'Operador'
+        perfil: 'Operador',
       },
       {
         username: 'visualizador',
         email: 'visualizador@sistema.com',
         password: await bcrypt.hash('visual123', 10),
         nome: 'Pedro Costa Consultor',
-        cpf: '33333333333', 
+        cpf: '33333333333',
         telefone: '11966666666',
-        perfil: 'Visualizador'
-      }
+        perfil: 'Visualizador',
+      },
     ];
 
     for (const userData of usuarios) {
-      const usuarioResult = await client.query(`
+      const usuarioResult = await client.query(
+        `
         INSERT INTO usuarios (username, email, password, nome, cpf, telefone) VALUES
         ($1, $2, $3, $4, $5, $6)
         RETURNING id
-      `, [userData.username, userData.email, userData.password, userData.nome, userData.cpf, userData.telefone]);
-      
+      `,
+        [
+          userData.username,
+          userData.email,
+          userData.password,
+          userData.nome,
+          userData.cpf,
+          userData.telefone,
+        ],
+      );
+
       const usuarioId = usuarioResult.rows[0].id;
       const perfilId = perfisByNome[userData.perfil];
 
       // Associar usuário ao perfil
-      await client.query(`
+      await client.query(
+        `
         INSERT INTO usuario_perfis (usuario_id, perfil_id) VALUES ($1, $2)
-      `, [usuarioId, perfilId]);
+      `,
+        [usuarioId, perfilId],
+      );
 
       console.log(`  ✅ ${userData.username} (${userData.perfil})`);
     }
@@ -193,7 +226,6 @@ async function insertSeedData() {
     console.log('👤 Gestor: gestor / gestor123');
     console.log('👤 Operador: operador / operador123');
     console.log('👤 Visualizador: visualizador / visual123');
-    
   } catch (error) {
     console.error('❌ Erro ao executar seed:', error);
   } finally {

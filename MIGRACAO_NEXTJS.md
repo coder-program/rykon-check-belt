@@ -18,6 +18,7 @@ rykon-check-belt/
 ## 🚀 Como Executar
 
 ### Frontend (Next.js)
+
 ```bash
 cd frontend-novo
 npm run dev
@@ -25,6 +26,7 @@ npm run dev
 ```
 
 ### Backend (NestJS)
+
 ```bash
 cd backend
 npm run start:dev
@@ -32,6 +34,7 @@ npm run start:dev
 ```
 
 ### Todos os serviços
+
 ```bash
 # Na raiz do projeto
 npm run dev:frontend  # Inicia frontend-novo
@@ -49,6 +52,7 @@ npm run dev:backend   # Inicia backend
 ## 🎨 Tema de Cores
 
 Conforme solicitado:
+
 - **Base**: Branco, Azul (#2563eb), Preto (#0a0a0a)
 - **Acentos**: Amarelo (#facc15), Vermelho (#ef4444)
 
@@ -63,6 +67,7 @@ Conforme solicitado:
 ## 🗑️ Limpeza Pendente
 
 Quando possível, remova a pasta `frontend` antiga:
+
 ```bash
 Remove-Item -Path frontend -Recurse -Force
 # ou
@@ -79,6 +84,7 @@ rm -rf frontend
 ## 🔄 MVP TeamCruz
 
 Todas as telas do TeamCruz estão funcionando com mocks:
+
 - ✅ Visão Geral (stats, próximos a graduar, ranking, aulas)
 - ✅ Check-in (seleção de aula e marcação de presença)
 - ✅ Alunos (lista completa com faixas e graus)

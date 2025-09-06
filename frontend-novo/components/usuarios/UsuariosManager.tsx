@@ -72,11 +72,19 @@ const UsuariosManager = () => {
       ];
 
       const mockPermissoes = [
-        { id: 1, nome: "usuarios.visualizar", descricao: "Visualizar usuários" },
+        {
+          id: 1,
+          nome: "usuarios.visualizar",
+          descricao: "Visualizar usuários",
+        },
         { id: 2, nome: "usuarios.criar", descricao: "Criar usuários" },
         { id: 3, nome: "usuarios.editar", descricao: "Editar usuários" },
         { id: 4, nome: "usuarios.excluir", descricao: "Excluir usuários" },
-        { id: 5, nome: "contabilidade.visualizar", descricao: "Visualizar contabilidade" },
+        {
+          id: 5,
+          nome: "contabilidade.visualizar",
+          descricao: "Visualizar contabilidade",
+        },
         { id: 6, nome: "contabilidade.lancar", descricao: "Fazer lançamentos" },
       ];
 
@@ -144,23 +152,37 @@ const UsuariosManager = () => {
 
     if (modalType === "user") {
       if (editingItem) {
-        setUsuarios((prev) => prev.map((u) => (u.id === editingItem.id ? { ...u, ...formData } : u)));
+        setUsuarios((prev) =>
+          prev.map((u) =>
+            u.id === editingItem.id ? { ...u, ...formData } : u,
+          ),
+        );
       } else {
         const newUser = {
           id: Date.now(),
           ...formData,
-          perfis: formData.perfil_ids?.map((id: number) => perfis.find((p: any) => p.id === id)) || [],
+          perfis:
+            formData.perfil_ids?.map((id: number) =>
+              perfis.find((p: any) => p.id === id),
+            ) || [],
         };
         setUsuarios((prev) => [...prev, newUser]);
       }
     } else {
       if (editingItem) {
-        setPerfis((prev) => prev.map((p) => (p.id === editingItem.id ? { ...p, ...formData } : p)));
+        setPerfis((prev) =>
+          prev.map((p) =>
+            p.id === editingItem.id ? { ...p, ...formData } : p,
+          ),
+        );
       } else {
         const newProfile = {
           id: Date.now(),
           ...formData,
-          permissoes: formData.permissao_ids?.map((id: number) => permissoes.find((perm: any) => perm.id === id)) || [],
+          permissoes:
+            formData.permissao_ids?.map((id: number) =>
+              permissoes.find((perm: any) => perm.id === id),
+            ) || [],
         };
         setPerfis((prev) => [...prev, newProfile]);
       }
@@ -171,10 +193,11 @@ const UsuariosManager = () => {
     setEditingItem(null);
   };
 
-  const handleDelete = async (type: 'user' | 'profile', id: number) => {
+  const handleDelete = async (type: "user" | "profile", id: number) => {
     if (window.confirm("Tem certeza que deseja excluir este item?")) {
       await new Promise((r) => setTimeout(r, 200));
-      if (type === "user") setUsuarios((prev) => prev.filter((u) => u.id !== id));
+      if (type === "user")
+        setUsuarios((prev) => prev.filter((u) => u.id !== id));
       else setPerfis((prev) => prev.filter((p) => p.id !== id));
     }
   };
@@ -188,16 +211,33 @@ const UsuariosManager = () => {
       </div>
 
       <div className="tabs">
-        <button className={activeTab === "usuarios" ? "active" : ""} onClick={() => setActiveTab("usuarios")}>Usuários ({usuarios.length})</button>
-        <button className={activeTab === "perfis" ? "active" : ""} onClick={() => setActiveTab("perfis")}>Perfis ({perfis.length})</button>
-        <button className={activeTab === "permissoes" ? "active" : ""} onClick={() => setActiveTab("permissoes")}>Permissões ({permissoes.length})</button>
+        <button
+          className={activeTab === "usuarios" ? "active" : ""}
+          onClick={() => setActiveTab("usuarios")}
+        >
+          Usuários ({usuarios.length})
+        </button>
+        <button
+          className={activeTab === "perfis" ? "active" : ""}
+          onClick={() => setActiveTab("perfis")}
+        >
+          Perfis ({perfis.length})
+        </button>
+        <button
+          className={activeTab === "permissoes" ? "active" : ""}
+          onClick={() => setActiveTab("permissoes")}
+        >
+          Permissões ({permissoes.length})
+        </button>
       </div>
 
       {activeTab === "usuarios" && (
         <div className="usuarios-tab">
           <div className="tab-header">
             <h2>Usuários</h2>
-            <button className="btn-primary" onClick={handleCreateUser}>➕ Novo Usuário</button>
+            <button className="btn-primary" onClick={handleCreateUser}>
+              ➕ Novo Usuário
+            </button>
           </div>
 
           <div className="table-container">
@@ -221,18 +261,36 @@ const UsuariosManager = () => {
                     <td>{user.email}</td>
                     <td>
                       {user.perfis?.map((p: any) => (
-                        <span key={p.id} className="badge">{p.nome}</span>
+                        <span key={p.id} className="badge">
+                          {p.nome}
+                        </span>
                       ))}
                     </td>
                     <td>
-                      <span className={`status ${user.ativo ? "active" : "inactive"}`}>
+                      <span
+                        className={`status ${user.ativo ? "active" : "inactive"}`}
+                      >
                         {user.ativo ? "Ativo" : "Inativo"}
                       </span>
                     </td>
-                    <td>{user.ultimo_login ? new Date(user.ultimo_login).toLocaleString() : "Nunca"}</td>
                     <td>
-                      <button className="btn-edit" onClick={() => handleEditUser(user)}>✏️</button>
-                      <button className="btn-delete" onClick={() => handleDelete("user", user.id)}>🗑️</button>
+                      {user.ultimo_login
+                        ? new Date(user.ultimo_login).toLocaleString()
+                        : "Nunca"}
+                    </td>
+                    <td>
+                      <button
+                        className="btn-edit"
+                        onClick={() => handleEditUser(user)}
+                      >
+                        ✏️
+                      </button>
+                      <button
+                        className="btn-delete"
+                        onClick={() => handleDelete("user", user.id)}
+                      >
+                        🗑️
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -246,7 +304,9 @@ const UsuariosManager = () => {
         <div className="perfis-tab">
           <div className="tab-header">
             <h2>Perfis</h2>
-            <button className="btn-primary" onClick={handleCreateProfile}>➕ Novo Perfil</button>
+            <button className="btn-primary" onClick={handleCreateProfile}>
+              ➕ Novo Perfil
+            </button>
           </div>
 
           <div className="table-container">
@@ -266,12 +326,24 @@ const UsuariosManager = () => {
                     <td>{p.descricao}</td>
                     <td>
                       {p.permissoes?.map((perm: any) => (
-                        <span key={perm.id} className="badge">{perm.nome}</span>
+                        <span key={perm.id} className="badge">
+                          {perm.nome}
+                        </span>
                       ))}
                     </td>
                     <td>
-                      <button className="btn-edit" onClick={() => handleEditProfile(p)}>✏️</button>
-                      <button className="btn-delete" onClick={() => handleDelete("profile", p.id)}>🗑️</button>
+                      <button
+                        className="btn-edit"
+                        onClick={() => handleEditProfile(p)}
+                      >
+                        ✏️
+                      </button>
+                      <button
+                        className="btn-delete"
+                        onClick={() => handleDelete("profile", p.id)}
+                      >
+                        🗑️
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -308,22 +380,41 @@ const UsuariosManager = () => {
         <div className="modal-overlay" onClick={() => setModalOpen(false)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h2>{modalType === 'user' ? 'Usuário' : 'Perfil'}</h2>
-              <button className="modal-close" onClick={() => setModalOpen(false)}>×</button>
+              <h2>{modalType === "user" ? "Usuário" : "Perfil"}</h2>
+              <button
+                className="modal-close"
+                onClick={() => setModalOpen(false)}
+              >
+                ×
+              </button>
             </div>
             <form onSubmit={handleSubmit}>
               {/* Inputs simples (exemplo) */}
               <div className="form-group">
                 <label>Nome</label>
-                <input value={formData.nome || ''} onChange={(e) => setFormData({ ...formData, nome: e.target.value })} />
+                <input
+                  value={formData.nome || ""}
+                  onChange={(e) =>
+                    setFormData({ ...formData, nome: e.target.value })
+                  }
+                />
               </div>
               <div className="form-group">
                 <label>Descrição</label>
-                <input value={formData.descricao || ''} onChange={(e) => setFormData({ ...formData, descricao: e.target.value })} />
+                <input
+                  value={formData.descricao || ""}
+                  onChange={(e) =>
+                    setFormData({ ...formData, descricao: e.target.value })
+                  }
+                />
               </div>
               <div className="modal-footer">
-                <button type="button" onClick={() => setModalOpen(false)}>Cancelar</button>
-                <button type="submit" className="btn-primary">Salvar</button>
+                <button type="button" onClick={() => setModalOpen(false)}>
+                  Cancelar
+                </button>
+                <button type="submit" className="btn-primary">
+                  Salvar
+                </button>
               </div>
             </form>
           </div>
@@ -334,4 +425,3 @@ const UsuariosManager = () => {
 };
 
 export default UsuariosManager;
-

@@ -1,33 +1,24 @@
+import { http } from "@/lib/api";
+
 export const authService = {
   async login(email: string, password: string) {
-    if (email === 'admin@gestao.gov.br' && password === 'admin123') {
-      const mockResponse = {
-        access_token: 'mock-jwt-token-' + Date.now(),
-        user: {
-          id: 1,
-          name: 'Administrador',
-          email: 'admin@gestao.gov.br',
-          role: 'admin',
-          permissions: ['all']
-        }
-      };
-      await new Promise((resolve) => setTimeout(resolve, 300));
-      return mockResponse;
+    const data = await http("/auth/login", {
+      method: "POST",
+      body: { email, password },
+    });
+
+    // após login, buscar o perfil para ter dados completos do usuário
+    if (typeof window !== "undefined" && data?.access_token) {
+      localStorage.setItem("token", data.access_token);
+      const user = await http("/auth/profile", { auth: true });
+      return { ...data, user };
     }
-    throw new Error('Credenciais inválidas');
+    return data;
   },
 
-  async validateToken(token: string) {
-    if (token.startsWith('mock-jwt-token-')) {
-      return {
-        id: 1,
-        name: 'Administrador',
-        email: 'admin@gestao.gov.br',
-        role: 'admin',
-        permissions: ['all']
-      };
-    }
-    throw new Error('Token inválido');
+  async validateToken(_token: string) {
+    // backend valida via guard, apenas chama o profile
+    const user = await http("/auth/profile", { auth: true });
+    return user;
   },
 };
-

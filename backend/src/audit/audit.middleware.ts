@@ -12,15 +12,15 @@ export class AuditMiddleware implements NestMiddleware {
     const startTime = Date.now();
 
     // Interceptar resposta para capturar mudanças
-    res.json = function(body) {
+    res.json = function (body) {
       const responseTime = Date.now() - startTime;
-      
+
       // Só auditar se há usuário autenticado
       if (req.user) {
         const method = req.method;
         const url = req.originalUrl;
         const statusCode = res.statusCode;
-        
+
         // Determinar ação baseada no método HTTP
         let action: AuditAction;
         switch (method) {
@@ -52,7 +52,8 @@ export class AuditMiddleware implements NestMiddleware {
           username: (req.user as any).username,
           ipAddress: req.ip || req.connection.remoteAddress || 'unknown',
           userAgent: req.get('User-Agent') || 'unknown',
-          newValues: method !== 'GET' && method !== 'DELETE' ? req.body : undefined,
+          newValues:
+            method !== 'GET' && method !== 'DELETE' ? req.body : undefined,
           description: `${method} ${url} - Status: ${statusCode} - Response time: ${responseTime}ms`,
         };
 
@@ -71,33 +72,37 @@ export class AuditMiddleware implements NestMiddleware {
   private static extractEntityFromUrl(url: string): string {
     // Remove query parameters
     const cleanUrl = url.split('?')[0];
-    
+
     // Extract entity name from URL pattern /api/entity/...
-    const parts = cleanUrl.split('/').filter(part => part);
-    
+    const parts = cleanUrl.split('/').filter((part) => part);
+
     if (parts.length >= 2) {
       return parts[1]; // Assume second part is entity name
     }
-    
+
     return 'unknown';
   }
 
   private static extractEntityIdFromUrl(url: string): string | undefined {
     // Remove query parameters
     const cleanUrl = url.split('?')[0];
-    
+
     // Extract ID from URL pattern /api/entity/id
-    const parts = cleanUrl.split('/').filter(part => part);
-    
+    const parts = cleanUrl.split('/').filter((part) => part);
+
     if (parts.length >= 3) {
       const possibleId = parts[2];
       // Check if it looks like a UUID or number
-      if (possibleId.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i) || 
-          possibleId.match(/^\d+$/)) {
+      if (
+        possibleId.match(
+          /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
+        ) ||
+        possibleId.match(/^\d+$/)
+      ) {
         return possibleId;
       }
     }
-    
+
     return undefined;
   }
 }

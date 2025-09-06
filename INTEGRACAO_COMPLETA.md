@@ -9,12 +9,14 @@ Acabei de criar toda a estrutura necessária para integrar completamente o siste
 ## 📋 O que foi feito:
 
 ### 1. **Backend - Entidades Integradas** ✅
+
 - ✅ Entidade `Aluno` agora tem relação `OneToOne` com `Usuario`
 - ✅ Entidade `Instrutor` também conectada com `Usuario`
 - ✅ Métodos para verificar permissões direto no modelo
 - ✅ Sincronização automática entre tabelas
 
 ### 2. **Banco de Dados - Integração Completa** ✅
+
 ```sql
 -- Tabelas ajustadas:
 - teamcruz.alunos → usuario_id (UUID) → public.usuarios
@@ -22,12 +24,14 @@ Acabei de criar toda a estrutura necessária para integrar completamente o siste
 ```
 
 ### 3. **Novos Perfis Criados** ✅
+
 - `ALUNO_JJ` - Aluno de Jiu-Jitsu
-- `INSTRUTOR_JJ` - Instrutor de Jiu-Jitsu  
+- `INSTRUTOR_JJ` - Instrutor de Jiu-Jitsu
 - `RECEPCAO_JJ` - Recepção da Academia
 - `ADMIN_TEAMCRUZ` - Administrador TeamCruz
 
 ### 4. **Permissões Específicas do TeamCruz** ✅
+
 ```
 Check-in:
 - CHECKIN_REALIZAR (aluno faz seu próprio)
@@ -51,12 +55,14 @@ Relatórios:
 ```
 
 ### 5. **Views Integradas** ✅
+
 - `v_alunos_usuarios` - Mostra aluno + usuário + perfis + permissões
 - `v_instrutores_usuarios` - Mostra instrutor + usuário + perfis + permissões
 
 ### 6. **Função Especial** ✅
+
 ```sql
-teamcruz.criar_aluno_com_usuario() 
+teamcruz.criar_aluno_com_usuario()
 -- Cria usuário e aluno atomicamente
 -- Atribui perfil ALUNO_JJ automaticamente
 -- Gera matrícula sequencial (TC00001, TC00002...)
@@ -65,6 +71,7 @@ teamcruz.criar_aluno_com_usuario()
 ## 🔄 Como Funciona a Integração:
 
 ### Fluxo de Criação de Aluno:
+
 1. **Criar usuário** no sistema de autenticação
 2. **Atribuir perfil** ALUNO_JJ
 3. **Criar registro** em teamcruz.alunos
@@ -72,6 +79,7 @@ teamcruz.criar_aluno_com_usuario()
 5. **Sincronizar** dados automaticamente
 
 ### Fluxo de Autenticação:
+
 1. **Login** pelo sistema existente (Keycloak/JWT)
 2. **Carregar perfis** e permissões
 3. **Verificar** se é aluno/instrutor
@@ -81,19 +89,22 @@ teamcruz.criar_aluno_com_usuario()
 ## 🚀 Como Aplicar a Integração:
 
 ### 1. Executar script de integração no banco:
+
 ```bash
 docker exec -i teamcruz-db psql -U teamcruz_admin -d teamcruz_db < database/integration.sql
 ```
 
 ### 2. No Frontend - Verificar Permissões:
+
 ```javascript
 // Dashboard TeamCruz
-const canCheckIn = user.hasPermission('CHECKIN_REALIZAR');
-const canManageGrades = user.hasPermission('GRADUACAO_GERENCIAR');
-const isInstructor = user.perfis.includes('INSTRUTOR_JJ');
+const canCheckIn = user.hasPermission("CHECKIN_REALIZAR");
+const canManageGrades = user.hasPermission("GRADUACAO_GERENCIAR");
+const isInstructor = user.perfis.includes("INSTRUTOR_JJ");
 ```
 
 ### 3. No Backend - Usar Guards:
+
 ```typescript
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 @RequirePermissions('CHECKIN_GERENCIAR')

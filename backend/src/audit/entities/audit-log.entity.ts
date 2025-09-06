@@ -1,4 +1,9 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+} from 'typeorm';
 
 export enum AuditAction {
   CREATE = 'CREATE',
@@ -9,7 +14,7 @@ export enum AuditAction {
   ACCESS = 'ACCESS',
 }
 
-@Entity('audit_logs')
+@Entity({ name: 'audit_logs', schema: 'teamcruz' })
 export class AuditLog {
   @PrimaryGeneratedColumn('uuid')
   id: string;

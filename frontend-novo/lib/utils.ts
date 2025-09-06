@@ -9,4 +9,3 @@ export function cn(...inputs: unknown[]) {
   const { twMerge } = require("tailwind-merge");
   return twMerge(clsx(inputs));
 }
-

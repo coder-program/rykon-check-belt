@@ -1,9 +1,18 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToMany, ManyToOne, JoinColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+  ManyToMany,
+  ManyToOne,
+  JoinColumn,
+} from 'typeorm';
 import { Perfil } from './perfil.entity';
 import { TipoPermissao } from './tipo-permissao.entity';
 import { NivelPermissao } from './nivel-permissao.entity';
 
-@Entity('permissoes')
+@Entity({ name: 'permissoes', schema: 'teamcruz' })
 export class Permissao {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -20,14 +29,14 @@ export class Permissao {
   @Column({ name: 'tipo_id' })
   tipoId: string;
 
-  @ManyToOne(() => TipoPermissao, tipo => tipo.permissoes)
+  @ManyToOne(() => TipoPermissao, (tipo) => tipo.permissoes)
   @JoinColumn({ name: 'tipo_id' })
   tipo: TipoPermissao;
 
   @Column({ name: 'nivel_id' })
   nivelId: string;
 
-  @ManyToOne(() => NivelPermissao, nivel => nivel.permissoes)
+  @ManyToOne(() => NivelPermissao, (nivel) => nivel.permissoes)
   @JoinColumn({ name: 'nivel_id' })
   nivel: NivelPermissao;
 
@@ -37,7 +46,7 @@ export class Permissao {
   @Column({ default: true })
   ativo: boolean;
 
-  @ManyToMany(() => Perfil, perfil => perfil.permissoes)
+  @ManyToMany(() => Perfil, (perfil) => perfil.permissoes)
   perfis: Perfil[];
 
   @CreateDateColumn()

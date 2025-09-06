@@ -22,14 +22,14 @@ async function testConnection() {
       password: process.env.DB_PASS ? '***' : 'default',
       database: process.env.DB_NAME || 'acesso_usuarios_db',
     });
-    
+
     console.log('🚀 Tentando conectar...');
     await dataSource.initialize();
     console.log('✅ TypeORM conectado com sucesso!');
-    
+
     const result = await dataSource.query('SELECT COUNT(*) FROM usuarios');
     console.log('📊 Usuários no banco:', result[0].count);
-    
+
     await dataSource.destroy();
     console.log('🔚 Conexão fechada.');
   } catch (error) {

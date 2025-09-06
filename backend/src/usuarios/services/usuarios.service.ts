@@ -1,4 +1,8 @@
-import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
@@ -18,7 +22,7 @@ export class UsuariosService {
   async create(createUsuarioDto: CreateUsuarioDto): Promise<Usuario> {
     // Verificar se username já existe
     const existingUsername = await this.usuarioRepository.findOne({
-      where: { username: createUsuarioDto.username }
+      where: { username: createUsuarioDto.username },
     });
     if (existingUsername) {
       throw new ConflictException('Username já existe');
@@ -26,7 +30,7 @@ export class UsuariosService {
 
     // Verificar se email já existe
     const existingEmail = await this.usuarioRepository.findOne({
-      where: { email: createUsuarioDto.email }
+      where: { email: createUsuarioDto.email },
     });
     if (existingEmail) {
       throw new ConflictException('Email já existe');
@@ -34,20 +38,23 @@ export class UsuariosService {
 
     // Hash da senha
     const saltRounds = 10;
-    const hashedPassword = await bcrypt.hash(createUsuarioDto.password, saltRounds);
+    const hashedPassword = await bcrypt.hash(
+      createUsuarioDto.password,
+      saltRounds,
+    );
 
     // Buscar perfis se fornecidos
     let perfis: Perfil[] = [];
     if (createUsuarioDto.perfil_ids && createUsuarioDto.perfil_ids.length > 0) {
       perfis = await this.perfilRepository.find({
-        where: createUsuarioDto.perfil_ids.map(id => ({ id }))
+        where: createUsuarioDto.perfil_ids.map((id) => ({ id })),
       });
     }
 
     const usuario = this.usuarioRepository.create({
       ...createUsuarioDto,
       password: hashedPassword,
-      perfis
+      perfis,
     });
 
     return await this.usuarioRepository.save(usuario);
@@ -66,8 +73,8 @@ export class UsuariosService {
         ativo: true,
         ultimo_login: true,
         created_at: true,
-        updated_at: true
-      }
+        updated_at: true,
+      },
     });
   }
 
@@ -85,8 +92,8 @@ export class UsuariosService {
         ativo: true,
         ultimo_login: true,
         created_at: true,
-        updated_at: true
-      }
+        updated_at: true,
+      },
     });
 
     if (!usuario) {
@@ -99,11 +106,14 @@ export class UsuariosService {
   async findByUsername(username: string): Promise<Usuario | null> {
     return await this.usuarioRepository.findOne({
       where: { username },
-      relations: ['perfis', 'perfis.permissoes']
+      relations: ['perfis', 'perfis.permissoes'],
     });
   }
 
-  async update(id: string, updateData: Partial<CreateUsuarioDto>): Promise<Usuario> {
+  async update(
+    id: string,
+    updateData: Partial<CreateUsuarioDto>,
+  ): Promise<Usuario> {
     const usuario = await this.findOne(id);
 
     if (updateData.password) {
@@ -113,7 +123,7 @@ export class UsuariosService {
 
     if (updateData.perfil_ids) {
       const perfis = await this.perfilRepository.find({
-        where: updateData.perfil_ids.map(id => ({ id }))
+        where: updateData.perfil_ids.map((id) => ({ id })),
       });
       usuario.perfis = perfis;
       delete updateData.perfil_ids;
@@ -130,34 +140,37 @@ export class UsuariosService {
 
   async updateUltimoLogin(id: string): Promise<void> {
     await this.usuarioRepository.update(id, {
-      ultimo_login: new Date()
+      ultimo_login: new Date(),
     });
   }
 
-  async validatePassword(password: string, hashedPassword: string): Promise<boolean> {
+  async validatePassword(
+    password: string,
+    hashedPassword: string,
+  ): Promise<boolean> {
     return await bcrypt.compare(password, hashedPassword);
   }
 
   async findByEmail(email: string): Promise<Usuario | null> {
     return await this.usuarioRepository.findOne({
       where: { email },
-      relations: ['perfis', 'perfis.permissoes']
+      relations: ['perfis', 'perfis.permissoes'],
     });
   }
 
   async updatePassword(userId: string, newPassword: string): Promise<void> {
     const saltRounds = 10;
     const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
-    
+
     await this.usuarioRepository.update(userId, {
-      password: hashedPassword
+      password: hashedPassword,
     });
   }
 
   async getUserPermissions(userId: string): Promise<string[]> {
     const usuario = await this.usuarioRepository.findOne({
       where: { id: userId },
-      relations: ['perfis', 'perfis.permissoes']
+      relations: ['perfis', 'perfis.permissoes'],
     });
 
     if (!usuario) {
@@ -165,8 +178,8 @@ export class UsuariosService {
     }
 
     const permissions = new Set<string>();
-    usuario.perfis.forEach(perfil => {
-      perfil.permissoes.forEach(permissao => {
+    usuario.perfis.forEach((perfil) => {
+      perfil.permissoes.forEach((permissao) => {
         permissions.add(permissao.codigo);
       });
     });
@@ -178,11 +191,11 @@ export class UsuariosService {
     const usuario = await this.usuarioRepository.findOne({
       where: { id: userId },
       relations: [
-        'perfis', 
-        'perfis.permissoes', 
-        'perfis.permissoes.tipo', 
-        'perfis.permissoes.nivel'
-      ]
+        'perfis',
+        'perfis.permissoes',
+        'perfis.permissoes.tipo',
+        'perfis.permissoes.nivel',
+      ],
     });
 
     if (!usuario) {
@@ -190,8 +203,8 @@ export class UsuariosService {
     }
 
     const permissionsMap = new Map();
-    usuario.perfis.forEach(perfil => {
-      perfil.permissoes.forEach(permissao => {
+    usuario.perfis.forEach((perfil) => {
+      perfil.permissoes.forEach((permissao) => {
         if (!permissionsMap.has(permissao.codigo)) {
           permissionsMap.set(permissao.codigo, {
             codigo: permissao.codigo,
@@ -201,12 +214,12 @@ export class UsuariosService {
             nivel: {
               nome: permissao.nivel.nome,
               descricao: permissao.nivel.descricao,
-              cor: permissao.nivel.cor
+              cor: permissao.nivel.cor,
             },
             tipo: {
               nome: permissao.tipo.nome,
-              descricao: permissao.tipo.descricao
-            }
+              descricao: permissao.tipo.descricao,
+            },
           });
         }
       });
@@ -218,13 +231,13 @@ export class UsuariosService {
   async getUserPerfis(userId: string): Promise<string[]> {
     const usuario = await this.usuarioRepository.findOne({
       where: { id: userId },
-      relations: ['perfis']
+      relations: ['perfis'],
     });
 
     if (!usuario) {
       return [];
     }
 
-    return usuario.perfis.map(perfil => perfil.nome);
+    return usuario.perfis.map((perfil) => perfil.nome);
   }
 }

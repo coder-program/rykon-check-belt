@@ -1,4 +1,10 @@
-import { IsString, IsOptional, IsBoolean, IsArray, IsUUID } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsBoolean,
+  IsArray,
+  IsUUID,
+} from 'class-validator';
 
 export class CreatePerfilDto {
   @IsString()

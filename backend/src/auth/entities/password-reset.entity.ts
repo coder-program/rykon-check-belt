@@ -1,7 +1,14 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  ManyToOne,
+  JoinColumn,
+} from 'typeorm';
 import { Usuario } from '../../usuarios/entities/usuario.entity';
 
-@Entity('password_resets')
+@Entity({ name: 'password_reset_tokens', schema: 'teamcruz' })
 export class PasswordReset {
   @PrimaryGeneratedColumn('uuid')
   id: string;

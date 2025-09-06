@@ -1,8 +1,16 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToMany, JoinTable } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+  ManyToMany,
+  JoinTable,
+} from 'typeorm';
 import { Usuario } from './usuario.entity';
 import { Permissao } from './permissao.entity';
 
-@Entity('perfis')
+@Entity({ name: 'perfis', schema: 'teamcruz' })
 export class Perfil {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -16,14 +24,14 @@ export class Perfil {
   @Column({ default: true })
   ativo: boolean;
 
-  @ManyToMany(() => Usuario, usuario => usuario.perfis)
+  @ManyToMany(() => Usuario, (usuario) => usuario.perfis)
   usuarios: Usuario[];
 
-  @ManyToMany(() => Permissao, permissao => permissao.perfis)
+  @ManyToMany(() => Permissao, (permissao) => permissao.perfis)
   @JoinTable({
     name: 'perfil_permissoes',
     joinColumn: { name: 'perfil_id', referencedColumnName: 'id' },
-    inverseJoinColumn: { name: 'permissao_id', referencedColumnName: 'id' }
+    inverseJoinColumn: { name: 'permissao_id', referencedColumnName: 'id' },
   })
   permissoes: Permissao[];
 

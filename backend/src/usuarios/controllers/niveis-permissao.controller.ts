@@ -1,4 +1,13 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  UseGuards,
+} from '@nestjs/common';
 import { NiveisPermissaoService } from '../services/niveis-permissao.service';
 import { CreateNivelPermissaoDto } from '../dto/create-nivel-permissao.dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
@@ -8,7 +17,9 @@ import { Permissions } from '../../auth/decorators/permissions.decorator';
 @Controller('niveis-permissao')
 @UseGuards(JwtAuthGuard)
 export class NiveisPermissaoController {
-  constructor(private readonly niveisPermissaoService: NiveisPermissaoService) {}
+  constructor(
+    private readonly niveisPermissaoService: NiveisPermissaoService,
+  ) {}
 
   @Post()
   @UseGuards(PermissionsGuard)
@@ -41,7 +52,10 @@ export class NiveisPermissaoController {
   @Patch(':id')
   @UseGuards(PermissionsGuard)
   @Permissions('admin.all')
-  update(@Param('id') id: string, @Body() updateNivelPermissaoDto: Partial<CreateNivelPermissaoDto>) {
+  update(
+    @Param('id') id: string,
+    @Body() updateNivelPermissaoDto: Partial<CreateNivelPermissaoDto>,
+  ) {
     return this.niveisPermissaoService.update(id, updateNivelPermissaoDto);
   }
 

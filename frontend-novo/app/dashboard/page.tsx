@@ -3,18 +3,55 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/app/auth/AuthContext";
 import { useRouter } from "next/navigation";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Users, Shield, Lock, CheckCircle, Grid3X3, Key, FileText, Mail, Plus } from 'lucide-react';
+import {
+  Users,
+  Shield,
+  Lock,
+  CheckCircle,
+  Grid3X3,
+  Key,
+  FileText,
+  Mail,
+  Plus,
+} from "lucide-react";
 
 export default function DashboardPage() {
   const { user, logout } = useAuth();
+  const hasPerfil = (p: string) => (user?.perfis || []).map((x: string) => x.toLowerCase()).includes(p.toLowerCase());
   const router = useRouter();
   const [users, setUsers] = useState<any[]>([]);
 
   useEffect(() => {
-    // Mock simples para compilar
-    setUsers([{id:1},{id:2}] as any);
+    const load = async () => {
+      try {
+        const res = await fetch(
+          (process.env.NEXT_PUBLIC_API_URL || "http://localhost:4001") +
+            "/usuarios",
+          {
+            headers: {
+              "Content-Type": "application/json",
+              ...(typeof window !== "undefined" && localStorage.getItem("token")
+                ? { Authorization: `Bearer ${localStorage.getItem("token")}` }
+                : {}),
+            },
+          },
+        );
+        const data = await res.json();
+        setUsers(Array.isArray(data) ? data : []);
+      } catch (e) {
+        console.error("Erro ao carregar usuários", e);
+        setUsers([]);
+      }
+    };
+    load();
   }, []);
 
   return (
@@ -32,8 +69,8 @@ export default function DashboardPage() {
               <span className="text-sm text-slate-600 dark:text-slate-300">
                 Bem-vindo, <span className="font-medium">{user?.name}</span>!
               </span>
-              <Button 
-                onClick={logout} 
+              <Button
+                onClick={logout}
                 variant="outline"
                 className="hover:bg-red-50 hover:text-red-600 hover:border-red-200"
               >
@@ -53,13 +90,17 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{users.length}</div>
-              <p className="text-xs text-muted-foreground">Usuários cadastrados</p>
+              <p className="text-xs text-muted-foreground">
+                Usuários cadastrados
+              </p>
             </CardContent>
           </Card>
 
           <Card className="hover:shadow-lg transition-shadow">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Autenticação</CardTitle>
+              <CardTitle className="text-sm font-medium">
+                Autenticação
+              </CardTitle>
               <Lock className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -86,7 +127,9 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-green-600">Online</div>
-              <p className="text-xs text-muted-foreground">Sistema operacional</p>
+              <p className="text-xs text-muted-foreground">
+                Sistema operacional
+              </p>
             </CardContent>
           </Card>
         </div>
@@ -97,9 +140,9 @@ export default function DashboardPage() {
             Módulos Disponíveis
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <Card 
+            <Card
               className="cursor-pointer hover:shadow-xl transition-all hover:scale-105 border-green-200 bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20"
-              onClick={() => router.push('/usuarios')}
+              onClick={() => router.push("/usuarios")}
             >
               <CardHeader>
                 <CardTitle className="flex items-center justify-between">
@@ -152,7 +195,9 @@ export default function DashboardPage() {
                     <Mail className="mr-2 h-5 w-5" />
                     Reset de Senha
                   </span>
-                  <span className="badge badge-warning text-xs">Implementado</span>
+                  <span className="badge badge-warning text-xs">
+                    Implementado
+                  </span>
                 </CardTitle>
                 <CardDescription>
                   Recuperação de senha via email (estrutura implementada)
@@ -160,9 +205,9 @@ export default function DashboardPage() {
               </CardHeader>
             </Card>
 
-            <Card 
+            <Card
               className="cursor-pointer hover:shadow-xl transition-all hover:scale-105 border-red-200 bg-gradient-to-br from-red-50 to-orange-50 dark:from-red-900/20 dark:to-orange-800/20"
-              onClick={() => router.push('/teamcruz')}
+              onClick={() => router.push("/teamcruz")}
             >
               <CardHeader>
                 <CardTitle className="flex items-center justify-between">
@@ -170,13 +215,37 @@ export default function DashboardPage() {
                     <Grid3X3 className="mr-2 h-5 w-5" />
                     TeamCruz Jiu-Jitsu
                   </span>
-                  <span className="badge badge-error text-xs animate-pulse">Novo!</span>
+                  <span className="badge badge-error text-xs animate-pulse">
+                    Novo!
+                  </span>
                 </CardTitle>
                 <CardDescription>
                   Sistema completo de controle de presença e graduação
                 </CardDescription>
               </CardHeader>
             </Card>
+
+            {(hasPerfil('master') || hasPerfil('franqueado')) && (
+              <Card
+                className="cursor-pointer hover:shadow-xl transition-all hover:scale-105 border-indigo-200 bg-gradient-to-br from-indigo-50 to-indigo-100 dark:from-indigo-900/20 dark:to-indigo-800/20"
+                onClick={() => router.push(hasPerfil('master') ? "/franqueados" : "/unidades")}
+              >
+                <CardHeader>
+                  <CardTitle className="flex items-center justify-between">
+                    <span className="flex items-center">
+                      <Grid3X3 className="mr-2 h-5 w-5" />
+                      {hasPerfil('master') ? 'Administração de Franquias e Unidades' : 'Minhas Unidades'}
+                    </span>
+                    <span className="badge badge-success text-xs">Restrito</span>
+                  </CardTitle>
+                  <CardDescription>
+                    {hasPerfil('master')
+                      ? 'Cadastro de franquias (master) e unidades'
+                      : 'Gerencie as unidades vinculadas à sua franquia'}
+                  </CardDescription>
+                </CardHeader>
+              </Card>
+            )}
 
             <Card className="hover:shadow-lg transition-shadow border-dashed border-2">
               <CardHeader>
@@ -198,4 +267,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-

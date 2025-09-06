@@ -1,4 +1,11 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, OneToMany } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+  OneToMany,
+} from 'typeorm';
 import { Aluno } from '../../alunos/entities/aluno.entity';
 import { Instrutor } from '../../instrutores/entities/instrutor.entity';
 import { HistoricoGrau } from '../../graduacoes/entities/historico-grau.entity';
@@ -36,12 +43,12 @@ export class Faixa {
   updatedAt: Date;
 
   // Relations
-  @OneToMany(() => Aluno, aluno => aluno.faixaAtual)
+  @OneToMany(() => Aluno, (aluno) => aluno.faixaAtual)
   alunos: Aluno[];
 
-  @OneToMany(() => Instrutor, instrutor => instrutor.faixa)
+  @OneToMany(() => Instrutor, (instrutor) => instrutor.faixa)
   instrutores: Instrutor[];
 
-  @OneToMany(() => HistoricoGrau, historico => historico.faixa)
+  @OneToMany(() => HistoricoGrau, (historico) => historico.faixa)
   historicoGraus: HistoricoGrau[];
 }

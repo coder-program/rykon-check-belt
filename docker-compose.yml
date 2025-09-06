@@ -10,9 +10,9 @@ services:
       POSTGRES_DB: teamcruz_db
       POSTGRES_USER: teamcruz_admin
       POSTGRES_PASSWORD: cruz@jiujitsu2024
-      TZ: 'America/Sao_Paulo'
+      TZ: "America/Sao_Paulo"
     ports:
-      - "5436:5432"  # Porta customizada para TeamCruz
+      - "5436:5432" # Porta customizada para TeamCruz
     volumes:
       - teamcruz_postgres_data:/var/lib/postgresql/data
       - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql

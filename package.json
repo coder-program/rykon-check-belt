@@ -1,5 +1,5 @@
 {
-  "name": "acesso-perfil-usuarios",
+  "name": "teamcruz",
   "version": "1.0.0",
   "description": "Sistema base de autenticação e gerenciamento de usuários - Projeto reutilizável",
   "main": "backend/dist/main.js",

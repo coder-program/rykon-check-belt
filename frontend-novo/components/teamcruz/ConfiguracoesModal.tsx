@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Settings, Save, X, Plus, Trash2, Edit2 } from 'lucide-react';
-import toast from 'react-hot-toast';
+import { Settings, Save, X, Plus, Trash2, Edit2 } from "lucide-react";
+import toast from "react-hot-toast";
 
 interface RegraGraduacao {
   id: string;
@@ -29,19 +29,22 @@ interface ConfiguracoesProps {
 }
 
 const FAIXAS_DEFAULT = [
-  { nome: 'Branca', cor: 'bg-white border-gray-400' },
-  { nome: 'Cinza', cor: 'bg-gray-400' },
-  { nome: 'Amarela', cor: 'bg-yellow-400' },
-  { nome: 'Laranja', cor: 'bg-orange-500' },
-  { nome: 'Verde', cor: 'bg-green-500' },
-  { nome: 'Azul', cor: 'bg-blue-500' },
-  { nome: 'Roxa', cor: 'bg-purple-600' },
-  { nome: 'Marrom', cor: 'bg-amber-800' },
-  { nome: 'Preta', cor: 'bg-black' },
+  { nome: "Branca", cor: "bg-white border-gray-400" },
+  { nome: "Cinza", cor: "bg-gray-400" },
+  { nome: "Amarela", cor: "bg-yellow-400" },
+  { nome: "Laranja", cor: "bg-orange-500" },
+  { nome: "Verde", cor: "bg-green-500" },
+  { nome: "Azul", cor: "bg-blue-500" },
+  { nome: "Roxa", cor: "bg-purple-600" },
+  { nome: "Marrom", cor: "bg-amber-800" },
+  { nome: "Preta", cor: "bg-black" },
 ];
 
-export default function ConfiguracoesModal({ isOpen, onClose }: ConfiguracoesProps) {
-  const [activeTab, setActiveTab] = useState('graduacao');
+export default function ConfiguracoesModal({
+  isOpen,
+  onClose,
+}: ConfiguracoesProps) {
+  const [activeTab, setActiveTab] = useState("graduacao");
   const [regrasGraduacao, setRegrasGraduacao] = useState<RegraGraduacao[]>([]);
   const [unidades, setUnidades] = useState<ConfigUnidade[]>([]);
   const [editingRegra, setEditingRegra] = useState<string | null>(null);
@@ -49,20 +52,22 @@ export default function ConfiguracoesModal({ isOpen, onClose }: ConfiguracoesPro
 
   // Carrega configurações do localStorage
   useEffect(() => {
-    const savedRegras = localStorage.getItem('config_regras_graduacao');
-    const savedUnidades = localStorage.getItem('config_unidades');
+    const savedRegras = localStorage.getItem("config_regras_graduacao");
+    const savedUnidades = localStorage.getItem("config_unidades");
 
     if (savedRegras) {
       setRegrasGraduacao(JSON.parse(savedRegras));
     } else {
       // Configurações padrão
-      const defaultRegras: RegraGraduacao[] = FAIXAS_DEFAULT.map((faixa, idx) => ({
-        id: `regra-${idx}`,
-        faixa: faixa.nome,
-        aulasNecessarias: 20,
-        maxGraus: 4,
-        tempoMinimo: 3,
-      }));
+      const defaultRegras: RegraGraduacao[] = FAIXAS_DEFAULT.map(
+        (faixa, idx) => ({
+          id: `regra-${idx}`,
+          faixa: faixa.nome,
+          aulasNecessarias: 20,
+          maxGraus: 4,
+          tempoMinimo: 3,
+        }),
+      );
       setRegrasGraduacao(defaultRegras);
     }
 
@@ -72,18 +77,18 @@ export default function ConfiguracoesModal({ isOpen, onClose }: ConfiguracoesPro
       // Unidades padrão
       const defaultUnidades: ConfigUnidade[] = [
         {
-          id: 'unidade-1',
-          nome: 'TeamCruz CT - Matriz',
-          endereco: 'Rua Principal, 123 - São Paulo',
+          id: "unidade-1",
+          nome: "TeamCruz CT - Matriz",
+          endereco: "Rua Principal, 123 - São Paulo",
           latitude: -23.5505,
           longitude: -46.6333,
           raioCheckin: 100,
           ativa: true,
         },
         {
-          id: 'unidade-2',
-          nome: 'TeamCruz Unidade Norte',
-          endereco: 'Av. Norte, 456 - São Paulo',
+          id: "unidade-2",
+          nome: "TeamCruz Unidade Norte",
+          endereco: "Av. Norte, 456 - São Paulo",
           latitude: -23.5605,
           longitude: -46.6433,
           raioCheckin: 100,
@@ -95,48 +100,59 @@ export default function ConfiguracoesModal({ isOpen, onClose }: ConfiguracoesPro
   }, []);
 
   const salvarConfiguracoes = () => {
-    localStorage.setItem('config_regras_graduacao', JSON.stringify(regrasGraduacao));
-    localStorage.setItem('config_unidades', JSON.stringify(unidades));
-    
-    toast.success('Configurações salvas com sucesso!', {
+    localStorage.setItem(
+      "config_regras_graduacao",
+      JSON.stringify(regrasGraduacao),
+    );
+    localStorage.setItem("config_unidades", JSON.stringify(unidades));
+
+    toast.success("Configurações salvas com sucesso!", {
       duration: 3000,
-      position: 'top-center',
+      position: "top-center",
     });
   };
 
-  const atualizarRegra = (id: string, campo: keyof RegraGraduacao, valor: any) => {
-    setRegrasGraduacao(prev => 
-      prev.map(regra => 
-        regra.id === id ? { ...regra, [campo]: valor } : regra
-      )
+  const atualizarRegra = (
+    id: string,
+    campo: keyof RegraGraduacao,
+    valor: any,
+  ) => {
+    setRegrasGraduacao((prev) =>
+      prev.map((regra) =>
+        regra.id === id ? { ...regra, [campo]: valor } : regra,
+      ),
     );
   };
 
-  const atualizarUnidade = (id: string, campo: keyof ConfigUnidade, valor: any) => {
-    setUnidades(prev => 
-      prev.map(unidade => 
-        unidade.id === id ? { ...unidade, [campo]: valor } : unidade
-      )
+  const atualizarUnidade = (
+    id: string,
+    campo: keyof ConfigUnidade,
+    valor: any,
+  ) => {
+    setUnidades((prev) =>
+      prev.map((unidade) =>
+        unidade.id === id ? { ...unidade, [campo]: valor } : unidade,
+      ),
     );
   };
 
   const adicionarUnidade = () => {
     const novaUnidade: ConfigUnidade = {
       id: `unidade-${Date.now()}`,
-      nome: 'Nova Unidade',
-      endereco: '',
+      nome: "Nova Unidade",
+      endereco: "",
       latitude: 0,
       longitude: 0,
       raioCheckin: 100,
       ativa: false,
     };
-    setUnidades(prev => [...prev, novaUnidade]);
+    setUnidades((prev) => [...prev, novaUnidade]);
     setEditingUnidade(novaUnidade.id);
   };
 
   const removerUnidade = (id: string) => {
-    if (window.confirm('Tem certeza que deseja remover esta unidade?')) {
-      setUnidades(prev => prev.filter(u => u.id !== id));
+    if (window.confirm("Tem certeza que deseja remover esta unidade?")) {
+      setUnidades((prev) => prev.filter((u) => u.id !== id));
     }
   };
 
@@ -165,17 +181,17 @@ export default function ConfiguracoesModal({ isOpen, onClose }: ConfiguracoesPro
         <div className="border-b border-gray-200 bg-gray-50">
           <div className="flex gap-1 p-2">
             {[
-              { id: 'graduacao', label: 'Regras de Graduação' },
-              { id: 'unidades', label: 'Unidades' },
-              { id: 'sistema', label: 'Sistema' },
-            ].map(tab => (
+              { id: "graduacao", label: "Regras de Graduação" },
+              { id: "unidades", label: "Unidades" },
+              { id: "sistema", label: "Sistema" },
+            ].map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={`px-4 py-2 rounded-lg font-medium transition-colors ${
                   activeTab === tab.id
-                    ? 'bg-white text-blue-600 shadow-sm'
-                    : 'text-gray-600 hover:bg-white/50'
+                    ? "bg-white text-blue-600 shadow-sm"
+                    : "text-gray-600 hover:bg-white/50"
                 }`}
               >
                 {tab.label}
@@ -186,20 +202,23 @@ export default function ConfiguracoesModal({ isOpen, onClose }: ConfiguracoesPro
 
         {/* Content */}
         <div className="p-6 overflow-y-auto max-h-[calc(90vh-200px)]">
-          {activeTab === 'graduacao' && (
+          {activeTab === "graduacao" && (
             <div className="space-y-4">
               <div className="bg-blue-50 p-4 rounded-lg">
                 <p className="text-sm text-blue-800">
-                  Configure as regras de graduação para cada faixa. Estas configurações determinam
-                  quantas aulas são necessárias para cada grau e o tempo mínimo entre graduações.
+                  Configure as regras de graduação para cada faixa. Estas
+                  configurações determinam quantas aulas são necessárias para
+                  cada grau e o tempo mínimo entre graduações.
                 </p>
               </div>
 
               <div className="space-y-3">
                 {regrasGraduacao.map((regra) => {
-                  const faixaInfo = FAIXAS_DEFAULT.find(f => f.nome === regra.faixa);
+                  const faixaInfo = FAIXAS_DEFAULT.find(
+                    (f) => f.nome === regra.faixa,
+                  );
                   const isEditing = editingRegra === regra.id;
-                  
+
                   return (
                     <div
                       key={regra.id}
@@ -207,11 +226,17 @@ export default function ConfiguracoesModal({ isOpen, onClose }: ConfiguracoesPro
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                          <div className={`w-8 h-8 rounded border-2 ${faixaInfo?.cor}`} />
-                          <h3 className="font-semibold text-lg">{regra.faixa}</h3>
+                          <div
+                            className={`w-8 h-8 rounded border-2 ${faixaInfo?.cor}`}
+                          />
+                          <h3 className="font-semibold text-lg">
+                            {regra.faixa}
+                          </h3>
                         </div>
                         <button
-                          onClick={() => setEditingRegra(isEditing ? null : regra.id)}
+                          onClick={() =>
+                            setEditingRegra(isEditing ? null : regra.id)
+                          }
                           className="p-2 hover:bg-gray-100 rounded-lg"
                         >
                           <Edit2 className="h-4 w-4 text-gray-600" />
@@ -220,38 +245,62 @@ export default function ConfiguracoesModal({ isOpen, onClose }: ConfiguracoesPro
 
                       <div className="grid grid-cols-3 gap-4 mt-4">
                         <div>
-                          <label className="text-xs text-gray-600">Aulas por Grau</label>
+                          <label className="text-xs text-gray-600">
+                            Aulas por Grau
+                          </label>
                           <input
                             type="number"
                             value={regra.aulasNecessarias}
-                            onChange={(e) => atualizarRegra(regra.id, 'aulasNecessarias', parseInt(e.target.value))}
+                            onChange={(e) =>
+                              atualizarRegra(
+                                regra.id,
+                                "aulasNecessarias",
+                                parseInt(e.target.value),
+                              )
+                            }
                             disabled={!isEditing}
                             className={`w-full p-2 border rounded-lg ${
-                              isEditing ? 'bg-white' : 'bg-gray-50'
+                              isEditing ? "bg-white" : "bg-gray-50"
                             }`}
                           />
                         </div>
                         <div>
-                          <label className="text-xs text-gray-600">Máximo de Graus</label>
+                          <label className="text-xs text-gray-600">
+                            Máximo de Graus
+                          </label>
                           <input
                             type="number"
                             value={regra.maxGraus}
-                            onChange={(e) => atualizarRegra(regra.id, 'maxGraus', parseInt(e.target.value))}
+                            onChange={(e) =>
+                              atualizarRegra(
+                                regra.id,
+                                "maxGraus",
+                                parseInt(e.target.value),
+                              )
+                            }
                             disabled={!isEditing}
                             className={`w-full p-2 border rounded-lg ${
-                              isEditing ? 'bg-white' : 'bg-gray-50'
+                              isEditing ? "bg-white" : "bg-gray-50"
                             }`}
                           />
                         </div>
                         <div>
-                          <label className="text-xs text-gray-600">Tempo Mínimo (meses)</label>
+                          <label className="text-xs text-gray-600">
+                            Tempo Mínimo (meses)
+                          </label>
                           <input
                             type="number"
                             value={regra.tempoMinimo}
-                            onChange={(e) => atualizarRegra(regra.id, 'tempoMinimo', parseInt(e.target.value))}
+                            onChange={(e) =>
+                              atualizarRegra(
+                                regra.id,
+                                "tempoMinimo",
+                                parseInt(e.target.value),
+                              )
+                            }
                             disabled={!isEditing}
                             className={`w-full p-2 border rounded-lg ${
-                              isEditing ? 'bg-white' : 'bg-gray-50'
+                              isEditing ? "bg-white" : "bg-gray-50"
                             }`}
                           />
                         </div>
@@ -263,7 +312,7 @@ export default function ConfiguracoesModal({ isOpen, onClose }: ConfiguracoesPro
             </div>
           )}
 
-          {activeTab === 'unidades' && (
+          {activeTab === "unidades" && (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-semibold">Gerenciar Unidades</h3>
@@ -279,12 +328,12 @@ export default function ConfiguracoesModal({ isOpen, onClose }: ConfiguracoesPro
               <div className="space-y-3">
                 {unidades.map((unidade) => {
                   const isEditing = editingUnidade === unidade.id;
-                  
+
                   return (
                     <div
                       key={unidade.id}
                       className={`bg-white border rounded-lg p-4 ${
-                        unidade.ativa ? 'border-green-300' : 'border-gray-300'
+                        unidade.ativa ? "border-green-300" : "border-gray-300"
                       }`}
                     >
                       <div className="flex items-start justify-between">
@@ -293,69 +342,115 @@ export default function ConfiguracoesModal({ isOpen, onClose }: ConfiguracoesPro
                             <input
                               type="checkbox"
                               checked={unidade.ativa}
-                              onChange={(e) => atualizarUnidade(unidade.id, 'ativa', e.target.checked)}
+                              onChange={(e) =>
+                                atualizarUnidade(
+                                  unidade.id,
+                                  "ativa",
+                                  e.target.checked,
+                                )
+                              }
                               className="w-5 h-5"
                             />
                             {isEditing ? (
                               <input
                                 type="text"
                                 value={unidade.nome}
-                                onChange={(e) => atualizarUnidade(unidade.id, 'nome', e.target.value)}
+                                onChange={(e) =>
+                                  atualizarUnidade(
+                                    unidade.id,
+                                    "nome",
+                                    e.target.value,
+                                  )
+                                }
                                 className="text-lg font-semibold border-b-2 border-blue-400 focus:outline-none"
                               />
                             ) : (
-                              <h3 className="text-lg font-semibold">{unidade.nome}</h3>
+                              <h3 className="text-lg font-semibold">
+                                {unidade.nome}
+                              </h3>
                             )}
                           </div>
 
                           <div className="grid grid-cols-2 gap-4">
                             <div>
-                              <label className="text-xs text-gray-600">Endereço</label>
+                              <label className="text-xs text-gray-600">
+                                Endereço
+                              </label>
                               <input
                                 type="text"
                                 value={unidade.endereco}
-                                onChange={(e) => atualizarUnidade(unidade.id, 'endereco', e.target.value)}
+                                onChange={(e) =>
+                                  atualizarUnidade(
+                                    unidade.id,
+                                    "endereco",
+                                    e.target.value,
+                                  )
+                                }
                                 disabled={!isEditing}
                                 className={`w-full p-2 border rounded-lg text-sm ${
-                                  isEditing ? 'bg-white' : 'bg-gray-50'
+                                  isEditing ? "bg-white" : "bg-gray-50"
                                 }`}
                               />
                             </div>
                             <div>
-                              <label className="text-xs text-gray-600">Raio Check-in (metros)</label>
+                              <label className="text-xs text-gray-600">
+                                Raio Check-in (metros)
+                              </label>
                               <input
                                 type="number"
                                 value={unidade.raioCheckin}
-                                onChange={(e) => atualizarUnidade(unidade.id, 'raioCheckin', parseInt(e.target.value))}
+                                onChange={(e) =>
+                                  atualizarUnidade(
+                                    unidade.id,
+                                    "raioCheckin",
+                                    parseInt(e.target.value),
+                                  )
+                                }
                                 disabled={!isEditing}
                                 className={`w-full p-2 border rounded-lg text-sm ${
-                                  isEditing ? 'bg-white' : 'bg-gray-50'
+                                  isEditing ? "bg-white" : "bg-gray-50"
                                 }`}
                               />
                             </div>
                             <div>
-                              <label className="text-xs text-gray-600">Latitude</label>
+                              <label className="text-xs text-gray-600">
+                                Latitude
+                              </label>
                               <input
                                 type="number"
                                 step="0.0001"
                                 value={unidade.latitude}
-                                onChange={(e) => atualizarUnidade(unidade.id, 'latitude', parseFloat(e.target.value))}
+                                onChange={(e) =>
+                                  atualizarUnidade(
+                                    unidade.id,
+                                    "latitude",
+                                    parseFloat(e.target.value),
+                                  )
+                                }
                                 disabled={!isEditing}
                                 className={`w-full p-2 border rounded-lg text-sm ${
-                                  isEditing ? 'bg-white' : 'bg-gray-50'
+                                  isEditing ? "bg-white" : "bg-gray-50"
                                 }`}
                               />
                             </div>
                             <div>
-                              <label className="text-xs text-gray-600">Longitude</label>
+                              <label className="text-xs text-gray-600">
+                                Longitude
+                              </label>
                               <input
                                 type="number"
                                 step="0.0001"
                                 value={unidade.longitude}
-                                onChange={(e) => atualizarUnidade(unidade.id, 'longitude', parseFloat(e.target.value))}
+                                onChange={(e) =>
+                                  atualizarUnidade(
+                                    unidade.id,
+                                    "longitude",
+                                    parseFloat(e.target.value),
+                                  )
+                                }
                                 disabled={!isEditing}
                                 className={`w-full p-2 border rounded-lg text-sm ${
-                                  isEditing ? 'bg-white' : 'bg-gray-50'
+                                  isEditing ? "bg-white" : "bg-gray-50"
                                 }`}
                               />
                             </div>
@@ -364,7 +459,9 @@ export default function ConfiguracoesModal({ isOpen, onClose }: ConfiguracoesPro
 
                         <div className="flex gap-2 ml-4">
                           <button
-                            onClick={() => setEditingUnidade(isEditing ? null : unidade.id)}
+                            onClick={() =>
+                              setEditingUnidade(isEditing ? null : unidade.id)
+                            }
                             className="p-2 hover:bg-gray-100 rounded-lg"
                           >
                             <Edit2 className="h-4 w-4 text-gray-600" />
@@ -384,7 +481,7 @@ export default function ConfiguracoesModal({ isOpen, onClose }: ConfiguracoesPro
             </div>
           )}
 
-          {activeTab === 'sistema' && (
+          {activeTab === "sistema" && (
             <div className="space-y-4">
               <Card>
                 <CardHeader>
@@ -393,13 +490,21 @@ export default function ConfiguracoesModal({ isOpen, onClose }: ConfiguracoesPro
                 <CardContent className="space-y-4">
                   <div>
                     <label className="flex items-center gap-3">
-                      <input type="checkbox" className="w-5 h-5" defaultChecked />
+                      <input
+                        type="checkbox"
+                        className="w-5 h-5"
+                        defaultChecked
+                      />
                       <span>Permitir check-in fora do horário da aula</span>
                     </label>
                   </div>
                   <div>
                     <label className="flex items-center gap-3">
-                      <input type="checkbox" className="w-5 h-5" defaultChecked />
+                      <input
+                        type="checkbox"
+                        className="w-5 h-5"
+                        defaultChecked
+                      />
                       <span>Enviar notificações de lembrete de aula</span>
                     </label>
                   </div>
@@ -410,7 +515,9 @@ export default function ConfiguracoesModal({ isOpen, onClose }: ConfiguracoesPro
                     </label>
                   </div>
                   <div>
-                    <label className="text-sm text-gray-600">Tempo de expiração do token (minutos)</label>
+                    <label className="text-sm text-gray-600">
+                      Tempo de expiração do token (minutos)
+                    </label>
                     <input
                       type="number"
                       defaultValue={30}
@@ -434,7 +541,9 @@ export default function ConfiguracoesModal({ isOpen, onClose }: ConfiguracoesPro
                     />
                   </div>
                   <div>
-                    <label className="text-sm text-gray-600">Código de Desconto Padrão</label>
+                    <label className="text-sm text-gray-600">
+                      Código de Desconto Padrão
+                    </label>
                     <input
                       type="text"
                       defaultValue="ALUNO10"

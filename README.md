@@ -214,12 +214,14 @@ DELETE /usuarios/:id
 ```
 
 ### **Perfis e Permissões**
+
 - `GET /perfis` - Listar perfis
 - `POST /perfis` - Criar perfil
 - `GET /permissoes` - Listar permissões
 - `POST /permissoes` - Criar permissão
 
 ### **Auditoria**
+
 - `GET /audit/logs` - Logs de auditoria
 
 ## 🔒 Sistema de Permissões
@@ -299,14 +301,14 @@ const MinhaNovaPage = () => {
 };
 
 // 2. Adicionar rota no App.js
-<Route 
-  path="/minha-pagina" 
+<Route
+  path="/minha-pagina"
   element={
     <ProtectedRoute>
       <MinhaNovaPage />
     </ProtectedRoute>
-  } 
-/>
+  }
+/>;
 ```
 
 ## 💡 Recursos Implementados
@@ -346,6 +348,7 @@ Este projeto foi criado para ser uma base sólida para sistemas de autenticaçã
 ## 📝 Scripts Disponíveis
 
 ### **Projeto Completo**
+
 ```bash
 npm run install:all     # Instalar todas as dependências
 npm run dev:backend     # Executar backend em desenvolvimento
@@ -356,6 +359,7 @@ npm run seed           # Popular dados iniciais
 ```
 
 ### **Backend**
+
 ```bash
 npm run start:dev      # Desenvolvimento com watch
 npm run build         # Build para produção
@@ -365,6 +369,7 @@ npm test              # Testes unitários
 ```
 
 ### **Frontend**
+
 ```bash
 npm start             # Desenvolvimento
 npm run build         # Build para produção

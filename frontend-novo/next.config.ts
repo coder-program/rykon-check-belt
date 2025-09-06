@@ -1,17 +1,17 @@
 import type { NextConfig } from "next";
 
-const withPWA = require('next-pwa')({
-  dest: 'public',
+const withPWA = require("next-pwa")({
+  dest: "public",
   register: true,
   skipWaiting: true,
-  disable: false, // Habilitado também em desenvolvimento
+  disable: process.env.NODE_ENV === "development", // Desabilitado em desenvolvimento
   buildExcludes: [/middleware-manifest\.json$/],
   runtimeCaching: [
     {
       urlPattern: /^https:\/\/fonts\.(gstatic|googleapis)\.com/,
-      handler: 'CacheFirst',
+      handler: "CacheFirst",
       options: {
-        cacheName: 'google-fonts',
+        cacheName: "google-fonts",
         expiration: {
           maxEntries: 10,
           maxAgeSeconds: 365 * 24 * 60 * 60, // 1 year
@@ -20,9 +20,9 @@ const withPWA = require('next-pwa')({
     },
     {
       urlPattern: /\.(?:eot|otf|ttc|ttf|woff|woff2|font.css)$/i,
-      handler: 'StaleWhileRevalidate',
+      handler: "StaleWhileRevalidate",
       options: {
-        cacheName: 'static-font-assets',
+        cacheName: "static-font-assets",
         expiration: {
           maxEntries: 4,
           maxAgeSeconds: 7 * 24 * 60 * 60, // 1 week
@@ -31,9 +31,9 @@ const withPWA = require('next-pwa')({
     },
     {
       urlPattern: /\.(?:jpg|jpeg|gif|png|svg|ico|webp)$/i,
-      handler: 'StaleWhileRevalidate',
+      handler: "StaleWhileRevalidate",
       options: {
-        cacheName: 'static-image-assets',
+        cacheName: "static-image-assets",
         expiration: {
           maxEntries: 64,
           maxAgeSeconds: 24 * 60 * 60, // 24 hours
@@ -42,9 +42,9 @@ const withPWA = require('next-pwa')({
     },
     {
       urlPattern: /\.(?:js)$/i,
-      handler: 'StaleWhileRevalidate',
+      handler: "StaleWhileRevalidate",
       options: {
-        cacheName: 'static-js-assets',
+        cacheName: "static-js-assets",
         expiration: {
           maxEntries: 32,
           maxAgeSeconds: 24 * 60 * 60, // 24 hours
@@ -53,9 +53,9 @@ const withPWA = require('next-pwa')({
     },
     {
       urlPattern: /\.(?:css|less)$/i,
-      handler: 'StaleWhileRevalidate',
+      handler: "StaleWhileRevalidate",
       options: {
-        cacheName: 'static-style-assets',
+        cacheName: "static-style-assets",
         expiration: {
           maxEntries: 32,
           maxAgeSeconds: 24 * 60 * 60, // 24 hours
@@ -64,9 +64,9 @@ const withPWA = require('next-pwa')({
     },
     {
       urlPattern: /\/_next\/data\/.+\/.+\.json$/i,
-      handler: 'StaleWhileRevalidate',
+      handler: "StaleWhileRevalidate",
       options: {
-        cacheName: 'next-data',
+        cacheName: "next-data",
         expiration: {
           maxEntries: 32,
           maxAgeSeconds: 24 * 60 * 60, // 24 hours
@@ -75,9 +75,9 @@ const withPWA = require('next-pwa')({
     },
     {
       urlPattern: /\.(?:json|xml|csv)$/i,
-      handler: 'NetworkFirst',
+      handler: "NetworkFirst",
       options: {
-        cacheName: 'static-data-assets',
+        cacheName: "static-data-assets",
         expiration: {
           maxEntries: 32,
           maxAgeSeconds: 24 * 60 * 60, // 24 hours
@@ -90,12 +90,12 @@ const withPWA = require('next-pwa')({
         if (!isSameOrigin) return false;
         const pathname = url.pathname;
         // Exclude /api/
-        if (pathname.startsWith('/api/')) return false;
+        if (pathname.startsWith("/api/")) return false;
         return true;
       },
-      handler: 'NetworkFirst',
+      handler: "NetworkFirst",
       options: {
-        cacheName: 'others',
+        cacheName: "others",
         expiration: {
           maxEntries: 32,
           maxAgeSeconds: 24 * 60 * 60, // 24 hours
@@ -107,14 +107,30 @@ const withPWA = require('next-pwa')({
 });
 
 const nextConfig: NextConfig = {
-  output: 'standalone',
-  // This is needed for Docker deployment
+  output: "standalone",
+  // Otimizações para desenvolvimento
   experimental: {
+    // Turbo mode para builds mais rápidas
+    turbo: {
+      loaders: {
+        '.svg': ['@svgr/webpack'],
+      },
+    },
     // Disable image optimization for Docker
     // You can enable it if you configure a CDN
   },
   images: {
     unoptimized: true,
+  },
+  // Otimizações de performance
+  reactStrictMode: true,
+  swcMinify: true,
+  // Configurações de cache
+  onDemandEntries: {
+    // Tempo para manter páginas em cache (ms)
+    maxInactiveAge: 25 * 1000,
+    // Número de páginas que devem ser mantidas simultaneamente
+    pagesBufferLength: 2,
   },
   // Ignore ESLint errors during production build
   eslint: {
@@ -123,6 +139,26 @@ const nextConfig: NextConfig = {
   // Ignore TypeScript errors during production build
   typescript: {
     ignoreBuildErrors: true,
+  },
+  // Webpack otimizações
+  webpack: (config, { dev, isServer }) => {
+    if (dev && !isServer) {
+      // Otimizações para desenvolvimento no cliente
+      config.optimization = {
+        ...config.optimization,
+        splitChunks: {
+          chunks: 'all',
+          cacheGroups: {
+            vendor: {
+              test: /[\\/]node_modules[\\/]/,
+              name: 'vendors',
+              chunks: 'all',
+            },
+          },
+        },
+      };
+    }
+    return config;
   },
 };
 

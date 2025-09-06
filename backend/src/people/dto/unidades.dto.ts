@@ -1,0 +1,237 @@
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import {
+  IsEnum,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+  IsUUID,
+  Length,
+  Min,
+} from 'class-validator';
+import {
+  StatusUnidade,
+  PapelResponsavel,
+  HorariosFuncionamento,
+  Modalidade,
+} from '../entities/unidade.entity';
+
+export class CreateUnidadeDto {
+  @ApiProperty({ description: 'ID do franqueado responsável' })
+  @IsString()
+  @IsNotEmpty()
+  franqueado_id!: string;
+
+  @ApiProperty({ example: 'TeamCruz Barueri - Matriz' })
+  @IsString()
+  @IsNotEmpty()
+  @Length(1, 150)
+  nome!: string;
+
+  @ApiProperty({ example: '12.345.678/0001-90' })
+  @IsString()
+  @IsNotEmpty()
+  @Length(14, 18)
+  cnpj!: string;
+
+  @ApiPropertyOptional({
+    enum: ['ATIVA', 'INATIVA', 'HOMOLOGACAO'],
+    default: 'HOMOLOGACAO',
+  })
+  @IsOptional()
+  @IsEnum(['ATIVA', 'INATIVA', 'HOMOLOGACAO'])
+  status?: StatusUnidade;
+
+  @ApiProperty({ example: 'João Silva' })
+  @IsString()
+  @IsNotEmpty()
+  @Length(1, 150)
+  responsavel_nome!: string;
+
+  @ApiProperty({ example: '123.456.789-00' })
+  @IsString()
+  @IsNotEmpty()
+  @Length(11, 14)
+  responsavel_cpf!: string;
+
+  @ApiProperty({
+    enum: ['PROPRIETARIO', 'GERENTE', 'INSTRUTOR', 'ADMINISTRATIVO'],
+  })
+  @IsEnum(['PROPRIETARIO', 'GERENTE', 'INSTRUTOR', 'ADMINISTRATIVO'])
+  responsavel_papel!: PapelResponsavel;
+
+  @ApiProperty({ example: '(11) 99999-9999' })
+  @IsString()
+  @IsNotEmpty()
+  @Length(1, 120)
+  responsavel_contato!: string;
+
+  @ApiPropertyOptional({ example: 3 })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  qtde_tatames?: number;
+
+  @ApiPropertyOptional({ example: 100 })
+  @IsOptional()
+  @IsNumber()
+  @Min(1)
+  capacidade_max_alunos?: number;
+
+  @ApiPropertyOptional({ example: 150.0 })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  valor_plano_padrao?: number;
+
+  @ApiPropertyOptional({
+    example: { seg: '06:00-22:00', ter: '06:00-22:00', sab: '08:00-16:00' },
+    description: 'Horários por dia da semana',
+  })
+  @IsOptional()
+  horarios_funcionamento?: HorariosFuncionamento;
+
+  @ApiPropertyOptional({
+    example: ['INFANTIL', 'ADULTO', 'COMPETICAO'],
+    enum: [
+      'INFANTIL',
+      'ADULTO',
+      'NO-GI',
+      'COMPETICAO',
+      'FEMININO',
+      'AUTODEFESA',
+      'CONDICIONAMENTO',
+    ],
+    isArray: true,
+  })
+  @IsOptional()
+  modalidades?: Modalidade[];
+
+  @ApiPropertyOptional({ description: 'ID do endereço da unidade' })
+  @IsOptional()
+  @IsString()
+  endereco_id?: string;
+}
+
+export class UpdateUnidadeDto {
+  @ApiPropertyOptional({ description: 'ID do franqueado responsável' })
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  franqueado_id?: string;
+
+  @ApiPropertyOptional({ example: 'TeamCruz Barueri - Matriz' })
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  @Length(1, 150)
+  nome?: string;
+
+  @ApiPropertyOptional({ example: '12.345.678/0001-90' })
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  @Length(14, 18)
+  cnpj?: string;
+
+  @ApiPropertyOptional({ enum: ['ATIVA', 'INATIVA', 'HOMOLOGACAO'] })
+  @IsOptional()
+  @IsEnum(['ATIVA', 'INATIVA', 'HOMOLOGACAO'])
+  status?: StatusUnidade;
+
+  @ApiPropertyOptional({ example: 'João Silva' })
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  @Length(1, 150)
+  responsavel_nome?: string;
+
+  @ApiPropertyOptional({ example: '123.456.789-00' })
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  @Length(11, 14)
+  responsavel_cpf?: string;
+
+  @ApiPropertyOptional({
+    enum: ['PROPRIETARIO', 'GERENTE', 'INSTRUTOR', 'ADMINISTRATIVO'],
+  })
+  @IsOptional()
+  @IsEnum(['PROPRIETARIO', 'GERENTE', 'INSTRUTOR', 'ADMINISTRATIVO'])
+  responsavel_papel?: PapelResponsavel;
+
+  @ApiPropertyOptional({ example: '(11) 99999-9999' })
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  @Length(1, 120)
+  responsavel_contato?: string;
+
+  @ApiPropertyOptional({ example: 3 })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  qtde_tatames?: number;
+
+  @ApiPropertyOptional({ example: 100 })
+  @IsOptional()
+  @IsNumber()
+  @Min(1)
+  capacidade_max_alunos?: number;
+
+  @ApiPropertyOptional({ example: 150.0 })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  valor_plano_padrao?: number;
+
+  @ApiPropertyOptional({
+    example: { seg: '06:00-22:00', ter: '06:00-22:00', sab: '08:00-16:00' },
+    description: 'Horários por dia da semana',
+  })
+  @IsOptional()
+  horarios_funcionamento?: HorariosFuncionamento;
+
+  @ApiPropertyOptional({
+    example: ['INFANTIL', 'ADULTO', 'COMPETICAO'],
+    enum: [
+      'INFANTIL',
+      'ADULTO',
+      'NO-GI',
+      'COMPETICAO',
+      'FEMININO',
+      'AUTODEFESA',
+      'CONDICIONAMENTO',
+    ],
+    isArray: true,
+  })
+  @IsOptional()
+  modalidades?: Modalidade[];
+
+  @ApiPropertyOptional({ description: 'ID do endereço da unidade' })
+  @IsOptional()
+  @IsString()
+  endereco_id?: string;
+}
+
+export class UnidadeQueryDto {
+  @ApiPropertyOptional({ example: 'TeamCruz' })
+  @IsOptional()
+  @IsString()
+  search?: string;
+
+  @ApiPropertyOptional({ enum: ['ATIVA', 'INATIVA', 'HOMOLOGACAO'] })
+  @IsOptional()
+  @IsEnum(['ATIVA', 'INATIVA', 'HOMOLOGACAO'])
+  status?: StatusUnidade;
+
+  @ApiPropertyOptional({ example: '1', default: '1' })
+  @IsOptional()
+  @IsString()
+  page?: string;
+
+  @ApiPropertyOptional({ example: '20', default: '20' })
+  @IsOptional()
+  @IsString()
+  pageSize?: string;
+}

@@ -18,28 +18,34 @@ import { NiveisPermissaoController } from './controllers/niveis-permissao.contro
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Usuario, Perfil, Permissao, TipoPermissao, NivelPermissao])
+    TypeOrmModule.forFeature([
+      Usuario,
+      Perfil,
+      Permissao,
+      TipoPermissao,
+      NivelPermissao,
+    ]),
   ],
   controllers: [
     UsuariosController,
     PerfisController,
     PermissoesController,
     TiposPermissaoController,
-    NiveisPermissaoController
+    NiveisPermissaoController,
   ],
   providers: [
     UsuariosService,
     PerfisService,
     PermissoesService,
     TiposPermissaoService,
-    NiveisPermissaoService
+    NiveisPermissaoService,
   ],
   exports: [
     UsuariosService,
     PerfisService,
     PermissoesService,
     TiposPermissaoService,
-    NiveisPermissaoService
-  ]
+    NiveisPermissaoService,
+  ],
 })
 export class UsuariosModule {}

@@ -1,4 +1,8 @@
-import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { TipoPermissao } from '../entities/tipo-permissao.entity';
@@ -11,29 +15,33 @@ export class TiposPermissaoService {
     private tipoPermissaoRepository: Repository<TipoPermissao>,
   ) {}
 
-  async create(createTipoPermissaoDto: CreateTipoPermissaoDto): Promise<TipoPermissao> {
+  async create(
+    createTipoPermissaoDto: CreateTipoPermissaoDto,
+  ): Promise<TipoPermissao> {
     // Verificar se código já existe
     const existingCodigo = await this.tipoPermissaoRepository.findOne({
-      where: { codigo: createTipoPermissaoDto.codigo }
+      where: { codigo: createTipoPermissaoDto.codigo },
     });
     if (existingCodigo) {
       throw new ConflictException('Código já existe');
     }
 
-    const tipoPermissao = this.tipoPermissaoRepository.create(createTipoPermissaoDto);
+    const tipoPermissao = this.tipoPermissaoRepository.create(
+      createTipoPermissaoDto,
+    );
     return await this.tipoPermissaoRepository.save(tipoPermissao);
   }
 
   async findAll(): Promise<TipoPermissao[]> {
     return await this.tipoPermissaoRepository.find({
-      order: { ordem: 'ASC', nome: 'ASC' }
+      order: { ordem: 'ASC', nome: 'ASC' },
     });
   }
 
   async findOne(id: string): Promise<TipoPermissao> {
     const tipoPermissao = await this.tipoPermissaoRepository.findOne({
       where: { id },
-      relations: ['permissoes']
+      relations: ['permissoes'],
     });
 
     if (!tipoPermissao) {
@@ -45,7 +53,7 @@ export class TiposPermissaoService {
 
   async findByCodigo(codigo: string): Promise<TipoPermissao> {
     const tipoPermissao = await this.tipoPermissaoRepository.findOne({
-      where: { codigo }
+      where: { codigo },
     });
 
     if (!tipoPermissao) {
@@ -55,12 +63,15 @@ export class TiposPermissaoService {
     return tipoPermissao;
   }
 
-  async update(id: string, updateData: Partial<CreateTipoPermissaoDto>): Promise<TipoPermissao> {
+  async update(
+    id: string,
+    updateData: Partial<CreateTipoPermissaoDto>,
+  ): Promise<TipoPermissao> {
     const tipoPermissao = await this.findOne(id);
 
     if (updateData.codigo && updateData.codigo !== tipoPermissao.codigo) {
       const existingCodigo = await this.tipoPermissaoRepository.findOne({
-        where: { codigo: updateData.codigo }
+        where: { codigo: updateData.codigo },
       });
       if (existingCodigo) {
         throw new ConflictException('Código já existe');
@@ -79,7 +90,7 @@ export class TiposPermissaoService {
   async findAtivos(): Promise<TipoPermissao[]> {
     return await this.tipoPermissaoRepository.find({
       where: { ativo: true },
-      order: { ordem: 'ASC', nome: 'ASC' }
+      order: { ordem: 'ASC', nome: 'ASC' },
     });
   }
 }

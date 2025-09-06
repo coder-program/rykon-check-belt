@@ -1,7 +1,9 @@
 import { TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { ConfigService } from '@nestjs/config';
 
-export const getTeamCruzDbConfig = (configService: ConfigService): TypeOrmModuleOptions => ({
+export const getTeamCruzDbConfig = (
+  configService: ConfigService,
+): TypeOrmModuleOptions => ({
   type: 'postgres',
   host: configService.get('TEAMCRUZ_DB_HOST', 'localhost'),
   port: configService.get('TEAMCRUZ_DB_PORT', 5433),
@@ -12,6 +14,9 @@ export const getTeamCruzDbConfig = (configService: ConfigService): TypeOrmModule
   entities: [__dirname + '/../**/*.entity{.ts,.js}'],
   synchronize: configService.get('NODE_ENV') !== 'production',
   logging: configService.get('NODE_ENV') === 'development',
-  ssl: configService.get('NODE_ENV') === 'production' ? { rejectUnauthorized: false } : false,
+  ssl:
+    configService.get('NODE_ENV') === 'production'
+      ? { rejectUnauthorized: false }
+      : false,
   autoLoadEntities: true,
 });

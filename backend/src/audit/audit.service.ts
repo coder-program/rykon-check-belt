@@ -54,7 +54,7 @@ export class AuditService {
       userId?: string;
       startDate?: Date;
       endDate?: Date;
-    }
+    },
   ): Promise<{ data: AuditLog[]; total: number; page: number; limit: number }> {
     const query = this.auditLogRepository.createQueryBuilder('audit');
 
@@ -63,7 +63,9 @@ export class AuditService {
     }
 
     if (filters?.entityName) {
-      query.andWhere('audit.entity_name = :entityName', { entityName: filters.entityName });
+      query.andWhere('audit.entity_name = :entityName', {
+        entityName: filters.entityName,
+      });
     }
 
     if (filters?.userId) {
@@ -71,11 +73,15 @@ export class AuditService {
     }
 
     if (filters?.startDate) {
-      query.andWhere('audit.created_at >= :startDate', { startDate: filters.startDate });
+      query.andWhere('audit.created_at >= :startDate', {
+        startDate: filters.startDate,
+      });
     }
 
     if (filters?.endDate) {
-      query.andWhere('audit.created_at <= :endDate', { endDate: filters.endDate });
+      query.andWhere('audit.created_at <= :endDate', {
+        endDate: filters.endDate,
+      });
     }
 
     query
@@ -93,7 +99,10 @@ export class AuditService {
     };
   }
 
-  async findByEntity(entityName: string, entityId: string): Promise<AuditLog[]> {
+  async findByEntity(
+    entityName: string,
+    entityId: string,
+  ): Promise<AuditLog[]> {
     return await this.auditLogRepository.find({
       where: {
         entity_name: entityName,

@@ -5,8 +5,8 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        'teamcruz-red': '#DC2626',
-        'teamcruz-dark': '#1F2937',
+        "teamcruz-red": "#DC2626",
+        "teamcruz-dark": "#1F2937",
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
@@ -57,7 +57,7 @@ const config: Config = {
         },
       },
       animation: {
-        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+        "pulse-slow": "pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite",
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
       },
@@ -69,22 +69,22 @@ const config: Config = {
       {
         teamcruz: {
           // Azul como cor principal
-          "primary": "#2563eb", // blue-600
+          primary: "#2563eb", // blue-600
           "primary-content": "#ffffff",
           // Preto como apoio/contrast
-          "secondary": "#0a0a0a",
+          secondary: "#0a0a0a",
           "secondary-content": "#ffffff",
           // Acentos em amarelo
-          "accent": "#facc15",
+          accent: "#facc15",
           // Base escura (preto/azulado) com texto branco
-          "neutral": "#111827",
+          neutral: "#111827",
           "base-100": "#0f172a",
           "base-content": "#ffffff",
           // Estados (mantemos vermelho e amarelo onde faz sentido)
-          "info": "#3b82f6",
-          "success": "#22c55e",
-          "warning": "#f59e0b",
-          "error": "#ef4444",
+          info: "#3b82f6",
+          success: "#22c55e",
+          warning: "#f59e0b",
+          error: "#ef4444",
         },
       },
       "dark",
@@ -94,4 +94,3 @@ const config: Config = {
 };
 
 export default config;
-

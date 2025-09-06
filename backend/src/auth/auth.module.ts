@@ -8,6 +8,19 @@ import { JwtStrategy } from './strategies/jwt.strategy';
 import { LocalStrategy } from './strategies/local.strategy';
 import { UsuariosModule } from '../usuarios/usuarios.module';
 import { PasswordReset } from './entities/password-reset.entity';
+import { GoogleStrategy } from './strategies/google.strategy';
+import { GoogleAuthController } from './google.controller';
+import { PeopleModule } from '../people/people.module';
+
+const controllers: any[] = [AuthController];
+if (process.env.GOOGLE_CLIENT_ID) {
+  controllers.push(GoogleAuthController);
+}
+
+const providers: any[] = [AuthService, LocalStrategy, JwtStrategy];
+if (process.env.GOOGLE_CLIENT_ID) {
+  providers.push(GoogleStrategy);
+}
 
 @Module({
   imports: [
@@ -18,9 +31,10 @@ import { PasswordReset } from './entities/password-reset.entity';
       secret: process.env.JWT_SECRET || 'gestao-publica-secret-key-2024',
       signOptions: { expiresIn: '24h' },
     }),
+    PeopleModule,
   ],
-  controllers: [AuthController],
-  providers: [AuthService, LocalStrategy, JwtStrategy],
+  controllers,
+  providers,
   exports: [AuthService],
 })
 export class AuthModule {}

@@ -1,4 +1,13 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, OneToMany, JoinColumn } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+  ManyToOne,
+  OneToMany,
+  JoinColumn,
+} from 'typeorm';
 import { Faixa } from '../../faixas/entities/faixa.entity';
 import { Unidade } from '../../common/entities/unidade.entity';
 import { Presenca } from '../../presencas/entities/presenca.entity';
@@ -8,7 +17,7 @@ import { HistoricoFaixa } from '../../graduacoes/entities/historico-faixa.entity
 export enum StatusType {
   ATIVO = 'ativo',
   INATIVO = 'inativo',
-  SUSPENSO = 'suspenso'
+  SUSPENSO = 'suspenso',
 }
 
 @Entity('alunos', { schema: 'teamcruz' })
@@ -34,7 +43,12 @@ export class Aluno {
   @Column({ type: 'varchar', length: 20, nullable: true })
   telefone: string;
 
-  @Column({ type: 'varchar', length: 20, nullable: true, name: 'telefone_emergencia' })
+  @Column({
+    type: 'varchar',
+    length: 20,
+    nullable: true,
+    name: 'telefone_emergencia',
+  })
   telefoneEmergencia: string;
 
   @Column({ type: 'text', nullable: true })
@@ -56,7 +70,7 @@ export class Aluno {
   @Column({ name: 'faixa_atual_id' })
   faixaAtualId: string;
 
-  @ManyToOne(() => Faixa, faixa => faixa.alunos)
+  @ManyToOne(() => Faixa, (faixa) => faixa.alunos)
   @JoinColumn({ name: 'faixa_atual_id' })
   faixaAtual: Faixa;
 
@@ -70,16 +84,26 @@ export class Aluno {
   dataUltimaGraduacao: Date;
 
   // Dados administrativos
-  @Column({ type: 'date', default: () => 'CURRENT_DATE', name: 'data_matricula' })
+  @Column({
+    type: 'date',
+    default: () => 'CURRENT_DATE',
+    name: 'data_matricula',
+  })
   dataMatricula: Date;
 
-  @Column({ type: 'varchar', length: 20, unique: true, nullable: true, name: 'numero_matricula' })
+  @Column({
+    type: 'varchar',
+    length: 20,
+    unique: true,
+    nullable: true,
+    name: 'numero_matricula',
+  })
   numeroMatricula: string;
 
   @Column({ name: 'unidade_id', nullable: true })
   unidadeId: string;
 
-  @ManyToOne(() => Unidade, unidade => unidade.alunos)
+  @ManyToOne(() => Unidade, (unidade) => unidade.alunos)
   @JoinColumn({ name: 'unidade_id' })
   unidade: Unidade;
 
@@ -96,16 +120,36 @@ export class Aluno {
   restricoesMedicas: string;
 
   // Responsável (para menores)
-  @Column({ type: 'varchar', length: 100, nullable: true, name: 'responsavel_nome' })
+  @Column({
+    type: 'varchar',
+    length: 100,
+    nullable: true,
+    name: 'responsavel_nome',
+  })
   responsavelNome: string;
 
-  @Column({ type: 'varchar', length: 14, nullable: true, name: 'responsavel_cpf' })
+  @Column({
+    type: 'varchar',
+    length: 14,
+    nullable: true,
+    name: 'responsavel_cpf',
+  })
   responsavelCpf: string;
 
-  @Column({ type: 'varchar', length: 20, nullable: true, name: 'responsavel_telefone' })
+  @Column({
+    type: 'varchar',
+    length: 20,
+    nullable: true,
+    name: 'responsavel_telefone',
+  })
   responsavelTelefone: string;
 
-  @Column({ type: 'varchar', length: 50, nullable: true, name: 'responsavel_parentesco' })
+  @Column({
+    type: 'varchar',
+    length: 50,
+    nullable: true,
+    name: 'responsavel_parentesco',
+  })
   responsavelParentesco: string;
 
   // Controle e LGPD
@@ -131,13 +175,13 @@ export class Aluno {
   updatedAt: Date;
 
   // Relations
-  @OneToMany(() => Presenca, presenca => presenca.aluno)
+  @OneToMany(() => Presenca, (presenca) => presenca.aluno)
   presencas: Presenca[];
 
-  @OneToMany(() => HistoricoGrau, historico => historico.aluno)
+  @OneToMany(() => HistoricoGrau, (historico) => historico.aluno)
   historicoGraus: HistoricoGrau[];
 
-  @OneToMany(() => HistoricoFaixa, historico => historico.aluno)
+  @OneToMany(() => HistoricoFaixa, (historico) => historico.aluno)
   historicoFaixas: HistoricoFaixa[];
 
   // Virtual properties

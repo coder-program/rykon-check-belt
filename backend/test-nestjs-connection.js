@@ -29,7 +29,7 @@ async function bootstrap() {
     password: process.env.DB_PASS ? '***' : 'default',
     database: process.env.DB_NAME || 'acesso_usuarios_db',
   });
-  
+
   try {
     const app = await NestFactory.create(TestModule);
     console.log('✅ NestJS + TypeORM conectado com sucesso!');

@@ -18,26 +18,26 @@ async function bootstrap() {
   try {
     // Criar tipos de permissão
     console.log('Criando tipos de permissão...');
-    
+
     const tiposPermissao = [
       {
         codigo: 'modulo',
         nome: 'Módulo',
         descricao: 'Permissão de módulo completo',
-        ordem: 1
+        ordem: 1,
       },
       {
         codigo: 'funcionalidade',
         nome: 'Funcionalidade',
         descricao: 'Permissão de funcionalidade específica',
-        ordem: 2
+        ordem: 2,
       },
       {
         codigo: 'operacao',
         nome: 'Operação',
         descricao: 'Permissão de operação específica',
-        ordem: 3
-      }
+        ordem: 3,
+      },
     ];
 
     const tiposCriados: any = {};
@@ -55,36 +55,36 @@ async function bootstrap() {
 
     // Criar níveis de permissão
     console.log('Criando níveis de permissão...');
-    
+
     const niveisPermissao = [
       {
         codigo: 'leitura',
         nome: 'Leitura',
         descricao: 'Permite apenas visualizar',
         ordem: 1,
-        cor: '#28a745' // Verde
+        cor: '#28a745', // Verde
       },
       {
         codigo: 'escrita',
         nome: 'Escrita',
         descricao: 'Permite criar e editar',
         ordem: 2,
-        cor: '#ffc107' // Amarelo
+        cor: '#ffc107', // Amarelo
       },
       {
         codigo: 'exclusao',
         nome: 'Exclusão',
         descricao: 'Permite deletar',
         ordem: 3,
-        cor: '#fd7e14' // Laranja
+        cor: '#fd7e14', // Laranja
       },
       {
         codigo: 'administracao',
         nome: 'Administração',
         descricao: 'Acesso administrativo completo',
         ordem: 4,
-        cor: '#dc3545' // Vermelho
-      }
+        cor: '#dc3545', // Vermelho
+      },
     ];
 
     const niveisCriados: any = {};
@@ -95,14 +95,16 @@ async function bootstrap() {
         console.log(`✅ Nível de permissão criado: ${nivel.codigo}`);
       } catch (error) {
         console.log(`ℹ️  Nível já existe: ${nivel.codigo}`);
-        const existing = await niveisPermissaoService.findByCodigo(nivel.codigo);
+        const existing = await niveisPermissaoService.findByCodigo(
+          nivel.codigo,
+        );
         niveisCriados[nivel.codigo] = existing;
       }
     }
 
     // Criar permissões básicas
     console.log('Criando permissões básicas...');
-    
+
     const permissoes = [
       {
         codigo: 'usuarios.read',
@@ -110,7 +112,7 @@ async function bootstrap() {
         descricao: 'Permissão para visualizar usuários',
         tipoId: tiposCriados.funcionalidade.id,
         nivelId: niveisCriados.leitura.id,
-        modulo: 'usuarios'
+        modulo: 'usuarios',
       },
       {
         codigo: 'usuarios.create',
@@ -118,7 +120,7 @@ async function bootstrap() {
         descricao: 'Permissão para criar usuários',
         tipoId: tiposCriados.funcionalidade.id,
         nivelId: niveisCriados.escrita.id,
-        modulo: 'usuarios'
+        modulo: 'usuarios',
       },
       {
         codigo: 'usuarios.update',
@@ -126,7 +128,7 @@ async function bootstrap() {
         descricao: 'Permissão para atualizar usuários',
         tipoId: tiposCriados.operacao.id,
         nivelId: niveisCriados.escrita.id,
-        modulo: 'usuarios'
+        modulo: 'usuarios',
       },
       {
         codigo: 'usuarios.delete',
@@ -134,7 +136,7 @@ async function bootstrap() {
         descricao: 'Permissão para deletar usuários',
         tipoId: tiposCriados.operacao.id,
         nivelId: niveisCriados.exclusao.id,
-        modulo: 'usuarios'
+        modulo: 'usuarios',
       },
       {
         codigo: 'permissoes.read',
@@ -142,7 +144,7 @@ async function bootstrap() {
         descricao: 'Permissão para visualizar permissões',
         tipoId: tiposCriados.funcionalidade.id,
         nivelId: niveisCriados.leitura.id,
-        modulo: 'permissoes'
+        modulo: 'permissoes',
       },
       {
         codigo: 'admin.all',
@@ -150,8 +152,8 @@ async function bootstrap() {
         descricao: 'Acesso total ao sistema',
         tipoId: tiposCriados.modulo.id,
         nivelId: niveisCriados.administracao.id,
-        modulo: 'sistema'
-      }
+        modulo: 'sistema',
+      },
     ];
 
     for (const permissao of permissoes) {
@@ -169,14 +171,14 @@ async function bootstrap() {
     try {
       perfilAdmin = await perfisService.create({
         nome: 'Administrador',
-        descricao: 'Perfil com acesso total ao sistema'
+        descricao: 'Perfil com acesso total ao sistema',
       });
       console.log('✅ Perfil Administrador criado');
     } catch (error) {
       console.log('ℹ️  Perfil Administrador já existe');
       // Buscar perfil existente
       const perfis = await perfisService.findAll();
-      perfilAdmin = perfis.find(p => p.nome === 'Administrador');
+      perfilAdmin = perfis.find((p) => p.nome === 'Administrador');
     }
 
     // Criar usuário admin
@@ -189,7 +191,7 @@ async function bootstrap() {
         nome: 'Administrador do Sistema',
         cpf: '12345678901',
         telefone: '11999999999',
-        perfil_ids: perfilAdmin ? [perfilAdmin.id] : []
+        perfil_ids: perfilAdmin ? [perfilAdmin.id] : [],
       });
       console.log('✅ Usuário admin criado');
     } catch (error) {
@@ -199,7 +201,6 @@ async function bootstrap() {
     console.log('\n🎉 Seed executado com sucesso!');
     console.log('👤 Usuário: admin');
     console.log('🔑 Senha: admin123');
-    
   } catch (error) {
     console.error('❌ Erro ao executar seed:', error);
   }

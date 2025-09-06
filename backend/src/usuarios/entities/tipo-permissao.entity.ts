@@ -1,7 +1,14 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, OneToMany } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+  OneToMany,
+} from 'typeorm';
 import { Permissao } from './permissao.entity';
 
-@Entity('tipos_permissao')
+@Entity({ name: 'tipos_permissao', schema: 'teamcruz' })
 export class TipoPermissao {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -21,7 +28,7 @@ export class TipoPermissao {
   @Column({ default: 0 })
   ordem: number; // Para ordenação na interface
 
-  @OneToMany(() => Permissao, permissao => permissao.tipo)
+  @OneToMany(() => Permissao, (permissao) => permissao.tipo)
   permissoes: Permissao[];
 
   @CreateDateColumn()

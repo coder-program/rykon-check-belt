@@ -1,4 +1,12 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+} from '@nestjs/common';
 import { PermissoesService } from '../services/permissoes.service';
 import { CreatePermissaoDto } from '../dto/create-permissao.dto';
 
@@ -32,7 +40,10 @@ export class PermissoesController {
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updatePermissaoDto: Partial<CreatePermissaoDto>) {
+  update(
+    @Param('id') id: string,
+    @Body() updatePermissaoDto: Partial<CreatePermissaoDto>,
+  ) {
     return this.permissoesService.update(id, updatePermissaoDto);
   }
 

@@ -3,11 +3,13 @@
 ## ✅ **O QUE FOI IMPLEMENTADO**
 
 ### **🎯 Objetivo**
+
 Exibir um alert detalhado com todas as permissões do usuário logado, mostrando exatamente o que ele tem acesso no sistema.
 
 ### **🔧 Modificações Realizadas**
 
 #### **1. Backend - AuthService**
+
 - ✅ Criada interface `PermissionDetail` com campos detalhados
 - ✅ Modificada interface `LoginResponse` para incluir:
   - `permissionsDetail`: Array com detalhes completos das permissões
@@ -15,6 +17,7 @@ Exibir um alert detalhado com todas as permissões do usuário logado, mostrando
 - ✅ Modificado método `login()` para buscar dados detalhados
 
 #### **2. Backend - UsuariosService**
+
 - ✅ Adicionado método `getUserPermissionsDetail()`:
   - Retorna permissões com nome, descrição, módulo
   - Inclui dados do nível (nome, descrição, cor)
@@ -23,6 +26,7 @@ Exibir um alert detalhado com todas as permissões do usuário logado, mostrando
   - Retorna lista de nomes dos perfis do usuário
 
 #### **3. Frontend - AuthContext**
+
 - ✅ Adicionada função `showPermissionsAlert()`:
   - Exibe dados do usuário (nome, username, email)
   - Lista todos os perfis do usuário
@@ -72,62 +76,71 @@ Exibir um alert detalhado com todas as permissões do usuário logado, mostrando
 ### **👥 Perfis e Permissões Configurados**
 
 #### **👑 Administrador** (6 permissões)
+
 - Visualizar, Criar, Atualizar e Deletar Usuários
-- Visualizar Permissões  
+- Visualizar Permissões
 - Acesso Total ao Sistema
 
 #### **👔 Gestor** (4 permissões)
+
 - Visualizar, Criar e Atualizar Usuários
 - Visualizar Permissões
 
 #### **⚙️ Operador** (2 permissões)
+
 - Visualizar Usuários
 - Criar Usuários
 
 #### **👁️ Visualizador** (1 permissão)
+
 - Visualizar Usuários
 
 ### **🔑 Credenciais para Teste**
 
-| Usuário | Senha | Perfil |
-|---------|--------|---------|
-| `admin` | `admin123` | Administrador |
-| `gestor` | `gestor123` | Gestor |
-| `operador` | `operador123` | Operador |
-| `visualizador` | `visual123` | Visualizador |
+| Usuário        | Senha         | Perfil        |
+| -------------- | ------------- | ------------- |
+| `admin`        | `admin123`    | Administrador |
+| `gestor`       | `gestor123`   | Gestor        |
+| `operador`     | `operador123` | Operador      |
+| `visualizador` | `visual123`   | Visualizador  |
 
 ## ⚠️ **STATUS ATUAL**
 
 ### **✅ Funcionalidades Prontas**
+
 - ✅ Backend com APIs implementadas
 - ✅ Frontend com alert configurado
 - ✅ Banco de dados populado com dados
 - ✅ Sistema de permissões hierárquico funcional
 
 ### **❌ Pendência**
+
 - ❌ **Conexão TypeORM**: Problema de autenticação entre NestJS e PostgreSQL
 - ✅ **Solução Alternativa**: Tabelas e dados criados via script direto com driver `pg`
 
 ## 🧪 **Como Testar**
 
 ### **Opção 1: Resolver Conexão TypeORM**
+
 1. Corrigir problema de autenticação PostgreSQL ↔ TypeORM
 2. Executar: `npm run start:dev` (backend)
 3. Executar: `npm start` (frontend)
 4. Fazer login com qualquer usuário
 
 ### **Opção 2: Teste Manual via API**
+
 1. Usar Postman/Insomnia para testar endpoint `/auth/login`
 2. Verificar se retorna `permissionsDetail` e `perfis` na resposta
 
 ### **Estrutura da Resposta da API**
+
 ```json
 {
   "access_token": "jwt-token-here",
   "user": {
     "id": "uuid",
     "username": "gestor",
-    "email": "gestor@sistema.com", 
+    "email": "gestor@sistema.com",
     "nome": "João Silva Gestor",
     "permissions": ["usuarios.read", "usuarios.create", ...],
     "permissionsDetail": [
@@ -142,7 +155,7 @@ Exibir um alert detalhado com todas as permissões do usuário logado, mostrando
           "cor": "#28a745"
         },
         "tipo": {
-          "nome": "Funcionalidade", 
+          "nome": "Funcionalidade",
           "descricao": "Permissão de funcionalidade específica"
         }
       }

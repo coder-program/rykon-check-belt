@@ -1,23 +1,45 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Megaphone, Plus, Calendar, Users, Target, Edit, Trash2, Send, Clock, CheckCircle, AlertCircle, X, Mail, MessageSquare, Bell } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
-import toast from 'react-hot-toast';
-import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import {
+  Megaphone,
+  Plus,
+  Calendar,
+  Users,
+  Target,
+  Edit,
+  Trash2,
+  Send,
+  Clock,
+  CheckCircle,
+  AlertCircle,
+  X,
+  Mail,
+  MessageSquare,
+  Bell,
+} from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import toast from "react-hot-toast";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 interface Campanha {
   id: string;
   titulo: string;
   descricao: string;
-  tipo: 'promocao' | 'evento' | 'graduacao' | 'comunicado';
+  tipo: "promocao" | "evento" | "graduacao" | "comunicado";
   dataInicio: string;
   dataFim: string;
-  canal: 'email' | 'sms' | 'whatsapp' | 'push' | 'todos';
-  segmento: 'todos' | 'iniciantes' | 'avancados' | 'criancas' | 'adultos' | 'competidores';
-  status: 'rascunho' | 'agendada' | 'ativa' | 'finalizada';
+  canal: "email" | "sms" | "whatsapp" | "push" | "todos";
+  segmento:
+    | "todos"
+    | "iniciantes"
+    | "avancados"
+    | "criancas"
+    | "adultos"
+    | "competidores";
+  status: "rascunho" | "agendada" | "ativa" | "finalizada";
   enviados: number;
   abertos: number;
   cliques: number;
@@ -28,98 +50,143 @@ interface Campanha {
 
 const mockCampanhas: Campanha[] = [
   {
-    id: '1',
-    titulo: 'Black Friday TeamCruz',
-    descricao: '50% OFF na matrícula + 1º mês grátis para novos alunos',
-    tipo: 'promocao',
-    dataInicio: '2025-11-20',
-    dataFim: '2025-11-30',
-    canal: 'todos',
-    segmento: 'todos',
-    status: 'agendada',
+    id: "1",
+    titulo: "Black Friday TeamCruz",
+    descricao: "50% OFF na matrícula + 1º mês grátis para novos alunos",
+    tipo: "promocao",
+    dataInicio: "2025-11-20",
+    dataFim: "2025-11-30",
+    canal: "todos",
+    segmento: "todos",
+    status: "agendada",
     enviados: 0,
     abertos: 0,
     cliques: 0,
-    botaoCTA: 'MATRICULE-SE AGORA',
-    linkCTA: 'https://www.teamcruz.com.br/matricula'
+    botaoCTA: "MATRICULE-SE AGORA",
+    linkCTA: "https://www.teamcruz.com.br/matricula",
   },
   {
-    id: '2',
-    titulo: 'Campeonato Interno de Primavera',
-    descricao: 'Inscrições abertas para o campeonato interno. Vagas limitadas!',
-    tipo: 'evento',
-    dataInicio: '2025-09-01',
-    dataFim: '2025-09-15',
-    canal: 'whatsapp',
-    segmento: 'competidores',
-    status: 'ativa',
+    id: "2",
+    titulo: "Campeonato Interno de Primavera",
+    descricao: "Inscrições abertas para o campeonato interno. Vagas limitadas!",
+    tipo: "evento",
+    dataInicio: "2025-09-01",
+    dataFim: "2025-09-15",
+    canal: "whatsapp",
+    segmento: "competidores",
+    status: "ativa",
     enviados: 145,
     abertos: 132,
     cliques: 89,
-    botaoCTA: 'INSCREVA-SE',
-    linkCTA: 'https://forms.google.com/campeonato'
+    botaoCTA: "INSCREVA-SE",
+    linkCTA: "https://forms.google.com/campeonato",
   },
   {
-    id: '3',
-    titulo: 'Cerimônia de Graduação - Dezembro',
-    descricao: 'Convite para a cerimônia de graduação e entrega de faixas',
-    tipo: 'graduacao',
-    dataInicio: '2025-12-10',
-    dataFim: '2025-12-10',
-    canal: 'email',
-    segmento: 'todos',
-    status: 'rascunho',
+    id: "3",
+    titulo: "Cerimônia de Graduação - Dezembro",
+    descricao: "Convite para a cerimônia de graduação e entrega de faixas",
+    tipo: "graduacao",
+    dataInicio: "2025-12-10",
+    dataFim: "2025-12-10",
+    canal: "email",
+    segmento: "todos",
+    status: "rascunho",
     enviados: 0,
     abertos: 0,
-    cliques: 0
-  }
+    cliques: 0,
+  },
 ];
 
 const tiposCampanha = [
-  { value: 'promocao', label: 'Promoção', icon: '🎯', color: 'bg-yellow-100 text-yellow-800' },
-  { value: 'evento', label: 'Evento', icon: '📅', color: 'bg-blue-100 text-blue-800' },
-  { value: 'graduacao', label: 'Graduação', icon: '🥋', color: 'bg-purple-100 text-purple-800' },
-  { value: 'comunicado', label: 'Comunicado', icon: '📢', color: 'bg-gray-100 text-gray-800' }
+  {
+    value: "promocao",
+    label: "Promoção",
+    icon: "🎯",
+    color: "bg-yellow-100 text-yellow-800",
+  },
+  {
+    value: "evento",
+    label: "Evento",
+    icon: "📅",
+    color: "bg-blue-100 text-blue-800",
+  },
+  {
+    value: "graduacao",
+    label: "Graduação",
+    icon: "🥋",
+    color: "bg-purple-100 text-purple-800",
+  },
+  {
+    value: "comunicado",
+    label: "Comunicado",
+    icon: "📢",
+    color: "bg-gray-100 text-gray-800",
+  },
 ];
 
 const canaisEnvio = [
-  { value: 'email', label: 'E-mail', icon: Mail },
-  { value: 'sms', label: 'SMS', icon: MessageSquare },
-  { value: 'whatsapp', label: 'WhatsApp', icon: MessageSquare },
-  { value: 'push', label: 'Push', icon: Bell },
-  { value: 'todos', label: 'Todos', icon: Send }
+  { value: "email", label: "E-mail", icon: Mail },
+  { value: "sms", label: "SMS", icon: MessageSquare },
+  { value: "whatsapp", label: "WhatsApp", icon: MessageSquare },
+  { value: "push", label: "Push", icon: Bell },
+  { value: "todos", label: "Todos", icon: Send },
 ];
 
 export default function CampanhasManager() {
-  const [campanhas, setCampanhas] = useState<Campanha[]>(mockCampanhas);
+  const [campanhas, setCampanhas] = useState<Campanha[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [editingCampanha, setEditingCampanha] = useState<Campanha | null>(null);
   const [formData, setFormData] = useState<Partial<Campanha>>({
-    titulo: '',
-    descricao: '',
-    tipo: 'promocao',
-    dataInicio: format(new Date(), 'yyyy-MM-dd'),
-    dataFim: format(new Date(), 'yyyy-MM-dd'),
-    canal: 'todos',
-    segmento: 'todos',
-    status: 'rascunho',
-    botaoCTA: '',
-    linkCTA: ''
+    titulo: "",
+    descricao: "",
+    tipo: "promocao",
+    dataInicio: format(new Date(), "yyyy-MM-dd"),
+    dataFim: format(new Date(), "yyyy-MM-dd"),
+    canal: "todos",
+    segmento: "todos",
+    status: "rascunho",
+    botaoCTA: "",
+    linkCTA: "",
   });
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const res = await fetch(
+          (process.env.NEXT_PUBLIC_API_URL || "http://localhost:4001") +
+            "/teamcruz/campanhas",
+          {
+            headers: {
+              "Content-Type": "application/json",
+              ...(typeof window !== "undefined" && localStorage.getItem("token")
+                ? { Authorization: `Bearer ${localStorage.getItem("token")}` }
+                : {}),
+            },
+          },
+        );
+        const data = await res.json();
+        setCampanhas(Array.isArray(data) ? data : []);
+      } catch (e) {
+        console.error(e);
+        toast.error("Falha ao carregar campanhas");
+      }
+    };
+    load();
+  }, []);
 
   const handleCreateCampanha = () => {
     setEditingCampanha(null);
     setFormData({
-      titulo: '',
-      descricao: '',
-      tipo: 'promocao',
-      dataInicio: format(new Date(), 'yyyy-MM-dd'),
-      dataFim: format(new Date(), 'yyyy-MM-dd'),
-      canal: 'todos',
-      segmento: 'todos',
-      status: 'rascunho',
-      botaoCTA: '',
-      linkCTA: ''
+      titulo: "",
+      descricao: "",
+      tipo: "promocao",
+      dataInicio: format(new Date(), "yyyy-MM-dd"),
+      dataFim: format(new Date(), "yyyy-MM-dd"),
+      canal: "todos",
+      segmento: "todos",
+      status: "rascunho",
+      botaoCTA: "",
+      linkCTA: "",
     });
     setShowModal(true);
   };
@@ -132,65 +199,106 @@ export default function CampanhasManager() {
 
   const handleSaveCampanha = () => {
     if (!formData.titulo || !formData.descricao) {
-      toast.error('Preencha todos os campos obrigatórios');
+      toast.error("Preencha todos os campos obrigatórios");
       return;
     }
 
+    const base = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4001";
     if (editingCampanha) {
-      setCampanhas(prev => prev.map(c => 
-        c.id === editingCampanha.id 
-          ? { ...c, ...formData } as Campanha
-          : c
-      ));
-      toast.success('Campanha atualizada com sucesso!');
+      fetch(base + `/teamcruz/campanhas/${editingCampanha.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          ...(typeof window !== "undefined" && localStorage.getItem("token")
+            ? { Authorization: `Bearer ${localStorage.getItem("token")}` }
+            : {}),
+        },
+        body: JSON.stringify(formData),
+      })
+        .then((r) => r.json())
+        .then((saved) => {
+          setCampanhas((prev) =>
+            prev.map((c) => (c.id === saved.id ? saved : c)),
+          );
+          toast.success("Campanha atualizada com sucesso!");
+          setShowModal(false);
+        })
+        .catch(() => toast.error("Falha ao atualizar campanha"));
     } else {
-      const novaCampanha: Campanha = {
-        ...formData as Campanha,
-        id: Date.now().toString(),
-        enviados: 0,
-        abertos: 0,
-        cliques: 0
-      };
-      setCampanhas(prev => [...prev, novaCampanha]);
-      toast.success('Campanha criada com sucesso!');
+      fetch(base + "/teamcruz/campanhas", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(typeof window !== "undefined" && localStorage.getItem("token")
+            ? { Authorization: `Bearer ${localStorage.getItem("token")}` }
+            : {}),
+        },
+        body: JSON.stringify(formData),
+      })
+        .then((r) => r.json())
+        .then((saved) => {
+          setCampanhas((prev) => [...prev, saved]);
+          toast.success("Campanha criada com sucesso!");
+          setShowModal(false);
+        })
+        .catch(() => toast.error("Falha ao criar campanha"));
     }
-
-    setShowModal(false);
   };
 
   const handleDeleteCampanha = (id: string) => {
-    if (window.confirm('Tem certeza que deseja excluir esta campanha?')) {
-      setCampanhas(prev => prev.filter(c => c.id !== id));
-      toast.success('Campanha excluída com sucesso!');
+    if (window.confirm("Tem certeza que deseja excluir esta campanha?")) {
+      const base = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4001";
+      fetch(base + `/teamcruz/campanhas/${id}`, {
+        method: "DELETE",
+        headers: {
+          ...(typeof window !== "undefined" && localStorage.getItem("token")
+            ? { Authorization: `Bearer ${localStorage.getItem("token")}` }
+            : {}),
+        },
+      })
+        .then(() => {
+          setCampanhas((prev) => prev.filter((c) => c.id !== id));
+          toast.success("Campanha excluída com sucesso!");
+        })
+        .catch(() => toast.error("Falha ao excluir campanha"));
     }
   };
 
   const handleEnviarCampanha = (campanha: Campanha) => {
-    // Simular envio
-    setCampanhas(prev => prev.map(c => 
-      c.id === campanha.id 
-        ? { ...c, status: 'ativa' as const, enviados: Math.floor(Math.random() * 200) + 100 }
-        : c
-    ));
-    
-    toast.success(`Campanha "${campanha.titulo}" enviada com sucesso!`, {
-      duration: 4000,
-      icon: '📤'
-    });
+    const base = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4001";
+    fetch(base + `/teamcruz/campanhas/${campanha.id}/enviar`, {
+      method: "POST",
+      headers: {
+        ...(typeof window !== "undefined" && localStorage.getItem("token")
+          ? { Authorization: `Bearer ${localStorage.getItem("token")}` }
+          : {}),
+      },
+    })
+      .then((r) => r.json())
+      .then((updated) => {
+        setCampanhas((prev) =>
+          prev.map((c) => (c.id === updated.id ? updated : c)),
+        );
+        toast.success(`Campanha "${campanha.titulo}" enviada com sucesso!`, {
+          duration: 4000,
+          icon: "📤",
+        });
+      })
+      .catch(() => toast.error("Falha ao enviar campanha"));
   };
 
   const getStatusBadge = (status: string) => {
     const badges = {
-      rascunho: 'badge-ghost',
-      agendada: 'badge-warning',
-      ativa: 'badge-success',
-      finalizada: 'badge-secondary'
+      rascunho: "badge-ghost",
+      agendada: "badge-warning",
+      ativa: "badge-success",
+      finalizada: "badge-secondary",
     };
-    return badges[status as keyof typeof badges] || 'badge-ghost';
+    return badges[status as keyof typeof badges] || "badge-ghost";
   };
 
   const getTipoInfo = (tipo: string) => {
-    return tiposCampanha.find(t => t.value === tipo) || tiposCampanha[0];
+    return tiposCampanha.find((t) => t.value === tipo) || tiposCampanha[0];
   };
 
   return (
@@ -199,7 +307,9 @@ export default function CampanhasManager() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Megaphone className="h-6 w-6 text-purple-600" />
-          <h2 className="text-2xl font-bold text-gray-900">Campanhas e Comunicação</h2>
+          <h2 className="text-2xl font-bold text-gray-900">
+            Campanhas e Comunicação
+          </h2>
         </div>
         <button
           onClick={handleCreateCampanha}
@@ -218,7 +328,7 @@ export default function CampanhasManager() {
               <div>
                 <p className="text-sm text-purple-600">Campanhas Ativas</p>
                 <p className="text-2xl font-bold text-purple-900">
-                  {campanhas.filter(c => c.status === 'ativa').length}
+                  {campanhas.filter((c) => c.status === "ativa").length}
                 </p>
               </div>
               <CheckCircle className="h-8 w-8 text-purple-400" />
@@ -232,7 +342,7 @@ export default function CampanhasManager() {
               <div>
                 <p className="text-sm text-blue-600">Agendadas</p>
                 <p className="text-2xl font-bold text-blue-900">
-                  {campanhas.filter(c => c.status === 'agendada').length}
+                  {campanhas.filter((c) => c.status === "agendada").length}
                 </p>
               </div>
               <Clock className="h-8 w-8 text-blue-400" />
@@ -272,14 +382,16 @@ export default function CampanhasManager() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {campanhas.map(campanha => {
+            {campanhas.map((campanha) => {
               const tipoInfo = getTipoInfo(campanha.tipo);
-              const taxaAbertura = campanha.enviados > 0 
-                ? Math.round((campanha.abertos / campanha.enviados) * 100) 
-                : 0;
-              const taxaCliques = campanha.abertos > 0 
-                ? Math.round((campanha.cliques / campanha.abertos) * 100) 
-                : 0;
+              const taxaAbertura =
+                campanha.enviados > 0
+                  ? Math.round((campanha.abertos / campanha.enviados) * 100)
+                  : 0;
+              const taxaCliques =
+                campanha.abertos > 0
+                  ? Math.round((campanha.cliques / campanha.abertos) * 100)
+                  : 0;
 
               return (
                 <motion.div
@@ -293,22 +405,33 @@ export default function CampanhasManager() {
                       <div className="flex items-center gap-3 mb-2">
                         <span className="text-2xl">{tipoInfo.icon}</span>
                         <div>
-                          <h3 className="font-semibold text-gray-900">{campanha.titulo}</h3>
-                          <p className="text-sm text-gray-600">{campanha.descricao}</p>
+                          <h3 className="font-semibold text-gray-900">
+                            {campanha.titulo}
+                          </h3>
+                          <p className="text-sm text-gray-600">
+                            {campanha.descricao}
+                          </p>
                         </div>
                       </div>
-                      
+
                       <div className="flex items-center gap-4 mt-3">
                         <span className={`badge ${tipoInfo.color} badge-sm`}>
                           {tipoInfo.label}
                         </span>
-                        <span className={`badge ${getStatusBadge(campanha.status)} badge-sm`}>
+                        <span
+                          className={`badge ${getStatusBadge(campanha.status)} badge-sm`}
+                        >
                           {campanha.status}
                         </span>
                         <span className="text-xs text-gray-500 flex items-center gap-1">
                           <Calendar className="h-3 w-3" />
-                          {format(new Date(campanha.dataInicio), 'dd/MM', { locale: ptBR })} - 
-                          {format(new Date(campanha.dataFim), 'dd/MM', { locale: ptBR })}
+                          {format(new Date(campanha.dataInicio), "dd/MM", {
+                            locale: ptBR,
+                          })}{" "}
+                          -
+                          {format(new Date(campanha.dataFim), "dd/MM", {
+                            locale: ptBR,
+                          })}
                         </span>
                         <span className="text-xs text-gray-500 flex items-center gap-1">
                           <Users className="h-3 w-3" />
@@ -316,26 +439,32 @@ export default function CampanhasManager() {
                         </span>
                       </div>
 
-                      {campanha.status === 'ativa' && campanha.enviados > 0 && (
+                      {campanha.status === "ativa" && campanha.enviados > 0 && (
                         <div className="flex items-center gap-6 mt-3">
                           <div className="text-xs">
                             <span className="text-gray-500">Enviados:</span>
-                            <span className="font-medium ml-1">{campanha.enviados}</span>
+                            <span className="font-medium ml-1">
+                              {campanha.enviados}
+                            </span>
                           </div>
                           <div className="text-xs">
                             <span className="text-gray-500">Abertura:</span>
-                            <span className="font-medium ml-1 text-green-600">{taxaAbertura}%</span>
+                            <span className="font-medium ml-1 text-green-600">
+                              {taxaAbertura}%
+                            </span>
                           </div>
                           <div className="text-xs">
                             <span className="text-gray-500">Cliques:</span>
-                            <span className="font-medium ml-1 text-blue-600">{taxaCliques}%</span>
+                            <span className="font-medium ml-1 text-blue-600">
+                              {taxaCliques}%
+                            </span>
                           </div>
                         </div>
                       )}
                     </div>
 
                     <div className="flex items-center gap-2">
-                      {campanha.status === 'rascunho' && (
+                      {campanha.status === "rascunho" && (
                         <button
                           onClick={() => handleEnviarCampanha(campanha)}
                           className="p-2 text-green-600 hover:bg-green-100 rounded-lg transition-colors"
@@ -397,7 +526,7 @@ export default function CampanhasManager() {
               <div className="bg-gradient-to-r from-purple-600 to-purple-700 text-white p-6">
                 <div className="flex items-center justify-between">
                   <h2 className="text-xl font-bold">
-                    {editingCampanha ? 'Editar Campanha' : 'Nova Campanha'}
+                    {editingCampanha ? "Editar Campanha" : "Nova Campanha"}
                   </h2>
                   <button
                     onClick={() => setShowModal(false)}
@@ -418,7 +547,9 @@ export default function CampanhasManager() {
                     type="text"
                     className="w-full p-2 border rounded-lg"
                     value={formData.titulo}
-                    onChange={(e) => setFormData({ ...formData, titulo: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, titulo: e.target.value })
+                    }
                     placeholder="Ex: Black Friday TeamCruz"
                   />
                 </div>
@@ -431,7 +562,9 @@ export default function CampanhasManager() {
                     className="w-full p-2 border rounded-lg"
                     rows={3}
                     value={formData.descricao}
-                    onChange={(e) => setFormData({ ...formData, descricao: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, descricao: e.target.value })
+                    }
                     placeholder="Descreva o objetivo e conteúdo da campanha"
                   />
                 </div>
@@ -444,9 +577,14 @@ export default function CampanhasManager() {
                     <select
                       className="w-full p-2 border rounded-lg"
                       value={formData.tipo}
-                      onChange={(e) => setFormData({ ...formData, tipo: e.target.value as any })}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          tipo: e.target.value as any,
+                        })
+                      }
                     >
-                      {tiposCampanha.map(tipo => (
+                      {tiposCampanha.map((tipo) => (
                         <option key={tipo.value} value={tipo.value}>
                           {tipo.icon} {tipo.label}
                         </option>
@@ -461,9 +599,14 @@ export default function CampanhasManager() {
                     <select
                       className="w-full p-2 border rounded-lg"
                       value={formData.canal}
-                      onChange={(e) => setFormData({ ...formData, canal: e.target.value as any })}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          canal: e.target.value as any,
+                        })
+                      }
                     >
-                      {canaisEnvio.map(canal => (
+                      {canaisEnvio.map((canal) => (
                         <option key={canal.value} value={canal.value}>
                           {canal.label}
                         </option>
@@ -481,7 +624,9 @@ export default function CampanhasManager() {
                       type="date"
                       className="w-full p-2 border rounded-lg"
                       value={formData.dataInicio}
-                      onChange={(e) => setFormData({ ...formData, dataInicio: e.target.value })}
+                      onChange={(e) =>
+                        setFormData({ ...formData, dataInicio: e.target.value })
+                      }
                     />
                   </div>
 
@@ -493,7 +638,9 @@ export default function CampanhasManager() {
                       type="date"
                       className="w-full p-2 border rounded-lg"
                       value={formData.dataFim}
-                      onChange={(e) => setFormData({ ...formData, dataFim: e.target.value })}
+                      onChange={(e) =>
+                        setFormData({ ...formData, dataFim: e.target.value })
+                      }
                     />
                   </div>
                 </div>
@@ -505,7 +652,12 @@ export default function CampanhasManager() {
                   <select
                     className="w-full p-2 border rounded-lg"
                     value={formData.segmento}
-                    onChange={(e) => setFormData({ ...formData, segmento: e.target.value as any })}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        segmento: e.target.value as any,
+                      })
+                    }
                   >
                     <option value="todos">Todos os Alunos</option>
                     <option value="iniciantes">Iniciantes</option>
@@ -517,7 +669,9 @@ export default function CampanhasManager() {
                 </div>
 
                 <div className="border-t pt-4">
-                  <h3 className="font-medium text-gray-900 mb-3">Call to Action (Opcional)</h3>
+                  <h3 className="font-medium text-gray-900 mb-3">
+                    Call to Action (Opcional)
+                  </h3>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -527,7 +681,9 @@ export default function CampanhasManager() {
                         type="text"
                         className="w-full p-2 border rounded-lg"
                         value={formData.botaoCTA}
-                        onChange={(e) => setFormData({ ...formData, botaoCTA: e.target.value })}
+                        onChange={(e) =>
+                          setFormData({ ...formData, botaoCTA: e.target.value })
+                        }
                         placeholder="Ex: INSCREVA-SE AGORA"
                       />
                     </div>
@@ -540,7 +696,9 @@ export default function CampanhasManager() {
                         type="url"
                         className="w-full p-2 border rounded-lg"
                         value={formData.linkCTA}
-                        onChange={(e) => setFormData({ ...formData, linkCTA: e.target.value })}
+                        onChange={(e) =>
+                          setFormData({ ...formData, linkCTA: e.target.value })
+                        }
                         placeholder="https://..."
                       />
                     </div>
@@ -554,7 +712,12 @@ export default function CampanhasManager() {
                   <select
                     className="w-full p-2 border rounded-lg"
                     value={formData.status}
-                    onChange={(e) => setFormData({ ...formData, status: e.target.value as any })}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        status: e.target.value as any,
+                      })
+                    }
                   >
                     <option value="rascunho">Rascunho</option>
                     <option value="agendada">Agendada</option>
@@ -576,7 +739,7 @@ export default function CampanhasManager() {
                     onClick={handleSaveCampanha}
                     className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
                   >
-                    {editingCampanha ? 'Salvar Alterações' : 'Criar Campanha'}
+                    {editingCampanha ? "Salvar Alterações" : "Criar Campanha"}
                   </button>
                 </div>
               </div>

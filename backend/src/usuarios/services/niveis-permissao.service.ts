@@ -1,4 +1,8 @@
-import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { NivelPermissao } from '../entities/nivel-permissao.entity';
@@ -11,29 +15,33 @@ export class NiveisPermissaoService {
     private nivelPermissaoRepository: Repository<NivelPermissao>,
   ) {}
 
-  async create(createNivelPermissaoDto: CreateNivelPermissaoDto): Promise<NivelPermissao> {
+  async create(
+    createNivelPermissaoDto: CreateNivelPermissaoDto,
+  ): Promise<NivelPermissao> {
     // Verificar se código já existe
     const existingCodigo = await this.nivelPermissaoRepository.findOne({
-      where: { codigo: createNivelPermissaoDto.codigo }
+      where: { codigo: createNivelPermissaoDto.codigo },
     });
     if (existingCodigo) {
       throw new ConflictException('Código já existe');
     }
 
-    const nivelPermissao = this.nivelPermissaoRepository.create(createNivelPermissaoDto);
+    const nivelPermissao = this.nivelPermissaoRepository.create(
+      createNivelPermissaoDto,
+    );
     return await this.nivelPermissaoRepository.save(nivelPermissao);
   }
 
   async findAll(): Promise<NivelPermissao[]> {
     return await this.nivelPermissaoRepository.find({
-      order: { ordem: 'ASC', nome: 'ASC' }
+      order: { ordem: 'ASC', nome: 'ASC' },
     });
   }
 
   async findOne(id: string): Promise<NivelPermissao> {
     const nivelPermissao = await this.nivelPermissaoRepository.findOne({
       where: { id },
-      relations: ['permissoes']
+      relations: ['permissoes'],
     });
 
     if (!nivelPermissao) {
@@ -45,7 +53,7 @@ export class NiveisPermissaoService {
 
   async findByCodigo(codigo: string): Promise<NivelPermissao> {
     const nivelPermissao = await this.nivelPermissaoRepository.findOne({
-      where: { codigo }
+      where: { codigo },
     });
 
     if (!nivelPermissao) {
@@ -55,12 +63,15 @@ export class NiveisPermissaoService {
     return nivelPermissao;
   }
 
-  async update(id: string, updateData: Partial<CreateNivelPermissaoDto>): Promise<NivelPermissao> {
+  async update(
+    id: string,
+    updateData: Partial<CreateNivelPermissaoDto>,
+  ): Promise<NivelPermissao> {
     const nivelPermissao = await this.findOne(id);
 
     if (updateData.codigo && updateData.codigo !== nivelPermissao.codigo) {
       const existingCodigo = await this.nivelPermissaoRepository.findOne({
-        where: { codigo: updateData.codigo }
+        where: { codigo: updateData.codigo },
       });
       if (existingCodigo) {
         throw new ConflictException('Código já existe');
@@ -79,7 +90,7 @@ export class NiveisPermissaoService {
   async findAtivos(): Promise<NivelPermissao[]> {
     return await this.nivelPermissaoRepository.find({
       where: { ativo: true },
-      order: { ordem: 'ASC', nome: 'ASC' }
+      order: { ordem: 'ASC', nome: 'ASC' },
     });
   }
 }

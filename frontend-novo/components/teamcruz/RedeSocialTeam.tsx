@@ -1,17 +1,39 @@
 "use client";
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { 
-  Heart, MessageCircle, Share2, Send, Camera, Image, Video, 
-  MapPin, Users, Trophy, Medal, Star, TrendingUp, Hash,
-  MoreVertical, Bookmark, Flag, UserPlus, X, Upload,
-  Smile, Gift, Sparkles, Flame, Target, Award
-} from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
-import toast from 'react-hot-toast';
-import { format, formatDistanceToNow } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import {
+  Heart,
+  MessageCircle,
+  Share2,
+  Send,
+  Camera,
+  Image,
+  Video,
+  MapPin,
+  Users,
+  Trophy,
+  Medal,
+  Star,
+  TrendingUp,
+  Hash,
+  MoreVertical,
+  Bookmark,
+  Flag,
+  UserPlus,
+  X,
+  Upload,
+  Smile,
+  Gift,
+  Sparkles,
+  Flame,
+  Target,
+  Award,
+} from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import toast from "react-hot-toast";
+import { format, formatDistanceToNow } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 interface Post {
   id: string;
@@ -26,9 +48,9 @@ interface Post {
   conteudo: string;
   imagens?: string[];
   video?: string;
-  tipo: 'texto' | 'foto' | 'video' | 'conquista' | 'treino' | 'evento';
+  tipo: "texto" | "foto" | "video" | "conquista" | "treino" | "evento";
   conquista?: {
-    tipo: 'graduacao' | 'campeonato' | 'grau' | 'streak';
+    tipo: "graduacao" | "campeonato" | "grau" | "streak";
     titulo: string;
     descricao: string;
   };
@@ -67,138 +89,141 @@ interface Story {
 // Mock de posts
 const mockPosts: Post[] = [
   {
-    id: '1',
+    id: "1",
     autor: {
-      id: '1',
-      nome: 'Carlos Cruz',
-      faixa: 'Preta',
-      unidade: 'Matriz - Centro',
-      verificado: true
+      id: "1",
+      nome: "Carlos Cruz",
+      faixa: "Preta",
+      unidade: "Matriz - Centro",
+      verificado: true,
     },
-    conteudo: '🔥 Treino pesado hoje! Trabalhamos muito a guarda e finalizações. Parabéns a todos os guerreiros que não desistiram! #TeamCruz #JiuJitsu #OSS',
-    imagens: ['treino1.jpg', 'treino2.jpg'],
-    tipo: 'treino',
-    hashtags: ['TeamCruz', 'JiuJitsu', 'OSS'],
-    localizacao: 'TeamCruz - Unidade Centro',
+    conteudo:
+      "🔥 Treino pesado hoje! Trabalhamos muito a guarda e finalizações. Parabéns a todos os guerreiros que não desistiram! #TeamCruz #JiuJitsu #OSS",
+    imagens: ["treino1.jpg", "treino2.jpg"],
+    tipo: "treino",
+    hashtags: ["TeamCruz", "JiuJitsu", "OSS"],
+    localizacao: "TeamCruz - Unidade Centro",
     dataPublicacao: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
     curtidas: 145,
     comentarios: [
       {
-        id: '1',
-        autorId: '2',
-        autorNome: 'João Silva',
-        texto: 'Foi top demais, Mestre! 🥋',
+        id: "1",
+        autorId: "2",
+        autorNome: "João Silva",
+        texto: "Foi top demais, Mestre! 🥋",
         data: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(),
-        curtidas: 5
-      }
+        curtidas: 5,
+      },
     ],
     curtidoPorMim: true,
-    salvo: false
+    salvo: false,
   },
   {
-    id: '2',
+    id: "2",
     autor: {
-      id: '3',
-      nome: 'Maria Santos',
-      faixa: 'Roxa',
-      unidade: 'Filial - Zona Norte'
+      id: "3",
+      nome: "Maria Santos",
+      faixa: "Roxa",
+      unidade: "Filial - Zona Norte",
     },
-    conteudo: '🎉 CONSEGUI! Depois de 2 anos de dedicação, finalmente recebi minha faixa roxa! Obrigada a todos que fizeram parte dessa jornada! 💜',
-    tipo: 'conquista',
+    conteudo:
+      "🎉 CONSEGUI! Depois de 2 anos de dedicação, finalmente recebi minha faixa roxa! Obrigada a todos que fizeram parte dessa jornada! 💜",
+    tipo: "conquista",
     conquista: {
-      tipo: 'graduacao',
-      titulo: 'Nova Graduação',
-      descricao: 'Promovida para Faixa Roxa'
+      tipo: "graduacao",
+      titulo: "Nova Graduação",
+      descricao: "Promovida para Faixa Roxa",
     },
-    imagens: ['graduacao.jpg'],
-    hashtags: ['FaixaRoxa', 'Graduacao', 'TeamCruz', 'Conquista'],
+    imagens: ["graduacao.jpg"],
+    hashtags: ["FaixaRoxa", "Graduacao", "TeamCruz", "Conquista"],
     dataPublicacao: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
     curtidas: 287,
     comentarios: [
       {
-        id: '2',
-        autorId: '1',
-        autorNome: 'Carlos Cruz',
-        texto: 'Merecido! Continue com essa dedicação! 👏',
+        id: "2",
+        autorId: "1",
+        autorNome: "Carlos Cruz",
+        texto: "Merecido! Continue com essa dedicação! 👏",
         data: new Date(Date.now() - 20 * 60 * 60 * 1000).toISOString(),
-        curtidas: 15
+        curtidas: 15,
       },
       {
-        id: '3',
-        autorId: '4',
-        autorNome: 'Pedro Costa',
-        texto: 'Parabéns, guerreira! 🔥',
+        id: "3",
+        autorId: "4",
+        autorNome: "Pedro Costa",
+        texto: "Parabéns, guerreira! 🔥",
         data: new Date(Date.now() - 18 * 60 * 60 * 1000).toISOString(),
-        curtidas: 8
-      }
+        curtidas: 8,
+      },
     ],
     curtidoPorMim: false,
-    salvo: true
+    salvo: true,
   },
   {
-    id: '3',
+    id: "3",
     autor: {
-      id: '5',
-      nome: 'Lucas Oliveira',
-      faixa: 'Azul',
-      unidade: 'Filial - Zona Sul'
+      id: "5",
+      nome: "Lucas Oliveira",
+      faixa: "Azul",
+      unidade: "Filial - Zona Sul",
     },
-    conteudo: '💪 45 dias consecutivos de treino! Rumo aos 100! Disciplina é liberdade! #StreakDeTreino #NeverGiveUp',
-    tipo: 'conquista',
+    conteudo:
+      "💪 45 dias consecutivos de treino! Rumo aos 100! Disciplina é liberdade! #StreakDeTreino #NeverGiveUp",
+    tipo: "conquista",
     conquista: {
-      tipo: 'streak',
-      titulo: 'Sequência de Treinos',
-      descricao: '45 dias consecutivos'
+      tipo: "streak",
+      titulo: "Sequência de Treinos",
+      descricao: "45 dias consecutivos",
     },
-    hashtags: ['StreakDeTreino', 'NeverGiveUp', 'Disciplina'],
+    hashtags: ["StreakDeTreino", "NeverGiveUp", "Disciplina"],
     dataPublicacao: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
     curtidas: 89,
     comentarios: [],
     curtidoPorMim: false,
-    salvo: false
-  }
+    salvo: false,
+  },
 ];
 
 // Mock de stories
 const mockStories: Story[] = [
   {
-    id: '1',
-    autorId: '1',
-    autorNome: 'Carlos Cruz',
+    id: "1",
+    autorId: "1",
+    autorNome: "Carlos Cruz",
     autorFoto: undefined,
-    conteudo: 'Bom dia, guerreiros! Hoje tem treino especial às 19h!',
-    imagem: 'story1.jpg',
+    conteudo: "Bom dia, guerreiros! Hoje tem treino especial às 19h!",
+    imagem: "story1.jpg",
     visualizacoes: 156,
     dataPublicacao: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-    expirado: false
+    expirado: false,
   },
   {
-    id: '2',
-    autorId: '3',
-    autorNome: 'Maria Santos',
+    id: "2",
+    autorId: "3",
+    autorNome: "Maria Santos",
     autorFoto: undefined,
-    conteudo: 'Aquecimento pré-treino 🔥',
-    video: 'story2.mp4',
+    conteudo: "Aquecimento pré-treino 🔥",
+    video: "story2.mp4",
     visualizacoes: 98,
     dataPublicacao: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
-    expirado: false
-  }
+    expirado: false,
+  },
 ];
 
 const hashtagsTrending = [
-  { tag: 'TeamCruz', posts: 1234 },
-  { tag: 'OSS', posts: 890 },
-  { tag: 'JiuJitsu', posts: 756 },
-  { tag: 'Graduacao', posts: 234 },
-  { tag: 'Campeonato', posts: 189 }
+  { tag: "TeamCruz", posts: 1234 },
+  { tag: "OSS", posts: 890 },
+  { tag: "JiuJitsu", posts: 756 },
+  { tag: "Graduacao", posts: 234 },
+  { tag: "Campeonato", posts: 189 },
 ];
 
 const unidades = [
-  'Todas as Unidades',
-  'Matriz - Centro',
-  'Filial - Zona Norte',
-  'Filial - Zona Sul',
-  'Filial - Zona Oeste'
+  "Todas as Unidades",
+  "Matriz - Centro",
+  "Filial - Zona Norte",
+  "Filial - Zona Sul",
+  "Filial - Zona Oeste",
 ];
 
 export default function RedeSocialTeam() {
@@ -207,50 +232,61 @@ export default function RedeSocialTeam() {
   const [showNewPost, setShowNewPost] = useState(false);
   const [showStoryViewer, setShowStoryViewer] = useState(false);
   const [selectedStory, setSelectedStory] = useState<Story | null>(null);
-  const [unidadeSelecionada, setUnidadeSelecionada] = useState('Todas as Unidades');
-  const [tipoFeed, setTipoFeed] = useState<'todos' | 'unidade' | 'seguindo'>('todos');
+  const [unidadeSelecionada, setUnidadeSelecionada] =
+    useState("Todas as Unidades");
+  const [tipoFeed, setTipoFeed] = useState<"todos" | "unidade" | "seguindo">(
+    "todos",
+  );
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
+
   // Estado do novo post
   const [novoPost, setNovoPost] = useState({
-    conteudo: '',
-    tipo: 'texto' as Post['tipo'],
+    conteudo: "",
+    tipo: "texto" as Post["tipo"],
     imagens: [] as string[],
     hashtags: [] as string[],
-    localizacao: ''
+    localizacao: "",
   });
 
   // Estado do comentário
   const [comentarios, setComentarios] = useState<{ [key: string]: string }>({});
 
   const handleCurtir = (postId: string) => {
-    setPosts(prev => prev.map(post => {
-      if (post.id === postId) {
-        return {
-          ...post,
-          curtidoPorMim: !post.curtidoPorMim,
-          curtidas: post.curtidoPorMim ? post.curtidas - 1 : post.curtidas + 1
-        };
-      }
-      return post;
-    }));
-    
-    const post = posts.find(p => p.id === postId);
+    setPosts((prev) =>
+      prev.map((post) => {
+        if (post.id === postId) {
+          return {
+            ...post,
+            curtidoPorMim: !post.curtidoPorMim,
+            curtidas: post.curtidoPorMim
+              ? post.curtidas - 1
+              : post.curtidas + 1,
+          };
+        }
+        return post;
+      }),
+    );
+
+    const post = posts.find((p) => p.id === postId);
     if (post && !post.curtidoPorMim) {
-      toast('❤️ Curtido!', { duration: 1000 });
+      toast("❤️ Curtido!", { duration: 1000 });
     }
   };
 
   const handleSalvar = (postId: string) => {
-    setPosts(prev => prev.map(post => {
-      if (post.id === postId) {
-        return { ...post, salvo: !post.salvo };
-      }
-      return post;
-    }));
-    
-    const post = posts.find(p => p.id === postId);
-    toast(post?.salvo ? '📌 Removido dos salvos' : '📌 Salvo!', { duration: 1500 });
+    setPosts((prev) =>
+      prev.map((post) => {
+        if (post.id === postId) {
+          return { ...post, salvo: !post.salvo };
+        }
+        return post;
+      }),
+    );
+
+    const post = posts.find((p) => p.id === postId);
+    toast(post?.salvo ? "📌 Removido dos salvos" : "📌 Salvo!", {
+      duration: 1500,
+    });
   };
 
   const handleComentar = (postId: string) => {
@@ -259,40 +295,42 @@ export default function RedeSocialTeam() {
 
     const novoComentario: Comment = {
       id: Date.now().toString(),
-      autorId: 'current-user',
-      autorNome: 'Você',
+      autorId: "current-user",
+      autorNome: "Você",
       texto: comentario,
       data: new Date().toISOString(),
-      curtidas: 0
+      curtidas: 0,
     };
 
-    setPosts(prev => prev.map(post => {
-      if (post.id === postId) {
-        return {
-          ...post,
-          comentarios: [...post.comentarios, novoComentario]
-        };
-      }
-      return post;
-    }));
+    setPosts((prev) =>
+      prev.map((post) => {
+        if (post.id === postId) {
+          return {
+            ...post,
+            comentarios: [...post.comentarios, novoComentario],
+          };
+        }
+        return post;
+      }),
+    );
 
-    setComentarios(prev => ({ ...prev, [postId]: '' }));
-    toast.success('Comentário publicado!', { duration: 1500 });
+    setComentarios((prev) => ({ ...prev, [postId]: "" }));
+    toast.success("Comentário publicado!", { duration: 1500 });
   };
 
   const handlePublicarPost = () => {
     if (!novoPost.conteudo.trim()) {
-      toast.error('Escreva algo para publicar!');
+      toast.error("Escreva algo para publicar!");
       return;
     }
 
     const post: Post = {
       id: Date.now().toString(),
       autor: {
-        id: 'current-user',
-        nome: 'Você',
-        faixa: 'Azul',
-        unidade: 'Matriz - Centro'
+        id: "current-user",
+        nome: "Você",
+        faixa: "Azul",
+        unidade: "Matriz - Centro",
       },
       conteudo: novoPost.conteudo,
       tipo: novoPost.tipo,
@@ -303,55 +341,60 @@ export default function RedeSocialTeam() {
       comentarios: [],
       curtidoPorMim: false,
       salvo: false,
-      imagens: novoPost.imagens
+      imagens: novoPost.imagens,
     };
 
     setPosts([post, ...posts]);
     setNovoPost({
-      conteudo: '',
-      tipo: 'texto',
+      conteudo: "",
+      tipo: "texto",
       imagens: [],
       hashtags: [],
-      localizacao: ''
+      localizacao: "",
     });
     setShowNewPost(false);
-    
-    toast.success('Post publicado com sucesso! 🎉', {
+
+    toast.success("Post publicado com sucesso! 🎉", {
       duration: 3000,
-      position: 'top-center'
+      position: "top-center",
     });
   };
 
   const extractHashtags = (text: string) => {
     const regex = /#\w+/g;
     const tags = text.match(regex) || [];
-    return tags.map(tag => tag.substring(1));
+    return tags.map((tag) => tag.substring(1));
   };
 
   const getBeltEmoji = (faixa: string) => {
     const emojis: Record<string, string> = {
-      'Branca': '⚪',
-      'Azul': '🔵',
-      'Roxa': '🟣',
-      'Marrom': '🟤',
-      'Preta': '⚫',
-      'Coral': '🔴'
+      Branca: "⚪",
+      Azul: "🔵",
+      Roxa: "🟣",
+      Marrom: "🟤",
+      Preta: "⚫",
+      Coral: "🔴",
     };
-    return emojis[faixa] || '⚪';
+    return emojis[faixa] || "⚪";
   };
 
   const getConquistaIcon = (tipo: string) => {
-    switch(tipo) {
-      case 'graduacao': return <Medal className="h-5 w-5 text-purple-600" />;
-      case 'campeonato': return <Trophy className="h-5 w-5 text-yellow-600" />;
-      case 'grau': return <Star className="h-5 w-5 text-red-600" />;
-      case 'streak': return <Flame className="h-5 w-5 text-orange-600" />;
-      default: return <Award className="h-5 w-5 text-blue-600" />;
+    switch (tipo) {
+      case "graduacao":
+        return <Medal className="h-5 w-5 text-purple-600" />;
+      case "campeonato":
+        return <Trophy className="h-5 w-5 text-yellow-600" />;
+      case "grau":
+        return <Star className="h-5 w-5 text-red-600" />;
+      case "streak":
+        return <Flame className="h-5 w-5 text-orange-600" />;
+      default:
+        return <Award className="h-5 w-5 text-blue-600" />;
     }
   };
 
-  const postsFiltrados = posts.filter(post => {
-    if (unidadeSelecionada === 'Todas as Unidades') return true;
+  const postsFiltrados = posts.filter((post) => {
+    if (unidadeSelecionada === "Todas as Unidades") return true;
     return post.autor.unidade === unidadeSelecionada;
   });
 
@@ -374,7 +417,7 @@ export default function RedeSocialTeam() {
           </div>
 
           {/* Stories dos outros usuários */}
-          {stories.map(story => (
+          {stories.map((story) => (
             <div key={story.id} className="flex-shrink-0">
               <button
                 onClick={() => {
@@ -389,7 +432,9 @@ export default function RedeSocialTeam() {
                   </span>
                 </div>
               </button>
-              <p className="text-xs text-center mt-1 truncate w-20">{story.autorNome}</p>
+              <p className="text-xs text-center mt-1 truncate w-20">
+                {story.autorNome}
+              </p>
             </div>
           ))}
         </div>
@@ -434,38 +479,40 @@ export default function RedeSocialTeam() {
               value={unidadeSelecionada}
               onChange={(e) => setUnidadeSelecionada(e.target.value)}
             >
-              {unidades.map(unidade => (
-                <option key={unidade} value={unidade}>{unidade}</option>
+              {unidades.map((unidade) => (
+                <option key={unidade} value={unidade}>
+                  {unidade}
+                </option>
               ))}
             </select>
-            
+
             <div className="flex gap-2">
               <button
-                onClick={() => setTipoFeed('todos')}
+                onClick={() => setTipoFeed("todos")}
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  tipoFeed === 'todos' 
-                    ? 'bg-blue-600 text-white' 
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  tipoFeed === "todos"
+                    ? "bg-blue-600 text-white"
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                 }`}
               >
                 Para você
               </button>
               <button
-                onClick={() => setTipoFeed('unidade')}
+                onClick={() => setTipoFeed("unidade")}
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  tipoFeed === 'unidade' 
-                    ? 'bg-blue-600 text-white' 
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  tipoFeed === "unidade"
+                    ? "bg-blue-600 text-white"
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                 }`}
               >
                 Sua Unidade
               </button>
               <button
-                onClick={() => setTipoFeed('seguindo')}
+                onClick={() => setTipoFeed("seguindo")}
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  tipoFeed === 'seguindo' 
-                    ? 'bg-blue-600 text-white' 
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  tipoFeed === "seguindo"
+                    ? "bg-blue-600 text-white"
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                 }`}
               >
                 Seguindo
@@ -475,7 +522,7 @@ export default function RedeSocialTeam() {
 
           {/* Feed de Posts */}
           <div className="space-y-4">
-            {postsFiltrados.map(post => (
+            {postsFiltrados.map((post) => (
               <motion.div
                 key={post.id}
                 initial={{ opacity: 0, y: 20 }}
@@ -488,7 +535,10 @@ export default function RedeSocialTeam() {
                     <div className="flex items-center gap-3">
                       <div className="relative">
                         <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-bold">
-                          {post.autor.nome.split(' ').map(n => n[0]).join('')}
+                          {post.autor.nome
+                            .split(" ")
+                            .map((n) => n[0])
+                            .join("")}
                         </div>
                         <span className="absolute -bottom-1 -right-1 text-sm">
                           {getBeltEmoji(post.autor.faixa)}
@@ -496,7 +546,9 @@ export default function RedeSocialTeam() {
                       </div>
                       <div>
                         <div className="flex items-center gap-2">
-                          <h3 className="font-semibold text-gray-900">{post.autor.nome}</h3>
+                          <h3 className="font-semibold text-gray-900">
+                            {post.autor.nome}
+                          </h3>
                           {post.autor.verificado && (
                             <div className="bg-blue-600 rounded-full p-0.5">
                               <Star className="h-3 w-3 text-white fill-white" />
@@ -506,10 +558,15 @@ export default function RedeSocialTeam() {
                         <div className="flex items-center gap-2 text-xs text-gray-500">
                           <span>{post.autor.unidade}</span>
                           <span>•</span>
-                          <span>{formatDistanceToNow(new Date(post.dataPublicacao), { 
-                            addSuffix: true, 
-                            locale: ptBR 
-                          })}</span>
+                          <span>
+                            {formatDistanceToNow(
+                              new Date(post.dataPublicacao),
+                              {
+                                addSuffix: true,
+                                locale: ptBR,
+                              },
+                            )}
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -524,15 +581,21 @@ export default function RedeSocialTeam() {
                       <div className="flex items-center gap-2">
                         {getConquistaIcon(post.conquista.tipo)}
                         <div>
-                          <p className="font-semibold text-gray-900">{post.conquista.titulo}</p>
-                          <p className="text-sm text-gray-600">{post.conquista.descricao}</p>
+                          <p className="font-semibold text-gray-900">
+                            {post.conquista.titulo}
+                          </p>
+                          <p className="text-sm text-gray-600">
+                            {post.conquista.descricao}
+                          </p>
                         </div>
                       </div>
                     </div>
                   )}
 
                   {/* Conteúdo do Post */}
-                  <p className="mt-3 text-gray-800 whitespace-pre-wrap">{post.conteudo}</p>
+                  <p className="mt-3 text-gray-800 whitespace-pre-wrap">
+                    {post.conteudo}
+                  </p>
 
                   {/* Localização */}
                   {post.localizacao && (
@@ -545,9 +608,14 @@ export default function RedeSocialTeam() {
 
                 {/* Imagens do Post */}
                 {post.imagens && post.imagens.length > 0 && (
-                  <div className={`grid ${post.imagens.length === 1 ? 'grid-cols-1' : 'grid-cols-2'} gap-1`}>
+                  <div
+                    className={`grid ${post.imagens.length === 1 ? "grid-cols-1" : "grid-cols-2"} gap-1`}
+                  >
                     {post.imagens.map((img, idx) => (
-                      <div key={idx} className="bg-gray-200 aspect-square flex items-center justify-center">
+                      <div
+                        key={idx}
+                        className="bg-gray-200 aspect-square flex items-center justify-center"
+                      >
                         <Image className="h-12 w-12 text-gray-400" />
                       </div>
                     ))}
@@ -570,34 +638,38 @@ export default function RedeSocialTeam() {
                     <button
                       onClick={() => handleCurtir(post.id)}
                       className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
-                        post.curtidoPorMim 
-                          ? 'text-red-600 bg-red-50' 
-                          : 'text-gray-600 hover:bg-gray-100'
+                        post.curtidoPorMim
+                          ? "text-red-600 bg-red-50"
+                          : "text-gray-600 hover:bg-gray-100"
                       }`}
                     >
-                      <Heart className={`h-5 w-5 ${post.curtidoPorMim ? 'fill-current' : ''}`} />
+                      <Heart
+                        className={`h-5 w-5 ${post.curtidoPorMim ? "fill-current" : ""}`}
+                      />
                       <span className="text-sm font-medium">Curtir</span>
                     </button>
-                    
+
                     <button className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
                       <MessageCircle className="h-5 w-5" />
                       <span className="text-sm font-medium">Comentar</span>
                     </button>
-                    
+
                     <button className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
                       <Share2 className="h-5 w-5" />
                       <span className="text-sm font-medium">Compartilhar</span>
                     </button>
-                    
+
                     <button
                       onClick={() => handleSalvar(post.id)}
                       className={`p-2 rounded-lg transition-colors ${
-                        post.salvo 
-                          ? 'text-blue-600 bg-blue-50' 
-                          : 'text-gray-600 hover:bg-gray-100'
+                        post.salvo
+                          ? "text-blue-600 bg-blue-50"
+                          : "text-gray-600 hover:bg-gray-100"
                       }`}
                     >
-                      <Bookmark className={`h-5 w-5 ${post.salvo ? 'fill-current' : ''}`} />
+                      <Bookmark
+                        className={`h-5 w-5 ${post.salvo ? "fill-current" : ""}`}
+                      />
                     </button>
                   </div>
                 </div>
@@ -605,23 +677,29 @@ export default function RedeSocialTeam() {
                 {/* Comentários */}
                 {post.comentarios.length > 0 && (
                   <div className="border-t border-gray-100 px-4 py-3 space-y-3">
-                    {post.comentarios.map(comentario => (
+                    {post.comentarios.map((comentario) => (
                       <div key={comentario.id} className="flex gap-3">
                         <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-xs font-bold">
                           {comentario.autorNome.charAt(0)}
                         </div>
                         <div className="flex-1">
                           <div className="bg-gray-100 rounded-lg px-3 py-2">
-                            <p className="text-sm font-semibold text-gray-900">{comentario.autorNome}</p>
-                            <p className="text-sm text-gray-700">{comentario.texto}</p>
+                            <p className="text-sm font-semibold text-gray-900">
+                              {comentario.autorNome}
+                            </p>
+                            <p className="text-sm text-gray-700">
+                              {comentario.texto}
+                            </p>
                           </div>
                           <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
                             <button className="hover:underline">Curtir</button>
                             <span>•</span>
-                            <span>{formatDistanceToNow(new Date(comentario.data), { 
-                              addSuffix: true, 
-                              locale: ptBR 
-                            })}</span>
+                            <span>
+                              {formatDistanceToNow(new Date(comentario.data), {
+                                addSuffix: true,
+                                locale: ptBR,
+                              })}
+                            </span>
                           </div>
                         </div>
                       </div>
@@ -640,12 +718,16 @@ export default function RedeSocialTeam() {
                         type="text"
                         placeholder="Escreva um comentário..."
                         className="flex-1 px-3 py-2 bg-gray-100 rounded-full text-sm"
-                        value={comentarios[post.id] || ''}
-                        onChange={(e) => setComentarios(prev => ({ 
-                          ...prev, 
-                          [post.id]: e.target.value 
-                        }))}
-                        onKeyPress={(e) => e.key === 'Enter' && handleComentar(post.id)}
+                        value={comentarios[post.id] || ""}
+                        onChange={(e) =>
+                          setComentarios((prev) => ({
+                            ...prev,
+                            [post.id]: e.target.value,
+                          }))
+                        }
+                        onKeyPress={(e) =>
+                          e.key === "Enter" && handleComentar(post.id)
+                        }
                       />
                       <button className="p-2 hover:bg-gray-100 rounded-lg">
                         <Smile className="h-5 w-5 text-gray-600" />
@@ -679,8 +761,12 @@ export default function RedeSocialTeam() {
                 >
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="font-medium text-gray-900">#{hashtag.tag}</p>
-                      <p className="text-xs text-gray-500">{hashtag.posts} publicações</p>
+                      <p className="font-medium text-gray-900">
+                        #{hashtag.tag}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {hashtag.posts} publicações
+                      </p>
                     </div>
                     <Hash className="h-4 w-4 text-gray-400" />
                   </div>
@@ -699,21 +785,30 @@ export default function RedeSocialTeam() {
             </CardHeader>
             <CardContent className="space-y-3">
               {[
-                { nome: 'João Silva', treinos: 7, posicao: 1 },
-                { nome: 'Maria Santos', treinos: 6, posicao: 2 },
-                { nome: 'Pedro Costa', treinos: 5, posicao: 3 }
-              ].map(aluno => (
-                <div key={aluno.posicao} className="flex items-center gap-3 p-2">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${
-                    aluno.posicao === 1 ? 'bg-yellow-400 text-yellow-900' :
-                    aluno.posicao === 2 ? 'bg-gray-400 text-white' :
-                    'bg-orange-400 text-orange-900'
-                  }`}>
+                { nome: "João Silva", treinos: 7, posicao: 1 },
+                { nome: "Maria Santos", treinos: 6, posicao: 2 },
+                { nome: "Pedro Costa", treinos: 5, posicao: 3 },
+              ].map((aluno) => (
+                <div
+                  key={aluno.posicao}
+                  className="flex items-center gap-3 p-2"
+                >
+                  <div
+                    className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${
+                      aluno.posicao === 1
+                        ? "bg-yellow-400 text-yellow-900"
+                        : aluno.posicao === 2
+                          ? "bg-gray-400 text-white"
+                          : "bg-orange-400 text-orange-900"
+                    }`}
+                  >
                     {aluno.posicao}
                   </div>
                   <div className="flex-1">
                     <p className="font-medium text-gray-900">{aluno.nome}</p>
-                    <p className="text-xs text-gray-500">{aluno.treinos} treinos</p>
+                    <p className="text-xs text-gray-500">
+                      {aluno.treinos} treinos
+                    </p>
                   </div>
                   <Sparkles className="h-4 w-4 text-yellow-500" />
                 </div>
@@ -731,18 +826,30 @@ export default function RedeSocialTeam() {
             </CardHeader>
             <CardContent className="space-y-3">
               {[
-                { nome: 'Ana Clara', faixa: 'Azul', unidade: 'Matriz' },
-                { nome: 'Roberto Lima', faixa: 'Roxa', unidade: 'Zona Norte' },
-                { nome: 'Fernanda Costa', faixa: 'Marrom', unidade: 'Zona Sul' }
+                { nome: "Ana Clara", faixa: "Azul", unidade: "Matriz" },
+                { nome: "Roberto Lima", faixa: "Roxa", unidade: "Zona Norte" },
+                {
+                  nome: "Fernanda Costa",
+                  faixa: "Marrom",
+                  unidade: "Zona Sul",
+                },
               ].map((pessoa, idx) => (
-                <div key={idx} className="flex items-center justify-between p-2">
+                <div
+                  key={idx}
+                  className="flex items-center justify-between p-2"
+                >
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-sm font-bold">
-                      {pessoa.nome.split(' ').map(n => n[0]).join('')}
+                      {pessoa.nome
+                        .split(" ")
+                        .map((n) => n[0])
+                        .join("")}
                     </div>
                     <div>
                       <p className="font-medium text-gray-900">{pessoa.nome}</p>
-                      <p className="text-xs text-gray-500">{pessoa.faixa} • {pessoa.unidade}</p>
+                      <p className="text-xs text-gray-500">
+                        {pessoa.faixa} • {pessoa.unidade}
+                      </p>
                     </div>
                   </div>
                   <button className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
@@ -805,10 +912,10 @@ export default function RedeSocialTeam() {
                   rows={5}
                   value={novoPost.conteudo}
                   onChange={(e) => {
-                    setNovoPost(prev => ({
+                    setNovoPost((prev) => ({
                       ...prev,
                       conteudo: e.target.value,
-                      hashtags: extractHashtags(e.target.value)
+                      hashtags: extractHashtags(e.target.value),
                     }));
                   }}
                 />
@@ -817,7 +924,10 @@ export default function RedeSocialTeam() {
                 {novoPost.hashtags.length > 0 && (
                   <div className="flex flex-wrap gap-2 mb-3">
                     {novoPost.hashtags.map((tag, idx) => (
-                      <span key={idx} className="px-2 py-1 bg-blue-100 text-blue-600 rounded-full text-sm">
+                      <span
+                        key={idx}
+                        className="px-2 py-1 bg-blue-100 text-blue-600 rounded-full text-sm"
+                      >
                         #{tag}
                       </span>
                     ))}
@@ -826,7 +936,9 @@ export default function RedeSocialTeam() {
 
                 {/* Opções adicionais */}
                 <div className="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
-                  <span className="text-sm font-medium text-gray-700">Adicionar à publicação</span>
+                  <span className="text-sm font-medium text-gray-700">
+                    Adicionar à publicação
+                  </span>
                   <div className="flex gap-2">
                     <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
                       <Image className="h-5 w-5 text-green-600" />
@@ -880,7 +992,9 @@ export default function RedeSocialTeam() {
             <div className="max-w-md w-full">
               <div className="bg-gray-800 rounded-lg aspect-[9/16] flex items-center justify-center">
                 <div className="text-center text-white p-8">
-                  <h3 className="text-xl font-bold mb-2">{selectedStory.autorNome}</h3>
+                  <h3 className="text-xl font-bold mb-2">
+                    {selectedStory.autorNome}
+                  </h3>
                   <p className="text-lg">{selectedStory.conteudo}</p>
                   <p className="text-sm mt-4 opacity-70">
                     👁️ {selectedStory.visualizacoes} visualizações

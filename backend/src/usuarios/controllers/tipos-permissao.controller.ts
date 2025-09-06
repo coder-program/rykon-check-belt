@@ -1,4 +1,13 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  UseGuards,
+} from '@nestjs/common';
 import { TiposPermissaoService } from '../services/tipos-permissao.service';
 import { CreateTipoPermissaoDto } from '../dto/create-tipo-permissao.dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
@@ -41,7 +50,10 @@ export class TiposPermissaoController {
   @Patch(':id')
   @UseGuards(PermissionsGuard)
   @Permissions('admin.all')
-  update(@Param('id') id: string, @Body() updateTipoPermissaoDto: Partial<CreateTipoPermissaoDto>) {
+  update(
+    @Param('id') id: string,
+    @Body() updateTipoPermissaoDto: Partial<CreateTipoPermissaoDto>,
+  ) {
     return this.tiposPermissaoService.update(id, updateTipoPermissaoDto);
   }
 

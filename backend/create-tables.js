@@ -16,7 +16,7 @@ async function createTables() {
 
     // Criar extensão uuid se não existir
     await client.query(`CREATE EXTENSION IF NOT EXISTS "uuid-ossp";`);
-    
+
     // Criar tabelas
     const createTables = `
       -- Tabela tipos_permissao
@@ -37,7 +37,6 @@ async function createTables() {
         nome VARCHAR NOT NULL,
         descricao TEXT,
         ordem INTEGER,
-        cor VARCHAR,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
@@ -118,11 +117,75 @@ async function createTables() {
         permissao_id UUID REFERENCES permissoes(id) ON DELETE CASCADE,
         PRIMARY KEY (perfil_id, permissao_id)
       );
+
+      -- ==============================
+      -- Endereços (normalizado) - Nomes em Português
+      -- ==============================
+
+      -- Tipos ENUM para links de endereço (com verificação de existência)
+      DO $$
+      BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'tipo_dono_endereco') THEN
+          CREATE TYPE tipo_dono_endereco AS ENUM ('ALUNO','PROFESSOR','UNIDADE','FRANQUEADO','FUNCIONARIO');
+        END IF;
+      END$$;
+
+      DO $$
+      BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'finalidade_endereco') THEN
+          CREATE TYPE finalidade_endereco AS ENUM ('RESIDENCIAL','COMERCIAL','COBRANCA','ENTREGA','OUTRO');
+        END IF;
+      END$$;
+
+      -- Tabela enderecos (usando cidade_nome/estado para simplicidade)
+      CREATE TABLE IF NOT EXISTS enderecos (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        cep VARCHAR(8) NOT NULL,
+        logradouro VARCHAR(200) NOT NULL,
+        numero VARCHAR(20) NOT NULL,
+        complemento VARCHAR(100),
+        bairro VARCHAR(100),
+        cidade_nome VARCHAR(120),
+        estado VARCHAR(2),
+        codigo_pais CHAR(2) DEFAULT 'BR' NOT NULL,
+        latitude NUMERIC(9,6),
+        longitude NUMERIC(9,6),
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+
+      -- Tabela vinculos_endereco (polimórfica)
+      CREATE TABLE IF NOT EXISTS vinculos_endereco (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        tipo_dono tipo_dono_endereco NOT NULL,
+        dono_id UUID NOT NULL,
+        endereco_id UUID NOT NULL REFERENCES enderecos(id) ON DELETE CASCADE,
+        finalidade finalidade_endereco NOT NULL DEFAULT 'RESIDENCIAL',
+        principal BOOLEAN NOT NULL DEFAULT false,
+        valido_de DATE,
+        valido_ate DATE,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+
+      -- Índices úteis
+      CREATE INDEX IF NOT EXISTS ix_vinculos_endereco_dono ON vinculos_endereco(tipo_dono, dono_id);
+
+      -- Garante 1 endereço principal por finalidade
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM pg_indexes WHERE indexname = 'ux_endereco_principal_por_finalidade'
+        ) THEN
+          CREATE UNIQUE INDEX ux_endereco_principal_por_finalidade
+            ON vinculos_endereco(tipo_dono, dono_id, finalidade)
+            WHERE principal = true;
+        END IF;
+      END$$;
     `;
 
     await client.query(createTables);
     console.log('✅ Tabelas criadas com sucesso!');
-    
   } catch (error) {
     console.error('❌ Erro:', error);
   } finally {

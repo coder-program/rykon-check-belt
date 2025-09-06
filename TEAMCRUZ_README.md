@@ -14,7 +14,6 @@ Sistema moderno e completo para gestão de academias de Jiu-Jitsu, com foco em c
   - QR Code
   - Lista Manual
   - Modo Totem (auto check-in)
-  
 - **Graduação Automática** 🏆
   - 1 grau a cada 20 aulas (configurável)
   - Máximo 4 graus por faixa
@@ -81,6 +80,7 @@ teamcruz-jiujitsu/
 ## 🎨 Design System
 
 ### Cores das Faixas
+
 - **Branca**: `#FFFFFF`
 - **Cinza**: `#808080`
 - **Amarela**: `#FFD700`
@@ -94,6 +94,7 @@ teamcruz-jiujitsu/
 - **Vermelha**: `#FF0000` (Grão-Mestre)
 
 ### Tema Visual
+
 - **Dark Mode**: Interface escura moderna
 - **Cor Principal**: Vermelho (`#DC2626`)
 - **Animações**: Framer Motion
@@ -102,12 +103,14 @@ teamcruz-jiujitsu/
 ## 📊 Regras de Negócio
 
 ### Progressão de Graus
+
 1. **20 presenças** = 1 grau (configurável)
 2. **Máximo 4 graus** por faixa
 3. Ao atingir 4 graus → Elegível para promoção de faixa
 4. Promoção de faixa é **manual** (decisão do instrutor)
 
 ### Check-in
+
 - **Tolerância**: 15 minutos após início da aula
 - **Validação**: Aluno ativo + turma correta
 - **Prevenção**: Sem duplicidade no mesmo horário
@@ -115,6 +118,7 @@ teamcruz-jiujitsu/
 ## 🛠️ Stack Tecnológica
 
 ### Backend
+
 - **NestJS** (Node.js framework)
 - **TypeORM** (ORM)
 - **PostgreSQL** (Banco de dados)
@@ -122,6 +126,7 @@ teamcruz-jiujitsu/
 - **Clean Architecture** + SOLID
 
 ### Frontend
+
 - **React 18**
 - **Tailwind CSS** (Estilização)
 - **Framer Motion** (Animações)
@@ -132,6 +137,7 @@ teamcruz-jiujitsu/
 ## 📦 Instalação Completa
 
 ### Pré-requisitos
+
 - Node.js 18+
 - Docker & Docker Compose
 - NPM ou Yarn
@@ -139,24 +145,28 @@ teamcruz-jiujitsu/
 ### Passo a Passo
 
 1. **Clonar o repositório**
+
 ```bash
 git clone [seu-repo]
 cd rykon-check-belt
 ```
 
 2. **Instalar dependências do Backend**
+
 ```bash
 cd backend
 npm install
 ```
 
 3. **Instalar dependências do Frontend**
+
 ```bash
 cd ../frontend
 npm install --legacy-peer-deps
 ```
 
 4. **Configurar variáveis de ambiente**
+
 ```bash
 # backend/.env
 TEAMCRUZ_DB_HOST=localhost
@@ -167,11 +177,13 @@ TEAMCRUZ_DB_NAME=teamcruz_db
 ```
 
 5. **Iniciar o banco de dados**
+
 ```bash
 docker-compose up teamcruz-db -d
 ```
 
 6. **Iniciar o sistema**
+
 ```bash
 # Terminal 1 - Backend
 cd backend && npm run start:dev
@@ -183,6 +195,7 @@ cd frontend && npm start
 ## 🔐 Credenciais de Acesso
 
 ### Banco de Dados
+
 - **Host**: localhost
 - **Porta**: 5433
 - **Database**: teamcruz_db
@@ -190,12 +203,14 @@ cd frontend && npm start
 - **Senha**: cruz@jiujitsu2024
 
 ### PgAdmin
+
 - **Email**: admin@teamcruz.com
 - **Senha**: admin123
 
 ## 📱 Funcionalidades Implementadas
 
 ### ✅ MVP Completo
+
 - [x] Dashboard principal com estatísticas
 - [x] Sistema de check-in (3 modos)
 - [x] Visualização de próximos graduáveis
@@ -206,6 +221,7 @@ cd frontend && npm start
 - [x] Design responsivo
 
 ### 🚧 Em Desenvolvimento
+
 - [ ] API REST completa
 - [ ] Integração com câmera para QR
 - [ ] Sistema de notificações push
@@ -216,24 +232,28 @@ cd frontend && npm start
 ## 📈 Roadmap
 
 ### Fase 1 - MVP (Atual) ✅
+
 - Interface principal
 - Sistema de check-in
 - Dashboard com métricas
 - Banco de dados estruturado
 
 ### Fase 2 - Integração
+
 - APIs REST completas
 - Autenticação JWT
 - Conexão frontend/backend
 - Validações e regras de negócio
 
 ### Fase 3 - Funcionalidades Avançadas
+
 - App mobile PWA
 - Notificações push/email
 - Relatórios PDF
 - Integrações (pagamento, CRM)
 
 ### Fase 4 - Escala
+
 - Multi-unidade
 - Eventos de graduação
 - Campeonatos

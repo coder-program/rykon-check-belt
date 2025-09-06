@@ -10,13 +10,13 @@ services:
       POSTGRES_DB: acesso_usuarios_db
       POSTGRES_INITDB_ARGS: --auth-host=md5 --auth-local=trust
     ports:
-      - "5434:5432"
+      - '5434:5432'
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - app-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -25,7 +25,7 @@ services:
     build: .
     container_name: acesso-usuarios-backend
     ports:
-      - "5002:5002"
+      - '5002:5002'
     environment:
       DB_HOST: postgres
       DB_PORT: 5432

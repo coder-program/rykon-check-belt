@@ -1,17 +1,24 @@
 "use client";
 
-import { useState } from 'react';
+import { useState } from "react";
 import { useAuth } from "@/app/auth/AuthContext";
 import { useRouter } from "next/navigation";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Shield, Mail, Lock, AlertCircle, LogIn, KeyRound } from 'lucide-react';
+import { Shield, Mail, Lock, AlertCircle, LogIn, KeyRound } from "lucide-react";
 
 export default function LoginPage() {
-  const [formData, setFormData] = useState({ email: '', password: '' });
-  const [error, setError] = useState('');
+  const [formData, setFormData] = useState({ email: "", password: "" });
+  const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
   const { login } = useAuth();
@@ -20,19 +27,19 @@ export default function LoginPage() {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value
+      [e.target.name]: e.target.value,
     });
-    if (error) setError('');
+    if (error) setError("");
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    setError('');
+    setError("");
 
     const result = await login(formData.email, formData.password);
     if (result.success) {
-      router.push('/dashboard');
+      router.push("/dashboard");
     } else {
       setError(result.error);
     }
@@ -40,7 +47,7 @@ export default function LoginPage() {
   };
 
   const handleKeycloakLogin = () => {
-    alert('Integração com Keycloak será implementada em breve!');
+    alert("Integração com Keycloak será implementada em breve!");
   };
 
   return (
@@ -104,8 +111,8 @@ export default function LoginPage() {
                 />
               </div>
 
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 className="w-full h-11 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-medium"
                 disabled={isLoading}
               >
@@ -125,16 +132,24 @@ export default function LoginPage() {
 
             <div className="divider my-6">OU</div>
 
-            <Button 
-              type="button" 
-              variant="outline"
-              className="w-full h-11 border-2 hover:bg-gray-50 dark:hover:bg-gray-700"
-              onClick={handleKeycloakLogin}
-              disabled={isLoading}
-            >
-              <KeyRound className="mr-2 h-4 w-4" />
-              Entrar com Keycloak
-            </Button>
+            <div className="space-y-3">
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full h-11 border-2 hover:bg-gray-50 dark:hover:bg-gray-700"
+                onClick={() =>
+                  (window.location.href = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4001"}/auth/google`)
+                }
+                disabled={isLoading}
+              >
+                <img
+                  src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
+                  alt="Google"
+                  className="h-4 w-4 mr-2"
+                />
+                Entrar com Google
+              </Button>
+            </div>
           </CardContent>
 
           <CardFooter className="flex flex-col space-y-4 pt-6">
@@ -144,15 +159,24 @@ export default function LoginPage() {
                 Credenciais de Demonstração
               </h4>
               <div className="space-y-1 text-sm text-gray-600 dark:text-gray-300">
-                <p><span className="font-medium">Email:</span> admin@gestao.gov.br</p>
-                <p><span className="font-medium">Senha:</span> admin123</p>
+                <p>
+                  <span className="font-medium">Email:</span>{" "}
+                  admin@gestao.gov.br
+                </p>
+                <p>
+                  <span className="font-medium">Senha:</span> admin123
+                </p>
               </div>
             </div>
-            
+
             <div className="text-center text-sm">
-              <a href="#forgot-password" className="link link-primary">Esqueceu sua senha?</a>
+              <a href="#forgot-password" className="link link-primary">
+                Esqueceu sua senha?
+              </a>
               <span className="mx-2 text-gray-400">|</span>
-              <a href="#support" className="link link-primary">Suporte Técnico</a>
+              <a href="#support" className="link link-primary">
+                Suporte Técnico
+              </a>
             </div>
           </CardFooter>
         </Card>
@@ -160,4 +184,3 @@ export default function LoginPage() {
     </div>
   );
 }
-

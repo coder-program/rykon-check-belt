@@ -1,7 +1,14 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, OneToMany } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+  OneToMany,
+} from 'typeorm';
 import { Permissao } from './permissao.entity';
 
-@Entity('niveis_permissao')
+@Entity({ name: 'niveis_permissao', schema: 'teamcruz' })
 export class NivelPermissao {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -24,7 +31,7 @@ export class NivelPermissao {
   @Column({ nullable: true })
   cor: string; // Cor para exibição na interface (#28a745 para leitura, #dc3545 para admin)
 
-  @OneToMany(() => Permissao, permissao => permissao.nivel)
+  @OneToMany(() => Permissao, (permissao) => permissao.nivel)
   permissoes: Permissao[];
 
   @CreateDateColumn()
