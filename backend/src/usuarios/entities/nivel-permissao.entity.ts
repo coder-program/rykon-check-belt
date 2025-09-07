@@ -22,9 +22,6 @@ export class NivelPermissao {
   @Column({ nullable: true })
   descricao: string;
 
-  @Column({ default: true })
-  ativo: boolean;
-
   @Column({ default: 0 })
   ordem: number; // Para ordenação na interface (leitura < escrita < admin)
 

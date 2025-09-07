@@ -9,10 +9,10 @@ import {
   JoinColumn,
 } from 'typeorm';
 import { Faixa } from '../../faixas/entities/faixa.entity';
-import { Unidade } from '../../common/entities/unidade.entity';
+import { Unidade } from '../../../people/entities/unidade.entity';
 import { Presenca } from '../../presencas/entities/presenca.entity';
-import { HistoricoGrau } from '../../graduacoes/entities/historico-grau.entity';
-import { HistoricoFaixa } from '../../graduacoes/entities/historico-faixa.entity';
+// import { HistoricoGrau } from '../../graduacoes/entities/historico-grau.entity';
+// import { HistoricoFaixa } from '../../graduacoes/entities/historico-faixa.entity';
 
 export enum StatusType {
   ATIVO = 'ativo',
@@ -70,9 +70,9 @@ export class Aluno {
   @Column({ name: 'faixa_atual_id' })
   faixaAtualId: string;
 
-  @ManyToOne(() => Faixa, (faixa) => faixa.alunos)
-  @JoinColumn({ name: 'faixa_atual_id' })
-  faixaAtual: Faixa;
+  // @ManyToOne(() => Faixa, (faixa) => faixa.alunos)
+  // @JoinColumn({ name: 'faixa_atual_id' })
+  // faixaAtual: Faixa;
 
   @Column({ type: 'int', default: 0, name: 'graus_atual' })
   grausAtual: number;
@@ -103,7 +103,7 @@ export class Aluno {
   @Column({ name: 'unidade_id', nullable: true })
   unidadeId: string;
 
-  @ManyToOne(() => Unidade, (unidade) => unidade.alunos)
+  @ManyToOne(() => Unidade)
   @JoinColumn({ name: 'unidade_id' })
   unidade: Unidade;
 
@@ -178,15 +178,17 @@ export class Aluno {
   @OneToMany(() => Presenca, (presenca) => presenca.aluno)
   presencas: Presenca[];
 
-  @OneToMany(() => HistoricoGrau, (historico) => historico.aluno)
-  historicoGraus: HistoricoGrau[];
+  // TODO: Ativar quando GraduacoesModule for criado
+  // @OneToMany(() => HistoricoGrau, (historico) => historico.aluno)
+  // historicoGraus: HistoricoGrau[];
 
-  @OneToMany(() => HistoricoFaixa, (historico) => historico.aluno)
-  historicoFaixas: HistoricoFaixa[];
+  // @OneToMany(() => HistoricoFaixa, (historico) => historico.aluno)
+  // historicoFaixas: HistoricoFaixa[];
 
   // Virtual properties
   get isElegivelPromocao(): boolean {
-    return this.grausAtual >= (this.faixaAtual?.maxGraus || 4);
+    // return this.grausAtual >= (this.faixaAtual?.maxGraus || 4);
+    return this.grausAtual >= 4;
   }
 
   get progressoGrau(): number {

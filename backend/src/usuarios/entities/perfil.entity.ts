@@ -30,6 +30,7 @@ export class Perfil {
   @ManyToMany(() => Permissao, (permissao) => permissao.perfis)
   @JoinTable({
     name: 'perfil_permissoes',
+    schema: 'teamcruz',
     joinColumn: { name: 'perfil_id', referencedColumnName: 'id' },
     inverseJoinColumn: { name: 'permissao_id', referencedColumnName: 'id' },
   })

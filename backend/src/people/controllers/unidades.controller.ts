@@ -41,6 +41,13 @@ export class UnidadesController {
     return this.unidadesService.criar(dto, req.user);
   }
 
+  @Get('stats')
+  @ApiOperation({ summary: 'Obter estatísticas das unidades' })
+  async obterEstatisticas(@Request() req) {
+    const user = req?.user || null;
+    return this.unidadesService.obterEstatisticas(user);
+  }
+
   @Get()
   @ApiOperation({ summary: 'Listar unidades (paginado/filtrado)' })
   @ApiQuery({

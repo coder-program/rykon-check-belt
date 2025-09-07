@@ -59,7 +59,16 @@ export class AuditMiddleware implements NestMiddleware {
 
         // Log assíncrono para não bloquear resposta
         setImmediate(() => {
-          this.auditService.log(auditData);
+          try {
+            if (
+              this.auditService &&
+              typeof this.auditService.log === 'function'
+            ) {
+              this.auditService.log(auditData);
+            }
+          } catch (error) {
+            console.error('Erro no audit log:', error);
+          }
         });
       }
 

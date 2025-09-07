@@ -230,6 +230,45 @@ export class UnidadesService {
     return res.affectedRows > 0 || res.rowCount > 0;
   }
 
+  async obterEstatisticas(user?: any): Promise<{
+    total: number;
+    ativas: number;
+    inativas: number;
+    homologacao: number;
+  }> {
+    let whereClause = '';
+    let queryParams: any[] = [];
+    
+    // Se franqueado (não master), filtra por sua franquia
+    if (user && this.isFranqueado(user) && !this.isMaster(user)) {
+      const franqueadoId = await this.getFranqueadoIdByUser(user);
+      if (franqueadoId) {
+        whereClause = 'WHERE franqueado_id = $1';
+        queryParams.push(franqueadoId);
+      }
+    }
+
+    const q = `
+      SELECT 
+        COUNT(*) as total,
+        COUNT(*) FILTER (WHERE status = 'ATIVA') as ativas,
+        COUNT(*) FILTER (WHERE status = 'INATIVA') as inativas,
+        COUNT(*) FILTER (WHERE status = 'HOMOLOGACAO') as homologacao
+      FROM teamcruz.unidades
+      ${whereClause}
+    `;
+
+    const res = await this.dataSource.query(q, queryParams);
+    const stats = res[0];
+
+    return {
+      total: parseInt(stats.total) || 0,
+      ativas: parseInt(stats.ativas) || 0,
+      inativas: parseInt(stats.inativas) || 0,
+      homologacao: parseInt(stats.homologacao) || 0,
+    };
+  }
+
   private isMaster(user: any): boolean {
     const perfis = (user?.perfis || []).map((p: any) => (p.nome || '').toLowerCase());
     return perfis.includes('master');

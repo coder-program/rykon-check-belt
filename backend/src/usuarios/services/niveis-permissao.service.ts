@@ -89,7 +89,6 @@ export class NiveisPermissaoService {
 
   async findAtivos(): Promise<NivelPermissao[]> {
     return await this.nivelPermissaoRepository.find({
-      where: { ativo: true },
       order: { ordem: 'ASC', nome: 'ASC' },
     });
   }

@@ -31,6 +31,14 @@ export class AuthController {
     @Body() loginDto: LoginDto,
     @Res({ passthrough: true }) res: Response,
   ): Promise<LoginResponse> {
+    console.log('🔐 AuthController.login - Request body:', loginDto);
+    console.log('🔐 AuthController.login - Request user:', req.user);
+    
+    if (!req.user) {
+      console.error('❌ AuthController.login - Nenhum usuário no request (LocalAuthGuard falhou)');
+      throw new Error('Authentication failed');
+    }
+    
     const resp = await this.authService.login(req.user);
     const rt = this.authService.issueRefreshToken(req.user.id);
     this.setRefreshCookie(res, rt);

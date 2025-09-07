@@ -104,10 +104,33 @@ export class UsuariosService {
   }
 
   async findByUsername(username: string): Promise<Usuario | null> {
-    return await this.usuarioRepository.findOne({
-      where: { username },
-      relations: ['perfis', 'perfis.permissoes'],
-    });
+    console.log('🔍 UsuariosService.findByUsername - Buscando usuário:', username);
+    
+    try {
+      // Busca por username OU email
+      const user = await this.usuarioRepository
+        .createQueryBuilder('usuario')
+        .leftJoinAndSelect('usuario.perfis', 'perfis')
+        .leftJoinAndSelect('perfis.permissoes', 'permissoes')
+        .where('usuario.username = :username OR usuario.email = :email', { 
+          username, 
+          email: username 
+        })
+        .getOne();
+      
+      console.log('🔍 Usuário encontrado no banco?', !!user);
+      if (user) {
+        console.log('🔍 ID do usuário:', user.id);
+        console.log('🔍 Username do usuário:', user.username);
+        console.log('🔍 Email do usuário:', user.email);
+        console.log('🔍 Perfis do usuário:', user.perfis?.map(p => p.nome));
+      }
+      
+      return user;
+    } catch (error) {
+      console.error('❌ Erro ao buscar usuário por username:', error);
+      throw error;
+    }
   }
 
   async update(
@@ -148,7 +171,23 @@ export class UsuariosService {
     password: string,
     hashedPassword: string,
   ): Promise<boolean> {
-    return await bcrypt.compare(password, hashedPassword);
+    console.log('🔐 ===== VALIDAÇÃO DE SENHA =====');
+    console.log('🔐 Senha recebida (plain):', password);
+    console.log('🔐 Tamanho da senha recebida:', password?.length);
+    console.log('🔐 Hash do banco:', hashedPassword);
+    console.log('🔐 Tamanho do hash:', hashedPassword?.length);
+    console.log('🔐 Hash começa com $2b$?', hashedPassword?.startsWith('$2b$'));
+    
+    try {
+      const result = await bcrypt.compare(password, hashedPassword);
+      console.log('🔐 Resultado do bcrypt.compare:', result);
+      console.log('🔐 ===== FIM VALIDAÇÃO =====');
+      return result;
+    } catch (error) {
+      console.error('🔐 ERRO no bcrypt.compare:', error);
+      console.log('🔐 ===== FIM VALIDAÇÃO COM ERRO =====');
+      return false;
+    }
   }
 
   async findByEmail(email: string): Promise<Usuario | null> {

@@ -6,9 +6,9 @@ import {
   UpdateDateColumn,
   OneToMany,
 } from 'typeorm';
-import { Aluno } from '../../alunos/entities/aluno.entity';
+// import { Aluno } from '../../alunos/entities/aluno.entity';
 import { Instrutor } from '../../instrutores/entities/instrutor.entity';
-import { HistoricoGrau } from '../../graduacoes/entities/historico-grau.entity';
+// import { HistoricoGrau } from '../../graduacoes/entities/historico-grau.entity';
 
 @Entity('faixas', { schema: 'teamcruz' })
 export class Faixa {
@@ -43,12 +43,13 @@ export class Faixa {
   updatedAt: Date;
 
   // Relations
-  @OneToMany(() => Aluno, (aluno) => aluno.faixaAtual)
-  alunos: Aluno[];
+  // @OneToMany(() => Aluno, (aluno) => aluno.faixaAtual)
+  // alunos: Aluno[];
 
   @OneToMany(() => Instrutor, (instrutor) => instrutor.faixa)
   instrutores: Instrutor[];
 
-  @OneToMany(() => HistoricoGrau, (historico) => historico.faixa)
-  historicoGraus: HistoricoGrau[];
+  // TODO: Ativar quando GraduacoesModule for criado
+  // @OneToMany(() => HistoricoGrau, (historico) => historico.faixa)
+  // historicoGraus: HistoricoGrau[];
 }

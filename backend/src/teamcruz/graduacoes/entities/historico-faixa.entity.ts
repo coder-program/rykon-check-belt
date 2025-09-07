@@ -1,5 +1,5 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne } from 'typeorm';
-import { Aluno } from '../../alunos/entities/aluno.entity';
+import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
+// import { Aluno } from '../../alunos/entities/aluno.entity';
 
 @Entity()
 export class HistoricoFaixa {
@@ -12,6 +12,7 @@ export class HistoricoFaixa {
   @Column()
   data: Date;
 
-  @ManyToOne(() => Aluno, (aluno) => aluno.historicoFaixas)
-  aluno: Aluno;
+  // TODO: Ativar relacionamento quando GraduacoesModule for criado
+  // @ManyToOne(() => Aluno, (aluno) => aluno.historicoFaixas)
+  // aluno: Aluno;
 }

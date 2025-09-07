@@ -50,6 +50,7 @@ import {
   ArrowLeftIcon,
 } from "@heroicons/react/24/outline";
 import { useGeolocation } from "@/hooks/useGeolocation";
+import { useUnidadesStats } from "@/hooks/useUnidadesStats";
 import ConfiguracoesModal from "./ConfiguracoesModal";
 import CampanhasManager from "./CampanhasManager";
 import RedeSocialTeam from "./RedeSocialTeam";
@@ -487,6 +488,9 @@ function BeltTip({ faixa, graus }: { faixa: string; graus: number }) {
 export default function DashboardNew() {
   const [selectedTab, setSelectedTab] = React.useState("overview");
   const [currentTime, setCurrentTime] = React.useState(new Date());
+  
+  // Hook para buscar estatísticas reais das unidades
+  const unidadesStats = useUnidadesStats();
   const [selectedAula, setSelectedAula] = React.useState<any | null>(null);
   const [searchTerm, setSearchTerm] = React.useState("");
   const [debouncedSearch, setDebouncedSearch] = React.useState("");
@@ -1804,47 +1808,68 @@ export default function DashboardNew() {
                     <CardTitle>Estatísticas Rápidas</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="space-y-4">
-                      <div className="bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg p-4">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-2xl font-bold text-blue-600">12</p>
-                            <p className="text-sm text-gray-600">Total de Unidades</p>
-                          </div>
-                          <Building2 className="h-8 w-8 text-blue-600" />
-                        </div>
+                    {unidadesStats.isLoading ? (
+                      <div className="space-y-4">
+                        {[1, 2, 3, 4].map((i) => (
+                          <div key={i} className="skeleton h-20 w-full rounded-lg" />
+                        ))}
                       </div>
+                    ) : unidadesStats.error ? (
+                      <div className="text-center text-gray-500 py-8">
+                        <AlertTriangle className="h-12 w-12 mx-auto mb-2 text-yellow-500" />
+                        <p>Erro ao carregar estatísticas</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        <div className="bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg p-4">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-2xl font-bold text-blue-600">
+                                {unidadesStats.data?.total || 0}
+                              </p>
+                              <p className="text-sm text-gray-600">Total de Unidades</p>
+                            </div>
+                            <Building2 className="h-8 w-8 text-blue-600" />
+                          </div>
+                        </div>
 
-                      <div className="bg-gradient-to-r from-green-50 to-green-100 rounded-lg p-4">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-2xl font-bold text-green-600">8</p>
-                            <p className="text-sm text-gray-600">Unidades Ativas</p>
+                        <div className="bg-gradient-to-r from-green-50 to-green-100 rounded-lg p-4">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-2xl font-bold text-green-600">
+                                {unidadesStats.data?.ativas || 0}
+                              </p>
+                              <p className="text-sm text-gray-600">Unidades Ativas</p>
+                            </div>
+                            <CheckCircle className="h-8 w-8 text-green-600" />
                           </div>
-                          <CheckCircle className="h-8 w-8 text-green-600" />
                         </div>
-                      </div>
 
-                      <div className="bg-gradient-to-r from-yellow-50 to-yellow-100 rounded-lg p-4">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-2xl font-bold text-yellow-600">3</p>
-                            <p className="text-sm text-gray-600">Em Planejamento</p>
+                        <div className="bg-gradient-to-r from-yellow-50 to-yellow-100 rounded-lg p-4">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-2xl font-bold text-yellow-600">
+                                {unidadesStats.data?.homologacao || 0}
+                              </p>
+                              <p className="text-sm text-gray-600">Em Planejamento</p>
+                            </div>
+                            <Clock className="h-8 w-8 text-yellow-600" />
                           </div>
-                          <Clock className="h-8 w-8 text-yellow-600" />
                         </div>
-                      </div>
 
-                      <div className="bg-gradient-to-r from-red-50 to-red-100 rounded-lg p-4">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-2xl font-bold text-red-600">1</p>
-                            <p className="text-sm text-gray-600">Inativa</p>
+                        <div className="bg-gradient-to-r from-red-50 to-red-100 rounded-lg p-4">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-2xl font-bold text-red-600">
+                                {unidadesStats.data?.inativas || 0}
+                              </p>
+                              <p className="text-sm text-gray-600">Inativa{(unidadesStats.data?.inativas || 0) !== 1 ? 's' : ''}</p>
+                            </div>
+                            <AlertTriangle className="h-8 w-8 text-red-600" />
                           </div>
-                          <AlertTriangle className="h-8 w-8 text-red-600" />
                         </div>
                       </div>
-                    </div>
+                    )}
                   </CardContent>
                 </Card>
 

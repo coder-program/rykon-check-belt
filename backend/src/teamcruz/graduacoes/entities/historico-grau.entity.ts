@@ -1,6 +1,6 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne } from 'typeorm';
-import { Faixa } from '../../faixas/entities/faixa.entity';
-import { Aluno } from '../../alunos/entities/aluno.entity';
+import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
+// import { Faixa } from '../../faixas/entities/faixa.entity';
+// import { Aluno } from '../../alunos/entities/aluno.entity';
 
 @Entity()
 export class HistoricoGrau {
@@ -13,9 +13,10 @@ export class HistoricoGrau {
   @Column()
   data: Date;
 
-  @ManyToOne(() => Aluno, (aluno) => aluno.historicoGraus)
-  aluno: Aluno;
+  // TODO: Ativar relacionamentos quando GraduacoesModule for criado
+  // @ManyToOne(() => Aluno, (aluno) => aluno.historicoGraus)
+  // aluno: Aluno;
 
-  @ManyToOne(() => Faixa, (faixa) => faixa.historicoGraus)
-  faixa: Faixa;
+  // @ManyToOne(() => Faixa, (faixa) => faixa.historicoGraus)
+  // faixa: Faixa;
 }

@@ -89,7 +89,6 @@ export class TiposPermissaoService {
 
   async findAtivos(): Promise<TipoPermissao[]> {
     return await this.tipoPermissaoRepository.find({
-      where: { ativo: true },
       order: { ordem: 'ASC', nome: 'ASC' },
     });
   }

@@ -71,7 +71,19 @@ interface UnidadeFormData {
 
 export default function PageUnidades() {
   const { user } = useAuth();
-  const hasPerfil = (p: string) => (user?.perfis || []).map((x: string) => x.toLowerCase()).includes(p.toLowerCase());
+  
+  // Log temporário para debug
+  React.useEffect(() => {
+    console.log('User object:', user);
+    console.log('User perfis:', user?.perfis);
+  }, [user]);
+  
+  const hasPerfil = (p: string) => {
+    if (!user?.perfis) return false;
+    return user.perfis.some((perfil: any) => 
+      perfil.nome?.toLowerCase() === p.toLowerCase()
+    );
+  };
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("todos");
   const [debounced, setDebounced] = useState("");
@@ -439,7 +451,7 @@ export default function PageUnidades() {
           <Building2 className="h-6 w-6" />
           Unidades
         </h1>
-        {(hasPerfil('master') || hasPerfil('franqueado')) && (
+        {/* Temporário: mostrar para todos os usuários */}
         <button
           className="btn btn-primary flex items-center gap-2"
           onClick={() => { setEditingUnidade(null); resetForm(); setShowModal(true); }}
@@ -447,7 +459,6 @@ export default function PageUnidades() {
           <Plus className="h-4 w-4" />
           Nova Unidade
         </button>
-        )}
       </div>
 
       {/* Filtros */}

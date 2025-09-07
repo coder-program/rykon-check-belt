@@ -41,6 +41,7 @@ export class Usuario {
   @ManyToMany(() => Perfil, (perfil) => perfil.usuarios)
   @JoinTable({
     name: 'usuario_perfis',
+    schema: 'teamcruz',
     joinColumn: { name: 'usuario_id', referencedColumnName: 'id' },
     inverseJoinColumn: { name: 'perfil_id', referencedColumnName: 'id' },
   })
