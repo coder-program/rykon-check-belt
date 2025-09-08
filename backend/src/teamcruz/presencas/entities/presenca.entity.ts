@@ -1,14 +1,18 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne } from 'typeorm';
-import { Aluno } from '../../alunos/entities/aluno.entity';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
+import { Person } from '../../../people/entities/person.entity';
 
-@Entity()
+@Entity({ name: 'presencas', schema: 'teamcruz' })
 export class Presenca {
-  @PrimaryGeneratedColumn()
-  id: number;
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
 
-  @Column()
+  @Column({ type: 'date' })
   data: Date;
 
-  @ManyToOne(() => Aluno, (aluno) => aluno.presencas)
-  aluno: Aluno;
+  @Column({ name: 'pessoa_id' })
+  pessoaId: string;
+
+  @ManyToOne(() => Person)
+  @JoinColumn({ name: 'pessoa_id' })
+  pessoa: Person;
 }

@@ -108,6 +108,6 @@ export class ProfessoresService {
       id, 
       tipo_cadastro: TipoCadastro.PROFESSOR 
     });
-    return result.affected > 0;
+    return (result.affected ?? 0) > 0;
   }
 }

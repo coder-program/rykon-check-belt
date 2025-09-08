@@ -19,8 +19,15 @@ export class AlunosService {
     
     const query = this.personRepository.createQueryBuilder('person');
     
-    // Filtrar apenas alunos
-    query.where('person.tipo_cadastro = :tipo', { tipo: TipoCadastro.ALUNO });
+    // Filtrar por tipo de cadastro se especificado
+    if (params.tipo_cadastro) {
+      query.where('person.tipo_cadastro = :tipo', { tipo: params.tipo_cadastro });
+    } else {
+      // Se não especificado, buscar tanto alunos quanto professores
+      query.where('person.tipo_cadastro IN (:...tipos)', { 
+        tipos: [TipoCadastro.ALUNO, TipoCadastro.PROFESSOR] 
+      });
+    }
     
     // Busca por nome ou CPF
     if (params.search) {
@@ -78,12 +85,16 @@ export class AlunosService {
       throw new ConflictException('CPF já cadastrado');
     }
     
-    // Criar nova pessoa com tipo ALUNO
+    // Criar nova pessoa usando o tipo_cadastro do DTO
     const person = this.personRepository.create({
       ...dto,
-      tipo_cadastro: TipoCadastro.ALUNO,
       status: dto.status || StatusCadastro.ATIVO,
     });
+    
+    // Se for aluno, definir data_matricula
+    if (dto.tipo_cadastro === TipoCadastro.ALUNO && !person.data_matricula) {
+      person.data_matricula = new Date();
+    }
     
     return await this.personRepository.save(person);
   }
@@ -121,7 +132,7 @@ export class AlunosService {
       id, 
       tipo_cadastro: TipoCadastro.ALUNO 
     });
-    return result.affected > 0;
+    return (result.affected ?? 0) > 0;
   }
 
 }

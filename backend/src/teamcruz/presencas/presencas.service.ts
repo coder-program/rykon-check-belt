@@ -2,13 +2,13 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Presenca } from './entities/presenca.entity';
-import { Aluno } from '../alunos/entities/aluno.entity';
+import { Person, TipoCadastro } from '../../people/entities/person.entity';
 
 @Injectable()
 export class PresencasService {
   constructor(
     @InjectRepository(Presenca) private presencasRepo: Repository<Presenca>,
-    @InjectRepository(Aluno) private alunosRepo: Repository<Aluno>,
+    @InjectRepository(Person) private personRepo: Repository<Person>,
   ) {}
 
   async aulasAbertas() {
@@ -44,10 +44,19 @@ export class PresencasService {
     ];
   }
 
-  async checkin(alunoId: string) {
-    const aluno = await this.alunosRepo.findOne({ where: { id: alunoId } });
-    if (!aluno) throw new Error('Aluno não encontrado');
-    const p = this.presencasRepo.create({ aluno, data: new Date() });
+  async checkin(pessoaId: string) {
+    const pessoa = await this.personRepo.findOne({ 
+      where: { 
+        id: pessoaId,
+        tipo_cadastro: TipoCadastro.ALUNO 
+      } 
+    });
+    if (!pessoa) throw new Error('Aluno não encontrado');
+    const p = this.presencasRepo.create({ 
+      pessoaId,
+      pessoa,
+      data: new Date() 
+    });
     return this.presencasRepo.save(p);
   }
 
@@ -61,7 +70,7 @@ export class PresencasService {
     );
     return this.presencasRepo.find({
       where: { data: (p: any) => p >= start && p < end } as any,
-      relations: ['aluno'],
+      relations: ['pessoa'],
       order: { id: 'DESC' },
     });
   }

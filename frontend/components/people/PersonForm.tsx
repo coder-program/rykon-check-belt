@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { createAluno } from "@/lib/peopleApi";
+import { createAluno, createProfessor } from "@/lib/peopleApi";
 import { InputCPF } from "@/components/form/InputCPF";
 import toast from "react-hot-toast";
 
@@ -75,7 +75,13 @@ export function PersonForm({ onSuccess, onCancel, initialData, isEdit = false }:
   const queryClient = useQueryClient();
   
   const mutation = useMutation({
-    mutationFn: createAluno,
+    mutationFn: (data: any) => {
+      // Usar a função correta baseada no tipo de cadastro
+      if (data.tipo_cadastro === "PROFESSOR") {
+        return createProfessor(data);
+      }
+      return createAluno(data);
+    },
     onSuccess: () => {
       toast.success(`${tipoCadastro === "ALUNO" ? "Aluno" : "Professor"} cadastrado com sucesso!`);
       queryClient.invalidateQueries({ queryKey: ["alunos"] });
@@ -83,9 +89,31 @@ export function PersonForm({ onSuccess, onCancel, initialData, isEdit = false }:
       if (onSuccess) onSuccess();
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.message || "Erro ao cadastrar");
+      console.error('Erro ao cadastrar:', error);
+      const message = error?.message || error?.response?.data?.message || "Erro ao cadastrar";
+      toast.error(message);
     },
   });
+
+  const formatCPF = (cpf: string) => {
+    // Remove tudo que não é número
+    const numbers = cpf.replace(/\D/g, "");
+    // Formata como 000.000.000-00
+    if (numbers.length === 11) {
+      return numbers.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
+    }
+    return cpf;
+  };
+
+  const formatCEP = (cep: string) => {
+    // Remove tudo que não é número
+    const numbers = cep.replace(/\D/g, "");
+    // Formata como 00000-000
+    if (numbers.length === 8) {
+      return numbers.replace(/(\d{5})(\d{3})/, "$1-$2");
+    }
+    return cep;
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -115,7 +143,48 @@ export function PersonForm({ onSuccess, onCancel, initialData, isEdit = false }:
       return;
     }
 
-    mutation.mutate({ ...formData, tipo_cadastro: tipoCadastro });
+    // Preparar dados formatados
+    const dataToSend = {
+      ...formData,
+      tipo_cadastro: tipoCadastro,
+      cpf: formatCPF(formData.cpf),
+      responsavel_cpf: formData.responsavel_cpf ? formatCPF(formData.responsavel_cpf) : undefined,
+      cep: formData.cep ? formatCEP(formData.cep) : undefined,
+      grau_atual: tipoCadastro === "ALUNO" ? Number(formData.grau_atual) : undefined,
+      // Converter strings vazias para null/undefined para campos UUID e opcionais
+      unidade_id: formData.unidade_id || undefined,
+      created_by: formData.created_by || undefined,
+      updated_by: formData.updated_by || undefined,
+      email: formData.email || undefined,
+      logradouro: formData.logradouro || undefined,
+      numero: formData.numero || undefined,
+      complemento: formData.complemento || undefined,
+      bairro: formData.bairro || undefined,
+      cidade: formData.cidade || undefined,
+      uf: formData.uf || undefined,
+      observacoes: formData.observacoes || undefined,
+      responsavel_nome: formData.responsavel_nome || undefined,
+      responsavel_telefone: formData.responsavel_telefone || undefined,
+      faixa_ministrante: formData.faixa_ministrante || undefined,
+      data_inicio_docencia: formData.data_inicio_docencia || undefined,
+      registro_profissional: formData.registro_profissional || undefined,
+    };
+
+    // Remover campos não necessários baseado no tipo
+    if (tipoCadastro === "ALUNO") {
+      delete dataToSend.faixa_ministrante;
+      delete dataToSend.data_inicio_docencia;
+      delete dataToSend.registro_profissional;
+    } else {
+      delete dataToSend.faixa_atual;
+      delete dataToSend.grau_atual;
+      delete dataToSend.responsavel_nome;
+      delete dataToSend.responsavel_cpf;
+      delete dataToSend.responsavel_telefone;
+    }
+
+    console.log('Enviando dados:', dataToSend);
+    mutation.mutate(dataToSend);
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {

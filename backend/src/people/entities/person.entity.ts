@@ -46,7 +46,7 @@ export enum FaixaProfessor {
   VERMELHA = 'VERMELHA',
 }
 
-@Entity('pessoas')
+@Entity({ name: 'pessoas', schema: 'teamcruz' })
 @Index(['cpf'], { unique: true })
 @Index(['tipo_cadastro'])
 @Index(['status'])
