@@ -4,26 +4,35 @@ export class MoverTabelasUsuariosParaTeamcruz1756928000000 implements MigrationI
   name = 'MoverTabelasUsuariosParaTeamcruz1756928000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    // 1. Mover tabelas de usuários para schema teamcruz
-    // Importante: mover na ordem correta respeitando as foreign keys
+    // Verificar se as tabelas já estão no schema teamcruz
+    const result = await queryRunner.query(`
+      SELECT COUNT(*) as count 
+      FROM information_schema.tables 
+      WHERE table_schema = 'teamcruz' 
+      AND table_name IN ('usuarios', 'perfis', 'permissoes', 'tipos_permissao', 'niveis_permissao')
+    `);
     
+    if (result[0].count > 0) {
+      console.log('Tabelas já estão no schema teamcruz, pulando migration');
+      // Apenas garantir que o search_path está configurado
+      await queryRunner.query(`ALTER DATABASE teamcruz_db SET search_path TO teamcruz, public`);
+      return;
+    }
+    
+    // Se as tabelas estiverem no schema public, mover para teamcruz
     // Primeiro, as tabelas sem dependências
-    await queryRunner.query(`ALTER TABLE public.niveis_permissao SET SCHEMA teamcruz`);
-    await queryRunner.query(`ALTER TABLE public.tipos_permissao SET SCHEMA teamcruz`);
-    await queryRunner.query(`ALTER TABLE public.usuarios SET SCHEMA teamcruz`);
-    await queryRunner.query(`ALTER TABLE public.perfis SET SCHEMA teamcruz`);
-    // password_reset_tokens não existe, vamos pular
+    const publicTables = await queryRunner.query(`
+      SELECT table_name 
+      FROM information_schema.tables 
+      WHERE table_schema = 'public' 
+      AND table_name IN ('niveis_permissao', 'tipos_permissao', 'usuarios', 'perfis', 
+                         'permissoes', 'perfil_permissoes', 'usuario_perfis', 'audit_logs')
+    `);
     
-    // Depois, as tabelas com foreign keys
-    await queryRunner.query(`ALTER TABLE public.permissoes SET SCHEMA teamcruz`);
-    await queryRunner.query(`ALTER TABLE public.perfil_permissoes SET SCHEMA teamcruz`);
-    await queryRunner.query(`ALTER TABLE public.usuario_perfis SET SCHEMA teamcruz`);
+    for (const table of publicTables) {
+      await queryRunner.query(`ALTER TABLE public.${table.table_name} SET SCHEMA teamcruz`);
+    }
     
-    // Mover audit_logs para teamcruz também
-    await queryRunner.query(`ALTER TABLE public.audit_logs SET SCHEMA teamcruz`);
-    
-    // Endereços e vinculos_endereco já estão em teamcruz, não precisamos mover
-
     // Atualizar search_path para incluir teamcruz por padrão
     await queryRunner.query(`ALTER DATABASE teamcruz_db SET search_path TO teamcruz, public`);
   }

@@ -12,11 +12,12 @@ import { UsuariosModule } from '../usuarios/usuarios.module';
 import { EnderecosModule } from '../enderecos/enderecos.module';
 import { Franqueado } from './entities/franqueado.entity';
 import { Unidade } from './entities/unidade.entity';
+import { Person } from './entities/person.entity';
 
 @Module({
   imports: [
     UsuariosModule,
-    TypeOrmModule.forFeature([Franqueado, Unidade]),
+    TypeOrmModule.forFeature([Person, Franqueado, Unidade]),
     EnderecosModule,
   ],
   controllers: [

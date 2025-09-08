@@ -21,7 +21,12 @@ export async function approveAluno(id: string, professor_id: string) {
   });
 }
 export async function createAluno(data: any) {
-  return http("/alunos", { method: "POST", body: data, auth: true });
+  // Garantir que tipo_cadastro seja ALUNO
+  const alunoData = {
+    ...data,
+    tipo_cadastro: "ALUNO"
+  };
+  return http("/alunos", { method: "POST", body: alunoData, auth: true });
 }
 
 export async function listProfessores(params: any): Promise<PageResp<any>> {
@@ -29,7 +34,12 @@ export async function listProfessores(params: any): Promise<PageResp<any>> {
   return http(`/professores?${qs}`);
 }
 export async function createProfessor(data: any) {
-  return http("/professores", { method: "POST", body: data, auth: true });
+  // Garantir que tipo_cadastro seja PROFESSOR
+  const professorData = {
+    ...data,
+    tipo_cadastro: "PROFESSOR"
+  };
+  return http("/professores", { method: "POST", body: professorData, auth: true });
 }
 
 export async function listFranqueados(params: any): Promise<PageResp<any>> {

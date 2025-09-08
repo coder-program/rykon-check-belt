@@ -2,8 +2,9 @@
 
 import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useInfiniteQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { FixedSizeList as List } from "react-window";
+import { listAlunos } from "@/lib/peopleApi";
 import {
   Card,
   CardContent,
@@ -537,28 +538,43 @@ export default function DashboardNew() {
     [debouncedSearch, filterFaixa],
   );
 
-  // Query para Alunos (aba Alunos)
+  // Query para Alunos (aba Alunos) - DADOS REAIS DO BANCO
   const alunosQuery = useInfiniteQuery({
     queryKey: ["alunos", debouncedSearch, filterFaixa],
-    initialPageParam: 0,
-    getNextPageParam: (lastPage: { items: any[]; nextPage: number | null }) =>
-      lastPage.nextPage,
-    queryFn: async ({
-      pageParam,
-    }): Promise<{ items: any[]; nextPage: number | null }> => {
-      // Simula backend paginado com dados mock
-      const filtered = filterLocal(mockAlunos);
-      const start = pageParam * pageSize;
-      const end = start + pageSize;
-      const slice = filtered.slice(start, end);
-      const nextPage = end < filtered.length ? pageParam + 1 : null;
-      // Simular latência
-      await new Promise((r) => setTimeout(r, 200));
-      return { items: slice, nextPage };
+    initialPageParam: 1,
+    getNextPageParam: (lastPage) => lastPage.hasNextPage ? lastPage.page + 1 : undefined,
+    queryFn: async ({ pageParam }) => {
+      // Buscar dados reais do banco
+      const response = await listAlunos({
+        page: pageParam,
+        pageSize: 30,
+        search: debouncedSearch,
+        faixa: filterFaixa,
+      });
+      
+      // Adaptar os dados para o formato esperado pelo componente
+      const adaptedItems = response.items.map((aluno: any) => ({
+        id: aluno.id,
+        nome: aluno.nome || aluno.nome_completo,
+        matricula: aluno.matricula || aluno.id.substring(0, 8).toUpperCase(),
+        faixa: aluno.faixa || aluno.faixa_atual || 'Branca',
+        graus: aluno.graus || aluno.grau_atual || 0,
+        cpf: aluno.cpf,
+        token: `TKN-${aluno.id.substring(0, 8)}`,
+      }));
+      
+      return {
+        items: adaptedItems,
+        page: response.page,
+        pageSize: response.pageSize,
+        total: response.total,
+        hasNextPage: response.hasNextPage,
+        nextPage: response.hasNextPage ? response.page + 1 : null,
+      };
     },
   });
 
-  // Query para Check-in (dentro da aula selecionada)
+  // Query para Check-in (dentro da aula selecionada) - DADOS REAIS DO BANCO
   const checkinQuery = useInfiniteQuery({
     queryKey: [
       "alunos-checkin",
@@ -567,19 +583,36 @@ export default function DashboardNew() {
       filterFaixa,
     ],
     enabled: !!selectedAula, // só quando há aula selecionada
-    initialPageParam: 0,
-    getNextPageParam: (lastPage: { items: any[]; nextPage: number | null }) =>
-      lastPage.nextPage,
-    queryFn: async ({
-      pageParam,
-    }): Promise<{ items: any[]; nextPage: number | null }> => {
-      const filtered = filterLocal(mockAlunos);
-      const start = pageParam * pageSize;
-      const end = start + pageSize;
-      const slice = filtered.slice(start, end);
-      const nextPage = end < filtered.length ? pageParam + 1 : null;
-      await new Promise((r) => setTimeout(r, 200));
-      return { items: slice, nextPage };
+    initialPageParam: 1,
+    getNextPageParam: (lastPage) => lastPage.hasNextPage ? lastPage.page + 1 : undefined,
+    queryFn: async ({ pageParam }) => {
+      // Buscar dados reais do banco
+      const response = await listAlunos({
+        page: pageParam,
+        pageSize: 30,
+        search: debouncedSearch,
+        faixa: filterFaixa,
+      });
+      
+      // Adaptar os dados
+      const adaptedItems = response.items.map((aluno: any) => ({
+        id: aluno.id,
+        nome: aluno.nome || aluno.nome_completo,
+        matricula: aluno.matricula || aluno.id.substring(0, 8).toUpperCase(),
+        faixa: aluno.faixa || aluno.faixa_atual || 'Branca',
+        graus: aluno.graus || aluno.grau_atual || 0,
+        cpf: aluno.cpf,
+        token: `TKN-${aluno.id.substring(0, 8)}`,
+      }));
+      
+      return {
+        items: adaptedItems,
+        page: response.page,
+        pageSize: response.pageSize,
+        total: response.total,
+        hasNextPage: response.hasNextPage,
+        nextPage: response.hasNextPage ? response.page + 1 : null,
+      };
     },
   });
 

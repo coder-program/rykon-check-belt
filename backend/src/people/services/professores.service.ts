@@ -1,84 +1,113 @@
-import { Injectable } from '@nestjs/common';
-import { randomUUID } from 'crypto';
-import { Professor } from '../entities/professor.entity';
+import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Person, TipoCadastro, StatusCadastro } from '../entities/person.entity';
+import { CreatePersonDto } from '../dto/create-person.dto';
+import { UpdatePersonDto } from '../dto/update-person.dto';
+import { FilterPersonDto } from '../dto/filter-person.dto';
 
 @Injectable()
 export class ProfessoresService {
-  private store = new Map<string, Professor>();
+  constructor(
+    @InjectRepository(Person)
+    private readonly personRepository: Repository<Person>,
+  ) {}
 
-  list(params: {
-    page?: number;
-    pageSize?: number;
-    search?: string;
-    unidade?: string;
-  }) {
+  async list(params: FilterPersonDto) {
     const page = Math.max(1, Number(params.page) || 1);
     const pageSize = Math.min(100, Math.max(1, Number(params.pageSize) || 20));
-    const search = (params.search || '').toLowerCase();
-    const unidade = (params.unidade || '').toLowerCase();
-
-    let items = Array.from(this.store.values());
-    if (search)
-      items = items.filter((p) => p.nome.toLowerCase().includes(search));
-    if (unidade)
-      items = items.filter((p) =>
-        p.unidades_atua.some((u) => u.toLowerCase().includes(unidade)),
+    
+    const query = this.personRepository.createQueryBuilder('person');
+    
+    // Filtrar apenas professores
+    query.where('person.tipo_cadastro = :tipo', { tipo: TipoCadastro.PROFESSOR });
+    
+    // Busca por nome ou CPF
+    if (params.search) {
+      query.andWhere(
+        '(LOWER(person.nome_completo) LIKE :search OR person.cpf LIKE :search)',
+        { search: `%${params.search.toLowerCase()}%` }
       );
-
-    const total = items.length;
-    const start = (page - 1) * pageSize;
-    const end = start + pageSize;
+    }
+    
+    // Filtro por unidade
+    if (params.unidade_id) {
+      query.andWhere('person.unidade_id = :unidade', { unidade: params.unidade_id });
+    }
+    
+    // Filtro por status
+    if (params.status) {
+      query.andWhere('person.status = :status', { status: params.status });
+    }
+    
+    // Paginação
+    const [items, total] = await query
+      .skip((page - 1) * pageSize)
+      .take(pageSize)
+      .getManyAndCount();
+    
     return {
-      items: items.slice(start, end),
+      items,
       page,
       pageSize,
       total,
-      hasNextPage: end < total,
+      hasNextPage: page * pageSize < total,
     };
   }
 
-  create(body: Partial<Professor> & { nome: string }) {
-    const id = randomUUID();
-    const now = new Date();
-    const p: Professor = {
-      id,
-      nome: body.nome!,
-      email: body.email || '',
-      telefone: body.telefone || '',
-      cpf: body.cpf || '',
-      data_nascimento: body.data_nascimento
-        ? new Date(body.data_nascimento)
-        : now,
-      genero: (body.genero as any) || 'masculino',
-      faixa: body.faixa || 'Preta',
-      certificacoes: body.certificacoes || [],
-      unidades_atua: body.unidades_atua || [],
-      data_contratacao: body.data_contratacao
-        ? new Date(body.data_contratacao)
-        : now,
-      salario_base: Number(body.salario_base || 0),
-      carga_horaria_semana: Number(body.carga_horaria_semana || 0),
-      especialidades: (body.especialidades as any) || [],
-      ativo: body.ativo ?? true,
-      created_at: now,
-      updated_at: now,
-    };
-    this.store.set(id, p);
-    return p;
+  async create(dto: CreatePersonDto): Promise<Person> {
+    // Verificar se CPF já existe
+    const existingPerson = await this.personRepository.findOne({
+      where: { cpf: dto.cpf }
+    });
+    
+    if (existingPerson) {
+      throw new ConflictException('CPF já cadastrado');
+    }
+    
+    // Criar nova pessoa com tipo PROFESSOR
+    const person = this.personRepository.create({
+      ...dto,
+      tipo_cadastro: TipoCadastro.PROFESSOR,
+      status: dto.status || StatusCadastro.ATIVO,
+    });
+    
+    return await this.personRepository.save(person);
   }
 
-  update(id: string, body: Partial<Professor>) {
-    const p = this.store.get(id);
-    if (!p) return null;
-    const updated = { ...p, ...body, updated_at: new Date() } as Professor;
-    this.store.set(id, updated);
-    return updated;
+  async update(id: string, dto: UpdatePersonDto): Promise<Person> {
+    const person = await this.personRepository.findOne({ where: { id } });
+    
+    if (!person) {
+      throw new NotFoundException('Professor não encontrado');
+    }
+    
+    // Se mudou o CPF, verificar se já não existe
+    if (dto.cpf && dto.cpf !== person.cpf) {
+      const existingPerson = await this.personRepository.findOne({
+        where: { cpf: dto.cpf }
+      });
+      
+      if (existingPerson) {
+        throw new ConflictException('CPF já cadastrado');
+      }
+    }
+    
+    Object.assign(person, dto);
+    return await this.personRepository.save(person);
   }
 
-  get(id: string) {
-    return this.store.get(id) || null;
+  async get(id: string): Promise<Person | null> {
+    return await this.personRepository.findOne({ 
+      where: { id, tipo_cadastro: TipoCadastro.PROFESSOR } 
+    });
   }
-  remove(id: string) {
-    return this.store.delete(id);
+
+  async remove(id: string): Promise<boolean> {
+    const result = await this.personRepository.delete({ 
+      id, 
+      tipo_cadastro: TipoCadastro.PROFESSOR 
+    });
+    return (result.affected ?? 0) > 0;
   }
 }
