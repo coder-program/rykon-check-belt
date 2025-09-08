@@ -206,6 +206,26 @@ export default function DashboardPage() {
             </Card>
 
             <Card
+              className="cursor-pointer hover:shadow-xl transition-all hover:scale-105 border-blue-200 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20"
+              onClick={() => router.push("/alunos")}
+            >
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  <span className="flex items-center">
+                    <Users className="mr-2 h-5 w-5" />
+                    Cadastro de Pessoas
+                  </span>
+                  <span className="badge badge-primary text-xs animate-pulse">
+                    Atualizado!
+                  </span>
+                </CardTitle>
+                <CardDescription>
+                  Cadastro unificado de Alunos e Professores com validações completas
+                </CardDescription>
+              </CardHeader>
+            </Card>
+
+            <Card
               className="cursor-pointer hover:shadow-xl transition-all hover:scale-105 border-red-200 bg-gradient-to-br from-red-50 to-orange-50 dark:from-red-900/20 dark:to-orange-800/20"
               onClick={() => router.push("/teamcruz")}
             >
@@ -215,8 +235,8 @@ export default function DashboardPage() {
                     <Grid3X3 className="mr-2 h-5 w-5" />
                     TeamCruz Jiu-Jitsu
                   </span>
-                  <span className="badge badge-error text-xs animate-pulse">
-                    Novo!
+                  <span className="badge badge-error text-xs">
+                    Sistema
                   </span>
                 </CardTitle>
                 <CardDescription>

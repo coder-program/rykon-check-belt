@@ -52,8 +52,8 @@ export class InicialSchema1756927400000 implements MigrationInterface {
       codigo VARCHAR UNIQUE NOT NULL,
       nome VARCHAR NOT NULL,
       descricao TEXT,
-      tipo_id UUID REFERENCES tipos_permissao(id),
-      nivel_id UUID REFERENCES niveis_permissao(id),
+      tipo_id UUID REFERENCES teamcruz.tipos_permissao(id),
+      nivel_id UUID REFERENCES teamcruz.niveis_permissao(id),
       modulo VARCHAR,
       ativo BOOLEAN DEFAULT true,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -86,7 +86,7 @@ export class InicialSchema1756927400000 implements MigrationInterface {
     await queryRunner.query(`CREATE TABLE IF NOT EXISTS teamcruz.password_reset_tokens (
       id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
       token VARCHAR UNIQUE NOT NULL,
-      user_id UUID REFERENCES usuarios(id) ON DELETE CASCADE,
+      user_id UUID REFERENCES teamcruz.usuarios(id) ON DELETE CASCADE,
       expires_at TIMESTAMP NOT NULL,
       used_at TIMESTAMP,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -99,21 +99,21 @@ export class InicialSchema1756927400000 implements MigrationInterface {
       action VARCHAR NOT NULL,
       old_values JSON,
       new_values JSON,
-      user_id UUID REFERENCES usuarios(id),
+      user_id UUID REFERENCES teamcruz.usuarios(id),
       ip_address VARCHAR,
       user_agent VARCHAR,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`);
 
     await queryRunner.query(`CREATE TABLE IF NOT EXISTS teamcruz.usuario_perfis (
-      usuario_id UUID REFERENCES usuarios(id) ON DELETE CASCADE,
-      perfil_id UUID REFERENCES perfis(id) ON DELETE CASCADE,
+      usuario_id UUID REFERENCES teamcruz.usuarios(id) ON DELETE CASCADE,
+      perfil_id UUID REFERENCES teamcruz.perfis(id) ON DELETE CASCADE,
       PRIMARY KEY (usuario_id, perfil_id)
     )`);
 
     await queryRunner.query(`CREATE TABLE IF NOT EXISTS teamcruz.perfil_permissoes (
-      perfil_id UUID REFERENCES perfis(id) ON DELETE CASCADE,
-      permissao_id UUID REFERENCES permissoes(id) ON DELETE CASCADE,
+      perfil_id UUID REFERENCES teamcruz.perfis(id) ON DELETE CASCADE,
+      permissao_id UUID REFERENCES teamcruz.permissoes(id) ON DELETE CASCADE,
       PRIMARY KEY (perfil_id, permissao_id)
     )`);
 
@@ -138,7 +138,7 @@ export class InicialSchema1756927400000 implements MigrationInterface {
       id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
       tipo_dono tipo_dono_endereco NOT NULL,
       dono_id UUID NOT NULL,
-      endereco_id UUID NOT NULL REFERENCES enderecos(id) ON DELETE CASCADE,
+      endereco_id UUID NOT NULL REFERENCES teamcruz.enderecos(id) ON DELETE CASCADE,
       finalidade finalidade_endereco NOT NULL DEFAULT 'RESIDENCIAL',
       principal BOOLEAN NOT NULL DEFAULT false,
       valido_de DATE,
@@ -148,7 +148,7 @@ export class InicialSchema1756927400000 implements MigrationInterface {
     )`);
 
     await queryRunner.query(
-      `CREATE INDEX IF NOT EXISTS ix_vinculos_endereco_dono ON vinculos_endereco(tipo_dono, dono_id)`,
+      `CREATE INDEX IF NOT EXISTS ix_vinculos_endereco_dono ON teamcruz.vinculos_endereco(tipo_dono, dono_id)`,
     );
 
     await queryRunner.query(`DO $$
@@ -157,7 +157,7 @@ export class InicialSchema1756927400000 implements MigrationInterface {
         SELECT 1 FROM pg_indexes WHERE indexname = 'ux_endereco_principal_por_finalidade'
       ) THEN
         CREATE UNIQUE INDEX ux_endereco_principal_por_finalidade
-          ON vinculos_endereco(tipo_dono, dono_id, finalidade)
+          ON teamcruz.vinculos_endereco(tipo_dono, dono_id, finalidade)
           WHERE principal = true;
       END IF;
     END$$;`);
@@ -174,18 +174,18 @@ export class InicialSchema1756927400000 implements MigrationInterface {
       END IF;
     END$$;`);
 
-    await queryRunner.query(`DROP TABLE IF EXISTS vinculos_endereco`);
-    await queryRunner.query(`DROP TABLE IF EXISTS enderecos`);
+    await queryRunner.query(`DROP TABLE IF EXISTS teamcruz.vinculos_endereco`);
+    await queryRunner.query(`DROP TABLE IF EXISTS teamcruz.enderecos`);
 
-    await queryRunner.query(`DROP TABLE IF EXISTS perfil_permissoes`);
-    await queryRunner.query(`DROP TABLE IF EXISTS usuario_perfis`);
-    await queryRunner.query(`DROP TABLE IF EXISTS audit_logs`);
-    await queryRunner.query(`DROP TABLE IF EXISTS password_reset_tokens`);
-    await queryRunner.query(`DROP TABLE IF EXISTS usuarios`);
-    await queryRunner.query(`DROP TABLE IF EXISTS perfis`);
-    await queryRunner.query(`DROP TABLE IF EXISTS permissoes`);
-    await queryRunner.query(`DROP TABLE IF EXISTS niveis_permissao`);
-    await queryRunner.query(`DROP TABLE IF EXISTS tipos_permissao`);
+    await queryRunner.query(`DROP TABLE IF EXISTS teamcruz.perfil_permissoes`);
+    await queryRunner.query(`DROP TABLE IF EXISTS teamcruz.usuario_perfis`);
+    await queryRunner.query(`DROP TABLE IF EXISTS teamcruz.audit_logs`);
+    await queryRunner.query(`DROP TABLE IF EXISTS teamcruz.password_reset_tokens`);
+    await queryRunner.query(`DROP TABLE IF EXISTS teamcruz.usuarios`);
+    await queryRunner.query(`DROP TABLE IF EXISTS teamcruz.perfis`);
+    await queryRunner.query(`DROP TABLE IF EXISTS teamcruz.permissoes`);
+    await queryRunner.query(`DROP TABLE IF EXISTS teamcruz.niveis_permissao`);
+    await queryRunner.query(`DROP TABLE IF EXISTS teamcruz.tipos_permissao`);
 
     // Remover tipos ENUM se existirem
     await queryRunner.query(`DO $$

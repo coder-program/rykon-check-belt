@@ -18,8 +18,8 @@ export default function Home() {
           <a className="btn" href="/teamcruz">
             TeamCruz
           </a>
-          <a className="btn" href="/alunos">
-            Alunos
+          <a className="btn btn-primary" href="/alunos">
+            Cadastro de Pessoas (Alunos/Professores)
           </a>
           <a className="btn" href="/professores">
             Professores
@@ -29,9 +29,6 @@ export default function Home() {
           </a>
           <a className="btn" href="/unidades">
             Unidades
-          </a>
-          <a className="btn btn-outline" href="/registro">
-            Auto-cadastro de Aluno
           </a>
           <a className="btn btn-outline" href="/aprovacao-alunos">
             Aprovação de Alunos
