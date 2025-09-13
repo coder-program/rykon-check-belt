@@ -6,7 +6,7 @@ async function checkMigrations() {
     port: 5436,
     user: 'teamcruz_admin',
     password: 'cruz@jiujitsu2024',
-    database: 'teamcruz_db'
+    database: 'teamcruz_db',
   });
 
   try {
@@ -22,11 +22,13 @@ async function checkMigrations() {
     `);
 
     if (tableCheck.rows[0].exists) {
-      const migrations = await client.query('SELECT name, timestamp FROM migrations ORDER BY id');
-      
+      const migrations = await client.query(
+        'SELECT name, timestamp FROM migrations ORDER BY id',
+      );
+
       if (migrations.rows.length > 0) {
         console.log('✅ Migrations já executadas:');
-        migrations.rows.forEach(m => {
+        migrations.rows.forEach((m) => {
           console.log(`   - ${m.name}`);
         });
       } else {
@@ -52,7 +54,6 @@ async function checkMigrations() {
     } else {
       console.log('   ❌ Tabela não existe');
     }
-
   } catch (error) {
     console.error('Erro:', error.message);
   } finally {

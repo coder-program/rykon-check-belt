@@ -24,7 +24,7 @@ export async function createAluno(data: any) {
   // Garantir que tipo_cadastro seja ALUNO
   const alunoData = {
     ...data,
-    tipo_cadastro: "ALUNO"
+    tipo_cadastro: "ALUNO",
   };
   return http("/alunos", { method: "POST", body: alunoData, auth: true });
 }
@@ -37,9 +37,13 @@ export async function createProfessor(data: any) {
   // Garantir que tipo_cadastro seja PROFESSOR
   const professorData = {
     ...data,
-    tipo_cadastro: "PROFESSOR"
+    tipo_cadastro: "PROFESSOR",
   };
-  return http("/professores", { method: "POST", body: professorData, auth: true });
+  return http("/professores", {
+    method: "POST",
+    body: professorData,
+    auth: true,
+  });
 }
 
 export async function listFranqueados(params: any): Promise<PageResp<any>> {
@@ -51,7 +55,11 @@ export async function createFranqueado(data: any) {
 }
 
 export async function updateFranqueado(id: string, data: any) {
-  return http(`/franqueados/${id}`, { method: "PATCH", body: data, auth: true });
+  return http(`/franqueados/${id}`, {
+    method: "PATCH",
+    body: data,
+    auth: true,
+  });
 }
 
 export async function deleteFranqueado(id: string) {
@@ -90,5 +98,9 @@ export async function updateEndereco(id: string, data: any) {
 }
 
 export async function vincularEndereco(enderecoId: string, data: any) {
-  return http(`/enderecos/${enderecoId}/vinculos`, { method: "POST", body: data, auth: true });
+  return http(`/enderecos/${enderecoId}/vinculos`, {
+    method: "POST",
+    body: data,
+    auth: true,
+  });
 }

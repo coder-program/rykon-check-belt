@@ -2,12 +2,18 @@ import { ApiProperty } from '@nestjs/swagger';
 import { IsOptional, IsString, IsUUID } from 'class-validator';
 
 export class ConcederGrauDto {
-  @ApiProperty({ required: false, description: 'Observação sobre a concessão do grau' })
+  @ApiProperty({
+    required: false,
+    description: 'Observação sobre a concessão do grau',
+  })
   @IsOptional()
   @IsString()
   observacao?: string;
 
-  @ApiProperty({ required: false, description: 'ID do usuário que concedeu o grau' })
+  @ApiProperty({
+    required: false,
+    description: 'ID do usuário que concedeu o grau',
+  })
   @IsOptional()
   @IsUUID()
   concedidoPor?: string;
@@ -23,7 +29,10 @@ export class GraduarFaixaDto {
   @IsString()
   observacao?: string;
 
-  @ApiProperty({ required: false, description: 'ID do usuário que concedeu a graduação' })
+  @ApiProperty({
+    required: false,
+    description: 'ID do usuário que concedeu a graduação',
+  })
   @IsOptional()
   @IsUUID()
   concedidoPor?: string;
@@ -38,7 +47,10 @@ export class CriarFaixaAlunoDto {
   @IsOptional()
   dtInicio?: Date;
 
-  @ApiProperty({ required: false, description: 'Graus iniciais (usado para migração)' })
+  @ApiProperty({
+    required: false,
+    description: 'Graus iniciais (usado para migração)',
+  })
   @IsOptional()
   grausInicial?: number;
 }

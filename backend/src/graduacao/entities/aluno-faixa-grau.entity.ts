@@ -35,10 +35,10 @@ export class AlunoFaixaGrau {
   @Column({ type: 'text', nullable: true })
   observacao: string;
 
-  @Column({ 
-    type: 'varchar', 
+  @Column({
+    type: 'varchar',
     length: 20,
-    default: OrigemGrau.MANUAL 
+    default: OrigemGrau.MANUAL,
   })
   origem: OrigemGrau;
 
@@ -46,7 +46,9 @@ export class AlunoFaixaGrau {
   created_at: Date;
 
   // Relações
-  @ManyToOne(() => AlunoFaixa, (alunoFaixa) => alunoFaixa.graus, { onDelete: 'CASCADE' })
+  @ManyToOne(() => AlunoFaixa, (alunoFaixa) => alunoFaixa.graus, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'aluno_faixa_id' })
   alunoFaixa: AlunoFaixa;
 

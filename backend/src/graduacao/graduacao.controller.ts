@@ -8,11 +8,20 @@ import {
   UseGuards,
   ParseUUIDPipe,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
 import { GraduacaoService } from './graduacao.service';
 import { StatusGraduacaoDto } from './dto/status-graduacao.dto';
 import { ListaProximosGraduarDto } from './dto/proximos-graduar.dto';
-import { ConcederGrauDto, GraduarFaixaDto, CriarFaixaAlunoDto } from './dto/conceder-grau.dto';
+import {
+  ConcederGrauDto,
+  GraduarFaixaDto,
+  CriarFaixaAlunoDto,
+} from './dto/conceder-grau.dto';
 import { FaixaDef } from './entities/faixa-def.entity';
 
 @ApiTags('Graduação')
@@ -26,7 +35,7 @@ export class GraduacaoController {
   @ApiOperation({ summary: 'Lista todas as faixas disponíveis' })
   @ApiResponse({ status: 200, description: 'Lista de faixas' })
   async listarFaixas(
-    @Query('categoria') categoria?: string
+    @Query('categoria') categoria?: string,
   ): Promise<FaixaDef[]> {
     return await this.graduacaoService.listarFaixas(categoria);
   }
@@ -36,7 +45,7 @@ export class GraduacaoController {
   @ApiResponse({ status: 200, type: StatusGraduacaoDto })
   @ApiResponse({ status: 404, description: 'Aluno não encontrado' })
   async getStatusGraduacao(
-    @Param('alunoId', ParseUUIDPipe) alunoId: string
+    @Param('alunoId', ParseUUIDPipe) alunoId: string,
   ): Promise<StatusGraduacaoDto> {
     return await this.graduacaoService.getStatusGraduacao(alunoId);
   }
@@ -48,7 +57,7 @@ export class GraduacaoController {
     @Query('page') page?: number,
     @Query('pageSize') pageSize?: number,
     @Query('unidadeId') unidadeId?: string,
-    @Query('categoria') categoria?: 'adulto' | 'kids' | 'todos'
+    @Query('categoria') categoria?: 'adulto' | 'kids' | 'todos',
   ): Promise<ListaProximosGraduarDto> {
     return await this.graduacaoService.getProximosGraduar({
       page,
@@ -61,11 +70,14 @@ export class GraduacaoController {
   @Post('alunos/:alunoId/graus')
   @ApiOperation({ summary: 'Concede um grau ao aluno' })
   @ApiResponse({ status: 201, description: 'Grau concedido com sucesso' })
-  @ApiResponse({ status: 400, description: 'Aluno já possui número máximo de graus' })
+  @ApiResponse({
+    status: 400,
+    description: 'Aluno já possui número máximo de graus',
+  })
   @ApiResponse({ status: 404, description: 'Aluno não encontrado' })
   async concederGrau(
     @Param('alunoId', ParseUUIDPipe) alunoId: string,
-    @Body() dto: ConcederGrauDto
+    @Body() dto: ConcederGrauDto,
   ) {
     return await this.graduacaoService.concederGrau(alunoId, dto);
   }
@@ -77,30 +89,32 @@ export class GraduacaoController {
   @ApiResponse({ status: 404, description: 'Aluno ou faixa não encontrados' })
   async graduarFaixa(
     @Param('alunoId', ParseUUIDPipe) alunoId: string,
-    @Body() dto: GraduarFaixaDto
+    @Body() dto: GraduarFaixaDto,
   ) {
     return await this.graduacaoService.graduarFaixa(alunoId, dto);
   }
 
   @Post('alunos/:alunoId/faixas')
-  @ApiOperation({ summary: 'Cria uma faixa para o aluno (usado para inicializar)' })
+  @ApiOperation({
+    summary: 'Cria uma faixa para o aluno (usado para inicializar)',
+  })
   @ApiResponse({ status: 201, description: 'Faixa criada com sucesso' })
   @ApiResponse({ status: 400, description: 'Aluno já possui faixa ativa' })
   @ApiResponse({ status: 404, description: 'Aluno ou faixa não encontrados' })
   async criarFaixaAluno(
     @Param('alunoId', ParseUUIDPipe) alunoId: string,
-    @Body() dto: CriarFaixaAlunoDto
+    @Body() dto: CriarFaixaAlunoDto,
   ) {
     return await this.graduacaoService.criarFaixaAluno(alunoId, dto);
   }
 
   @Post('alunos/:alunoId/presenca')
-  @ApiOperation({ summary: 'Registra presença e incrementa contadores de graduação' })
+  @ApiOperation({
+    summary: 'Registra presença e incrementa contadores de graduação',
+  })
   @ApiResponse({ status: 200, description: 'Presença registrada' })
   @ApiResponse({ status: 404, description: 'Aluno não encontrado' })
-  async incrementarPresenca(
-    @Param('alunoId', ParseUUIDPipe) alunoId: string
-  ) {
+  async incrementarPresenca(@Param('alunoId', ParseUUIDPipe) alunoId: string) {
     return await this.graduacaoService.incrementarPresenca(alunoId);
   }
 
@@ -112,7 +126,7 @@ export class GraduacaoController {
     @Query('pageSize') pageSize?: number,
     @Query('unidadeId') unidadeId?: string,
     @Query('alunoId') alunoId?: string,
-    @Query('categoria') categoria?: 'adulto' | 'kids' | 'todos'
+    @Query('categoria') categoria?: 'adulto' | 'kids' | 'todos',
   ) {
     return await this.graduacaoService.getHistoricoGraduacoes({
       page: page || 1,

@@ -199,7 +199,7 @@ export class SeedPerfisPermissoes1756928100000 implements MigrationInterface {
     `);
 
     // 5. Vincular permissões aos perfis
-    
+
     // Master - tem TODAS as permissões
     await queryRunner.query(`
       INSERT INTO teamcruz.perfil_permissoes (perfil_id, permissao_id)
@@ -302,13 +302,19 @@ export class SeedPerfisPermissoes1756928100000 implements MigrationInterface {
 
   public async down(queryRunner: QueryRunner): Promise<void> {
     // Remover vínculos
-    await queryRunner.query(`DELETE FROM teamcruz.usuario_perfis WHERE usuario_id IN (SELECT id FROM teamcruz.usuarios WHERE username = 'admin')`);
+    await queryRunner.query(
+      `DELETE FROM teamcruz.usuario_perfis WHERE usuario_id IN (SELECT id FROM teamcruz.usuarios WHERE username = 'admin')`,
+    );
     await queryRunner.query(`DELETE FROM teamcruz.perfil_permissoes`);
-    
+
     // Remover dados seed
-    await queryRunner.query(`DELETE FROM teamcruz.usuarios WHERE username = 'admin'`);
+    await queryRunner.query(
+      `DELETE FROM teamcruz.usuarios WHERE username = 'admin'`,
+    );
     await queryRunner.query(`DELETE FROM teamcruz.permissoes`);
-    await queryRunner.query(`DELETE FROM teamcruz.perfis WHERE nome IN ('master', 'franqueado', 'gerente_unidade', 'instrutor', 'aluno')`);
+    await queryRunner.query(
+      `DELETE FROM teamcruz.perfis WHERE nome IN ('master', 'franqueado', 'gerente_unidade', 'instrutor', 'aluno')`,
+    );
     await queryRunner.query(`DELETE FROM teamcruz.tipos_permissao`);
     await queryRunner.query(`DELETE FROM teamcruz.niveis_permissao`);
   }

@@ -6,7 +6,7 @@ export class InicialSchema1756927400000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     // Criar schema teamcruz
     await queryRunner.query(`CREATE SCHEMA IF NOT EXISTS teamcruz`);
-    
+
     // Extensão para UUID
     await queryRunner.query(`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`);
 
@@ -180,7 +180,9 @@ export class InicialSchema1756927400000 implements MigrationInterface {
     await queryRunner.query(`DROP TABLE IF EXISTS teamcruz.perfil_permissoes`);
     await queryRunner.query(`DROP TABLE IF EXISTS teamcruz.usuario_perfis`);
     await queryRunner.query(`DROP TABLE IF EXISTS teamcruz.audit_logs`);
-    await queryRunner.query(`DROP TABLE IF EXISTS teamcruz.password_reset_tokens`);
+    await queryRunner.query(
+      `DROP TABLE IF EXISTS teamcruz.password_reset_tokens`,
+    );
     await queryRunner.query(`DROP TABLE IF EXISTS teamcruz.usuarios`);
     await queryRunner.query(`DROP TABLE IF EXISTS teamcruz.perfis`);
     await queryRunner.query(`DROP TABLE IF EXISTS teamcruz.permissoes`);

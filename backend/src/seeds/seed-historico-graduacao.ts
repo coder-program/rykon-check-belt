@@ -7,7 +7,10 @@ config({ path: join(__dirname, '../../.env') });
 
 // Importar entidades
 import { Person, TipoCadastro } from '../people/entities/person.entity';
-import { FaixaDef, CategoriaFaixa } from '../graduacao/entities/faixa-def.entity';
+import {
+  FaixaDef,
+  CategoriaFaixa,
+} from '../graduacao/entities/faixa-def.entity';
 import { AlunoFaixa } from '../graduacao/entities/aluno-faixa.entity';
 import { AlunoGraduacao } from '../graduacao/entities/aluno-graduacao.entity';
 import { Usuario } from '../usuarios/entities/usuario.entity';
@@ -21,7 +24,14 @@ const AppDataSource = new DataSource({
   username: process.env.DB_USER || 'postgres',
   password: process.env.DB_PASS || 'postgres',
   database: process.env.DB_NAME || 'teamcruz',
-  entities: [Person, FaixaDef, AlunoFaixa, AlunoGraduacao, Usuario, AlunoFaixaGrau],
+  entities: [
+    Person,
+    FaixaDef,
+    AlunoFaixa,
+    AlunoGraduacao,
+    Usuario,
+    AlunoFaixaGrau,
+  ],
   synchronize: false,
   logging: true,
 });
@@ -39,7 +49,7 @@ async function seedHistoricoGraduacao() {
       // Buscar alunos existentes
       const alunos = await queryRunner.manager.find(Person, {
         where: { tipo_cadastro: TipoCadastro.ALUNO },
-        take: 2 // Pegar apenas 2 alunos para criar histórico
+        take: 2, // Pegar apenas 2 alunos para criar histórico
       });
 
       if (alunos.length === 0) {
@@ -51,7 +61,7 @@ async function seedHistoricoGraduacao() {
       // Buscar faixas para simular graduações
       const faixas = await queryRunner.manager.find(FaixaDef, {
         where: { categoria: CategoriaFaixa.ADULTO, ativo: true },
-        order: { ordem: 'ASC' }
+        order: { ordem: 'ASC' },
       });
 
       if (faixas.length < 3) {
@@ -60,11 +70,13 @@ async function seedHistoricoGraduacao() {
         return;
       }
 
-      console.log(`Criando histórico de graduação para ${alunos.length} alunos...`);
+      console.log(
+        `Criando histórico de graduação para ${alunos.length} alunos...`,
+      );
 
       for (let i = 0; i < Math.min(alunos.length, 2); i++) {
         const aluno = alunos[i];
-        
+
         // Simular graduação da faixa branca para amarela
         if (faixas.length >= 2) {
           const graduacao1 = queryRunner.manager.create(AlunoGraduacao, {
@@ -72,10 +84,12 @@ async function seedHistoricoGraduacao() {
             faixa_origem_id: faixas[0].id, // Branca
             faixa_destino_id: faixas[1].id, // Amarela
             observacao: 'Graduação de teste - primeira graduação',
-            created_at: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000) // 60 dias atrás
+            created_at: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000), // 60 dias atrás
           });
           await queryRunner.manager.save(graduacao1);
-          console.log(`Graduação criada: ${aluno.nome_completo} - Branca -> Amarela`);
+          console.log(
+            `Graduação criada: ${aluno.nome_completo} - Branca -> Amarela`,
+          );
         }
 
         // Para o primeiro aluno, simular também graduação de amarela para laranja
@@ -85,10 +99,12 @@ async function seedHistoricoGraduacao() {
             faixa_origem_id: faixas[1].id, // Amarela
             faixa_destino_id: faixas[2].id, // Laranja
             observacao: 'Graduação de teste - segunda graduação',
-            created_at: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) // 30 dias atrás
+            created_at: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // 30 dias atrás
           });
           await queryRunner.manager.save(graduacao2);
-          console.log(`Graduação criada: ${aluno.nome_completo} - Amarela -> Laranja`);
+          console.log(
+            `Graduação criada: ${aluno.nome_completo} - Amarela -> Laranja`,
+          );
         }
       }
 
@@ -98,7 +114,6 @@ async function seedHistoricoGraduacao() {
       // Verificar total de graduações
       const totalGraduacoes = await AppDataSource.manager.count(AlunoGraduacao);
       console.log(`Total de graduações no banco: ${totalGraduacoes}`);
-
     } catch (error) {
       await queryRunner.rollbackTransaction();
       console.error('Erro durante a transação:', error);
@@ -106,7 +121,6 @@ async function seedHistoricoGraduacao() {
     } finally {
       await queryRunner.release();
     }
-
   } catch (error) {
     console.error('Erro ao executar seed:', error);
   } finally {

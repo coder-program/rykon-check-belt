@@ -1,6 +1,8 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class MigrarDadosAlunosExistentes1757100200000 implements MigrationInterface {
+export class MigrarDadosAlunosExistentes1757100200000
+  implements MigrationInterface
+{
   public async up(queryRunner: QueryRunner): Promise<void> {
     // Migrar dados existentes de alunos para a nova estrutura
     await queryRunner.query(`

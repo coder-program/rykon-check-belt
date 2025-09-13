@@ -8,7 +8,12 @@ interface InputCNPJProps {
   disabled?: boolean;
 }
 
-export function InputCNPJ({ value, onChange, required, disabled }: InputCNPJProps) {
+export function InputCNPJ({
+  value,
+  onChange,
+  required,
+  disabled,
+}: InputCNPJProps) {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let v = e.target.value.replace(/\D/g, "");
     if (v.length > 14) v = v.slice(0, 14);
@@ -24,7 +29,7 @@ export function InputCNPJ({ value, onChange, required, disabled }: InputCNPJProp
       type="text"
       className={`input input-bordered w-full ${
         value && !isValid ? "border-red-500" : ""
-      } ${disabled ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+      } ${disabled ? "bg-gray-100 cursor-not-allowed" : ""}`}
       value={value}
       onChange={handleChange}
       placeholder="00.000.000/0001-00"

@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
 import { FaixaDef } from './entities/faixa-def.entity';
@@ -7,8 +11,15 @@ import { AlunoFaixaGrau, OrigemGrau } from './entities/aluno-faixa-grau.entity';
 import { AlunoGraduacao } from './entities/aluno-graduacao.entity';
 import { Person, TipoCadastro } from '../people/entities/person.entity';
 import { StatusGraduacaoDto } from './dto/status-graduacao.dto';
-import { ProximoGraduarDto, ListaProximosGraduarDto } from './dto/proximos-graduar.dto';
-import { ConcederGrauDto, GraduarFaixaDto, CriarFaixaAlunoDto } from './dto/conceder-grau.dto';
+import {
+  ProximoGraduarDto,
+  ListaProximosGraduarDto,
+} from './dto/proximos-graduar.dto';
+import {
+  ConcederGrauDto,
+  GraduarFaixaDto,
+  CriarFaixaAlunoDto,
+} from './dto/conceder-grau.dto';
 
 @Injectable()
 export class GraduacaoService {
@@ -77,9 +88,13 @@ export class GraduacaoService {
 
     const faltamAulas = faixaAtiva.getAulasFaltantes();
     const prontoParaGraduar = faixaAtiva.isProntoParaGraduar();
-    const progressoPercentual = faixaAtiva.faixaDef.aulas_por_grau > 0
-      ? Math.min(1, faixaAtiva.presencas_no_ciclo / faixaAtiva.faixaDef.aulas_por_grau)
-      : 0;
+    const progressoPercentual =
+      faixaAtiva.faixaDef.aulas_por_grau > 0
+        ? Math.min(
+            1,
+            faixaAtiva.presencas_no_ciclo / faixaAtiva.faixaDef.aulas_por_grau,
+          )
+        : 0;
 
     // Buscar próxima faixa na sequência
     const proximaFaixa = await this.getProximaFaixa(faixaAtiva.faixaDef.id);
@@ -123,7 +138,9 @@ export class GraduacaoService {
 
     // Filtro por unidade
     if (params.unidadeId) {
-      query.andWhere('a.unidade_id = :unidadeId', { unidadeId: params.unidadeId });
+      query.andWhere('a.unidade_id = :unidadeId', {
+        unidadeId: params.unidadeId,
+      });
     }
 
     // Filtro por categoria
@@ -138,8 +155,8 @@ export class GraduacaoService {
     // Ordenar por quem está mais próximo de graduar
     query.addSelect(
       'CASE WHEN af.graus_atual >= fd.graus_max THEN 0 ' +
-      'ELSE GREATEST(fd.aulas_por_grau - af.presencas_no_ciclo, 0) END',
-      'faltam_aulas'
+        'ELSE GREATEST(fd.aulas_por_grau - af.presencas_no_ciclo, 0) END',
+      'faltam_aulas',
     );
     query.orderBy('faltam_aulas', 'ASC');
     query.addOrderBy('fd.ordem', 'ASC');
@@ -151,12 +168,13 @@ export class GraduacaoService {
       .getManyAndCount();
 
     // Mapear para DTO
-    const proximosGraduar: ProximoGraduarDto[] = items.map(af => {
+    const proximosGraduar: ProximoGraduarDto[] = items.map((af) => {
       const faltamAulas = af.getAulasFaltantes();
       const prontoParaGraduar = af.isProntoParaGraduar();
-      const progressoPercentual = af.faixaDef.aulas_por_grau > 0
-        ? Math.min(1, af.presencas_no_ciclo / af.faixaDef.aulas_por_grau)
-        : 0;
+      const progressoPercentual =
+        af.faixaDef.aulas_por_grau > 0
+          ? Math.min(1, af.presencas_no_ciclo / af.faixaDef.aulas_por_grau)
+          : 0;
 
       return {
         alunoId: af.aluno.id,
@@ -187,7 +205,7 @@ export class GraduacaoService {
    */
   async concederGrau(
     alunoId: string,
-    dto: ConcederGrauDto
+    dto: ConcederGrauDto,
   ): Promise<AlunoFaixaGrau> {
     const faixaAtiva = await this.getFaixaAtivaAluno(alunoId);
 
@@ -197,12 +215,12 @@ export class GraduacaoService {
 
     if (faixaAtiva.graus_atual >= faixaAtiva.faixaDef.graus_max) {
       throw new BadRequestException(
-        `Aluno já possui o número máximo de graus (${faixaAtiva.faixaDef.graus_max}) para esta faixa`
+        `Aluno já possui o número máximo de graus (${faixaAtiva.faixaDef.graus_max}) para esta faixa`,
       );
     }
 
     // Usar transação para garantir consistência
-    return await this.dataSource.transaction(async manager => {
+    return await this.dataSource.transaction(async (manager) => {
       // Incrementar grau e zerar contador do ciclo
       faixaAtiva.graus_atual += 1;
       faixaAtiva.presencas_no_ciclo = 0;
@@ -226,7 +244,7 @@ export class GraduacaoService {
    */
   async graduarFaixa(
     alunoId: string,
-    dto: GraduarFaixaDto
+    dto: GraduarFaixaDto,
   ): Promise<AlunoGraduacao> {
     const faixaAtiva = await this.getFaixaAtivaAluno(alunoId);
 
@@ -245,12 +263,12 @@ export class GraduacaoService {
     // Verificar se a graduação faz sentido (ordem crescente)
     if (faixaDestino.ordem <= faixaAtiva.faixaDef.ordem) {
       throw new BadRequestException(
-        'A faixa de destino deve ser superior à faixa atual'
+        'A faixa de destino deve ser superior à faixa atual',
       );
     }
 
     // Usar transação para garantir consistência
-    return await this.dataSource.transaction(async manager => {
+    return await this.dataSource.transaction(async (manager) => {
       // 1. Finalizar faixa atual
       faixaAtiva.ativa = false;
       faixaAtiva.dt_fim = new Date();
@@ -303,7 +321,7 @@ export class GraduacaoService {
 
     let grauConcedido = false;
 
-    await this.dataSource.transaction(async manager => {
+    await this.dataSource.transaction(async (manager) => {
       // Incrementar contadores
       faixaAtiva.presencas_no_ciclo += 1;
       faixaAtiva.presencas_total_fx += 1;
@@ -318,7 +336,8 @@ export class GraduacaoService {
         const grau = manager.create(AlunoFaixaGrau, {
           aluno_faixa_id: faixaAtiva.id,
           grau_num: faixaAtiva.graus_atual,
-          observacao: 'Grau concedido automaticamente por atingir o número de presenças',
+          observacao:
+            'Grau concedido automaticamente por atingir o número de presenças',
           origem: OrigemGrau.AUTOMATICO,
         });
         await manager.save(grau);
@@ -342,7 +361,7 @@ export class GraduacaoService {
    */
   async criarFaixaAluno(
     alunoId: string,
-    dto: CriarFaixaAlunoDto
+    dto: CriarFaixaAlunoDto,
   ): Promise<AlunoFaixa> {
     const aluno = await this.personRepository.findOne({
       where: { id: alunoId, tipo_cadastro: TipoCadastro.ALUNO },
@@ -393,7 +412,9 @@ export class GraduacaoService {
   /**
    * Busca a próxima faixa na sequência
    */
-  private async getProximaFaixa(faixaAtualId: string): Promise<FaixaDef | null> {
+  private async getProximaFaixa(
+    faixaAtualId: string,
+  ): Promise<FaixaDef | null> {
     const faixaAtual = await this.faixaDefRepository.findOne({
       where: { id: faixaAtualId },
     });
@@ -418,7 +439,8 @@ export class GraduacaoService {
    * Lista todas as faixas disponíveis
    */
   async listarFaixas(categoria?: string): Promise<FaixaDef[]> {
-    const query = this.faixaDefRepository.createQueryBuilder('fd')
+    const query = this.faixaDefRepository
+      .createQueryBuilder('fd')
       .where('fd.ativo = :ativo', { ativo: true });
 
     if (categoria) {
@@ -456,12 +478,17 @@ export class GraduacaoService {
     }
 
     if (params.unidadeId) {
-      query.andWhere('a.unidade_id = :unidadeId', { unidadeId: params.unidadeId });
+      query.andWhere('a.unidade_id = :unidadeId', {
+        unidadeId: params.unidadeId,
+      });
     }
 
     if (params.categoria && params.categoria !== 'todos') {
-      const categoriaFiltro = params.categoria === 'kids' ? 'INFANTIL' : 'ADULTO';
-      query.andWhere('fd.categoria = :categoria', { categoria: categoriaFiltro });
+      const categoriaFiltro =
+        params.categoria === 'kids' ? 'INFANTIL' : 'ADULTO';
+      query.andWhere('fd.categoria = :categoria', {
+        categoria: categoriaFiltro,
+      });
     }
 
     const [items, total] = await query
@@ -470,7 +497,7 @@ export class GraduacaoService {
       .getManyAndCount();
 
     // Mapear para formato de resposta
-    const historicoItems = items.map(graduacao => ({
+    const historicoItems = items.map((graduacao) => ({
       id: graduacao.id,
       alunoId: graduacao.aluno_id,
       nomeAluno: graduacao.aluno.nome_completo,

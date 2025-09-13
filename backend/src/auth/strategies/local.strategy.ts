@@ -8,14 +8,17 @@ export class LocalStrategy extends PassportStrategy(Strategy) {
   constructor(private authService: AuthService) {
     super({
       usernameField: 'email', // Diz ao Passport para usar 'email' em vez de 'username'
-      passwordField: 'password'
+      passwordField: 'password',
     });
   }
 
   async validate(email: string, password: string): Promise<any> {
     console.log('🔑 LocalStrategy.validate - Email:', email);
-    console.log('🔑 LocalStrategy.validate - Password length:', password?.length);
-    
+    console.log(
+      '🔑 LocalStrategy.validate - Password length:',
+      password?.length,
+    );
+
     const user = await this.authService.validateUser(email, password);
     console.log('🔑 LocalStrategy.validate - User validated?', !!user);
 

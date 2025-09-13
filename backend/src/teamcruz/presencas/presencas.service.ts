@@ -48,26 +48,27 @@ export class PresencasService {
   }
 
   async checkin(pessoaId: string) {
-    const pessoa = await this.personRepo.findOne({ 
-      where: { 
+    const pessoa = await this.personRepo.findOne({
+      where: {
         id: pessoaId,
-        tipo_cadastro: TipoCadastro.ALUNO 
-      } 
+        tipo_cadastro: TipoCadastro.ALUNO,
+      },
     });
     if (!pessoa) throw new Error('Aluno não encontrado');
-    
+
     // Salvar presença
-    const p = this.presencasRepo.create({ 
+    const p = this.presencasRepo.create({
       pessoaId,
       pessoa,
-      data: new Date() 
+      data: new Date(),
     });
     const presencaSalva = await this.presencasRepo.save(p);
-    
+
     // Incrementar contador de graduação e verificar se deve conceder grau
     try {
-      const { grauConcedido, statusAtualizado } = await this.graduacaoService.incrementarPresenca(pessoaId);
-      
+      const { grauConcedido, statusAtualizado } =
+        await this.graduacaoService.incrementarPresenca(pessoaId);
+
       // Retornar presença com informação adicional sobre graduação
       return {
         ...presencaSalva,
@@ -78,7 +79,9 @@ export class PresencasService {
       };
     } catch (error) {
       // Se não houver faixa ativa, apenas retornar a presença
-      console.log(`Aluno ${pessoaId} sem faixa ativa, presença registrada sem atualizar graduação`);
+      console.log(
+        `Aluno ${pessoaId} sem faixa ativa, presença registrada sem atualizar graduação`,
+      );
       return presencaSalva;
     }
   }

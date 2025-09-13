@@ -113,7 +113,7 @@ const nextConfig: NextConfig = {
     // Turbo mode para builds mais rápidas
     turbo: {
       loaders: {
-        '.svg': ['@svgr/webpack'],
+        ".svg": ["@svgr/webpack"],
       },
     },
     // Disable image optimization for Docker
@@ -147,12 +147,12 @@ const nextConfig: NextConfig = {
       config.optimization = {
         ...config.optimization,
         splitChunks: {
-          chunks: 'all',
+          chunks: "all",
           cacheGroups: {
             vendor: {
               test: /[\\/]node_modules[\\/]/,
-              name: 'vendors',
-              chunks: 'all',
+              name: "vendors",
+              chunks: "all",
             },
           },
         },

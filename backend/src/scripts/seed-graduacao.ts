@@ -15,11 +15,15 @@ async function bootstrap() {
       FROM pessoas 
       WHERE tipo_cadastro = 'ALUNO' AND status = 'ATIVO'
     `);
-    
-    console.log(`📊 Encontrados ${alunos.length} alunos ativos na tabela pessoas\n`);
-    
+
+    console.log(
+      `📊 Encontrados ${alunos.length} alunos ativos na tabela pessoas\n`,
+    );
+
     if (alunos.length === 0) {
-      console.log('⚠️  Nenhum aluno encontrado. Certifique-se de ter alunos cadastrados primeiro.');
+      console.log(
+        '⚠️  Nenhum aluno encontrado. Certifique-se de ter alunos cadastrados primeiro.',
+      );
       await app.close();
       return;
     }
@@ -30,7 +34,7 @@ async function bootstrap() {
       SELECT id, codigo, nome_exibicao FROM teamcruz.faixa_def 
       WHERE categoria = 'ADULTO' ORDER BY ordem ASC
     `);
-    
+
     if (faixasExistentes.length === 0) {
       console.log('   Inserindo definições de faixas...');
       // Se não houver faixas, tentar criar usando a migração existente
@@ -45,20 +49,25 @@ async function bootstrap() {
         ON CONFLICT (codigo) DO NOTHING
       `);
     } else {
-      console.log(`   ✅ ${faixasExistentes.length} faixas já existem no sistema`);
+      console.log(
+        `   ✅ ${faixasExistentes.length} faixas já existem no sistema`,
+      );
     }
     console.log('');
 
     // 3. Criar registros em aluno_faixa
     console.log('📝 Criando registros de graduação para cada aluno...');
-    
+
     for (const aluno of alunos) {
       // Verificar se já existe
-      const existing = await dataSource.query(`
+      const existing = await dataSource.query(
+        `
         SELECT id FROM teamcruz.aluno_faixa 
         WHERE aluno_id = $1 AND ativa = true
-      `, [aluno.id]);
-      
+      `,
+        [aluno.id],
+      );
+
       if (existing.length > 0) {
         console.log(`   ⏭️  ${aluno.nome_completo} - já possui faixa ativa`);
         continue;
@@ -67,26 +76,32 @@ async function bootstrap() {
       // Buscar o ID real da faixa baseado no código
       const faixaUpper = (aluno.faixa_atual || 'BRANCA').toUpperCase();
       let codigoFaixa = 'BRANCA'; // Default
-      
+
       if (faixaUpper.includes('AZUL')) codigoFaixa = 'AZUL';
       else if (faixaUpper.includes('ROXA')) codigoFaixa = 'ROXA';
       else if (faixaUpper.includes('MARROM')) codigoFaixa = 'MARROM';
       else if (faixaUpper.includes('PRETA')) codigoFaixa = 'PRETA';
-      
+
       // Buscar o ID real da faixa
-      const faixaResult = await dataSource.query(`
+      const faixaResult = await dataSource.query(
+        `
         SELECT id FROM teamcruz.faixa_def WHERE codigo = $1
-      `, [codigoFaixa]);
-      
+      `,
+        [codigoFaixa],
+      );
+
       if (faixaResult.length === 0) {
-        console.log(`   ⚠️  Faixa ${codigoFaixa} não encontrada, pulando ${aluno.nome_completo}`);
+        console.log(
+          `   ⚠️  Faixa ${codigoFaixa} não encontrada, pulando ${aluno.nome_completo}`,
+        );
         continue;
       }
-      
+
       const faixaDefId = faixaResult[0].id;
 
       // Inserir registro
-      await dataSource.query(`
+      await dataSource.query(
+        `
         INSERT INTO teamcruz.aluno_faixa (
           aluno_id, 
           faixa_def_id, 
@@ -96,15 +111,19 @@ async function bootstrap() {
           presencas_no_ciclo, 
           presencas_total_fx
         ) VALUES ($1, $2, true, CURRENT_DATE - INTERVAL '6 months', $3, $4, $5)
-      `, [
-        aluno.id,
-        faixaDefId,
-        aluno.grau_atual || 0,
-        Math.floor(Math.random() * 20), // Simula presenças no ciclo atual
-        Math.floor(Math.random() * 100) // Simula total de presenças
-      ]);
-      
-      console.log(`   ✅ ${aluno.nome_completo} - Faixa: ${aluno.faixa_atual || 'Branca'}, Graus: ${aluno.grau_atual || 0}`);
+      `,
+        [
+          aluno.id,
+          faixaDefId,
+          aluno.grau_atual || 0,
+          Math.floor(Math.random() * 20), // Simula presenças no ciclo atual
+          Math.floor(Math.random() * 100), // Simula total de presenças
+        ],
+      );
+
+      console.log(
+        `   ✅ ${aluno.nome_completo} - Faixa: ${aluno.faixa_atual || 'Branca'}, Graus: ${aluno.grau_atual || 0}`,
+      );
     }
 
     // 4. Verificar resultado
@@ -126,12 +145,15 @@ async function bootstrap() {
     console.log('🏆 Alunos próximos a graduar:\n');
     resultado.forEach((r: any) => {
       console.log(`   ${r.nome_completo}`);
-      console.log(`   └─ Faixa: ${r.faixa} | Graus: ${r.graus_atual} | Faltam: ${r.faltam_aulas} aulas\n`);
+      console.log(
+        `   └─ Faixa: ${r.faixa} | Graus: ${r.graus_atual} | Faltam: ${r.faltam_aulas} aulas\n`,
+      );
     });
 
     console.log('✅ Dados de graduação populados com sucesso!');
-    console.log('🎯 Agora você pode acessar /teamcruz no frontend para ver os dados');
-
+    console.log(
+      '🎯 Agora você pode acessar /teamcruz no frontend para ver os dados',
+    );
   } catch (error) {
     console.error('❌ Erro ao popular dados:', error);
   } finally {

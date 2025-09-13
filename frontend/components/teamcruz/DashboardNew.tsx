@@ -55,11 +55,11 @@ import { useUnidadesStats } from "@/hooks/useUnidadesStats";
 import ConfiguracoesModal from "./ConfiguracoesModal";
 import CampanhasManager from "./CampanhasManager";
 import RedeSocialTeam from "./RedeSocialTeam";
-import { 
-  getProximosGraduar, 
+import {
+  getProximosGraduar,
   getHistoricoGraduacoes,
   type ProximoGraduar,
-  type HistoricoGraduacao 
+  type HistoricoGraduacao,
 } from "@/lib/graduacaoApi";
 
 // Dados mockados equivalentes ao CRA
@@ -509,16 +509,16 @@ export default function DashboardNew() {
   const [debouncedSearch, setDebouncedSearch] = React.useState("");
   const [selectedAlunos, setSelectedAlunos] = React.useState<any[]>([]);
   const [presencasRegistradas, setPresencasRegistradas] = React.useState<any[]>(
-    []
+    [],
   );
   const [totalPresencasHoje, setTotalPresencasHoje] = React.useState(
-    mockData.stats.presencasHoje
+    mockData.stats.presencasHoje,
   );
   const [showQRModal, setShowQRModal] = React.useState(false);
   const [showCPFModal, setShowCPFModal] = React.useState(false);
   const [cpfInput, setCpfInput] = React.useState("");
   const [selectedAlunoQR, setSelectedAlunoQR] = React.useState<any | null>(
-    null
+    null,
   );
   const [showLocationModal, setShowLocationModal] = React.useState(false);
   const [showConfigModal, setShowConfigModal] = React.useState(false);
@@ -538,7 +538,7 @@ export default function DashboardNew() {
         .filter(
           (a) =>
             a.nome.toLowerCase().includes(q) ||
-            a.matricula.toLowerCase().includes(q)
+            a.matricula.toLowerCase().includes(q),
         )
         .filter((a) => {
           const isKids = parseKidsPattern(a.faixa).isKids;
@@ -547,7 +547,7 @@ export default function DashboardNew() {
           return true;
         });
     },
-    [debouncedSearch, filterFaixa]
+    [debouncedSearch, filterFaixa],
   );
 
   // Query para Alunos (aba Alunos) - DADOS REAIS DO BANCO
@@ -714,20 +714,17 @@ export default function DashboardNew() {
 
   // Query para buscar dados REAIS de graduação do backend
   const proximosQuery = useQuery({
-    queryKey: [
-      "proximos-graus",
-      overviewFilterFaixa,
-      selectedUnidade,
-    ],
+    queryKey: ["proximos-graus", overviewFilterFaixa, selectedUnidade],
     queryFn: async () => {
       try {
         const response = await getProximosGraduar({
           page: 1,
           pageSize: 100, // Buscar mais alunos de uma vez
           categoria: overviewFilterFaixa,
-          unidadeId: selectedUnidade === "unidade-1" ? undefined : selectedUnidade,
+          unidadeId:
+            selectedUnidade === "unidade-1" ? undefined : selectedUnidade,
         });
-        
+
         // Adaptar os dados para o formato esperado pelo componente
         const adaptedItems = response.items.map((item: ProximoGraduar) => ({
           id: item.alunoId,
@@ -740,31 +737,33 @@ export default function DashboardNew() {
           presencasTotalFaixa: item.presencasTotalFaixa,
           foto: null,
         }));
-        
+
         // Ordenar localmente
-        const sorted = [...adaptedItems].sort((a, b) => 
-          overviewSort === "faltam-asc" 
-            ? a.faltam - b.faltam 
-            : b.faltam - a.faltam
+        const sorted = [...adaptedItems].sort((a, b) =>
+          overviewSort === "faltam-asc"
+            ? a.faltam - b.faltam
+            : b.faltam - a.faltam,
         );
-        
+
         // Filtrar por busca localmente
-        const filtered = overviewDebounced 
-          ? sorted.filter(a => a.nome.toLowerCase().includes(overviewDebounced.toLowerCase()))
+        const filtered = overviewDebounced
+          ? sorted.filter((a) =>
+              a.nome.toLowerCase().includes(overviewDebounced.toLowerCase()),
+            )
           : sorted;
-        
+
         return { items: filtered, total: response.total };
       } catch (error) {
-        console.error('Erro ao buscar próximos a graduar:', error);
+        console.error("Erro ao buscar próximos a graduar:", error);
         // Fallback para dados mockados em caso de erro
-        return { 
+        return {
           items: mockData.proximosGraus.map((item, idx) => ({
             ...item,
             id: item.id || idx + 1,
             prontoParaGraduar: item.faltam === 0,
-            progressoPercentual: 1 - (item.faltam / 40),
+            progressoPercentual: 1 - item.faltam / 40,
           })),
-          total: mockData.proximosGraus.length 
+          total: mockData.proximosGraus.length,
         };
       }
     },
@@ -773,13 +772,14 @@ export default function DashboardNew() {
 
   // Query para buscar dados de graduação para aba de graduações
   const graduacoesQuery = useQuery({
-    queryKey: ['proximos-graus-graduacoes', selectedUnidade],
+    queryKey: ["proximos-graus-graduacoes", selectedUnidade],
     queryFn: async () => {
       const response = await getProximosGraduar({
         page: 1,
         pageSize: 20,
-        categoria: 'todos',
-        unidadeId: selectedUnidade === "unidade-1" ? undefined : selectedUnidade,
+        categoria: "todos",
+        unidadeId:
+          selectedUnidade === "unidade-1" ? undefined : selectedUnidade,
       });
       return response.items;
     },
@@ -789,13 +789,14 @@ export default function DashboardNew() {
 
   // Query para buscar histórico de graduações
   const historicoQuery = useQuery({
-    queryKey: ['historico-graduacoes', selectedUnidade],
+    queryKey: ["historico-graduacoes", selectedUnidade],
     queryFn: async () => {
       const response = await getHistoricoGraduacoes({
         page: 1,
         pageSize: 10,
-        categoria: 'todos',
-        unidadeId: selectedUnidade === "unidade-1" ? undefined : selectedUnidade,
+        categoria: "todos",
+        unidadeId:
+          selectedUnidade === "unidade-1" ? undefined : selectedUnidade,
       });
       return response.items;
     },
@@ -807,7 +808,7 @@ export default function DashboardNew() {
   const handleCheckinAluno = (
     aluno: any,
     aula: any,
-    skipLocationCheck: boolean = false
+    skipLocationCheck: boolean = false,
   ) => {
     // Valida localização antes do check-in (exceto se skipLocationCheck for true)
     if (!skipLocationCheck) {
@@ -817,7 +818,7 @@ export default function DashboardNew() {
         // Se requer confirmação do instrutor
         if (locationValidation.requireConfirmation) {
           const confirmed = window.confirm(
-            `${locationValidation.message}\n\nDeseja continuar com o check-in mesmo assim?\n(Requer autorização do instrutor)`
+            `${locationValidation.message}\n\nDeseja continuar com o check-in mesmo assim?\n(Requer autorização do instrutor)`,
           );
 
           if (!confirmed) {
@@ -853,12 +854,12 @@ export default function DashboardNew() {
 
       // Verifica se já não foi registrada hoje
       const presencasHoje = JSON.parse(
-        localStorage.getItem("presencas_hoje") || "[]"
+        localStorage.getItem("presencas_hoje") || "[]",
       );
 
       if (
         !presencasHoje.find(
-          (p: any) => p.alunoId === aluno.id && p.data === hoje
+          (p: any) => p.alunoId === aluno.id && p.data === hoje,
         )
       ) {
         const novaPresenca = {
@@ -890,7 +891,7 @@ export default function DashboardNew() {
               background: "#10b981",
               color: "white",
             },
-          }
+          },
         );
       } else {
         toast.error(`${aluno.nome} já fez check-in hoje!`, {
@@ -905,15 +906,15 @@ export default function DashboardNew() {
       // Remove a presença do localStorage
       const hoje = format(new Date(), "yyyy-MM-dd");
       const presencasHoje = JSON.parse(
-        localStorage.getItem("presencas_hoje") || "[]"
+        localStorage.getItem("presencas_hoje") || "[]",
       );
       const novasPresencas = presencasHoje.filter(
-        (p: any) => !(p.alunoId === aluno.id && p.data === hoje)
+        (p: any) => !(p.alunoId === aluno.id && p.data === hoje),
       );
       localStorage.setItem("presencas_hoje", JSON.stringify(novasPresencas));
 
       setPresencasRegistradas((prev) =>
-        prev.filter((p) => p.alunoId !== aluno.id)
+        prev.filter((p) => p.alunoId !== aluno.id),
       );
       setTotalPresencasHoje((prev) => Math.max(0, prev - 1));
 
@@ -937,12 +938,12 @@ export default function DashboardNew() {
             color: "white",
             fontSize: "16px",
           },
-        }
+        },
       );
 
       // Salva histórico da aula
       const historico = JSON.parse(
-        localStorage.getItem("historico_aulas") || "[]"
+        localStorage.getItem("historico_aulas") || "[]",
       );
       historico.push({
         id: Date.now(),
@@ -981,12 +982,12 @@ export default function DashboardNew() {
   React.useEffect(() => {
     const hoje = format(new Date(), "yyyy-MM-dd");
     const presencasHoje = JSON.parse(
-      localStorage.getItem("presencas_hoje") || "[]"
+      localStorage.getItem("presencas_hoje") || "[]",
     );
     const presencasDeHoje = presencasHoje.filter((p: any) => p.data === hoje);
     setPresencasRegistradas(presencasDeHoje);
     setTotalPresencasHoje(
-      mockData.stats.presencasHoje + presencasDeHoje.length
+      mockData.stats.presencasHoje + presencasDeHoje.length,
     );
   }, []);
 
@@ -1299,8 +1300,8 @@ export default function DashboardNew() {
                             index === 0
                               ? "bg-yellow-400 text-yellow-900"
                               : index === 1
-                              ? "bg-gray-400 text-white"
-                              : "bg-orange-400 text-orange-900"
+                                ? "bg-gray-400 text-white"
+                                : "bg-orange-400 text-orange-900"
                           }`}
                         >
                           {index + 1}
@@ -1354,8 +1355,8 @@ export default function DashboardNew() {
                           aula.status === "concluída"
                             ? "border-green-500"
                             : aula.status === "em andamento"
-                            ? "border-blue-500 animate-pulse"
-                            : "border-gray-200"
+                              ? "border-blue-500 animate-pulse"
+                              : "border-gray-200"
                         }`}
                       >
                         <div className="flex justify-between items-start mb-2">
@@ -1376,8 +1377,8 @@ export default function DashboardNew() {
                               aula.status === "concluída"
                                 ? "bg-green-100 text-green-800"
                                 : aula.status === "em andamento"
-                                ? "bg-blue-100 text-blue-800"
-                                : "bg-gray-100 text-gray-700"
+                                  ? "bg-blue-100 text-blue-800"
+                                  : "bg-gray-100 text-gray-700"
                             }`}
                           >
                             {aula.status}
@@ -1485,8 +1486,8 @@ export default function DashboardNew() {
                           isInAcademy === true
                             ? "bg-green-50 border border-green-300"
                             : isInAcademy === false
-                            ? "bg-yellow-50 border border-yellow-300"
-                            : "bg-gray-50 border border-gray-300"
+                              ? "bg-yellow-50 border border-yellow-300"
+                              : "bg-gray-50 border border-gray-300"
                         }`}
                       >
                         <div className="flex items-center gap-2">
@@ -1495,18 +1496,18 @@ export default function DashboardNew() {
                               isInAcademy === true
                                 ? "text-green-600"
                                 : isInAcademy === false
-                                ? "text-yellow-600"
-                                : "text-gray-600"
+                                  ? "text-yellow-600"
+                                  : "text-gray-600"
                             }`}
                           />
                           <span className="text-sm font-medium">
                             {isInAcademy === true
                               ? "✅ Você está dentro da academia"
                               : isInAcademy === false
-                              ? "⚠️ Você está fora da academia"
-                              : locationLoading
-                              ? "📍 Obtendo localização..."
-                              : "📍 Localização não disponível"}
+                                ? "⚠️ Você está fora da academia"
+                                : locationLoading
+                                  ? "📍 Obtendo localização..."
+                                  : "📍 Localização não disponível"}
                           </span>
                         </div>
                         {!locationLoading && (
@@ -1571,7 +1572,7 @@ export default function DashboardNew() {
                   <div className="h-[600px]">
                     {(() => {
                       const items = (checkinQuery.data?.pages || []).flatMap(
-                        (p) => p.items
+                        (p) => p.items,
                       );
                       const itemCount = items.length;
                       const isItemLoaded = (index: number) => index < itemCount;
@@ -1604,7 +1605,7 @@ export default function DashboardNew() {
                         }
                         const aluno = items[index];
                         const marcado = selectedAlunos.some(
-                          (aa) => aa.id === aluno.id
+                          (aa) => aa.id === aluno.id,
                         );
                         return (
                           <div style={style}>
@@ -1720,7 +1721,7 @@ export default function DashboardNew() {
               <div className="h-[700px]">
                 {(() => {
                   const items = (alunosQuery.data?.pages || []).flatMap(
-                    (p) => p.items
+                    (p) => p.items,
                   );
                   const itemCount = items.length;
                   const loadMoreIfNeeded = ({
@@ -1775,7 +1776,7 @@ export default function DashboardNew() {
                               <div className="text-right">
                                 <span
                                   className={`badge ${getBeltClass(
-                                    aluno.faixa
+                                    aluno.faixa,
                                   )} mr-2`}
                                 >
                                   {aluno.faixa}
@@ -1874,14 +1875,14 @@ export default function DashboardNew() {
                   itemCount={
                     professoresQuery.data.pages.reduce(
                       (acc, page) => acc + page.items.length,
-                      0
+                      0,
                     ) + (professoresQuery.hasNextPage ? 1 : 0)
                   }
                   itemSize={120}
                   onItemsRendered={({ visibleStopIndex }) => {
                     const totalItems = professoresQuery.data.pages.reduce(
                       (acc, page) => acc + page.items.length,
-                      0
+                      0,
                     );
                     if (
                       visibleStopIndex >= totalItems - 5 &&
@@ -1895,7 +1896,7 @@ export default function DashboardNew() {
                   {({ index, style }) => {
                     const allItems = professoresQuery.data.pages.reduce(
                       (acc, page) => [...acc, ...page.items],
-                      []
+                      [],
                     );
                     const professor = allItems[index];
 
@@ -2234,138 +2235,161 @@ export default function DashboardNew() {
             </motion.div>
           )}
 
-          {selectedTab === "graduacoes" && (() => {
-            // Extrair os dados das queries para usar no JSX
-            const proximosGraduar = graduacoesQuery.data || [];
-            const historicoGraduacoes = historicoQuery.data || [];
-            
-            return (
-              <motion.div
-                key="graduacoes"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                className="space-y-6"
-              >
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                  <Card className="lg:col-span-2 bg-white border border-blue-200">
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <GraduationCap className="h-5 w-5 text-warning" />{" "}
-                        Próximos a Graduar
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                      {graduacoesQuery.isLoading ? (
-                        <div className="space-y-3">
-                          {[1, 2, 3].map(i => (
-                            <div key={i} className="skeleton h-20 w-full rounded-lg" />
-                          ))}
-                        </div>
-                      ) : proximosGraduar.length === 0 ? (
-                        <div className="text-center py-8 text-gray-500">
-                          <GraduationCap className="h-12 w-12 mx-auto mb-2 text-gray-400" />
-                          <p>Nenhum aluno próximo a graduar</p>
-                        </div>
-                      ) : (
-                        proximosGraduar.slice(0, 10).map((a: any) => (
-                          <div
-                            key={a.alunoId || a.id}
-                            className="flex items-center justify-between bg-white rounded-xl p-3 border-2 border-blue-100 hover:border-blue-300 transition-all"
-                          >
-                            <div className="flex items-center gap-3">
-                              {a.foto ? (
-                                <img
-                                  src={a.foto}
-                                  alt={a.nomeCompleto || a.nome}
-                                  className="w-10 h-10 rounded-full object-cover"
-                                />
-                              ) : (
-                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-bold text-sm">
-                                  {(a.nomeCompleto || a.nome)
-                                    .split(" ")
-                                    .map((n: string) => n[0])
-                                    .join("")}
-                                </div>
-                              )}
-                              <div>
-                                <p className="font-medium text-gray-900">
-                                  {a.nomeCompleto || a.nome}
-                                </p>
-                                <div className="mt-1">
-                                  <BeltTip 
-                                    faixa={a.faixa} 
-                                    graus={a.grausAtual || a.graus || 0} 
-                                  />
-                                </div>
-                              </div>
-                            </div>
-                            <div className="text-right">
-                              <span className="text-xs text-gray-600">Faltam</span>
-                              <div className="text-xl font-bold text-blue-600">
-                                {a.faltamAulas || a.faltam || 0}
-                              </div>
-                              <span className="text-xs text-gray-600">aulas</span>
-                            </div>
-                          </div>
-                        ))
-                      )}
-                    </CardContent>
-                  </Card>
+          {selectedTab === "graduacoes" &&
+            (() => {
+              // Extrair os dados das queries para usar no JSX
+              const proximosGraduar = graduacoesQuery.data || [];
+              const historicoGraduacoes = historicoQuery.data || [];
 
-                  <Card className="bg-white border border-blue-200">
-                    <CardHeader>
-                      <CardTitle>Histórico de Graduações</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                      {historicoQuery.isLoading ? (
-                        <div className="space-y-3">
-                          {[1, 2, 3].map(i => (
-                            <div key={i} className="skeleton h-16 w-full rounded-lg" />
-                          ))}
-                        </div>
-                      ) : historicoGraduacoes.length === 0 ? (
-                        <div className="text-center py-8 text-gray-500">
-                          <Trophy className="h-12 w-12 mx-auto mb-2 text-gray-400" />
-                          <p className="text-sm">Nenhuma graduação registrada</p>
-                          <p className="text-xs mt-1">As graduações aparecerão aqui</p>
-                        </div>
-                      ) : (
-                        historicoGraduacoes.map((g: HistoricoGraduacao) => (
-                          <div
-                            key={g.id}
-                            className="bg-white p-3 rounded-xl border-2 border-gray-200 hover:border-blue-300 transition-all"
-                          >
-                            <p className="font-medium text-gray-900">
-                              {g.nomeAluno}
-                            </p>
-                            <div className="flex items-center gap-1 mt-1">
-                              <span 
-                                className="px-2 py-0.5 rounded text-xs font-medium"
-                                style={{ backgroundColor: g.faixaAnteriorCor + '20', color: g.faixaAnteriorCor }}
-                              >
-                                {g.faixaAnterior}
-                              </span>
-                              <span className="text-xs text-gray-500">→</span>
-                              <span 
-                                className="px-2 py-0.5 rounded text-xs font-medium"
-                                style={{ backgroundColor: g.novaFaixaCor + '20', color: g.novaFaixaCor }}
-                              >
-                                {g.novaFaixa}
-                              </span>
+              return (
+                <motion.div
+                  key="graduacoes"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  className="space-y-6"
+                >
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <Card className="lg:col-span-2 bg-white border border-blue-200">
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          <GraduationCap className="h-5 w-5 text-warning" />{" "}
+                          Próximos a Graduar
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        {graduacoesQuery.isLoading ? (
+                          <div className="space-y-3">
+                            {[1, 2, 3].map((i) => (
+                              <div
+                                key={i}
+                                className="skeleton h-20 w-full rounded-lg"
+                              />
+                            ))}
+                          </div>
+                        ) : proximosGraduar.length === 0 ? (
+                          <div className="text-center py-8 text-gray-500">
+                            <GraduationCap className="h-12 w-12 mx-auto mb-2 text-gray-400" />
+                            <p>Nenhum aluno próximo a graduar</p>
+                          </div>
+                        ) : (
+                          proximosGraduar.slice(0, 10).map((a: any) => (
+                            <div
+                              key={a.alunoId || a.id}
+                              className="flex items-center justify-between bg-white rounded-xl p-3 border-2 border-blue-100 hover:border-blue-300 transition-all"
+                            >
+                              <div className="flex items-center gap-3">
+                                {a.foto ? (
+                                  <img
+                                    src={a.foto}
+                                    alt={a.nomeCompleto || a.nome}
+                                    className="w-10 h-10 rounded-full object-cover"
+                                  />
+                                ) : (
+                                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-bold text-sm">
+                                    {(a.nomeCompleto || a.nome)
+                                      .split(" ")
+                                      .map((n: string) => n[0])
+                                      .join("")}
+                                  </div>
+                                )}
+                                <div>
+                                  <p className="font-medium text-gray-900">
+                                    {a.nomeCompleto || a.nome}
+                                  </p>
+                                  <div className="mt-1">
+                                    <BeltTip
+                                      faixa={a.faixa}
+                                      graus={a.grausAtual || a.graus || 0}
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <span className="text-xs text-gray-600">
+                                  Faltam
+                                </span>
+                                <div className="text-xl font-bold text-blue-600">
+                                  {a.faltamAulas || a.faltam || 0}
+                                </div>
+                                <span className="text-xs text-gray-600">
+                                  aulas
+                                </span>
+                              </div>
                             </div>
-                            <p className="text-xs text-gray-500 mt-1">
-                              {new Date(g.dataGraduacao).toLocaleDateString("pt-BR")}
+                          ))
+                        )}
+                      </CardContent>
+                    </Card>
+
+                    <Card className="bg-white border border-blue-200">
+                      <CardHeader>
+                        <CardTitle>Histórico de Graduações</CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        {historicoQuery.isLoading ? (
+                          <div className="space-y-3">
+                            {[1, 2, 3].map((i) => (
+                              <div
+                                key={i}
+                                className="skeleton h-16 w-full rounded-lg"
+                              />
+                            ))}
+                          </div>
+                        ) : historicoGraduacoes.length === 0 ? (
+                          <div className="text-center py-8 text-gray-500">
+                            <Trophy className="h-12 w-12 mx-auto mb-2 text-gray-400" />
+                            <p className="text-sm">
+                              Nenhuma graduação registrada
+                            </p>
+                            <p className="text-xs mt-1">
+                              As graduações aparecerão aqui
                             </p>
                           </div>
-                        ))
-                      )}
-                    </CardContent>
-                  </Card>
-                </div>
-              </motion.div>
-            );
-          })()}
+                        ) : (
+                          historicoGraduacoes.map((g: HistoricoGraduacao) => (
+                            <div
+                              key={g.id}
+                              className="bg-white p-3 rounded-xl border-2 border-gray-200 hover:border-blue-300 transition-all"
+                            >
+                              <p className="font-medium text-gray-900">
+                                {g.nomeAluno}
+                              </p>
+                              <div className="flex items-center gap-1 mt-1">
+                                <span
+                                  className="px-2 py-0.5 rounded text-xs font-medium"
+                                  style={{
+                                    backgroundColor: g.faixaAnteriorCor + "20",
+                                    color: g.faixaAnteriorCor,
+                                  }}
+                                >
+                                  {g.faixaAnterior}
+                                </span>
+                                <span className="text-xs text-gray-500">→</span>
+                                <span
+                                  className="px-2 py-0.5 rounded text-xs font-medium"
+                                  style={{
+                                    backgroundColor: g.novaFaixaCor + "20",
+                                    color: g.novaFaixaCor,
+                                  }}
+                                >
+                                  {g.novaFaixa}
+                                </span>
+                              </div>
+                              <p className="text-xs text-gray-500 mt-1">
+                                {new Date(g.dataGraduacao).toLocaleDateString(
+                                  "pt-BR",
+                                )}
+                              </p>
+                            </div>
+                          ))
+                        )}
+                      </CardContent>
+                    </Card>
+                  </div>
+                </motion.div>
+              );
+            })()}
 
           {selectedTab === "loja" && (
             <motion.div
@@ -2638,8 +2662,8 @@ export default function DashboardNew() {
                           aula.status === "concluída"
                             ? "border-green-500"
                             : aula.status === "em andamento"
-                            ? "border-blue-500 animate-pulse"
-                            : "border-gray-200"
+                              ? "border-blue-500 animate-pulse"
+                              : "border-gray-200"
                         }`}
                       >
                         <div className="flex justify-between items-start mb-2">
@@ -2660,8 +2684,8 @@ export default function DashboardNew() {
                               aula.status === "concluída"
                                 ? "bg-green-100 text-green-800"
                                 : aula.status === "em andamento"
-                                ? "bg-blue-100 text-blue-800"
-                                : "bg-gray-100 text-gray-700"
+                                  ? "bg-blue-100 text-blue-800"
+                                  : "bg-gray-100 text-gray-700"
                             }`}
                           >
                             {aula.status}

@@ -51,22 +51,22 @@ export default function RootLayout({
         <QueryProvider>
           <AuthProvider>
             {children}
-            <Toaster 
+            <Toaster
               position="top-right"
               toastOptions={{
                 duration: 4000,
                 style: {
-                  background: '#363636',
-                  color: '#fff',
+                  background: "#363636",
+                  color: "#fff",
                 },
                 success: {
                   style: {
-                    background: 'green',
+                    background: "green",
                   },
                 },
                 error: {
                   style: {
-                    background: 'red',
+                    background: "red",
                   },
                 },
               }}

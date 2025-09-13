@@ -16,12 +16,14 @@ export default function PageAlunos() {
   const { user } = useAuth();
   const [search, setSearch] = useState("");
   const [debounced, setDebounced] = useState("");
-  const [tipoCadastro, setTipoCadastro] = useState<"todos" | "aluno" | "professor">("todos");
+  const [tipoCadastro, setTipoCadastro] = useState<
+    "todos" | "aluno" | "professor"
+  >("todos");
   const [faixa, setFaixa] = useState<"todos" | "kids" | "adulto">("todos");
   const [unidade, setUnidade] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [editingPerson, setEditingPerson] = useState(null);
-  
+
   // Temporariamente permitir para todos - ajustar depois
   const canCreate = true; // Sempre true por enquanto
   const canEdit = true; // Sempre true por enquanto
@@ -42,12 +44,12 @@ export default function PageAlunos() {
         faixa,
         unidade,
       };
-      
+
       // Só adicionar tipo_cadastro se não for "todos"
       if (tipoCadastro !== "todos") {
         params.tipo_cadastro = tipoCadastro === "aluno" ? "ALUNO" : "PROFESSOR";
       }
-      
+
       return listAlunos(params);
     },
   });
@@ -55,16 +57,16 @@ export default function PageAlunos() {
   const qc = useQueryClient();
 
   const items = (query.data?.pages || []).flatMap((p) => p.items);
-  
+
   // Debug
-  console.log('Query data:', query.data);
-  console.log('Items:', items);
+  console.log("Query data:", query.data);
+  console.log("Items:", items);
 
   if (showForm) {
     return (
       <div className="p-6">
         <div className="mb-4">
-          <button 
+          <button
             onClick={() => {
               setShowForm(false);
               setEditingPerson(null);
@@ -115,10 +117,7 @@ export default function PageAlunos() {
         )}
         <div className="flex justify-between items-center mb-4">
           <h1 className="text-2xl font-bold">Cadastro de Pessoas</h1>
-          <button
-            className="btn btn-primary"
-            onClick={() => setShowForm(true)}
-          >
+          <button className="btn btn-primary" onClick={() => setShowForm(true)}>
             <Plus className="h-4 w-4 mr-2" />
             Novo Cadastro
           </button>
@@ -159,65 +158,71 @@ export default function PageAlunos() {
             itemCount={items.length + (query.hasNextPage ? 1 : 0)}
             itemSize={80}
             width={"100%"}
-          onItemsRendered={({ visibleStopIndex }) => {
-            if (
-              visibleStopIndex >= items.length - 5 &&
-              query.hasNextPage &&
-              !query.isFetchingNextPage
-            )
-              query.fetchNextPage();
-          }}
-        >
-          {({ index, style }) => {
-            const a = items[index];
-            if (!a)
+            onItemsRendered={({ visibleStopIndex }) => {
+              if (
+                visibleStopIndex >= items.length - 5 &&
+                query.hasNextPage &&
+                !query.isFetchingNextPage
+              )
+                query.fetchNextPage();
+            }}
+          >
+            {({ index, style }) => {
+              const a = items[index];
+              if (!a)
+                return (
+                  <div style={style} className="p-3">
+                    <div className="skeleton h-10 w-full" />
+                  </div>
+                );
               return (
-                <div style={style} className="p-3">
-                  <div className="skeleton h-10 w-full" />
+                <div
+                  style={style}
+                  className="px-4 py-3 border-b hover:bg-gray-50 flex items-center justify-between"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="avatar placeholder">
+                      <div className="bg-primary text-white rounded-full w-10">
+                        <span className="text-xl">
+                          {a.nome_completo?.charAt(0) || "A"}
+                        </span>
+                      </div>
+                    </div>
+                    <div>
+                      <div className="font-semibold">
+                        {a.nome_completo}{" "}
+                        <span className="text-xs text-gray-500">({a.cpf})</span>
+                      </div>
+                      <div className="text-sm text-gray-600">
+                        {a.tipo_cadastro === "PROFESSOR" ? (
+                          <>Professor • Faixa: {a.faixa_ministrante || "N/A"}</>
+                        ) : (
+                          <>
+                            {a.faixa_atual} • {a.grau_atual || 0}º grau
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`badge ${a.status === "ATIVO" ? "badge-success" : "badge-ghost"}`}
+                    >
+                      {a.status || "Ativo"}
+                    </span>
+                    <button
+                      className="btn btn-ghost btn-sm btn-circle"
+                      onClick={() => {
+                        setEditingPerson(a);
+                        setShowForm(true);
+                      }}
+                    >
+                      <Edit className="h-4 w-4" />
+                    </button>
+                  </div>
                 </div>
               );
-            return (
-              <div
-                style={style}
-                className="px-4 py-3 border-b hover:bg-gray-50 flex items-center justify-between"
-              >
-                <div className="flex items-center gap-4">
-                  <div className="avatar placeholder">
-                    <div className="bg-primary text-white rounded-full w-10">
-                      <span className="text-xl">{a.nome_completo?.charAt(0) || 'A'}</span>
-                    </div>
-                  </div>
-                  <div>
-                    <div className="font-semibold">
-                      {a.nome_completo}{" "}
-                      <span className="text-xs text-gray-500">({a.cpf})</span>
-                    </div>
-                    <div className="text-sm text-gray-600">
-                      {a.tipo_cadastro === 'PROFESSOR' ? (
-                        <>Professor • Faixa: {a.faixa_ministrante || 'N/A'}</>
-                      ) : (
-                        <>{a.faixa_atual} • {a.grau_atual || 0}º grau</>
-                      )}
-                    </div>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className={`badge ${a.status === 'ATIVO' ? 'badge-success' : 'badge-ghost'}`}>
-                    {a.status || 'Ativo'}
-                  </span>
-                  <button 
-                    className="btn btn-ghost btn-sm btn-circle"
-                    onClick={() => {
-                      setEditingPerson(a);
-                      setShowForm(true);
-                    }}
-                  >
-                    <Edit className="h-4 w-4" />
-                  </button>
-                </div>
-              </div>
-            );
-          }}
+            }}
           </List>
         </div>
       </div>

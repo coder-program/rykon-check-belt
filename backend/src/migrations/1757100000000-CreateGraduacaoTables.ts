@@ -329,7 +329,7 @@ export class CreateGraduacaoTables1757100000000 implements MigrationInterface {
 
     // 6. Criar índice para presenças (comentado por enquanto devido ao nome da coluna)
     // await queryRunner.query(`
-    //   CREATE INDEX IF NOT EXISTS "IX_presenca_pessoa_data" 
+    //   CREATE INDEX IF NOT EXISTS "IX_presenca_pessoa_data"
     //   ON teamcruz.presencas (pessoa_id, data)
     // `);
   }
@@ -337,7 +337,9 @@ export class CreateGraduacaoTables1757100000000 implements MigrationInterface {
   public async down(queryRunner: QueryRunner): Promise<void> {
     // Remover índices
     // await queryRunner.query(`DROP INDEX IF EXISTS teamcruz."IX_presenca_pessoa_data"`);
-    await queryRunner.query(`DROP INDEX IF EXISTS teamcruz."IX_aluno_faixa_aluno_ativa"`);
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS teamcruz."IX_aluno_faixa_aluno_ativa"`,
+    );
 
     // Remover tabelas na ordem reversa
     await queryRunner.dropTable('teamcruz.aluno_graduacao');

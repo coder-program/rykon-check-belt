@@ -14,7 +14,13 @@ import {
   IsNotEmpty,
 } from 'class-validator';
 import { Transform } from 'class-transformer';
-import { TipoCadastro, StatusCadastro, Genero, FaixaAluno, FaixaProfessor } from '../entities/person.entity';
+import {
+  TipoCadastro,
+  StatusCadastro,
+  Genero,
+  FaixaAluno,
+  FaixaProfessor,
+} from '../entities/person.entity';
 
 export class CreatePersonDto {
   @IsEnum(TipoCadastro)
@@ -100,12 +106,12 @@ export class CreatePersonDto {
   status?: StatusCadastro = StatusCadastro.ATIVO;
 
   // ===== CAMPOS ESPECÍFICOS DE ALUNO =====
-  @ValidateIf(o => o.tipo_cadastro === TipoCadastro.ALUNO)
+  @ValidateIf((o) => o.tipo_cadastro === TipoCadastro.ALUNO)
   @IsString()
   @IsNotEmpty()
   faixa_atual?: string;
 
-  @ValidateIf(o => o.tipo_cadastro === TipoCadastro.ALUNO)
+  @ValidateIf((o) => o.tipo_cadastro === TipoCadastro.ALUNO)
   @IsNumber()
   @Min(0)
   @Max(4)
@@ -113,12 +119,16 @@ export class CreatePersonDto {
   grau_atual?: number;
 
   // Responsável (obrigatório para menores de 18 anos)
-  @ValidateIf(o => o.tipo_cadastro === TipoCadastro.ALUNO && isMinor(o.data_nascimento))
+  @ValidateIf(
+    (o) => o.tipo_cadastro === TipoCadastro.ALUNO && isMinor(o.data_nascimento),
+  )
   @IsString()
   @IsNotEmpty()
   responsavel_nome?: string;
 
-  @ValidateIf(o => o.tipo_cadastro === TipoCadastro.ALUNO && isMinor(o.data_nascimento))
+  @ValidateIf(
+    (o) => o.tipo_cadastro === TipoCadastro.ALUNO && isMinor(o.data_nascimento),
+  )
   @IsString()
   @Matches(/^\d{3}\.\d{3}\.\d{3}-\d{2}$/, {
     message: 'CPF do responsável deve estar no formato 000.000.000-00',
@@ -126,7 +136,9 @@ export class CreatePersonDto {
   @IsNotEmpty()
   responsavel_cpf?: string;
 
-  @ValidateIf(o => o.tipo_cadastro === TipoCadastro.ALUNO && isMinor(o.data_nascimento))
+  @ValidateIf(
+    (o) => o.tipo_cadastro === TipoCadastro.ALUNO && isMinor(o.data_nascimento),
+  )
   @IsString()
   @Matches(/^\(\d{2}\) \d{4,5}-\d{4}$/, {
     message: 'Telefone do responsável deve estar no formato (99) 99999-9999',
@@ -135,17 +147,17 @@ export class CreatePersonDto {
   responsavel_telefone?: string;
 
   // ===== CAMPOS ESPECÍFICOS DE PROFESSOR =====
-  @ValidateIf(o => o.tipo_cadastro === TipoCadastro.PROFESSOR)
+  @ValidateIf((o) => o.tipo_cadastro === TipoCadastro.PROFESSOR)
   @IsString()
   @IsNotEmpty()
   faixa_ministrante?: string;
 
-  @ValidateIf(o => o.tipo_cadastro === TipoCadastro.PROFESSOR)
+  @ValidateIf((o) => o.tipo_cadastro === TipoCadastro.PROFESSOR)
   @IsDateString()
   @IsOptional()
   data_inicio_docencia?: string;
 
-  @ValidateIf(o => o.tipo_cadastro === TipoCadastro.PROFESSOR)
+  @ValidateIf((o) => o.tipo_cadastro === TipoCadastro.PROFESSOR)
   @IsString()
   @MaxLength(100)
   @IsOptional()
@@ -159,17 +171,19 @@ export class CreatePersonDto {
 // Função auxiliar para verificar se é menor de idade
 function isMinor(dataNascimento: string): boolean {
   if (!dataNascimento) return false;
-  
+
   const hoje = new Date();
   const nascimento = new Date(dataNascimento);
   let idade = hoje.getFullYear() - nascimento.getFullYear();
   const mesAtual = hoje.getMonth();
   const mesNascimento = nascimento.getMonth();
-  
-  if (mesAtual < mesNascimento || 
-      (mesAtual === mesNascimento && hoje.getDate() < nascimento.getDate())) {
+
+  if (
+    mesAtual < mesNascimento ||
+    (mesAtual === mesNascimento && hoje.getDate() < nascimento.getDate())
+  ) {
     idade--;
   }
-  
+
   return idade < 18;
 }

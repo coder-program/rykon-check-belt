@@ -22,13 +22,19 @@ export class StatusGraduacaoDto {
   @ApiProperty({ example: 85 })
   presencasTotalFaixa: number;
 
-  @ApiProperty({ example: 9, description: 'Número de aulas faltantes para o próximo grau' })
+  @ApiProperty({
+    example: 9,
+    description: 'Número de aulas faltantes para o próximo grau',
+  })
   faltamAulas: number;
 
   @ApiProperty({ example: false })
   prontoParaGraduar: boolean;
 
-  @ApiProperty({ example: 0.775, description: 'Percentual de progresso para o próximo grau (0-1)' })
+  @ApiProperty({
+    example: 0.775,
+    description: 'Percentual de progresso para o próximo grau (0-1)',
+  })
   progressoPercentual: number;
 
   @ApiProperty({ required: false })

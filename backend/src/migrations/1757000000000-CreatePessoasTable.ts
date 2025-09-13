@@ -88,11 +88,21 @@ export class CreatePessoasTable1757000000000 implements MigrationInterface {
     `);
 
     // Criar índices
-    await queryRunner.query(`CREATE INDEX IF NOT EXISTS idx_pessoas_cpf ON pessoas(cpf)`);
-    await queryRunner.query(`CREATE INDEX IF NOT EXISTS idx_pessoas_tipo_cadastro ON pessoas(tipo_cadastro)`);
-    await queryRunner.query(`CREATE INDEX IF NOT EXISTS idx_pessoas_status ON pessoas(status)`);
-    await queryRunner.query(`CREATE INDEX IF NOT EXISTS idx_pessoas_unidade_id ON pessoas(unidade_id)`);
-    await queryRunner.query(`CREATE INDEX IF NOT EXISTS idx_pessoas_nome ON pessoas(nome_completo)`);
+    await queryRunner.query(
+      `CREATE INDEX IF NOT EXISTS idx_pessoas_cpf ON pessoas(cpf)`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX IF NOT EXISTS idx_pessoas_tipo_cadastro ON pessoas(tipo_cadastro)`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX IF NOT EXISTS idx_pessoas_status ON pessoas(status)`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX IF NOT EXISTS idx_pessoas_unidade_id ON pessoas(unidade_id)`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX IF NOT EXISTS idx_pessoas_nome ON pessoas(nome_completo)`,
+    );
 
     // Trigger para atualizar updated_at
     await queryRunner.query(`
@@ -123,19 +133,23 @@ export class CreatePessoasTable1757000000000 implements MigrationInterface {
 
   public async down(queryRunner: QueryRunner): Promise<void> {
     // Remover trigger
-    await queryRunner.query(`DROP TRIGGER IF EXISTS update_pessoas_updated_at_trigger ON pessoas`);
-    await queryRunner.query(`DROP FUNCTION IF EXISTS update_pessoas_updated_at()`);
-    
+    await queryRunner.query(
+      `DROP TRIGGER IF EXISTS update_pessoas_updated_at_trigger ON pessoas`,
+    );
+    await queryRunner.query(
+      `DROP FUNCTION IF EXISTS update_pessoas_updated_at()`,
+    );
+
     // Remover índices
     await queryRunner.query(`DROP INDEX IF EXISTS idx_pessoas_nome`);
     await queryRunner.query(`DROP INDEX IF EXISTS idx_pessoas_unidade_id`);
     await queryRunner.query(`DROP INDEX IF EXISTS idx_pessoas_status`);
     await queryRunner.query(`DROP INDEX IF EXISTS idx_pessoas_tipo_cadastro`);
     await queryRunner.query(`DROP INDEX IF EXISTS idx_pessoas_cpf`);
-    
+
     // Remover tabela
     await queryRunner.query(`DROP TABLE IF EXISTS pessoas`);
-    
+
     // Remover enums
     await queryRunner.query(`DROP TYPE IF EXISTS pessoas_genero_enum`);
     await queryRunner.query(`DROP TYPE IF EXISTS pessoas_status_enum`);

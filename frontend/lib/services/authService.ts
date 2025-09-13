@@ -11,7 +11,7 @@ export const authService = {
     if (typeof window !== "undefined" && data?.access_token) {
       // Salva o token imediatamente
       localStorage.setItem("token", data.access_token);
-      
+
       try {
         // Agora busca o perfil com o token já salvo
         const user = await http("/auth/profile", { auth: true });

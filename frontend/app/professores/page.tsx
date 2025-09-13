@@ -180,7 +180,7 @@ export default function PageProfessores() {
                   <p className="text-2xl font-bold text-slate-900 dark:text-white">
                     {
                       items.filter((p) =>
-                        p.faixa_ministrante?.toLowerCase().includes("preta")
+                        p.faixa_ministrante?.toLowerCase().includes("preta"),
                       ).length
                     }
                   </p>

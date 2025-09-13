@@ -1,0 +1,88 @@
+# This file specifies files that are *not* uploaded to Google Cloud
+# using gcloud. It follows the same syntax as .gitignore, with the addition of
+# "#!include" directives (which insert the entries of the given .gitignore-style
+# file at that point).
+
+# Node modules - MUITO IMPORTANTE!
+node_modules/
+**/node_modules/
+
+# Build output (será gerado no Cloud Build)
+build/
+dist/
+.next/
+out/
+
+# Development files
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.env
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+.github/
+
+# Documentation
+README.md
+*.md
+docs/
+
+# Test files
+coverage/
+.nyc_output/
+*.test.js
+*.spec.js
+__tests__/
+test/
+
+# Package manager files (exceto package.json e package-lock.json que são necessários!)
+yarn.lock
+pnpm-lock.yaml
+.yarn/
+.pnpm/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.temp
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Scripts locais que não são necessários no build
+*.sh
+*.ps1
+deploy-to-gcp.sh
+setup-cloud-build-trigger.ps1
+
+# Cloud Run config (será usado diretamente, não precisa ser enviado para build)
+cloud-run.yaml
+
+# Não ignorar estes arquivos importantes!
+!package.json
+!package-lock.json
+!Dockerfile
+!.dockerignore
+!cloudbuild.yaml

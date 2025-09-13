@@ -41,10 +41,10 @@ export class FaixaDef {
   @Column({ type: 'int', default: 40 })
   aulas_por_grau: number;
 
-  @Column({ 
-    type: 'varchar', 
+  @Column({
+    type: 'varchar',
     length: 20,
-    default: CategoriaFaixa.ADULTO 
+    default: CategoriaFaixa.ADULTO,
   })
   categoria: CategoriaFaixa;
 

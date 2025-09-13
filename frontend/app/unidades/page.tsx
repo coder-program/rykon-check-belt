@@ -71,17 +71,17 @@ interface UnidadeFormData {
 
 export default function PageUnidades() {
   const { user } = useAuth();
-  
+
   // Log temporário para debug
   React.useEffect(() => {
-    console.log('User object:', user);
-    console.log('User perfis:', user?.perfis);
+    console.log("User object:", user);
+    console.log("User perfis:", user?.perfis);
   }, [user]);
-  
+
   const hasPerfil = (p: string) => {
     if (!user?.perfis) return false;
-    return user.perfis.some((perfil: any) => 
-      perfil.nome?.toLowerCase() === p.toLowerCase()
+    return user.perfis.some(
+      (perfil: any) => perfil.nome?.toLowerCase() === p.toLowerCase(),
     );
   };
   const [search, setSearch] = useState("");
@@ -142,13 +142,13 @@ export default function PageUnidades() {
   const qc = useQueryClient();
   const createMutation = useMutation({
     mutationFn: async (data: UnidadeFormData) => {
-      console.log('[DEBUG] mutationFn chamado', data);
+      console.log("[DEBUG] mutationFn chamado", data);
       // 1. Criar endereço se fornecido
       let enderecoId = null;
       if (data.endereco && data.endereco.cep) {
         const endereco = await createEndereco(data.endereco);
         enderecoId = endereco.id;
-        console.log('[DEBUG] Endereço criado', endereco);
+        console.log("[DEBUG] Endereço criado", endereco);
       }
 
       // 2. Criar unidade com endereco_id
@@ -157,7 +157,7 @@ export default function PageUnidades() {
         ...unidadeData,
         endereco_id: enderecoId,
       });
-      console.log('[DEBUG] Unidade criada', unidade);
+      console.log("[DEBUG] Unidade criada", unidade);
 
       // 3. Criar vínculo na tabela auxiliar (opcional, para controle adicional)
       if (enderecoId) {
@@ -167,20 +167,20 @@ export default function PageUnidades() {
           finalidade: "COMERCIAL",
           principal: true,
         });
-        console.log('[DEBUG] Vínculo de endereço criado');
+        console.log("[DEBUG] Vínculo de endereço criado");
       }
 
       return unidade;
     },
     onSuccess: () => {
-      console.log('[DEBUG] createMutation onSuccess');
+      console.log("[DEBUG] createMutation onSuccess");
       qc.invalidateQueries({ queryKey: ["unidades"] });
       setShowModal(false);
       resetForm();
       toast.success("Unidade cadastrada com sucesso!");
     },
     onError: (error: any) => {
-      console.log('[DEBUG] createMutation onError', error);
+      console.log("[DEBUG] createMutation onError", error);
       toast.error(error.message || "Erro ao cadastrar unidade");
     },
   });
@@ -207,7 +207,9 @@ export default function PageUnidades() {
             cidade_nome: addr.cidade_nome,
             estado: addr.estado,
           };
-          Object.keys(sanitizedAddr).forEach((k) => sanitizedAddr[k] === undefined && delete sanitizedAddr[k]);
+          Object.keys(sanitizedAddr).forEach(
+            (k) => sanitizedAddr[k] === undefined && delete sanitizedAddr[k],
+          );
           await updateEndereco(editingUnidade.endereco_id, sanitizedAddr);
         } else if (addr.cep) {
           const novo = await createEndereco({
@@ -221,9 +223,9 @@ export default function PageUnidades() {
           });
           // vincula como COMERCIAL principal
           await vincularEndereco(novo.id, {
-            tipo_dono: 'UNIDADE',
+            tipo_dono: "UNIDADE",
             dono_id: id,
-            finalidade: 'COMERCIAL',
+            finalidade: "COMERCIAL",
             principal: true,
           });
           // vamos incorporar o endereco_id novo no update da unidade
@@ -254,7 +256,9 @@ export default function PageUnidades() {
         delete payload.cnpj;
         delete payload.nome;
       }
-      Object.keys(payload).forEach((k) => payload[k] === undefined && delete payload[k]);
+      Object.keys(payload).forEach(
+        (k) => payload[k] === undefined && delete payload[k],
+      );
       return updateUnidade(id, payload);
     },
     onSuccess: () => {
@@ -265,8 +269,8 @@ export default function PageUnidades() {
       toast.success("Unidade atualizada com sucesso!");
     },
     onError: (error: any) => {
-      toast.error(error?.message || 'Erro ao atualizar unidade');
-    }
+      toast.error(error?.message || "Erro ao atualizar unidade");
+    },
   });
 
   const deleteMutation = useMutation({
@@ -323,7 +327,7 @@ export default function PageUnidades() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('[DEBUG] handleSubmit chamado', formData);
+    console.log("[DEBUG] handleSubmit chamado", formData);
     // Validação de obrigatórios
     if (
       !formData.franqueado_id ||
@@ -334,27 +338,27 @@ export default function PageUnidades() {
       !formData.responsavel_contato
     ) {
       toast.error("Preencha todos os campos obrigatórios");
-      console.log('[DEBUG] Falha obrigatórios');
+      console.log("[DEBUG] Falha obrigatórios");
       return;
     }
     // Validação CNPJ
     if (!validarCNPJ(formData.cnpj)) {
       toast.error("CNPJ inválido", { id: "cnpj-invalido" });
       setFieldError("cnpj", "CNPJ inválido");
-      console.log('[DEBUG] Falha CNPJ');
+      console.log("[DEBUG] Falha CNPJ");
       return;
     }
     // Validação CPF
     if (!validarCPF(formData.responsavel_cpf)) {
       toast.error("CPF do responsável inválido", { id: "cpf-invalido" });
       setFieldError("responsavel_cpf", "CPF do responsável inválido");
-      console.log('[DEBUG] Falha CPF');
+      console.log("[DEBUG] Falha CPF");
       return;
     }
     // Validação campos numéricos
     if (formData.qtde_tatames !== undefined && isNaN(formData.qtde_tatames)) {
       toast.error("Quantidade de tatames deve ser um número");
-      console.log('[DEBUG] Falha qtde_tatames');
+      console.log("[DEBUG] Falha qtde_tatames");
       return;
     }
     if (
@@ -362,7 +366,7 @@ export default function PageUnidades() {
       isNaN(formData.capacidade_max_alunos)
     ) {
       toast.error("Capacidade máxima de alunos deve ser um número");
-      console.log('[DEBUG] Falha capacidade_max_alunos');
+      console.log("[DEBUG] Falha capacidade_max_alunos");
       return;
     }
     if (
@@ -370,21 +374,25 @@ export default function PageUnidades() {
       isNaN(formData.valor_plano_padrao)
     ) {
       toast.error("Valor do plano deve ser um número");
-      console.log('[DEBUG] Falha valor_plano_padrao');
+      console.log("[DEBUG] Falha valor_plano_padrao");
       return;
     }
     // Validação CEP
     if (formData.endereco?.cep && !validarCEP(formData.endereco.cep)) {
       toast.error("CEP inválido");
-      console.log('[DEBUG] Falha CEP');
+      console.log("[DEBUG] Falha CEP");
       return;
     }
 
     if (editingUnidade?.id) {
-      console.log('[DEBUG] Chamando updateMutation.mutate', editingUnidade.id, formData);
+      console.log(
+        "[DEBUG] Chamando updateMutation.mutate",
+        editingUnidade.id,
+        formData,
+      );
       updateMutation.mutate({ id: editingUnidade.id, data: formData as any });
     } else {
-      console.log('[DEBUG] Chamando createMutation.mutate', formData);
+      console.log("[DEBUG] Chamando createMutation.mutate", formData);
       createMutation.mutate(formData);
     }
   };
@@ -454,7 +462,11 @@ export default function PageUnidades() {
         {/* Temporário: mostrar para todos os usuários */}
         <button
           className="btn btn-primary flex items-center gap-2"
-          onClick={() => { setEditingUnidade(null); resetForm(); setShowModal(true); }}
+          onClick={() => {
+            setEditingUnidade(null);
+            resetForm();
+            setShowModal(true);
+          }}
         >
           <Plus className="h-4 w-4" />
           Nova Unidade
@@ -520,7 +532,7 @@ export default function PageUnidades() {
                       <h3 className="font-semibold text-lg">{unidade.nome}</h3>
                       <span
                         className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(
-                          unidade.status
+                          unidade.status,
                         )}`}
                       >
                         {getStatusIcon(unidade.status)}
@@ -564,7 +576,7 @@ export default function PageUnidades() {
                       onClick={() => {
                         if (
                           confirm(
-                            `Tem certeza que deseja remover a unidade "${unidade.nome}"?`
+                            `Tem certeza que deseja remover a unidade "${unidade.nome}"?`,
                           )
                         ) {
                           deleteMutation.mutate(unidade.id);
@@ -588,7 +600,9 @@ export default function PageUnidades() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b">
-              <h2 className="text-xl font-semibold">{editingUnidade ? 'Editar Unidade' : 'Nova Unidade'}</h2>
+              <h2 className="text-xl font-semibold">
+                {editingUnidade ? "Editar Unidade" : "Nova Unidade"}
+              </h2>
             </div>
             <form onSubmit={handleSubmit} className="p-6 space-y-4">
               <div className="grid grid-cols-2 gap-4">
@@ -607,7 +621,9 @@ export default function PageUnidades() {
                     }
                     required
                     disabled={Boolean(editingUnidade)}
-                    title={editingUnidade ? 'Não alterável em edição' : undefined}
+                    title={
+                      editingUnidade ? "Não alterável em edição" : undefined
+                    }
                   >
                     <option value="">Selecione o franqueado</option>
                     {franqueadosQuery.data?.items?.map((f: any) => (
@@ -653,7 +669,9 @@ export default function PageUnidades() {
                     placeholder="Ex: TeamCruz Barueri - Matriz"
                     required
                     disabled={Boolean(editingUnidade)}
-                    title={editingUnidade ? 'Não alterável em edição' : undefined}
+                    title={
+                      editingUnidade ? "Não alterável em edição" : undefined
+                    }
                   />
                 </div>
                 <div>
@@ -670,7 +688,9 @@ export default function PageUnidades() {
                     disabled={Boolean(editingUnidade)}
                   />
                   {fieldErrors.cnpj && (
-                    <span className="text-red-600 text-xs">{fieldErrors.cnpj}</span>
+                    <span className="text-red-600 text-xs">
+                      {fieldErrors.cnpj}
+                    </span>
                   )}
                 </div>
               </div>
@@ -705,13 +725,18 @@ export default function PageUnidades() {
                     <InputCPF
                       value={formData.responsavel_cpf}
                       onChange={(v) => {
-                        setFormData((prev) => ({ ...prev, responsavel_cpf: v }));
+                        setFormData((prev) => ({
+                          ...prev,
+                          responsavel_cpf: v,
+                        }));
                         setFieldError("responsavel_cpf", "");
                       }}
                       required
                     />
                     {fieldErrors.responsavel_cpf && (
-                      <span className="text-red-600 text-xs">{fieldErrors.responsavel_cpf}</span>
+                      <span className="text-red-600 text-xs">
+                        {fieldErrors.responsavel_cpf}
+                      </span>
                     )}
                   </div>
                   <div>
@@ -956,12 +981,20 @@ export default function PageUnidades() {
                 </button>
                 <button
                   type="submit"
-                  disabled={editingUnidade ? updateMutation.isPending : createMutation.isPending}
+                  disabled={
+                    editingUnidade
+                      ? updateMutation.isPending
+                      : createMutation.isPending
+                  }
                   className="btn btn-primary flex-1"
                 >
                   {editingUnidade
-                    ? (updateMutation.isPending ? 'Salvando...' : 'Salvar alterações')
-                    : (createMutation.isPending ? 'Cadastrando...' : 'Cadastrar Unidade')}
+                    ? updateMutation.isPending
+                      ? "Salvando..."
+                      : "Salvar alterações"
+                    : createMutation.isPending
+                      ? "Cadastrando..."
+                      : "Cadastrar Unidade"}
                 </button>
               </div>
             </form>

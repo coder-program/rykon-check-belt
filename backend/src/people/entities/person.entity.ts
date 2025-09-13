@@ -173,12 +173,14 @@ export class Person {
       let idade = hoje.getFullYear() - nascimento.getFullYear();
       const mesAtual = hoje.getMonth();
       const mesNascimento = nascimento.getMonth();
-      
-      if (mesAtual < mesNascimento || 
-          (mesAtual === mesNascimento && hoje.getDate() < nascimento.getDate())) {
+
+      if (
+        mesAtual < mesNascimento ||
+        (mesAtual === mesNascimento && hoje.getDate() < nascimento.getDate())
+      ) {
         idade--;
       }
-      
+
       this.idade = idade;
     }
   }
@@ -188,9 +190,12 @@ export class Person {
     if (this.tipo_cadastro === TipoCadastro.ALUNO && !this.data_matricula) {
       this.data_matricula = new Date();
     }
-    
+
     // Zera o grau se não for informado
-    if (this.tipo_cadastro === TipoCadastro.ALUNO && this.grau_atual === undefined) {
+    if (
+      this.tipo_cadastro === TipoCadastro.ALUNO &&
+      this.grau_atual === undefined
+    ) {
       this.grau_atual = 0;
     }
   }

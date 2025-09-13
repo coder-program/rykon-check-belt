@@ -33,7 +33,7 @@ export class UnidadesController {
   constructor(private readonly unidadesService: UnidadesService) {}
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('master','franqueado')
+  @Roles('master', 'franqueado')
   @Post()
   @ApiOperation({ summary: 'Criar unidade/academia' })
   @ApiBody({ type: CreateUnidadeDto })
@@ -77,17 +77,21 @@ export class UnidadesController {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('master','franqueado')
+  @Roles('master', 'franqueado')
   @Patch(':id')
   @ApiOperation({ summary: 'Atualizar unidade' })
   @ApiParam({ name: 'id', type: String })
   @ApiBody({ type: UpdateUnidadeDto })
-  async atualizar(@Param('id') id: string, @Body() dto: UpdateUnidadeDto, @Request() req) {
+  async atualizar(
+    @Param('id') id: string,
+    @Body() dto: UpdateUnidadeDto,
+    @Request() req,
+  ) {
     return this.unidadesService.atualizar(id, dto, req.user);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('master','franqueado')
+  @Roles('master', 'franqueado')
   @Delete(':id')
   @ApiOperation({ summary: 'Remover unidade' })
   @ApiParam({ name: 'id', type: String })

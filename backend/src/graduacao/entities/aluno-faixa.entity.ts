@@ -54,7 +54,9 @@ export class AlunoFaixa {
   @JoinColumn({ name: 'aluno_id' })
   aluno: Person;
 
-  @ManyToOne(() => FaixaDef, (faixaDef) => faixaDef.alunoFaixas, { eager: true })
+  @ManyToOne(() => FaixaDef, (faixaDef) => faixaDef.alunoFaixas, {
+    eager: true,
+  })
   @JoinColumn({ name: 'faixa_def_id' })
   faixaDef: FaixaDef;
 
@@ -64,11 +66,11 @@ export class AlunoFaixa {
   // Método helper para calcular quantas aulas faltam
   getAulasFaltantes(): number {
     if (!this.faixaDef) return 0;
-    
+
     if (this.graus_atual >= this.faixaDef.graus_max) {
       return 0; // Pronto para graduar
     }
-    
+
     const faltam = this.faixaDef.aulas_por_grau - this.presencas_no_ciclo;
     return Math.max(0, faltam);
   }
@@ -82,7 +84,7 @@ export class AlunoFaixa {
   // Verifica se pode receber próximo grau
   podeReceberGrau(): boolean {
     if (!this.faixaDef) return false;
-    
+
     return (
       this.graus_atual < this.faixaDef.graus_max &&
       this.presencas_no_ciclo >= this.faixaDef.aulas_por_grau

@@ -19,7 +19,10 @@ export class ProximoGraduarDto {
   @ApiProperty({ example: 4 })
   grausMax: number;
 
-  @ApiProperty({ example: 2, description: 'Número de aulas faltantes para o próximo grau' })
+  @ApiProperty({
+    example: 2,
+    description: 'Número de aulas faltantes para o próximo grau',
+  })
   faltamAulas: number;
 
   @ApiProperty({ example: false })
@@ -37,7 +40,10 @@ export class ProximoGraduarDto {
   @ApiProperty({ required: false, description: 'Data da última presença' })
   ultimaPresenca?: Date;
 
-  @ApiProperty({ required: false, description: 'Total de presenças na faixa atual' })
+  @ApiProperty({
+    required: false,
+    description: 'Total de presenças na faixa atual',
+  })
   presencasTotalFaixa?: number;
 }
 

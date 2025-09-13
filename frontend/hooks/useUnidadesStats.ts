@@ -1,5 +1,5 @@
-import { useQuery } from '@tanstack/react-query';
-import { http } from '@/lib/api';
+import { useQuery } from "@tanstack/react-query";
+import { http } from "@/lib/api";
 
 interface UnidadesStats {
   total: number;
@@ -10,11 +10,11 @@ interface UnidadesStats {
 
 export function useUnidadesStats() {
   return useQuery<UnidadesStats>({
-    queryKey: ['unidades-stats'],
+    queryKey: ["unidades-stats"],
     queryFn: async () => {
-      const response = await http('/unidades/stats', { 
-        method: 'GET',
-        auth: true
+      const response = await http("/unidades/stats", {
+        method: "GET",
+        auth: true,
       });
       return response;
     },

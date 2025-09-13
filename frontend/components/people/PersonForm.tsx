@@ -22,7 +22,7 @@ export function PersonForm({
   defaultTipo = "ALUNO",
 }: PersonFormProps) {
   const [tipoCadastro, setTipoCadastro] = useState<"ALUNO" | "PROFESSOR">(
-    defaultTipo
+    defaultTipo,
   );
   const [formData, setFormData] = useState({
     tipo_cadastro: defaultTipo,
@@ -100,7 +100,7 @@ export function PersonForm({
       toast.success(
         `${
           tipoCadastro === "ALUNO" ? "Aluno" : "Professor"
-        } cadastrado com sucesso!`
+        } cadastrado com sucesso!`,
       );
       queryClient.invalidateQueries({ queryKey: ["alunos"] });
       queryClient.invalidateQueries({ queryKey: ["professores"] });
@@ -156,7 +156,7 @@ export function PersonForm({
         !formData.responsavel_telefone
       ) {
         toast.error(
-          "Dados do responsável são obrigatórios para menores de 18 anos"
+          "Dados do responsável são obrigatórios para menores de 18 anos",
         );
         return;
       }
@@ -223,7 +223,7 @@ export function PersonForm({
   const handleChange = (
     e: React.ChangeEvent<
       HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
-    >
+    >,
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));

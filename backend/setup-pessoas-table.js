@@ -7,7 +7,7 @@ async function setupDatabase() {
     port: 5436,
     user: 'teamcruz_admin',
     password: 'cruz@jiujitsu2024',
-    database: 'teamcruz_db'
+    database: 'teamcruz_db',
   });
 
   try {
@@ -30,17 +30,20 @@ async function setupDatabase() {
     `);
 
     console.log('\n📊 Dados inseridos:');
-    result.rows.forEach(row => {
+    result.rows.forEach((row) => {
       console.log(`   - ${row.tipo_cadastro}: ${row.total} registro(s)`);
     });
 
     // Mostrar alguns registros
-    const pessoas = await client.query('SELECT nome_completo, tipo_cadastro, cpf FROM pessoas LIMIT 5');
+    const pessoas = await client.query(
+      'SELECT nome_completo, tipo_cadastro, cpf FROM pessoas LIMIT 5',
+    );
     console.log('\n👥 Pessoas cadastradas:');
-    pessoas.rows.forEach(p => {
-      console.log(`   - ${p.nome_completo} (${p.tipo_cadastro}) - CPF: ${p.cpf}`);
+    pessoas.rows.forEach((p) => {
+      console.log(
+        `   - ${p.nome_completo} (${p.tipo_cadastro}) - CPF: ${p.cpf}`,
+      );
     });
-
   } catch (error) {
     console.error('❌ Erro:', error.message);
     process.exit(1);

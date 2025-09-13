@@ -52,7 +52,7 @@ export default function DashboardPage() {
                 ? { Authorization: `Bearer ${localStorage.getItem("token")}` }
                 : {}),
             },
-          }
+          },
         );
         const data = await res.json();
         setUsers(Array.isArray(data) ? data : []);
