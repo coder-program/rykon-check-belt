@@ -17,6 +17,7 @@ import { CampanhasModule } from './teamcruz/campanhas/campanhas.module';
 import { PresencasModule } from './teamcruz/presencas/presencas.module';
 import { PeopleModule } from './people/people.module';
 import { EnderecosModule } from './enderecos/enderecos.module';
+import { GraduacaoModule } from './graduacao/graduacao.module';
 
 @Module({
   imports: [
@@ -49,6 +50,7 @@ import { EnderecosModule } from './enderecos/enderecos.module';
     PresencasModule,
     PeopleModule,
     EnderecosModule,
+    GraduacaoModule,
   ],
 })
 export class AppModule {

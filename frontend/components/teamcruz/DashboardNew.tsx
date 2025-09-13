@@ -55,6 +55,12 @@ import { useUnidadesStats } from "@/hooks/useUnidadesStats";
 import ConfiguracoesModal from "./ConfiguracoesModal";
 import CampanhasManager from "./CampanhasManager";
 import RedeSocialTeam from "./RedeSocialTeam";
+import { 
+  getProximosGraduar, 
+  getHistoricoGraduacoes,
+  type ProximoGraduar,
+  type HistoricoGraduacao 
+} from "@/lib/graduacaoApi";
 
 // Dados mockados equivalentes ao CRA
 const mockData = {
@@ -465,12 +471,16 @@ function BeltTip({ faixa, graus }: { faixa: string; graus: number }) {
           </>
         ) : (
           <div
-            className={`flex-1 h-full ${colorBgClass(segments[0])} ${segments[0] === "Branca" ? "border border-gray-300" : ""}`}
+            className={`flex-1 h-full ${colorBgClass(segments[0])} ${
+              segments[0] === "Branca" ? "border border-gray-300" : ""
+            }`}
           ></div>
         )}
         {kids.isKids && kids.stripe && (
           <div
-            className={`absolute top-1/2 -translate-y-1/2 left-0 right-0 ${kids.stripe === "white" ? "bg-white" : "bg-black"} h-0.5`}
+            className={`absolute top-1/2 -translate-y-1/2 left-0 right-0 ${
+              kids.stripe === "white" ? "bg-white" : "bg-black"
+            } h-0.5`}
           ></div>
         )}
       </div>
@@ -478,7 +488,9 @@ function BeltTip({ faixa, graus }: { faixa: string; graus: number }) {
         {[...Array(4)].map((_, i) => (
           <div
             key={i}
-            className={`h-2 w-1 rounded-sm ${i < graus ? stripeActive : stripeInactive} ${i < 3 ? "mr-0.5" : ""}`}
+            className={`h-2 w-1 rounded-sm ${
+              i < graus ? stripeActive : stripeInactive
+            } ${i < 3 ? "mr-0.5" : ""}`}
           />
         ))}
       </div>
@@ -489,7 +501,7 @@ function BeltTip({ faixa, graus }: { faixa: string; graus: number }) {
 export default function DashboardNew() {
   const [selectedTab, setSelectedTab] = React.useState("overview");
   const [currentTime, setCurrentTime] = React.useState(new Date());
-  
+
   // Hook para buscar estatísticas reais das unidades
   const unidadesStats = useUnidadesStats();
   const [selectedAula, setSelectedAula] = React.useState<any | null>(null);
@@ -497,16 +509,16 @@ export default function DashboardNew() {
   const [debouncedSearch, setDebouncedSearch] = React.useState("");
   const [selectedAlunos, setSelectedAlunos] = React.useState<any[]>([]);
   const [presencasRegistradas, setPresencasRegistradas] = React.useState<any[]>(
-    [],
+    []
   );
   const [totalPresencasHoje, setTotalPresencasHoje] = React.useState(
-    mockData.stats.presencasHoje,
+    mockData.stats.presencasHoje
   );
   const [showQRModal, setShowQRModal] = React.useState(false);
   const [showCPFModal, setShowCPFModal] = React.useState(false);
   const [cpfInput, setCpfInput] = React.useState("");
   const [selectedAlunoQR, setSelectedAlunoQR] = React.useState<any | null>(
-    null,
+    null
   );
   const [showLocationModal, setShowLocationModal] = React.useState(false);
   const [showConfigModal, setShowConfigModal] = React.useState(false);
@@ -526,7 +538,7 @@ export default function DashboardNew() {
         .filter(
           (a) =>
             a.nome.toLowerCase().includes(q) ||
-            a.matricula.toLowerCase().includes(q),
+            a.matricula.toLowerCase().includes(q)
         )
         .filter((a) => {
           const isKids = parseKidsPattern(a.faixa).isKids;
@@ -535,14 +547,15 @@ export default function DashboardNew() {
           return true;
         });
     },
-    [debouncedSearch, filterFaixa],
+    [debouncedSearch, filterFaixa]
   );
 
   // Query para Alunos (aba Alunos) - DADOS REAIS DO BANCO
   const alunosQuery = useInfiniteQuery({
     queryKey: ["alunos", debouncedSearch, filterFaixa],
     initialPageParam: 1,
-    getNextPageParam: (lastPage) => lastPage.hasNextPage ? lastPage.page + 1 : undefined,
+    getNextPageParam: (lastPage) =>
+      lastPage.hasNextPage ? lastPage.page + 1 : undefined,
     queryFn: async ({ pageParam }) => {
       // Buscar dados reais do banco
       const response = await listAlunos({
@@ -551,22 +564,46 @@ export default function DashboardNew() {
         search: debouncedSearch,
         faixa: filterFaixa,
       });
-      
+
       // Adaptar os dados para o formato esperado pelo componente
       const adaptedItems = response.items.map((aluno: any) => ({
         id: aluno.id,
         nome: aluno.nome || aluno.nome_completo,
         matricula: aluno.matricula || aluno.id.substring(0, 8).toUpperCase(),
-        faixa: aluno.faixa || aluno.faixa_atual || 'Branca',
+        faixa: aluno.faixa || aluno.faixa_atual || "Branca",
         graus: aluno.graus || aluno.grau_atual || 0,
         cpf: aluno.cpf,
         token: `TKN-${aluno.id.substring(0, 8)}`,
       }));
-      
+
       return {
         items: adaptedItems,
         page: response.page,
         pageSize: response.pageSize,
+        total: response.total,
+        hasNextPage: response.hasNextPage,
+        nextPage: response.hasNextPage ? response.page + 1 : null,
+      };
+    },
+  });
+
+  // Query para Professores (aba Professores) - DADOS REAIS DO BANCO
+  const professoresQuery = useInfiniteQuery({
+    queryKey: ["professores", debouncedSearch, filterFaixa],
+    initialPageParam: 1,
+    getNextPageParam: (lastPage) =>
+      lastPage.hasNextPage ? lastPage.page + 1 : undefined,
+    queryFn: async ({ pageParam }) => {
+      const response = await listAlunos({
+        page: pageParam,
+        pageSize: 30,
+        search: debouncedSearch,
+        faixa: filterFaixa,
+        tipo_cadastro: "PROFESSOR", // Filtrar apenas professores
+      });
+      return {
+        items: response.items,
+        page: response.page,
         total: response.total,
         hasNextPage: response.hasNextPage,
         nextPage: response.hasNextPage ? response.page + 1 : null,
@@ -584,7 +621,8 @@ export default function DashboardNew() {
     ],
     enabled: !!selectedAula, // só quando há aula selecionada
     initialPageParam: 1,
-    getNextPageParam: (lastPage) => lastPage.hasNextPage ? lastPage.page + 1 : undefined,
+    getNextPageParam: (lastPage) =>
+      lastPage.hasNextPage ? lastPage.page + 1 : undefined,
     queryFn: async ({ pageParam }) => {
       // Buscar dados reais do banco
       const response = await listAlunos({
@@ -593,18 +631,18 @@ export default function DashboardNew() {
         search: debouncedSearch,
         faixa: filterFaixa,
       });
-      
+
       // Adaptar os dados
       const adaptedItems = response.items.map((aluno: any) => ({
         id: aluno.id,
         nome: aluno.nome || aluno.nome_completo,
         matricula: aluno.matricula || aluno.id.substring(0, 8).toUpperCase(),
-        faixa: aluno.faixa || aluno.faixa_atual || 'Branca',
+        faixa: aluno.faixa || aluno.faixa_atual || "Branca",
         graus: aluno.graus || aluno.grau_atual || 0,
         cpf: aluno.cpf,
         token: `TKN-${aluno.id.substring(0, 8)}`,
       }));
-      
+
       return {
         items: adaptedItems,
         page: response.page,
@@ -651,6 +689,7 @@ export default function DashboardNew() {
     { id: "overview", label: "Visão Geral", icon: Activity },
     { id: "checkin", label: "Check-in", icon: CheckCircle },
     { id: "alunos", label: "Alunos", icon: Users },
+    { id: "professores", label: "Professores", icon: GraduationCap },
     { id: "unidades", label: "Unidades", icon: Building2 },
     { id: "graduacoes", label: "Graduações", icon: Trophy },
     { id: "aulas", label: "Aulas", icon: Calendar },
@@ -673,56 +712,102 @@ export default function DashboardNew() {
     return () => clearTimeout(id);
   }, [overviewSearch]);
 
-  // Query infinita e virtualização para "Próximos a Receber Grau" na Visão Geral
-  const PAGE_SIZE_PROX = 20;
-  const proximosQuery = useInfiniteQuery({
+  // Query para buscar dados REAIS de graduação do backend
+  const proximosQuery = useQuery({
     queryKey: [
       "proximos-graus",
-      overviewDebounced,
       overviewFilterFaixa,
-      overviewSort,
+      selectedUnidade,
     ],
-    initialPageParam: 0,
-    getNextPageParam: (lastPage: { items: any[]; nextPage: number | null }) =>
-      lastPage.nextPage,
-    queryFn: async ({
-      pageParam,
-    }): Promise<{ items: any[]; nextPage: number | null }> => {
-      // Mock grande: replica a lista para simular muitos registros
-      const total = 500;
-      let all = Array.from({ length: total }, (_, i) => {
-        const base = mockData.proximosGraus[i % mockData.proximosGraus.length];
-        return { ...base, id: i + 1 };
-      });
-      // Filtros
-      const q = overviewDebounced.toLowerCase();
-      all = all.filter((a) => a.nome.toLowerCase().includes(q));
-      if (overviewFilterFaixa !== "todos") {
-        all = all.filter((a) => {
-          const isKids = parseKidsPattern(a.faixa).isKids;
-          return overviewFilterFaixa === "kids" ? isKids : !isKids;
+    queryFn: async () => {
+      try {
+        const response = await getProximosGraduar({
+          page: 1,
+          pageSize: 100, // Buscar mais alunos de uma vez
+          categoria: overviewFilterFaixa,
+          unidadeId: selectedUnidade === "unidade-1" ? undefined : selectedUnidade,
         });
+        
+        // Adaptar os dados para o formato esperado pelo componente
+        const adaptedItems = response.items.map((item: ProximoGraduar) => ({
+          id: item.alunoId,
+          nome: item.nomeCompleto,
+          faixa: item.faixa,
+          graus: item.grausAtual,
+          faltam: item.faltamAulas,
+          prontoParaGraduar: item.prontoParaGraduar,
+          progressoPercentual: item.progressoPercentual,
+          presencasTotalFaixa: item.presencasTotalFaixa,
+          foto: null,
+        }));
+        
+        // Ordenar localmente
+        const sorted = [...adaptedItems].sort((a, b) => 
+          overviewSort === "faltam-asc" 
+            ? a.faltam - b.faltam 
+            : b.faltam - a.faltam
+        );
+        
+        // Filtrar por busca localmente
+        const filtered = overviewDebounced 
+          ? sorted.filter(a => a.nome.toLowerCase().includes(overviewDebounced.toLowerCase()))
+          : sorted;
+        
+        return { items: filtered, total: response.total };
+      } catch (error) {
+        console.error('Erro ao buscar próximos a graduar:', error);
+        // Fallback para dados mockados em caso de erro
+        return { 
+          items: mockData.proximosGraus.map((item, idx) => ({
+            ...item,
+            id: item.id || idx + 1,
+            prontoParaGraduar: item.faltam === 0,
+            progressoPercentual: 1 - (item.faltam / 40),
+          })),
+          total: mockData.proximosGraus.length 
+        };
       }
-      // Ordenação
-      all.sort((a, b) =>
-        overviewSort === "faltam-asc"
-          ? a.faltam - b.faltam
-          : b.faltam - a.faltam,
-      );
-      const start = pageParam * PAGE_SIZE_PROX;
-      const end = start + PAGE_SIZE_PROX;
-      const slice = all.slice(start, end);
-      const nextPage = end < all.length ? pageParam + 1 : null;
-      await new Promise((r) => setTimeout(r, 150));
-      return { items: slice, nextPage };
     },
+    refetchInterval: 30000, // Atualizar a cada 30 segundos
+  });
+
+  // Query para buscar dados de graduação para aba de graduações
+  const graduacoesQuery = useQuery({
+    queryKey: ['proximos-graus-graduacoes', selectedUnidade],
+    queryFn: async () => {
+      const response = await getProximosGraduar({
+        page: 1,
+        pageSize: 20,
+        categoria: 'todos',
+        unidadeId: selectedUnidade === "unidade-1" ? undefined : selectedUnidade,
+      });
+      return response.items;
+    },
+    refetchInterval: 30000,
+    enabled: selectedTab === "graduacoes", // Só executa quando a aba está ativa
+  });
+
+  // Query para buscar histórico de graduações
+  const historicoQuery = useQuery({
+    queryKey: ['historico-graduacoes', selectedUnidade],
+    queryFn: async () => {
+      const response = await getHistoricoGraduacoes({
+        page: 1,
+        pageSize: 10,
+        categoria: 'todos',
+        unidadeId: selectedUnidade === "unidade-1" ? undefined : selectedUnidade,
+      });
+      return response.items;
+    },
+    refetchInterval: 60000,
+    enabled: selectedTab === "graduacoes", // Só executa quando a aba está ativa
   });
 
   // Função para registrar check-in e presença automaticamente
   const handleCheckinAluno = (
     aluno: any,
     aula: any,
-    skipLocationCheck: boolean = false,
+    skipLocationCheck: boolean = false
   ) => {
     // Valida localização antes do check-in (exceto se skipLocationCheck for true)
     if (!skipLocationCheck) {
@@ -732,7 +817,7 @@ export default function DashboardNew() {
         // Se requer confirmação do instrutor
         if (locationValidation.requireConfirmation) {
           const confirmed = window.confirm(
-            `${locationValidation.message}\n\nDeseja continuar com o check-in mesmo assim?\n(Requer autorização do instrutor)`,
+            `${locationValidation.message}\n\nDeseja continuar com o check-in mesmo assim?\n(Requer autorização do instrutor)`
           );
 
           if (!confirmed) {
@@ -768,12 +853,12 @@ export default function DashboardNew() {
 
       // Verifica se já não foi registrada hoje
       const presencasHoje = JSON.parse(
-        localStorage.getItem("presencas_hoje") || "[]",
+        localStorage.getItem("presencas_hoje") || "[]"
       );
 
       if (
         !presencasHoje.find(
-          (p: any) => p.alunoId === aluno.id && p.data === hoje,
+          (p: any) => p.alunoId === aluno.id && p.data === hoje
         )
       ) {
         const novaPresenca = {
@@ -805,7 +890,7 @@ export default function DashboardNew() {
               background: "#10b981",
               color: "white",
             },
-          },
+          }
         );
       } else {
         toast.error(`${aluno.nome} já fez check-in hoje!`, {
@@ -820,15 +905,15 @@ export default function DashboardNew() {
       // Remove a presença do localStorage
       const hoje = format(new Date(), "yyyy-MM-dd");
       const presencasHoje = JSON.parse(
-        localStorage.getItem("presencas_hoje") || "[]",
+        localStorage.getItem("presencas_hoje") || "[]"
       );
       const novasPresencas = presencasHoje.filter(
-        (p: any) => !(p.alunoId === aluno.id && p.data === hoje),
+        (p: any) => !(p.alunoId === aluno.id && p.data === hoje)
       );
       localStorage.setItem("presencas_hoje", JSON.stringify(novasPresencas));
 
       setPresencasRegistradas((prev) =>
-        prev.filter((p) => p.alunoId !== aluno.id),
+        prev.filter((p) => p.alunoId !== aluno.id)
       );
       setTotalPresencasHoje((prev) => Math.max(0, prev - 1));
 
@@ -852,12 +937,12 @@ export default function DashboardNew() {
             color: "white",
             fontSize: "16px",
           },
-        },
+        }
       );
 
       // Salva histórico da aula
       const historico = JSON.parse(
-        localStorage.getItem("historico_aulas") || "[]",
+        localStorage.getItem("historico_aulas") || "[]"
       );
       historico.push({
         id: Date.now(),
@@ -896,12 +981,12 @@ export default function DashboardNew() {
   React.useEffect(() => {
     const hoje = format(new Date(), "yyyy-MM-dd");
     const presencasHoje = JSON.parse(
-      localStorage.getItem("presencas_hoje") || "[]",
+      localStorage.getItem("presencas_hoje") || "[]"
     );
     const presencasDeHoje = presencasHoje.filter((p: any) => p.data === hoje);
     setPresencasRegistradas(presencasDeHoje);
     setTotalPresencasHoje(
-      mockData.stats.presencasHoje + presencasDeHoje.length,
+      mockData.stats.presencasHoje + presencasDeHoje.length
     );
   }, []);
 
@@ -1096,22 +1181,14 @@ export default function DashboardNew() {
                   <CardContent className="space-y-4">
                     <div className="h-[420px]">
                       {(() => {
-                        const items = (proximosQuery.data?.pages || []).flatMap(
-                          (p) => p.items,
-                        );
+                        const items = proximosQuery.data?.items || [];
                         const itemCount = items.length;
                         const loadMoreIfNeeded = ({
                           visibleStopIndex,
                         }: {
                           visibleStopIndex: number;
                         }) => {
-                          if (
-                            visibleStopIndex >= itemCount - 5 &&
-                            proximosQuery.hasNextPage &&
-                            !proximosQuery.isFetchingNextPage
-                          ) {
-                            proximosQuery.fetchNextPage();
-                          }
+                          // Não é mais necessário com useQuery simples
                         };
                         const Row = ({
                           index,
@@ -1182,9 +1259,7 @@ export default function DashboardNew() {
                         return (
                           <List
                             height={420}
-                            itemCount={
-                              itemCount + (proximosQuery.hasNextPage ? 1 : 0)
-                            }
+                            itemCount={itemCount}
                             itemSize={88}
                             width={"100%"}
                             onItemsRendered={({
@@ -1224,8 +1299,8 @@ export default function DashboardNew() {
                             index === 0
                               ? "bg-yellow-400 text-yellow-900"
                               : index === 1
-                                ? "bg-gray-400 text-white"
-                                : "bg-orange-400 text-orange-900"
+                              ? "bg-gray-400 text-white"
+                              : "bg-orange-400 text-orange-900"
                           }`}
                         >
                           {index + 1}
@@ -1279,8 +1354,8 @@ export default function DashboardNew() {
                           aula.status === "concluída"
                             ? "border-green-500"
                             : aula.status === "em andamento"
-                              ? "border-blue-500 animate-pulse"
-                              : "border-gray-200"
+                            ? "border-blue-500 animate-pulse"
+                            : "border-gray-200"
                         }`}
                       >
                         <div className="flex justify-between items-start mb-2">
@@ -1301,8 +1376,8 @@ export default function DashboardNew() {
                               aula.status === "concluída"
                                 ? "bg-green-100 text-green-800"
                                 : aula.status === "em andamento"
-                                  ? "bg-blue-100 text-blue-800"
-                                  : "bg-gray-100 text-gray-700"
+                                ? "bg-blue-100 text-blue-800"
+                                : "bg-gray-100 text-gray-700"
                             }`}
                           >
                             {aula.status}
@@ -1410,8 +1485,8 @@ export default function DashboardNew() {
                           isInAcademy === true
                             ? "bg-green-50 border border-green-300"
                             : isInAcademy === false
-                              ? "bg-yellow-50 border border-yellow-300"
-                              : "bg-gray-50 border border-gray-300"
+                            ? "bg-yellow-50 border border-yellow-300"
+                            : "bg-gray-50 border border-gray-300"
                         }`}
                       >
                         <div className="flex items-center gap-2">
@@ -1420,18 +1495,18 @@ export default function DashboardNew() {
                               isInAcademy === true
                                 ? "text-green-600"
                                 : isInAcademy === false
-                                  ? "text-yellow-600"
-                                  : "text-gray-600"
+                                ? "text-yellow-600"
+                                : "text-gray-600"
                             }`}
                           />
                           <span className="text-sm font-medium">
                             {isInAcademy === true
                               ? "✅ Você está dentro da academia"
                               : isInAcademy === false
-                                ? "⚠️ Você está fora da academia"
-                                : locationLoading
-                                  ? "📍 Obtendo localização..."
-                                  : "📍 Localização não disponível"}
+                              ? "⚠️ Você está fora da academia"
+                              : locationLoading
+                              ? "📍 Obtendo localização..."
+                              : "📍 Localização não disponível"}
                           </span>
                         </div>
                         {!locationLoading && (
@@ -1496,7 +1571,7 @@ export default function DashboardNew() {
                   <div className="h-[600px]">
                     {(() => {
                       const items = (checkinQuery.data?.pages || []).flatMap(
-                        (p) => p.items,
+                        (p) => p.items
                       );
                       const itemCount = items.length;
                       const isItemLoaded = (index: number) => index < itemCount;
@@ -1529,12 +1604,16 @@ export default function DashboardNew() {
                         }
                         const aluno = items[index];
                         const marcado = selectedAlunos.some(
-                          (aa) => aa.id === aluno.id,
+                          (aa) => aa.id === aluno.id
                         );
                         return (
                           <div style={style}>
                             <div
-                              className={`card ${marcado ? "border-green-500 bg-green-50" : "bg-white border-gray-200"} border-2 hover:border-blue-500 cursor-pointer shadow-sm hover:shadow-md transition-all`}
+                              className={`card ${
+                                marcado
+                                  ? "border-green-500 bg-green-50"
+                                  : "bg-white border-gray-200"
+                              } border-2 hover:border-blue-500 cursor-pointer shadow-sm hover:shadow-md transition-all`}
                               onClick={() => {
                                 handleCheckinAluno(aluno, selectedAula);
                               }}
@@ -1641,7 +1720,7 @@ export default function DashboardNew() {
               <div className="h-[700px]">
                 {(() => {
                   const items = (alunosQuery.data?.pages || []).flatMap(
-                    (p) => p.items,
+                    (p) => p.items
                   );
                   const itemCount = items.length;
                   const loadMoreIfNeeded = ({
@@ -1695,7 +1774,9 @@ export default function DashboardNew() {
                               </div>
                               <div className="text-right">
                                 <span
-                                  className={`badge ${getBeltClass(aluno.faixa)} mr-2`}
+                                  className={`badge ${getBeltClass(
+                                    aluno.faixa
+                                  )} mr-2`}
                                 >
                                   {aluno.faixa}
                                 </span>
@@ -1728,6 +1809,168 @@ export default function DashboardNew() {
               {alunosQuery.isFetchingNextPage && (
                 <div className="flex justify-center py-2 text-sm text-gray-500">
                   Carregando mais...
+                </div>
+              )}
+            </motion.div>
+          )}
+
+          {selectedTab === "professores" && (
+            <motion.div
+              key="professores"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
+              className="space-y-4"
+            >
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-2 md:space-y-0">
+                <div className="flex items-center space-x-2">
+                  <GraduationCap className="h-5 w-5 text-red-600" />
+                  <h2 className="text-xl font-bold text-gray-900">
+                    Professores
+                  </h2>
+                  <span className="text-sm text-gray-500">
+                    ({professoresQuery.data?.pages[0]?.total || 0} professores)
+                  </span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <input
+                      type="text"
+                      placeholder="Buscar professores..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                    />
+                  </div>
+                  <select
+                    value={filterFaixa}
+                    onChange={(e) => setFilterFaixa(e.target.value as any)}
+                    className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                  >
+                    <option value="todos">Todas as Categorias</option>
+                    <option value="kids">Kids</option>
+                    <option value="adulto">Adulto</option>
+                  </select>
+                </div>
+              </div>
+
+              {professoresQuery.isLoading && (
+                <div className="flex justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600"></div>
+                </div>
+              )}
+
+              {professoresQuery.isError && (
+                <div className="text-center py-8 text-red-600">
+                  Erro ao carregar professores:{" "}
+                  {professoresQuery.error?.message}
+                </div>
+              )}
+
+              {professoresQuery.data && (
+                <List
+                  height={600}
+                  itemCount={
+                    professoresQuery.data.pages.reduce(
+                      (acc, page) => acc + page.items.length,
+                      0
+                    ) + (professoresQuery.hasNextPage ? 1 : 0)
+                  }
+                  itemSize={120}
+                  onItemsRendered={({ visibleStopIndex }) => {
+                    const totalItems = professoresQuery.data.pages.reduce(
+                      (acc, page) => acc + page.items.length,
+                      0
+                    );
+                    if (
+                      visibleStopIndex >= totalItems - 5 &&
+                      professoresQuery.hasNextPage &&
+                      !professoresQuery.isFetchingNextPage
+                    ) {
+                      professoresQuery.fetchNextPage();
+                    }
+                  }}
+                >
+                  {({ index, style }) => {
+                    const allItems = professoresQuery.data.pages.reduce(
+                      (acc, page) => [...acc, ...page.items],
+                      []
+                    );
+                    const professor = allItems[index];
+
+                    if (!professor) {
+                      return (
+                        <div style={style} className="px-4 py-3">
+                          <div className="animate-pulse bg-gray-200 rounded-lg h-20"></div>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div style={style} className="px-4 py-3">
+                        <div className="bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md transition-shadow">
+                          <div className="flex items-center space-x-4">
+                            <div className="flex-shrink-0">
+                              <div className="w-12 h-12 bg-red-600 rounded-full flex items-center justify-center text-white font-semibold text-lg">
+                                {professor.nome_completo?.charAt(0) || "P"}
+                              </div>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center space-x-2">
+                                <h3 className="text-lg font-semibold text-gray-900 truncate">
+                                  {professor.nome_completo}
+                                </h3>
+                                <span
+                                  className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                    professor.status === "ATIVO"
+                                      ? "bg-green-100 text-green-800"
+                                      : "bg-gray-100 text-gray-800"
+                                  }`}
+                                >
+                                  {professor.status || "Ativo"}
+                                </span>
+                              </div>
+                              <div className="flex items-center space-x-4 mt-1">
+                                <span className="flex items-center text-sm text-gray-600">
+                                  <Award className="h-4 w-4 mr-1" />
+                                  {professor.faixa_ministrante ||
+                                    "Faixa não informada"}
+                                </span>
+                                {professor.telefone_whatsapp && (
+                                  <span className="text-sm text-gray-500">
+                                    Tel: {professor.telefone_whatsapp}
+                                  </span>
+                                )}
+                              </div>
+                              {professor.especialidades && (
+                                <div className="mt-1">
+                                  <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                                    {professor.especialidades}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex-shrink-0">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="text-red-600 border-red-600 hover:bg-red-50"
+                              >
+                                Ver Perfil
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  }}
+                </List>
+              )}
+
+              {professoresQuery.isFetchingNextPage && (
+                <div className="flex justify-center py-2 text-sm text-gray-500">
+                  Carregando mais professores...
                 </div>
               )}
             </motion.div>
@@ -1844,7 +2087,10 @@ export default function DashboardNew() {
                     {unidadesStats.isLoading ? (
                       <div className="space-y-4">
                         {[1, 2, 3, 4].map((i) => (
-                          <div key={i} className="skeleton h-20 w-full rounded-lg" />
+                          <div
+                            key={i}
+                            className="skeleton h-20 w-full rounded-lg"
+                          />
                         ))}
                       </div>
                     ) : unidadesStats.error ? (
@@ -1860,7 +2106,9 @@ export default function DashboardNew() {
                               <p className="text-2xl font-bold text-blue-600">
                                 {unidadesStats.data?.total || 0}
                               </p>
-                              <p className="text-sm text-gray-600">Total de Unidades</p>
+                              <p className="text-sm text-gray-600">
+                                Total de Unidades
+                              </p>
                             </div>
                             <Building2 className="h-8 w-8 text-blue-600" />
                           </div>
@@ -1872,7 +2120,9 @@ export default function DashboardNew() {
                               <p className="text-2xl font-bold text-green-600">
                                 {unidadesStats.data?.ativas || 0}
                               </p>
-                              <p className="text-sm text-gray-600">Unidades Ativas</p>
+                              <p className="text-sm text-gray-600">
+                                Unidades Ativas
+                              </p>
                             </div>
                             <CheckCircle className="h-8 w-8 text-green-600" />
                           </div>
@@ -1884,7 +2134,9 @@ export default function DashboardNew() {
                               <p className="text-2xl font-bold text-yellow-600">
                                 {unidadesStats.data?.homologacao || 0}
                               </p>
-                              <p className="text-sm text-gray-600">Em Planejamento</p>
+                              <p className="text-sm text-gray-600">
+                                Em Planejamento
+                              </p>
                             </div>
                             <Clock className="h-8 w-8 text-yellow-600" />
                           </div>
@@ -1896,7 +2148,12 @@ export default function DashboardNew() {
                               <p className="text-2xl font-bold text-red-600">
                                 {unidadesStats.data?.inativas || 0}
                               </p>
-                              <p className="text-sm text-gray-600">Inativa{(unidadesStats.data?.inativas || 0) !== 1 ? 's' : ''}</p>
+                              <p className="text-sm text-gray-600">
+                                Inativa
+                                {(unidadesStats.data?.inativas || 0) !== 1
+                                  ? "s"
+                                  : ""}
+                              </p>
                             </div>
                             <AlertTriangle className="h-8 w-8 text-red-600" />
                           </div>
@@ -1967,7 +2224,8 @@ export default function DashboardNew() {
 
                     <div className="mt-6 p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-blue-200">
                       <p className="text-sm text-gray-700 text-center">
-                        💡 <strong>Dica:</strong> Use a página de unidades para gerenciar completamente suas franquias
+                        💡 <strong>Dica:</strong> Use a página de unidades para
+                        gerenciar completamente suas franquias
                       </p>
                     </div>
                   </CardContent>
@@ -1976,85 +2234,138 @@ export default function DashboardNew() {
             </motion.div>
           )}
 
-          {selectedTab === "graduacoes" && (
-            <motion.div
-              key="graduacoes"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              className="space-y-6"
-            >
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <Card className="lg:col-span-2 bg-white border border-blue-200">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <GraduationCap className="h-5 w-5 text-warning" />{" "}
-                      Próximos a Graduar
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    {mockData.proximosGraus.map((a) => (
-                      <div
-                        key={a.id}
-                        className="flex items-center justify-between bg-white rounded-xl p-3 border-2 border-blue-100 hover:border-blue-300 transition-all"
-                      >
-                        <div className="flex items-center gap-3">
-                          {(a as any).foto ? (
-                            <img
-                              src={(a as any).foto}
-                              alt={a.nome}
-                              className="w-10 h-10 rounded-full object-cover"
-                            />
-                          ) : (
-                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-bold text-sm">
-                              {a.nome
-                                .split(" ")
-                                .map((n) => n[0])
-                                .join("")}
+          {selectedTab === "graduacoes" && (() => {
+            // Extrair os dados das queries para usar no JSX
+            const proximosGraduar = graduacoesQuery.data || [];
+            const historicoGraduacoes = historicoQuery.data || [];
+            
+            return (
+              <motion.div
+                key="graduacoes"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="space-y-6"
+              >
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  <Card className="lg:col-span-2 bg-white border border-blue-200">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <GraduationCap className="h-5 w-5 text-warning" />{" "}
+                        Próximos a Graduar
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      {graduacoesQuery.isLoading ? (
+                        <div className="space-y-3">
+                          {[1, 2, 3].map(i => (
+                            <div key={i} className="skeleton h-20 w-full rounded-lg" />
+                          ))}
+                        </div>
+                      ) : proximosGraduar.length === 0 ? (
+                        <div className="text-center py-8 text-gray-500">
+                          <GraduationCap className="h-12 w-12 mx-auto mb-2 text-gray-400" />
+                          <p>Nenhum aluno próximo a graduar</p>
+                        </div>
+                      ) : (
+                        proximosGraduar.slice(0, 10).map((a: any) => (
+                          <div
+                            key={a.alunoId || a.id}
+                            className="flex items-center justify-between bg-white rounded-xl p-3 border-2 border-blue-100 hover:border-blue-300 transition-all"
+                          >
+                            <div className="flex items-center gap-3">
+                              {a.foto ? (
+                                <img
+                                  src={a.foto}
+                                  alt={a.nomeCompleto || a.nome}
+                                  className="w-10 h-10 rounded-full object-cover"
+                                />
+                              ) : (
+                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-bold text-sm">
+                                  {(a.nomeCompleto || a.nome)
+                                    .split(" ")
+                                    .map((n: string) => n[0])
+                                    .join("")}
+                                </div>
+                              )}
+                              <div>
+                                <p className="font-medium text-gray-900">
+                                  {a.nomeCompleto || a.nome}
+                                </p>
+                                <div className="mt-1">
+                                  <BeltTip 
+                                    faixa={a.faixa} 
+                                    graus={a.grausAtual || a.graus || 0} 
+                                  />
+                                </div>
+                              </div>
                             </div>
-                          )}
-                          <div>
-                            <p className="font-medium text-gray-900">
-                              {a.nome}
-                            </p>
-                            <div className="mt-1">
-                              <BeltTip faixa={a.faixa} graus={a.graus as any} />
+                            <div className="text-right">
+                              <span className="text-xs text-gray-600">Faltam</span>
+                              <div className="text-xl font-bold text-blue-600">
+                                {a.faltamAulas || a.faltam || 0}
+                              </div>
+                              <span className="text-xs text-gray-600">aulas</span>
                             </div>
                           </div>
-                        </div>
-                        <div className="text-right">
-                          <span className="text-xs text-gray-600">Faltam</span>
-                          <div className="text-xl font-bold text-blue-600">
-                            {a.faltam}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </CardContent>
-                </Card>
+                        ))
+                      )}
+                    </CardContent>
+                  </Card>
 
-                <Card className="bg-white border border-blue-200">
-                  <CardHeader>
-                    <CardTitle>Histórico de Graduações</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    {mockGraduacoesHistorico.map((g) => (
-                      <div
-                        key={g.id}
-                        className="bg-white p-3 rounded-xl border-2 border-gray-200 hover:border-blue-300 transition-all"
-                      >
-                        <p className="font-medium text-gray-900">{g.nome}</p>
-                        <p className="text-xs text-gray-600">
-                          {g.faixaAnterior} → {g.novaFaixa} •{" "}
-                          {new Date(g.data).toLocaleDateString("pt-BR")}
-                        </p>
-                      </div>
-                    ))}
-                  </CardContent>
-                </Card>
-              </div>
-            </motion.div>
-          )}
+                  <Card className="bg-white border border-blue-200">
+                    <CardHeader>
+                      <CardTitle>Histórico de Graduações</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      {historicoQuery.isLoading ? (
+                        <div className="space-y-3">
+                          {[1, 2, 3].map(i => (
+                            <div key={i} className="skeleton h-16 w-full rounded-lg" />
+                          ))}
+                        </div>
+                      ) : historicoGraduacoes.length === 0 ? (
+                        <div className="text-center py-8 text-gray-500">
+                          <Trophy className="h-12 w-12 mx-auto mb-2 text-gray-400" />
+                          <p className="text-sm">Nenhuma graduação registrada</p>
+                          <p className="text-xs mt-1">As graduações aparecerão aqui</p>
+                        </div>
+                      ) : (
+                        historicoGraduacoes.map((g: HistoricoGraduacao) => (
+                          <div
+                            key={g.id}
+                            className="bg-white p-3 rounded-xl border-2 border-gray-200 hover:border-blue-300 transition-all"
+                          >
+                            <p className="font-medium text-gray-900">
+                              {g.nomeAluno}
+                            </p>
+                            <div className="flex items-center gap-1 mt-1">
+                              <span 
+                                className="px-2 py-0.5 rounded text-xs font-medium"
+                                style={{ backgroundColor: g.faixaAnteriorCor + '20', color: g.faixaAnteriorCor }}
+                              >
+                                {g.faixaAnterior}
+                              </span>
+                              <span className="text-xs text-gray-500">→</span>
+                              <span 
+                                className="px-2 py-0.5 rounded text-xs font-medium"
+                                style={{ backgroundColor: g.novaFaixaCor + '20', color: g.novaFaixaCor }}
+                              >
+                                {g.novaFaixa}
+                              </span>
+                            </div>
+                            <p className="text-xs text-gray-500 mt-1">
+                              {new Date(g.dataGraduacao).toLocaleDateString("pt-BR")}
+                            </p>
+                          </div>
+                        ))
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
+              </motion.div>
+            );
+          })()}
 
           {selectedTab === "loja" && (
             <motion.div
@@ -2327,8 +2638,8 @@ export default function DashboardNew() {
                           aula.status === "concluída"
                             ? "border-green-500"
                             : aula.status === "em andamento"
-                              ? "border-blue-500 animate-pulse"
-                              : "border-gray-200"
+                            ? "border-blue-500 animate-pulse"
+                            : "border-gray-200"
                         }`}
                       >
                         <div className="flex justify-between items-start mb-2">
@@ -2349,8 +2660,8 @@ export default function DashboardNew() {
                               aula.status === "concluída"
                                 ? "bg-green-100 text-green-800"
                                 : aula.status === "em andamento"
-                                  ? "bg-blue-100 text-blue-800"
-                                  : "bg-gray-100 text-gray-700"
+                                ? "bg-blue-100 text-blue-800"
+                                : "bg-gray-100 text-gray-700"
                             }`}
                           >
                             {aula.status}

@@ -11,12 +11,21 @@ interface PersonFormProps {
   onCancel?: () => void;
   initialData?: any;
   isEdit?: boolean;
+  defaultTipo?: "ALUNO" | "PROFESSOR";
 }
 
-export function PersonForm({ onSuccess, onCancel, initialData, isEdit = false }: PersonFormProps) {
-  const [tipoCadastro, setTipoCadastro] = useState<"ALUNO" | "PROFESSOR">("ALUNO");
+export function PersonForm({
+  onSuccess,
+  onCancel,
+  initialData,
+  isEdit = false,
+  defaultTipo = "ALUNO",
+}: PersonFormProps) {
+  const [tipoCadastro, setTipoCadastro] = useState<"ALUNO" | "PROFESSOR">(
+    defaultTipo
+  );
   const [formData, setFormData] = useState({
-    tipo_cadastro: "ALUNO",
+    tipo_cadastro: defaultTipo,
     nome_completo: "",
     cpf: "",
     data_nascimento: "",
@@ -50,9 +59,12 @@ export function PersonForm({ onSuccess, onCancel, initialData, isEdit = false }:
   useEffect(() => {
     if (initialData) {
       setFormData(initialData);
-      setTipoCadastro(initialData.tipo_cadastro || "ALUNO");
+      setTipoCadastro(initialData.tipo_cadastro || defaultTipo);
+    } else {
+      setTipoCadastro(defaultTipo);
+      setFormData((prev) => ({ ...prev, tipo_cadastro: defaultTipo }));
     }
-  }, [initialData]);
+  }, [initialData, defaultTipo]);
 
   useEffect(() => {
     // Verificar se é menor de idade
@@ -62,18 +74,20 @@ export function PersonForm({ onSuccess, onCancel, initialData, isEdit = false }:
       let idade = hoje.getFullYear() - nascimento.getFullYear();
       const mesAtual = hoje.getMonth();
       const mesNascimento = nascimento.getMonth();
-      
-      if (mesAtual < mesNascimento || 
-          (mesAtual === mesNascimento && hoje.getDate() < nascimento.getDate())) {
+
+      if (
+        mesAtual < mesNascimento ||
+        (mesAtual === mesNascimento && hoje.getDate() < nascimento.getDate())
+      ) {
         idade--;
       }
-      
+
       setIsMinor(idade < 18);
     }
   }, [formData.data_nascimento]);
 
   const queryClient = useQueryClient();
-  
+
   const mutation = useMutation({
     mutationFn: (data: any) => {
       // Usar a função correta baseada no tipo de cadastro
@@ -83,14 +97,19 @@ export function PersonForm({ onSuccess, onCancel, initialData, isEdit = false }:
       return createAluno(data);
     },
     onSuccess: () => {
-      toast.success(`${tipoCadastro === "ALUNO" ? "Aluno" : "Professor"} cadastrado com sucesso!`);
+      toast.success(
+        `${
+          tipoCadastro === "ALUNO" ? "Aluno" : "Professor"
+        } cadastrado com sucesso!`
+      );
       queryClient.invalidateQueries({ queryKey: ["alunos"] });
       queryClient.invalidateQueries({ queryKey: ["professores"] });
       if (onSuccess) onSuccess();
     },
     onError: (error: any) => {
-      console.error('Erro ao cadastrar:', error);
-      const message = error?.message || error?.response?.data?.message || "Erro ao cadastrar";
+      console.error("Erro ao cadastrar:", error);
+      const message =
+        error?.message || error?.response?.data?.message || "Erro ao cadastrar";
       toast.error(message);
     },
   });
@@ -117,17 +136,28 @@ export function PersonForm({ onSuccess, onCancel, initialData, isEdit = false }:
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Validações básicas
-    if (!formData.nome_completo || !formData.cpf || !formData.data_nascimento || !formData.telefone_whatsapp) {
+    if (
+      !formData.nome_completo ||
+      !formData.cpf ||
+      !formData.data_nascimento ||
+      !formData.telefone_whatsapp
+    ) {
       toast.error("Preencha todos os campos obrigatórios");
       return;
     }
 
     // Validar responsável se for menor
     if (tipoCadastro === "ALUNO" && isMinor) {
-      if (!formData.responsavel_nome || !formData.responsavel_cpf || !formData.responsavel_telefone) {
-        toast.error("Dados do responsável são obrigatórios para menores de 18 anos");
+      if (
+        !formData.responsavel_nome ||
+        !formData.responsavel_cpf ||
+        !formData.responsavel_telefone
+      ) {
+        toast.error(
+          "Dados do responsável são obrigatórios para menores de 18 anos"
+        );
         return;
       }
     }
@@ -148,9 +178,12 @@ export function PersonForm({ onSuccess, onCancel, initialData, isEdit = false }:
       ...formData,
       tipo_cadastro: tipoCadastro,
       cpf: formatCPF(formData.cpf),
-      responsavel_cpf: formData.responsavel_cpf ? formatCPF(formData.responsavel_cpf) : undefined,
+      responsavel_cpf: formData.responsavel_cpf
+        ? formatCPF(formData.responsavel_cpf)
+        : undefined,
       cep: formData.cep ? formatCEP(formData.cep) : undefined,
-      grau_atual: tipoCadastro === "ALUNO" ? Number(formData.grau_atual) : undefined,
+      grau_atual:
+        tipoCadastro === "ALUNO" ? Number(formData.grau_atual) : undefined,
       // Converter strings vazias para null/undefined para campos UUID e opcionais
       unidade_id: formData.unidade_id || undefined,
       created_by: formData.created_by || undefined,
@@ -183,13 +216,17 @@ export function PersonForm({ onSuccess, onCancel, initialData, isEdit = false }:
       delete dataToSend.responsavel_telefone;
     }
 
-    console.log('Enviando dados:', dataToSend);
+    console.log("Enviando dados:", dataToSend);
     mutation.mutate(dataToSend);
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+    >
+  ) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const formatPhone = (value: string) => {
@@ -218,7 +255,7 @@ export function PersonForm({ onSuccess, onCancel, initialData, isEdit = false }:
                 checked={tipoCadastro === "ALUNO"}
                 onChange={() => {
                   setTipoCadastro("ALUNO");
-                  setFormData(prev => ({ ...prev, tipo_cadastro: "ALUNO" }));
+                  setFormData((prev) => ({ ...prev, tipo_cadastro: "ALUNO" }));
                 }}
                 disabled={isEdit}
               />
@@ -232,7 +269,10 @@ export function PersonForm({ onSuccess, onCancel, initialData, isEdit = false }:
                 checked={tipoCadastro === "PROFESSOR"}
                 onChange={() => {
                   setTipoCadastro("PROFESSOR");
-                  setFormData(prev => ({ ...prev, tipo_cadastro: "PROFESSOR" }));
+                  setFormData((prev) => ({
+                    ...prev,
+                    tipo_cadastro: "PROFESSOR",
+                  }));
                 }}
                 disabled={isEdit}
               />
@@ -267,7 +307,9 @@ export function PersonForm({ onSuccess, onCancel, initialData, isEdit = false }:
               </label>
               <InputCPF
                 value={formData.cpf}
-                onChange={(value) => setFormData(prev => ({ ...prev, cpf: value }))}
+                onChange={(value) =>
+                  setFormData((prev) => ({ ...prev, cpf: value }))
+                }
                 className="input input-bordered"
                 required
               />
@@ -314,7 +356,10 @@ export function PersonForm({ onSuccess, onCancel, initialData, isEdit = false }:
                 value={formData.telefone_whatsapp}
                 onChange={(e) => {
                   const formatted = formatPhone(e.target.value);
-                  setFormData(prev => ({ ...prev, telefone_whatsapp: formatted }));
+                  setFormData((prev) => ({
+                    ...prev,
+                    telefone_whatsapp: formatted,
+                  }));
                 }}
                 className="input input-bordered"
                 placeholder="(99) 99999-9999"
@@ -389,7 +434,9 @@ export function PersonForm({ onSuccess, onCancel, initialData, isEdit = false }:
             {/* Responsável (se menor de idade) */}
             {isMinor && (
               <>
-                <div className="divider">Dados do Responsável (obrigatório para menores)</div>
+                <div className="divider">
+                  Dados do Responsável (obrigatório para menores)
+                </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="form-control">
                     <label className="label">
@@ -411,7 +458,12 @@ export function PersonForm({ onSuccess, onCancel, initialData, isEdit = false }:
                     </label>
                     <InputCPF
                       value={formData.responsavel_cpf}
-                      onChange={(value) => setFormData(prev => ({ ...prev, responsavel_cpf: value }))}
+                      onChange={(value) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          responsavel_cpf: value,
+                        }))
+                      }
                       className="input input-bordered"
                       required
                     />
@@ -419,7 +471,9 @@ export function PersonForm({ onSuccess, onCancel, initialData, isEdit = false }:
 
                   <div className="form-control">
                     <label className="label">
-                      <span className="label-text">Telefone do Responsável *</span>
+                      <span className="label-text">
+                        Telefone do Responsável *
+                      </span>
                     </label>
                     <input
                       type="tel"
@@ -427,7 +481,10 @@ export function PersonForm({ onSuccess, onCancel, initialData, isEdit = false }:
                       value={formData.responsavel_telefone}
                       onChange={(e) => {
                         const formatted = formatPhone(e.target.value);
-                        setFormData(prev => ({ ...prev, responsavel_telefone: formatted }));
+                        setFormData((prev) => ({
+                          ...prev,
+                          responsavel_telefone: formatted,
+                        }));
                       }}
                       className="input input-bordered"
                       placeholder="(99) 99999-9999"
@@ -521,11 +578,17 @@ export function PersonForm({ onSuccess, onCancel, initialData, isEdit = false }:
             Cancelar
           </button>
         )}
-        <button type="submit" className="btn btn-primary" disabled={mutation.isPending}>
+        <button
+          type="submit"
+          className="btn btn-primary"
+          disabled={mutation.isPending}
+        >
           {mutation.isPending ? (
             <span className="loading loading-spinner"></span>
+          ) : isEdit ? (
+            "Atualizar"
           ) : (
-            isEdit ? "Atualizar" : "Cadastrar"
+            "Cadastrar"
           )}
         </button>
       </div>

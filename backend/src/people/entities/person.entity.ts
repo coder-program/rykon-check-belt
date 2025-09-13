@@ -7,7 +7,10 @@ import {
   Index,
   BeforeInsert,
   BeforeUpdate,
+  OneToMany,
 } from 'typeorm';
+import { AlunoFaixa } from '../../graduacao/entities/aluno-faixa.entity';
+import { AlunoGraduacao } from '../../graduacao/entities/aluno-graduacao.entity';
 
 export enum TipoCadastro {
   ALUNO = 'ALUNO',
@@ -153,6 +156,13 @@ export class Person {
 
   // ===== CAMPOS CALCULADOS =====
   idade?: number;
+
+  // ===== RELAÇÕES =====
+  @OneToMany(() => AlunoFaixa, (alunoFaixa) => alunoFaixa.aluno)
+  faixas: AlunoFaixa[];
+
+  @OneToMany(() => AlunoGraduacao, (graduacao) => graduacao.aluno)
+  graduacoes: AlunoGraduacao[];
 
   @BeforeInsert()
   @BeforeUpdate()

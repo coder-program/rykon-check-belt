@@ -27,6 +27,9 @@ async function bootstrap() {
     allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
   });
 
+  // Adiciona prefixo global /api
+  app.setGlobalPrefix('api');
+
   // Swagger
   const config = new DocumentBuilder()
     .setTitle('API - Gestão Academia')

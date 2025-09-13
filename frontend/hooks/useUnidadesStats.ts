@@ -12,7 +12,7 @@ export function useUnidadesStats() {
   return useQuery<UnidadesStats>({
     queryKey: ['unidades-stats'],
     queryFn: async () => {
-      const response = await http('/people/unidades/stats', {
+      const response = await http('/unidades/stats', { 
         method: 'GET',
         auth: true
       });

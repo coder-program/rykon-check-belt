@@ -24,7 +24,8 @@
     "migration:run": "npm run typeorm -- migration:run",
     "migration:revert": "npm run typeorm -- migration:revert",
     "db:seed": "ts-node -r tsconfig-paths/register src/seed-users.ts",
-    "db:seed:legacy": "node insert-seed-data.js"
+    "db:seed:legacy": "node insert-seed-data.js",
+    "seed:graduacao": "ts-node -r tsconfig-paths/register src/scripts/seed-graduacao.ts"
   },
   "dependencies": {
     "@nestjs/axios": "^4.0.1",

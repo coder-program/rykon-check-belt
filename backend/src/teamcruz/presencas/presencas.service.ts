@@ -1,14 +1,17 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject, forwardRef } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Presenca } from './entities/presenca.entity';
 import { Person, TipoCadastro } from '../../people/entities/person.entity';
+import { GraduacaoService } from '../../graduacao/graduacao.service';
 
 @Injectable()
 export class PresencasService {
   constructor(
     @InjectRepository(Presenca) private presencasRepo: Repository<Presenca>,
     @InjectRepository(Person) private personRepo: Repository<Person>,
+    @Inject(forwardRef(() => GraduacaoService))
+    private graduacaoService: GraduacaoService,
   ) {}
 
   async aulasAbertas() {
@@ -52,12 +55,32 @@ export class PresencasService {
       } 
     });
     if (!pessoa) throw new Error('Aluno não encontrado');
+    
+    // Salvar presença
     const p = this.presencasRepo.create({ 
       pessoaId,
       pessoa,
       data: new Date() 
     });
-    return this.presencasRepo.save(p);
+    const presencaSalva = await this.presencasRepo.save(p);
+    
+    // Incrementar contador de graduação e verificar se deve conceder grau
+    try {
+      const { grauConcedido, statusAtualizado } = await this.graduacaoService.incrementarPresenca(pessoaId);
+      
+      // Retornar presença com informação adicional sobre graduação
+      return {
+        ...presencaSalva,
+        graduacao: {
+          grauConcedido,
+          statusAtual: statusAtualizado,
+        },
+      };
+    } catch (error) {
+      // Se não houver faixa ativa, apenas retornar a presença
+      console.log(`Aluno ${pessoaId} sem faixa ativa, presença registrada sem atualizar graduação`);
+      return presencaSalva;
+    }
   }
 
   async listarPorData(dateStr?: string) {

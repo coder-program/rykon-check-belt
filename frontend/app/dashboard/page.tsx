@@ -21,13 +21,23 @@ import {
   FileText,
   Mail,
   Plus,
+  Building2,
 } from "lucide-react";
 
 export default function DashboardPage() {
   const { user, logout } = useAuth();
-  const hasPerfil = (p: string) => (user?.perfis || []).map((x: string) => x.toLowerCase()).includes(p.toLowerCase());
+  const hasPerfil = (p: string) =>
+    (user?.perfis || [])
+      .map((x: string) => x.toLowerCase())
+      .includes(p.toLowerCase());
   const router = useRouter();
   const [users, setUsers] = useState<any[]>([]);
+
+  // Debug do usuário
+  console.log("User:", user);
+  console.log("User perfis:", user?.perfis);
+  console.log("hasPerfil master:", hasPerfil("master"));
+  console.log("hasPerfil franqueado:", hasPerfil("franqueado"));
 
   useEffect(() => {
     const load = async () => {
@@ -42,7 +52,7 @@ export default function DashboardPage() {
                 ? { Authorization: `Bearer ${localStorage.getItem("token")}` }
                 : {}),
             },
-          },
+          }
         );
         const data = await res.json();
         setUsers(Array.isArray(data) ? data : []);
@@ -213,14 +223,71 @@ export default function DashboardPage() {
                 <CardTitle className="flex items-center justify-between">
                   <span className="flex items-center">
                     <Users className="mr-2 h-5 w-5" />
-                    Cadastro de Pessoas
+                    Alunos
                   </span>
-                  <span className="badge badge-primary text-xs animate-pulse">
-                    Atualizado!
+                  <span className="badge badge-primary text-xs">Ativo</span>
+                </CardTitle>
+                <CardDescription>
+                  Gestão completa de alunos da TeamCruz com controle de
+                  graduações
+                </CardDescription>
+              </CardHeader>
+            </Card>
+
+            <Card
+              className="cursor-pointer hover:shadow-xl transition-all hover:scale-105 border-purple-200 bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/20 dark:to-purple-800/20"
+              onClick={() => router.push("/professores")}
+            >
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  <span className="flex items-center">
+                    <Users className="mr-2 h-5 w-5" />
+                    Professores
+                  </span>
+                  <span className="badge badge-secondary text-xs animate-pulse">
+                    Novo!
                   </span>
                 </CardTitle>
                 <CardDescription>
-                  Cadastro unificado de Alunos e Professores com validações completas
+                  Cadastro e gestão dos instrutores e professores da academia
+                </CardDescription>
+              </CardHeader>
+            </Card>
+
+            <Card
+              className="cursor-pointer hover:shadow-xl transition-all hover:scale-105 border-yellow-200 bg-gradient-to-br from-yellow-50 to-yellow-100 dark:from-yellow-900/20 dark:to-yellow-800/20"
+              onClick={() => router.push("/aprovacao-alunos")}
+            >
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  <span className="flex items-center">
+                    <CheckCircle className="mr-2 h-5 w-5" />
+                    Aprovação de Alunos
+                  </span>
+                  <span className="badge badge-warning text-xs">Pendente</span>
+                </CardTitle>
+                <CardDescription>
+                  Sistema de aprovação e validação de novos cadastros de alunos
+                </CardDescription>
+              </CardHeader>
+            </Card>
+
+            <Card
+              className="cursor-pointer hover:shadow-xl transition-all hover:scale-105 border-cyan-200 bg-gradient-to-br from-cyan-50 to-cyan-100 dark:from-cyan-900/20 dark:to-cyan-800/20"
+              onClick={() => router.push("/meus-alunos")}
+            >
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  <span className="flex items-center">
+                    <Users className="mr-2 h-5 w-5" />
+                    Meus Alunos
+                  </span>
+                  <span className="badge badge-info text-xs">
+                    Personalizado
+                  </span>
+                </CardTitle>
+                <CardDescription>
+                  Visualização personalizada dos alunos sob sua responsabilidade
                 </CardDescription>
               </CardHeader>
             </Card>
@@ -235,9 +302,7 @@ export default function DashboardPage() {
                     <Grid3X3 className="mr-2 h-5 w-5" />
                     TeamCruz Jiu-Jitsu
                   </span>
-                  <span className="badge badge-error text-xs">
-                    Sistema
-                  </span>
+                  <span className="badge badge-error text-xs">Sistema</span>
                 </CardTitle>
                 <CardDescription>
                   Sistema completo de controle de presença e graduação
@@ -245,27 +310,41 @@ export default function DashboardPage() {
               </CardHeader>
             </Card>
 
-            {(hasPerfil('master') || hasPerfil('franqueado')) && (
-              <Card
-                className="cursor-pointer hover:shadow-xl transition-all hover:scale-105 border-indigo-200 bg-gradient-to-br from-indigo-50 to-indigo-100 dark:from-indigo-900/20 dark:to-indigo-800/20"
-                onClick={() => router.push(hasPerfil('master') ? "/franqueados" : "/unidades")}
-              >
-                <CardHeader>
-                  <CardTitle className="flex items-center justify-between">
-                    <span className="flex items-center">
-                      <Grid3X3 className="mr-2 h-5 w-5" />
-                      {hasPerfil('master') ? 'Administração de Franquias e Unidades' : 'Minhas Unidades'}
-                    </span>
-                    <span className="badge badge-success text-xs">Restrito</span>
-                  </CardTitle>
-                  <CardDescription>
-                    {hasPerfil('master')
-                      ? 'Cadastro de franquias (master) e unidades'
-                      : 'Gerencie as unidades vinculadas à sua franquia'}
-                  </CardDescription>
-                </CardHeader>
-              </Card>
-            )}
+            <Card
+              className="cursor-pointer hover:shadow-xl transition-all hover:scale-105 border-indigo-200 bg-gradient-to-br from-indigo-50 to-indigo-100 dark:from-indigo-900/20 dark:to-indigo-800/20"
+              onClick={() => router.push("/franqueados")}
+            >
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  <span className="flex items-center">
+                    <Building2 className="mr-2 h-5 w-5" />
+                    Franqueados
+                  </span>
+                  <span className="badge badge-success text-xs">Master</span>
+                </CardTitle>
+                <CardDescription>
+                  Gestão de franquias e contratos de franqueados
+                </CardDescription>
+              </CardHeader>
+            </Card>
+
+            <Card
+              className="cursor-pointer hover:shadow-xl transition-all hover:scale-105 border-teal-200 bg-gradient-to-br from-teal-50 to-teal-100 dark:from-teal-900/20 dark:to-teal-800/20"
+              onClick={() => router.push("/unidades")}
+            >
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  <span className="flex items-center">
+                    <Building2 className="mr-2 h-5 w-5" />
+                    Unidades
+                  </span>
+                  <span className="badge badge-success text-xs">Restrito</span>
+                </CardTitle>
+                <CardDescription>
+                  Cadastro e administração de todas as unidades
+                </CardDescription>
+              </CardHeader>
+            </Card>
 
             <Card className="hover:shadow-lg transition-shadow border-dashed border-2">
               <CardHeader>

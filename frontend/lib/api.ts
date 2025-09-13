@@ -1,5 +1,5 @@
 export const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:5002";
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:5002/api";
 
 type HttpOptions = {
   method?: string;
@@ -9,7 +9,8 @@ type HttpOptions = {
 };
 
 export async function http(path: string, opts: HttpOptions = {}) {
-  const url = path.startsWith("http") ? path : `${API_BASE_URL}${path}`;
+  const url = path.startsWith("http") ? path : `${API_BASE_URL}${path.startsWith('/') ? path : '/' + path}`;
+  console.log("API Call - Path:", path, "Full URL:", url, "Base URL:", API_BASE_URL);
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     ...(opts.headers || {}),
@@ -33,7 +34,8 @@ export async function http(path: string, opts: HttpOptions = {}) {
     // tentativa automática de refresh quando 401
     if (res.status === 401) {
       try {
-        await fetch(`${API_BASE_URL}/auth/refresh-cookie`, {
+        // API_BASE_URL já tem /api, então a URL fica: /api/auth/refresh-cookie
+        await fetch(`${API_BASE_URL.replace('/api', '')}/api/auth/refresh-cookie`, {
           method: "POST",
           credentials: "include",
         });
