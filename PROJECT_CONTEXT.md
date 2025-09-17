@@ -18,7 +18,7 @@
 ### Configurações do Projeto
 - **ID do Projeto**: `teamcruz-controle-alunos`
 - **Número do Projeto**: `943403834207`
-- **Região**: `us-central1`
+- **Região**: `southamerica-east1`
 
 ### Serviços
 #### Frontend

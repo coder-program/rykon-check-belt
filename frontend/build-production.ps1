@@ -6,7 +6,7 @@ Write-Host "🚀 Iniciando build de produção do frontend..." -ForegroundColor 
 # Configuração
 $PROJECT_ID = "teamcruz-controle-alunos"
 $SERVICE_NAME = "teamcruz-frontend"
-$REGION = "us-central1"
+$REGION = "southamerica-east1"
 $API_URL = "https://teamcruz-backend-m2olfa5bfa-rj.a.run.app/api"
 $IMAGE_TAG = "gcr.io/$PROJECT_ID/${SERVICE_NAME}:latest"
 

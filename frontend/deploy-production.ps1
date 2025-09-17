@@ -19,7 +19,7 @@ Write-Host ""
 
 # Configuração
 $SERVICE_NAME = "teamcruz-frontend"
-$REGION = "us-central1"
+$REGION = "southamerica-east1"
 $API_URL = "https://teamcruz-backend-m2olfa5bfa-rj.a.run.app/api"
 $IMAGE_TAG = "gcr.io/$ProjectId/${SERVICE_NAME}:latest"
 $TIMESTAMP = Get-Date -Format "yyyyMMdd-HHmmss"
