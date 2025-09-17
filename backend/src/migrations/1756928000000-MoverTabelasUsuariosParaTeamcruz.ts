@@ -8,28 +8,28 @@ export class MoverTabelasUsuariosParaTeamcruz1756928000000
   public async up(queryRunner: QueryRunner): Promise<void> {
     // Verificar se as tabelas já estão no schema teamcruz
     const result = await queryRunner.query(`
-      SELECT COUNT(*) as count 
-      FROM information_schema.tables 
-      WHERE table_schema = 'teamcruz' 
+      SELECT COUNT(*) as count
+      FROM information_schema.tables
+      WHERE table_schema = 'teamcruz'
       AND table_name IN ('usuarios', 'perfis', 'permissoes', 'tipos_permissao', 'niveis_permissao')
     `);
 
     if (result[0].count > 0) {
       console.log('Tabelas já estão no schema teamcruz, pulando migration');
       // Apenas garantir que o search_path está configurado
-      await queryRunner.query(
-        `ALTER DATABASE teamcruz_db SET search_path TO teamcruz, public`,
-      );
+      // await queryRunner.query(
+      //   `ALTER DATABASE teamcruz SET search_path TO teamcruz, public`,
+      // );
       return;
     }
 
     // Se as tabelas estiverem no schema public, mover para teamcruz
     // Primeiro, as tabelas sem dependências
     const publicTables = await queryRunner.query(`
-      SELECT table_name 
-      FROM information_schema.tables 
-      WHERE table_schema = 'public' 
-      AND table_name IN ('niveis_permissao', 'tipos_permissao', 'usuarios', 'perfis', 
+      SELECT table_name
+      FROM information_schema.tables
+      WHERE table_schema = 'public'
+      AND table_name IN ('niveis_permissao', 'tipos_permissao', 'usuarios', 'perfis',
                          'permissoes', 'perfil_permissoes', 'usuario_perfis', 'audit_logs')
     `);
 

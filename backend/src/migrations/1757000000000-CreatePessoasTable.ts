@@ -32,14 +32,14 @@ export class CreatePessoasTable1757000000000 implements MigrationInterface {
       END$$;
     `);
 
-    // Criar tabela pessoas no schema public
+    // Criar tabela pessoas no schema teamcruz
     await queryRunner.query(`
-      CREATE TABLE IF NOT EXISTS pessoas (
+      CREATE TABLE IF NOT EXISTS teamcruz.pessoas (
         id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-        
+
         -- Tipo de cadastro
         tipo_cadastro pessoas_tipo_cadastro_enum NOT NULL,
-        
+
         -- Dados pessoais comuns
         nome_completo VARCHAR(255) NOT NULL,
         cpf VARCHAR(14) UNIQUE NOT NULL,
@@ -47,7 +47,7 @@ export class CreatePessoasTable1757000000000 implements MigrationInterface {
         genero pessoas_genero_enum,
         telefone_whatsapp VARCHAR(20) NOT NULL,
         email VARCHAR(255),
-        
+
         -- Endereço
         cep VARCHAR(10),
         logradouro VARCHAR(255),
@@ -56,28 +56,28 @@ export class CreatePessoasTable1757000000000 implements MigrationInterface {
         bairro VARCHAR(100),
         cidade VARCHAR(100),
         uf VARCHAR(2),
-        
+
         -- Relação com unidade
         unidade_id UUID,
-        
+
         -- Status
         status pessoas_status_enum NOT NULL DEFAULT 'ATIVO',
-        
+
         -- ===== CAMPOS ESPECÍFICOS DE ALUNO =====
         data_matricula DATE,
         faixa_atual VARCHAR(20),
         grau_atual INTEGER DEFAULT 0,
-        
+
         -- Responsável (para menores de 18 anos)
         responsavel_nome VARCHAR(255),
         responsavel_cpf VARCHAR(14),
         responsavel_telefone VARCHAR(20),
-        
+
         -- ===== CAMPOS ESPECÍFICOS DE PROFESSOR =====
         faixa_ministrante VARCHAR(20),
         data_inicio_docencia DATE,
         registro_profissional VARCHAR(100),
-        
+
         -- ===== CAMPOS DE CONTROLE =====
         observacoes TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -89,19 +89,19 @@ export class CreatePessoasTable1757000000000 implements MigrationInterface {
 
     // Criar índices
     await queryRunner.query(
-      `CREATE INDEX IF NOT EXISTS idx_pessoas_cpf ON pessoas(cpf)`,
+      `CREATE INDEX IF NOT EXISTS idx_pessoas_cpf ON teamcruz.pessoas(cpf)`,
     );
     await queryRunner.query(
-      `CREATE INDEX IF NOT EXISTS idx_pessoas_tipo_cadastro ON pessoas(tipo_cadastro)`,
+      `CREATE INDEX IF NOT EXISTS idx_pessoas_tipo_cadastro ON teamcruz.pessoas(tipo_cadastro)`,
     );
     await queryRunner.query(
-      `CREATE INDEX IF NOT EXISTS idx_pessoas_status ON pessoas(status)`,
+      `CREATE INDEX IF NOT EXISTS idx_pessoas_status ON teamcruz.pessoas(status)`,
     );
     await queryRunner.query(
-      `CREATE INDEX IF NOT EXISTS idx_pessoas_unidade_id ON pessoas(unidade_id)`,
+      `CREATE INDEX IF NOT EXISTS idx_pessoas_unidade_id ON teamcruz.pessoas(unidade_id)`,
     );
     await queryRunner.query(
-      `CREATE INDEX IF NOT EXISTS idx_pessoas_nome ON pessoas(nome_completo)`,
+      `CREATE INDEX IF NOT EXISTS idx_pessoas_nome ON teamcruz.pessoas(nome_completo)`,
     );
 
     // Trigger para atualizar updated_at
@@ -123,7 +123,7 @@ export class CreatePessoasTable1757000000000 implements MigrationInterface {
           WHERE tgname = 'update_pessoas_updated_at_trigger'
         ) THEN
           CREATE TRIGGER update_pessoas_updated_at_trigger
-          BEFORE UPDATE ON pessoas
+          BEFORE UPDATE ON teamcruz.pessoas
           FOR EACH ROW
           EXECUTE FUNCTION update_pessoas_updated_at();
         END IF;
@@ -134,7 +134,7 @@ export class CreatePessoasTable1757000000000 implements MigrationInterface {
   public async down(queryRunner: QueryRunner): Promise<void> {
     // Remover trigger
     await queryRunner.query(
-      `DROP TRIGGER IF EXISTS update_pessoas_updated_at_trigger ON pessoas`,
+      `DROP TRIGGER IF EXISTS update_pessoas_updated_at_trigger ON teamcruz.pessoas`,
     );
     await queryRunner.query(
       `DROP FUNCTION IF EXISTS update_pessoas_updated_at()`,

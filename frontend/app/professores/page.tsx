@@ -1,33 +1,44 @@
 "use client";
 
 import React, { useState } from "react";
-import {
-  useInfiniteQuery,
-  useMutation,
-  useQueryClient,
-} from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation } from "@tanstack/react-query";
 import { FixedSizeList as List } from "react-window";
-import { listAlunos, createAluno } from "@/lib/peopleApi";
-import {
-  Search,
-  Plus,
-  Edit,
-  Trash2,
-  BookOpen,
-  Users,
-  Award,
-} from "lucide-react";
+import { listAlunos } from "@/lib/peopleApi";
+import { Search, Plus, Edit, BookOpen, Users, Award } from "lucide-react";
 import { PersonForm } from "@/components/people/PersonForm";
-import { useAuth } from "@/app/auth/AuthContext";
+
+// Types
+interface QueryParams {
+  page: number;
+  pageSize: number;
+  search: string;
+  faixa: string;
+  unidade: string;
+  tipo_cadastro: string;
+}
+
+interface PageData {
+  hasNextPage: boolean;
+  page: number;
+  items: unknown[];
+}
+
+interface ListCallbackProps {
+  visibleStopIndex: number;
+}
+
+interface ListItemProps {
+  index: number;
+  style: React.CSSProperties;
+}
 
 export default function PageProfessores() {
-  const { user } = useAuth();
   const [search, setSearch] = useState("");
   const [debounced, setDebounced] = useState("");
   const [faixa, setFaixa] = useState<"todos" | "kids" | "adulto">("todos");
   const [unidade, setUnidade] = useState("");
   const [showForm, setShowForm] = useState(false);
-  const [editingPerson, setEditingPerson] = useState(null);
+  const [editingPerson, setEditingPerson] = useState<unknown | null>(null);
 
   // Temporariamente permitir para todos - ajustar depois
   const canCreate = true;
@@ -41,10 +52,11 @@ export default function PageProfessores() {
   const query = useInfiniteQuery({
     queryKey: ["professores", debounced, faixa, unidade],
     initialPageParam: 1,
-    getNextPageParam: (last) => (last.hasNextPage ? last.page + 1 : undefined),
+    getNextPageParam: (lastPage: PageData) =>
+      lastPage.hasNextPage ? lastPage.page + 1 : undefined,
     queryFn: async ({ pageParam }) => {
-      const params: any = {
-        page: pageParam,
+      const params: QueryParams = {
+        page: pageParam as number,
         pageSize: 30,
         search: debounced,
         faixa,
@@ -56,9 +68,7 @@ export default function PageProfessores() {
     },
   });
 
-  const qc = useQueryClient();
-
-  const items = (query.data?.pages || []).flatMap((p) => p.items);
+  const items = (query.data?.pages || []).flatMap((page) => page.items);
 
   console.log("Professores Query data:", query.data);
   console.log("Professores Items:", items);
@@ -180,7 +190,7 @@ export default function PageProfessores() {
                   <p className="text-2xl font-bold text-slate-900 dark:text-white">
                     {
                       items.filter((p) =>
-                        p.faixa_ministrante?.toLowerCase().includes("preta"),
+                        p.faixa_ministrante?.toLowerCase().includes("preta")
                       ).length
                     }
                   </p>
@@ -208,7 +218,9 @@ export default function PageProfessores() {
               <select
                 className="select select-bordered"
                 value={faixa}
-                onChange={(e) => setFaixa(e.target.value as any)}
+                onChange={(e) =>
+                  setFaixa(e.target.value as "todos" | "kids" | "adulto")
+                }
               >
                 <option value="todos">Todas as Categorias</option>
                 <option value="kids">Kids</option>
@@ -252,7 +264,7 @@ export default function PageProfessores() {
                 itemCount={items.length + (query.hasNextPage ? 1 : 0)}
                 itemSize={100}
                 width={"100%"}
-                onItemsRendered={({ visibleStopIndex }) => {
+                onItemsRendered={({ visibleStopIndex }: ListCallbackProps) => {
                   if (
                     visibleStopIndex >= items.length - 5 &&
                     query.hasNextPage &&
@@ -261,7 +273,7 @@ export default function PageProfessores() {
                     query.fetchNextPage();
                 }}
               >
-                {({ index, style }) => {
+                {({ index, style }: ListItemProps) => {
                   const professor = items[index];
                   if (!professor)
                     return (
