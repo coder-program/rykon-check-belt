@@ -167,7 +167,7 @@ export default function LoginPage() {
                   className="w-full h-12 border-2 border-gray-600 bg-gray-800/30 hover:bg-gray-700/50 text-white"
                   onClick={() =>
                     (window.location.href = `${
-                      process.env.NEXT_PUBLIC_API_URL || "http://localhost:4001"
+                      process.env.NEXT_PUBLIC_API_URL
                     }/auth/google`)
                   }
                   disabled={isLoading}

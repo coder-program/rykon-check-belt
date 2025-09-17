@@ -1,0 +1,59 @@
+# Cloud Build configuration for frontend deployment
+steps:
+  # Build the container image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: [
+      'build',
+      '--build-arg', 'NEXT_PUBLIC_API_URL=https://teamcruz-backend-m2olfa5bfa-rj.a.run.app/api',
+      '-f', 'Dockerfile.cloudrun',
+      '-t', 'gcr.io/$PROJECT_ID/teamcruz-frontend:$COMMIT_SHA',
+      '-t', 'gcr.io/$PROJECT_ID/teamcruz-frontend:latest',
+      '.'
+    ]
+
+  # Push the container image to Container Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/teamcruz-frontend:$COMMIT_SHA']
+  
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/teamcruz-frontend:latest']
+
+  # Deploy container image to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'teamcruz-frontend'
+      - '--image'
+      - 'gcr.io/$PROJECT_ID/teamcruz-frontend:$COMMIT_SHA'
+      - '--region'
+      - 'us-central1'
+      - '--platform'
+      - 'managed'
+      - '--allow-unauthenticated'
+      - '--port'
+      - '8080'
+      - '--memory'
+      - '256Mi'
+      - '--cpu'
+      - '1'
+      - '--min-instances'
+      - '0'
+      - '--max-instances'
+      - '10'
+      - '--set-env-vars'
+      - 'NODE_ENV=production'
+
+# Timeout for the entire build
+timeout: '1200s'
+
+# Machine type for the build
+options:
+  machineType: 'E2_HIGHCPU_8'
+  logging: CLOUD_LOGGING_ONLY
+
+# Substitutions (optional - can be overridden at build time)
+# substitutions:
+#   _SERVICE_NAME: teamcruz-frontend
+#   _REGION: us-central1

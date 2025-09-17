@@ -1,10 +1,11 @@
 export const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:5002/api";
+  process.env.NEXT_PUBLIC_API_URL ||
+  "https://teamcruz-backend-m2olfa5bfa-rj.a.run.app/api";
 
 type HttpOptions = {
   method?: string;
   headers?: Record<string, string>;
-  body?: any;
+  body?: Record<string, unknown> | string;
   auth?: boolean; // inclui Authorization automaticamente
 };
 
@@ -18,7 +19,7 @@ export async function http(path: string, opts: HttpOptions = {}) {
     "Full URL:",
     url,
     "Base URL:",
-    API_BASE_URL,
+    API_BASE_URL
   );
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
@@ -49,7 +50,7 @@ export async function http(path: string, opts: HttpOptions = {}) {
           {
             method: "POST",
             credentials: "include",
-          },
+          }
         );
         const retry = await fetch(url, {
           method: opts.method || "GET",
@@ -62,7 +63,7 @@ export async function http(path: string, opts: HttpOptions = {}) {
         try {
           return JSON.parse(rt);
         } catch {
-          return rt as any;
+          return rt as unknown;
         }
       } catch (e) {
         // segue para erro normal
@@ -83,6 +84,6 @@ export async function http(path: string, opts: HttpOptions = {}) {
   try {
     return JSON.parse(text);
   } catch {
-    return text as any;
+    return text as string;
   }
 }

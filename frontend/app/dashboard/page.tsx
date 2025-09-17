@@ -43,7 +43,7 @@ export default function DashboardPage() {
     const load = async () => {
       try {
         const res = await fetch(
-          (process.env.NEXT_PUBLIC_API_URL || "http://localhost:4001") +
+          process.env.NEXT_PUBLIC_API_URL +
             "/usuarios",
           {
             headers: {

@@ -153,7 +153,7 @@ export default function CampanhasManager() {
     const load = async () => {
       try {
         const res = await fetch(
-          (process.env.NEXT_PUBLIC_API_URL || "http://localhost:4001") +
+          process.env.NEXT_PUBLIC_API_URL +
             "/teamcruz/campanhas",
           {
             headers: {
@@ -203,7 +203,7 @@ export default function CampanhasManager() {
       return;
     }
 
-    const base = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4001";
+    const base = process.env.NEXT_PUBLIC_API_URL;
     if (editingCampanha) {
       fetch(base + `/teamcruz/campanhas/${editingCampanha.id}`, {
         method: "PUT",
@@ -247,7 +247,7 @@ export default function CampanhasManager() {
 
   const handleDeleteCampanha = (id: string) => {
     if (window.confirm("Tem certeza que deseja excluir esta campanha?")) {
-      const base = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4001";
+      const base = process.env.NEXT_PUBLIC_API_URL;
       fetch(base + `/teamcruz/campanhas/${id}`, {
         method: "DELETE",
         headers: {
@@ -265,7 +265,7 @@ export default function CampanhasManager() {
   };
 
   const handleEnviarCampanha = (campanha: Campanha) => {
-    const base = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4001";
+    const base = process.env.NEXT_PUBLIC_API_URL;
     fetch(base + `/teamcruz/campanhas/${campanha.id}/enviar`, {
       method: "POST",
       headers: {
