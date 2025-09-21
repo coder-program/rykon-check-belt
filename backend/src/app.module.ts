@@ -26,14 +26,16 @@ import { GraduacaoModule } from './graduacao/graduacao.module';
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => {
         const isProduction = configService.get('NODE_ENV') === 'production';
-        const host = isProduction
-          ? '/cloudsql/teamcruz-controle-alunos:southamerica-east1:teamcruz-db'
-          : configService.get('DB_HOST', 'localhost');
 
-        return {
+        console.log('Ambiente:', configService.get('NODE_ENV'));
+        const config = {
           type: 'postgres' as const,
-          host,
-          port: isProduction ? undefined : configService.get('DB_PORT', 5436),
+          host: isProduction
+            ? null
+            : configService.get('DB_HOST', 'localhost'),
+          port: isProduction
+            ? null
+            : configService.get('DB_PORT', 5436),
           username: configService.get('DB_USER', 'teamcruz_admin'),
           password: configService.get('DB_PASS', 'cruz@jiujitsu2024'),
           database: configService.get('DB_NAME', 'teamcruz_db'),
@@ -41,12 +43,16 @@ import { GraduacaoModule } from './graduacao/graduacao.module';
           synchronize: false,
           ssl: false,
           logging: !isProduction,
-          extra: isProduction
-            ? undefined
-            : {
-                searchPath: 'teamcruz,public',
-              },
+          extra: {
+            ...(isProduction ? {
+              host: '/cloudsql/teamcruz-controle-alunos:southamerica-east1:teamcruz-db'
+            } : {
+              searchPath: 'teamcruz,public'
+            })
+          },
         };
+        console.log('Config TypeORM:', JSON.stringify(config, null, 2));
+        return config;
       },
     }),
 
