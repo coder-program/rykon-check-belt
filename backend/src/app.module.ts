@@ -24,18 +24,32 @@ import { GraduacaoModule } from './graduacao/graduacao.module';
     ConfigModule.forRoot({ isGlobal: true }),
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
-      useFactory: (configService: ConfigService) => {
+      useFactory: async (configService: ConfigService) => {
         const isProduction = configService.get('NODE_ENV') === 'production';
-
         console.log('Ambiente:', configService.get('NODE_ENV'));
+
+        if (isProduction) {
+          const { Client } = require('pg');
+          const client = new Client({
+            user: configService.get('DB_USER'),
+            password: configService.get('DB_PASS'),
+            database: configService.get('DB_NAME'),
+            host: '/cloudsql/teamcruz-controle-alunos:southamerica-east1:teamcruz-db'
+          });
+
+          try {
+            await client.connect();
+            console.log('Teste de conexão direto com pg: Sucesso!');
+            await client.end();
+          } catch (err) {
+            console.error('Erro ao testar conexão:', err);
+          }
+        }
+
         const config = {
           type: 'postgres' as const,
-          host: isProduction
-            ? null
-            : configService.get('DB_HOST', 'localhost'),
-          port: isProduction
-            ? null
-            : configService.get('DB_PORT', 5436),
+          host: configService.get('DB_HOST', 'localhost'),
+          port: isProduction ? undefined : configService.get('DB_PORT', 5436),
           username: configService.get('DB_USER', 'teamcruz_admin'),
           password: configService.get('DB_PASS', 'cruz@jiujitsu2024'),
           database: configService.get('DB_NAME', 'teamcruz_db'),
@@ -43,14 +57,13 @@ import { GraduacaoModule } from './graduacao/graduacao.module';
           synchronize: false,
           ssl: false,
           logging: !isProduction,
-          extra: {
-            ...(isProduction ? {
-              host: '/cloudsql/teamcruz-controle-alunos:southamerica-east1:teamcruz-db'
-            } : {
-              searchPath: 'teamcruz,public'
-            })
-          },
+          extra: isProduction ? {
+            host: '/cloudsql/teamcruz-controle-alunos:southamerica-east1:teamcruz-db'
+          } : {
+            searchPath: 'teamcruz,public'
+          }
         };
+
         console.log('Config TypeORM:', JSON.stringify(config, null, 2));
         return config;
       },
