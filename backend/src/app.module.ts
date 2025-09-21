@@ -24,66 +24,27 @@ import { GraduacaoModule } from './graduacao/graduacao.module';
     ConfigModule.forRoot({ isGlobal: true }),
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
-      useFactory: async (configService: ConfigService) => {
-        const isProduction = configService.get('NODE_ENV') === 'production';
-        console.log('Ambiente:', configService.get('NODE_ENV'));
-
-        if (isProduction) {
-          const { Client } = require('pg');
-          console.log('Tentando conexão direta com pg...');
-
-          const socketPath = '/cloudsql/teamcruz-controle-alunos:southamerica-east1:teamcruz-db';
-          console.log('Socket Path:', socketPath);
-
-          const client = new Client({
-            user: configService.get('DB_USER'),
-            password: configService.get('DB_PASS'),
-            database: configService.get('DB_NAME'),
-            host: socketPath
-          });
-
-          try {
-            await client.connect();
-            console.log('Teste de conexão direto com pg: Sucesso!');
-            await client.end();
-
-            // Se a conexão direta funcionar, retorna a configuração correta
-            return {
-              type: 'postgres' as const,
-              host: socketPath,
-              username: configService.get('DB_USER'),
-              password: configService.get('DB_PASS'),
-              database: configService.get('DB_NAME'),
-              autoLoadEntities: true,
-              synchronize: false,
-              ssl: false,
-              logging: false
-            };
-          } catch (err) {
-            console.error('Erro ao testar conexão direto com pg:', err);
-          }
-        }
-
-        // Configuração padrão para desenvolvimento
-        const config = {
-          type: 'postgres' as const,
-          host: configService.get('DB_HOST', 'localhost'),
-          port: configService.get('DB_PORT', 5436),
-          username: configService.get('DB_USER', 'teamcruz_admin'),
-          password: configService.get('DB_PASS', 'cruz@jiujitsu2024'),
-          database: configService.get('DB_NAME', 'teamcruz_db'),
-          autoLoadEntities: true,
-          synchronize: false,
-          ssl: false,
-          logging: true,
-          extra: {
-            searchPath: 'teamcruz,public'
-          }
-        };
-
-        console.log('Config TypeORM:', JSON.stringify(config, null, 2));
-        return config;
-      },
+      useFactory: (configService: ConfigService) => ({
+        type: 'postgres' as const,
+        host: configService.get('NODE_ENV') === 'production'
+          ? '/cloudsql/teamcruz-controle-alunos:southamerica-east1:teamcruz-db'
+          : configService.get('DB_HOST', 'localhost'),
+        port: configService.get('NODE_ENV') !== 'production'
+          ? configService.get('DB_PORT', 5436)
+          : undefined,
+        username: configService.get('DB_USER', 'teamcruz_admin'),
+        password: configService.get('DB_PASS', 'cruz@jiujitsu2024'),
+        database: configService.get('DB_NAME', 'teamcruz_db'),
+        autoLoadEntities: true,
+        synchronize: false,
+        ssl: false,
+        logging: configService.get('NODE_ENV') === 'development',
+        extra: configService.get('NODE_ENV') === 'production'
+          ? undefined
+          : {
+              searchPath: 'teamcruz,public',
+            },
+      }),
     }),
 
     // Módulos Funcionais
