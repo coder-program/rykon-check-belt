@@ -6,18 +6,19 @@ config();
 
 export default new DataSource({
   type: 'postgres',
-  ...(process.env.DB_SOCKET
+  host: process.env.DB_HOST || 'localhost',
+  ...(process.env.NODE_ENV === 'production'
     ? {
-        host: process.env.DB_SOCKET,
-        extra: { socketPath: process.env.DB_SOCKET }
+        extra: {
+          socketPath: process.env.DB_HOST
+        }
       }
     : {
-        host: process.env.DB_HOST || 'localhost',
         port: parseInt(process.env.DB_PORT || '5432', 10)
       }),
   username: process.env.DB_USER || 'postgres',
   password: process.env.DB_PASS || 'postgres',
-  database: process.env.DB_NAME || 'acesso_usuarios_db',
+  database: process.env.DB_NAME || 'teamcruz_db',
   // Entities não são necessárias para rodar migrations, mas deixamos o padrão
   entities: [path.join(__dirname, 'src/**/*.entity{.ts,.js}')],
   migrations: [path.join(__dirname, 'src/migrations/*{.ts,.js}')],
