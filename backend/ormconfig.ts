@@ -6,16 +6,12 @@ config();
 
 export default new DataSource({
   type: 'postgres',
-  host: process.env.DB_HOST || 'localhost',
-  ...(process.env.NODE_ENV === 'production'
-    ? {
-        extra: {
-          socketPath: process.env.DB_HOST
-        }
-      }
-    : {
-        port: parseInt(process.env.DB_PORT || '5432', 10)
-      }),
+  host: process.env.NODE_ENV === 'production' 
+    ? '/cloudsql/teamcruz-controle-alunos:southamerica-east1:teamcruz-db'
+    : process.env.DB_HOST || 'localhost',
+  ...(process.env.NODE_ENV !== 'production' && {
+    port: parseInt(process.env.DB_PORT || '5432', 10)
+  }),
   username: process.env.DB_USER || 'postgres',
   password: process.env.DB_PASS || 'postgres',
   database: process.env.DB_NAME || 'teamcruz_db',
