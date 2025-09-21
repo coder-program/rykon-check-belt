@@ -30,36 +30,53 @@ import { GraduacaoModule } from './graduacao/graduacao.module';
 
         if (isProduction) {
           const { Client } = require('pg');
+          console.log('Tentando conexão direta com pg...');
+
+          const socketPath = '/cloudsql/teamcruz-controle-alunos:southamerica-east1:teamcruz-db';
+          console.log('Socket Path:', socketPath);
+
           const client = new Client({
             user: configService.get('DB_USER'),
             password: configService.get('DB_PASS'),
             database: configService.get('DB_NAME'),
-            host: '/cloudsql/teamcruz-controle-alunos:southamerica-east1:teamcruz-db'
+            host: socketPath
           });
 
           try {
             await client.connect();
             console.log('Teste de conexão direto com pg: Sucesso!');
             await client.end();
+
+            // Se a conexão direta funcionar, retorna a configuração correta
+            return {
+              type: 'postgres' as const,
+              host: socketPath,
+              username: configService.get('DB_USER'),
+              password: configService.get('DB_PASS'),
+              database: configService.get('DB_NAME'),
+              autoLoadEntities: true,
+              synchronize: false,
+              ssl: false,
+              logging: false
+            };
           } catch (err) {
-            console.error('Erro ao testar conexão:', err);
+            console.error('Erro ao testar conexão direto com pg:', err);
           }
         }
 
+        // Configuração padrão para desenvolvimento
         const config = {
           type: 'postgres' as const,
           host: configService.get('DB_HOST', 'localhost'),
-          port: isProduction ? undefined : configService.get('DB_PORT', 5436),
+          port: configService.get('DB_PORT', 5436),
           username: configService.get('DB_USER', 'teamcruz_admin'),
           password: configService.get('DB_PASS', 'cruz@jiujitsu2024'),
           database: configService.get('DB_NAME', 'teamcruz_db'),
           autoLoadEntities: true,
           synchronize: false,
           ssl: false,
-          logging: !isProduction,
-          extra: isProduction ? {
-            host: '/cloudsql/teamcruz-controle-alunos:southamerica-east1:teamcruz-db'
-          } : {
+          logging: true,
+          extra: {
             searchPath: 'teamcruz,public'
           }
         };
