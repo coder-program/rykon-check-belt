@@ -24,37 +24,21 @@ import { GraduacaoModule } from './graduacao/graduacao.module';
     ConfigModule.forRoot({ isGlobal: true }),
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
-      useFactory: (configService: ConfigService) => {
-        const isProduction = configService.get('NODE_ENV') === 'production';
-        const baseConfig = {
-          type: 'postgres' as const,
-          database: configService.get('DB_NAME', 'teamcruz_db'),
-          username: configService.get('DB_USER', 'teamcruz_admin'),
-          password: configService.get('DB_PASS', 'cruz@jiujitsu2024'),
-          autoLoadEntities: true,
-          synchronize: false,
-          ssl: false,
-          logging: configService.get('NODE_ENV') === 'development',
-        };
-
-        if (isProduction) {
-          return {
-            ...baseConfig,
-            extra: {
-              socketPath: '/cloudsql/teamcruz-controle-alunos:southamerica-east1:teamcruz-db'
-            }
-          };
-        } else {
-          return {
-            ...baseConfig,
-            host: configService.get('DB_HOST', 'localhost'),
-            port: configService.get('DB_PORT', 5436),
-            extra: {
-              searchPath: 'teamcruz,public'
-            }
-          };
-        }
-      },
+      useFactory: (configService: ConfigService) => ({
+        type: 'postgres' as const,
+        host: configService.get('DB_HOST', 'localhost'),
+        port: configService.get('DB_PORT', 5432),
+        username: configService.get('DB_USER', 'teamcruz_admin'),
+        password: configService.get('DB_PASS', 'cruz@jiujitsu2024'),
+        database: configService.get('DB_NAME', 'teamcruz_db'),
+        autoLoadEntities: true,
+        synchronize: false,
+        ssl: false,
+        logging: configService.get('NODE_ENV') === 'development',
+        extra: {
+          searchPath: 'teamcruz,public',
+        },
+      }),
     }),
 
     // Módulos Funcionais
