@@ -1,10 +1,15 @@
 # Cloud Build configuration for frontend deployment
+
+# Variáveis de ambiente compartilhadas
+substitutions:
+  _API_URL: "https://teamcruz-backend-m2olfa5bfa-rj.a.run.app/api"
+
 steps:
   # Build the container image
   - name: 'gcr.io/cloud-builders/docker'
     args: [
       'build',
-      '--build-arg', 'NEXT_PUBLIC_API_URL=https://teamcruz-backend-m2olfa5bfa-rj.a.run.app/api',
+      '--build-arg', 'NEXT_PUBLIC_API_URL=${_API_URL}',
       '-f', 'Dockerfile.cloudrun',
       '-t', 'gcr.io/$PROJECT_ID/teamcruz-frontend:$COMMIT_SHA',
       '-t', 'gcr.io/$PROJECT_ID/teamcruz-frontend:latest',
@@ -43,7 +48,7 @@ steps:
       - '--max-instances'
       - '10'
       - '--set-env-vars'
-      - 'NODE_ENV=production'
+      - 'NODE_ENV=production,NEXT_PUBLIC_API_URL=${_API_URL}'
 
 # Timeout for the entire build
 timeout: '1200s'

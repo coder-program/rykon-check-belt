@@ -1,6 +1,6 @@
-export const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL ||
-  "https://teamcruz-backend-m2olfa5bfa-rj.a.run.app/api";
+import { config } from './config';
+
+export const API_BASE_URL = config.apiUrl;
 
 type HttpOptions = {
   method?: string;
