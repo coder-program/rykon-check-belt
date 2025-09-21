@@ -28,7 +28,7 @@ import { GraduacaoModule } from './graduacao/graduacao.module';
         type: 'postgres' as const,
         host: configService.get('DB_HOST', 'localhost'),
         port: configService.get('DB_PORT', 5432),
-        username: configService.get('DB_USER', 'teamcruz_admin'),
+        username: configService.get('DB_USER', 'postgres'),
         password: configService.get('DB_PASS', 'cruz@jiujitsu2024'),
         database: configService.get('DB_NAME', 'teamcruz_db'),
         autoLoadEntities: true,
@@ -36,7 +36,7 @@ import { GraduacaoModule } from './graduacao/graduacao.module';
         ssl: false,
         logging: configService.get('NODE_ENV') === 'development',
         extra: {
-          searchPath: 'teamcruz,public',
+          searchPath: 'teamcruz,public'
         },
       }),
     }),
