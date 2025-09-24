@@ -35,7 +35,8 @@ import { GraduacaoModule } from './graduacao/graduacao.module';
         synchronize: false,
         extra: {
           searchPath: 'teamcruz,public'
-        },
+        }
+      })
         logging: configService.get('NODE_ENV') === 'development',
         extra: {
           searchPath: 'teamcruz,public'
