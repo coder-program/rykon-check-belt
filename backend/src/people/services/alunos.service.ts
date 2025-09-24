@@ -78,7 +78,7 @@ export class AlunosService {
       const user = await this.usuariosService.create({
         username: (body as any).email || `aluno_${Date.now()}`,
         email: (body as any).email,
-        nome: body.nome as string,
+        nome: body.nome,
         password,
         ativo: true,
         perfil_ids: [perfilAluno.id],
@@ -88,7 +88,7 @@ export class AlunosService {
 
     const a: any = {
       id,
-      nome: body.nome!,
+      nome: body.nome,
       email: body.email || '',
       telefone: body.telefone || '',
       cpf: body.cpf || '',

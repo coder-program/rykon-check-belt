@@ -1,4 +1,8 @@
-import { ConflictException, ForbiddenException, Injectable } from '@nestjs/common';
+import {
+  ConflictException,
+  ForbiddenException,
+  Injectable,
+} from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { Unidade, StatusUnidade } from '../entities/unidade.entity';
 import { CreateUnidadeDto, UpdateUnidadeDto } from '../dto/unidades.dto';
@@ -43,7 +47,9 @@ export class UnidadesService {
       if (user && this.isFranqueado(user) && !this.isMaster(user)) {
         const franqueadoId = await this.getFranqueadoIdByUser(user);
         if (!franqueadoId) {
-          throw new ForbiddenException('Usuário franqueado sem franquia associada');
+          throw new ForbiddenException(
+            'Usuário franqueado sem franquia associada',
+          );
         }
         params[0] = franqueadoId; // sobrescreve franqueado_id informado
       }
@@ -85,8 +91,8 @@ export class UnidadesService {
     const pageSize = Math.min(100, Math.max(1, Number(params.pageSize) || 20));
     const offset = (page - 1) * pageSize;
 
-    let whereConditions: string[] = [];
-    let queryParams: any[] = [];
+    const whereConditions: string[] = [];
+    const queryParams: any[] = [];
     let paramIndex = 1;
 
     if (params.search) {
@@ -166,7 +172,11 @@ export class UnidadesService {
     return this.formatarUnidadeComEndereco(res[0]);
   }
 
-  async atualizar(id: string, dto: UpdateUnidadeDto, user?: any): Promise<Unidade | null> {
+  async atualizar(
+    id: string,
+    dto: UpdateUnidadeDto,
+    user?: any,
+  ): Promise<Unidade | null> {
     const fields: string[] = [];
     const values: any[] = [];
     let idx = 1;
@@ -194,7 +204,9 @@ export class UnidadesService {
         throw new ForbiddenException('Não é permitido editar esta unidade');
       }
       // impedir troca de franqueado_id para outro que não o dele
-      const idxFranq = fields.findIndex((f) => f.startsWith('franqueado_id = '));
+      const idxFranq = fields.findIndex((f) =>
+        f.startsWith('franqueado_id = '),
+      );
       if (idxFranq >= 0) {
         values[idxFranq] = franqueadoId;
       }
@@ -237,8 +249,8 @@ export class UnidadesService {
     homologacao: number;
   }> {
     let whereClause = '';
-    let queryParams: any[] = [];
-    
+    const queryParams: any[] = [];
+
     // Se franqueado (não master), filtra por sua franquia
     if (user && this.isFranqueado(user) && !this.isMaster(user)) {
       const franqueadoId = await this.getFranqueadoIdByUser(user);
@@ -270,12 +282,16 @@ export class UnidadesService {
   }
 
   private isMaster(user: any): boolean {
-    const perfis = (user?.perfis || []).map((p: any) => (p.nome || '').toLowerCase());
+    const perfis = (user?.perfis || []).map((p: any) =>
+      (p.nome || '').toLowerCase(),
+    );
     return perfis.includes('master');
   }
 
   private isFranqueado(user: any): boolean {
-    const perfis = (user?.perfis || []).map((p: any) => (p.nome || '').toLowerCase());
+    const perfis = (user?.perfis || []).map((p: any) =>
+      (p.nome || '').toLowerCase(),
+    );
     return perfis.includes('franqueado');
   }
 

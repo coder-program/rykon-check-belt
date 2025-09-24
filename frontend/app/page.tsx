@@ -18,6 +18,9 @@ export default function Home() {
           <a className="btn" href="/teamcruz">
             TeamCruz
           </a>
+          <a className="btn bg-green-600 text-white hover:bg-green-700" href="/checkin">
+            Check-in Presenças
+          </a>
           <a className="btn" href="/alunos">
             Alunos
           </a>

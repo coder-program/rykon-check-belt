@@ -42,7 +42,7 @@ export class ProfessoresService {
     const now = new Date();
     const p: Professor = {
       id,
-      nome: body.nome!,
+      nome: body.nome,
       email: body.email || '',
       telefone: body.telefone || '',
       cpf: body.cpf || '',

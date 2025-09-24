@@ -1,17 +1,25 @@
-import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import {
+  Entity,
+  Column,
+  PrimaryGeneratedColumn,
+  CreateDateColumn,
+  UpdateDateColumn,
+  ManyToOne,
+  JoinColumn,
+} from 'typeorm';
 import { Franqueado } from './franqueado.entity';
 
 export enum StatusUnidade {
   ATIVA = 'ATIVA',
   INATIVA = 'INATIVA',
-  HOMOLOGACAO = 'HOMOLOGACAO'
+  HOMOLOGACAO = 'HOMOLOGACAO',
 }
 
 export enum PapelResponsavel {
   PROPRIETARIO = 'PROPRIETARIO',
   GERENTE = 'GERENTE',
   INSTRUTOR = 'INSTRUTOR',
-  ADMINISTRATIVO = 'ADMINISTRATIVO'
+  ADMINISTRATIVO = 'ADMINISTRATIVO',
 }
 
 export interface HorariosFuncionamento {
@@ -31,7 +39,7 @@ export enum Modalidade {
   COMPETICAO = 'COMPETICAO',
   FEMININO = 'FEMININO',
   AUTODEFESA = 'AUTODEFESA',
-  CONDICIONAMENTO = 'CONDICIONAMENTO'
+  CONDICIONAMENTO = 'CONDICIONAMENTO',
 }
 
 @Entity({ name: 'unidades', schema: 'teamcruz' })
@@ -57,7 +65,7 @@ export class Unidade {
   @Column({
     type: 'enum',
     enum: StatusUnidade,
-    default: StatusUnidade.HOMOLOGACAO
+    default: StatusUnidade.HOMOLOGACAO,
   })
   status: StatusUnidade;
 

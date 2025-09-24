@@ -1,7 +1,7 @@
 // Polyfill para crypto (Node.js < 20)
 if (!globalThis.crypto) {
   const { webcrypto } = require('node:crypto');
-  globalThis.crypto = webcrypto as any;
+  globalThis.crypto = webcrypto;
 }
 
 import { Module, MiddlewareConsumer } from '@nestjs/common';
@@ -17,6 +17,7 @@ import { CampanhasModule } from './teamcruz/campanhas/campanhas.module';
 import { PresencasModule } from './teamcruz/presencas/presencas.module';
 import { PeopleModule } from './people/people.module';
 import { EnderecosModule } from './enderecos/enderecos.module';
+import { FaceRecognitionModule } from './face-recognition/face-recognition.module';
 
 @Module({
   imports: [
@@ -49,6 +50,8 @@ import { EnderecosModule } from './enderecos/enderecos.module';
     PresencasModule,
     PeopleModule,
     EnderecosModule,
+    // Reconhecimento Facial
+    FaceRecognitionModule,
   ],
 })
 export class AppModule {

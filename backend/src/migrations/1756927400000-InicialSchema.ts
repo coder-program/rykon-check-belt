@@ -6,7 +6,7 @@ export class InicialSchema1756927400000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     // Criar schema teamcruz
     await queryRunner.query(`CREATE SCHEMA IF NOT EXISTS teamcruz`);
-    
+
     // Extensão para UUID
     await queryRunner.query(`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`);
 

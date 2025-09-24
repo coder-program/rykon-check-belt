@@ -7,7 +7,7 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 // Polyfill para crypto (Node.js < 20)
 if (!globalThis.crypto) {
   const { webcrypto } = require('node:crypto');
-  globalThis.crypto = webcrypto as any;
+  globalThis.crypto = webcrypto;
 }
 
 async function bootstrap() {
@@ -18,8 +18,8 @@ async function bootstrap() {
 
   // Configuração CORS para produção
   const corsOrigin = process.env.CORS_ORIGIN || 'http://localhost:3000';
-  const allowedOrigins = corsOrigin.split(',').map(origin => origin.trim());
-  
+  const allowedOrigins = corsOrigin.split(',').map((origin) => origin.trim());
+
   app.enableCors({
     origin: allowedOrigins,
     credentials: true,

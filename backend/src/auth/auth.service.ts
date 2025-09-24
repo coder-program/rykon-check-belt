@@ -67,30 +67,44 @@ export class AuthService {
   private REFRESH_TTL_MS = 1000 * 60 * 60 * 24 * 60; // 60 dias
 
   async validateUser(email: string, pass: string): Promise<Usuario | null> {
-    console.log('🔍 AuthService.validateUser - Tentando validar com email:', email);
+    console.log(
+      '🔍 AuthService.validateUser - Tentando validar com email:',
+      email,
+    );
     console.log('🔍 Senha fornecida:', pass);
     console.log('🔍 Tamanho da senha fornecida:', pass?.length);
-    
+
     try {
       // Usa findByEmail diretamente
       const user = await this.usuariosService.findByEmail(email);
       console.log('🔍 Usuário encontrado?', !!user);
-      
+
       if (user) {
         console.log('🔍 Usuário ativo?', user.ativo);
         console.log('🔍 Usuário tem senha?', !!user.password);
-        console.log('🔍 Primeiros 20 chars do hash:', user.password?.substring(0, 20));
-        
-        const passwordValid = await this.usuariosService.validatePassword(pass, user.password);
+        console.log(
+          '🔍 Primeiros 20 chars do hash:',
+          user.password?.substring(0, 20),
+        );
+
+        const passwordValid = await this.usuariosService.validatePassword(
+          pass,
+          user.password,
+        );
         console.log('🔍 Senha válida?', passwordValid);
-        
+
         if (user.ativo && passwordValid) {
           console.log('✅ Usuário validado com sucesso!');
           // Atualizar último login
           await this.usuariosService.updateUltimoLogin(user.id);
           return user;
         } else {
-          console.log('❌ Falha: ativo=', user.ativo, 'passwordValid=', passwordValid);
+          console.log(
+            '❌ Falha: ativo=',
+            user.ativo,
+            'passwordValid=',
+            passwordValid,
+          );
         }
       } else {
         console.log('❌ Usuário não encontrado no banco');
@@ -98,7 +112,7 @@ export class AuthService {
     } catch (error) {
       console.error('❌ Erro ao validar usuário:', error);
     }
-    
+
     return null;
   }
 

@@ -108,23 +108,18 @@ const withPWA = require("next-pwa")({
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  outputFileTracingRoot: undefined, // Let Next.js auto-detect
   // Otimizações para desenvolvimento
-  experimental: {
-    // Turbo mode para builds mais rápidas
-    turbo: {
-      loaders: {
-        '.svg': ['@svgr/webpack'],
-      },
+  turbopack: {
+    rules: {
+      '*.svg': ['@svgr/webpack'],
     },
-    // Disable image optimization for Docker
-    // You can enable it if you configure a CDN
   },
   images: {
     unoptimized: true,
   },
   // Otimizações de performance
   reactStrictMode: true,
-  swcMinify: true,
   // Configurações de cache
   onDemandEntries: {
     // Tempo para manter páginas em cache (ms)

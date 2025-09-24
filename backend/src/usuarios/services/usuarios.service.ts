@@ -104,28 +104,34 @@ export class UsuariosService {
   }
 
   async findByUsername(username: string): Promise<Usuario | null> {
-    console.log('🔍 UsuariosService.findByUsername - Buscando usuário:', username);
-    
+    console.log(
+      '🔍 UsuariosService.findByUsername - Buscando usuário:',
+      username,
+    );
+
     try {
       // Busca por username OU email
       const user = await this.usuarioRepository
         .createQueryBuilder('usuario')
         .leftJoinAndSelect('usuario.perfis', 'perfis')
         .leftJoinAndSelect('perfis.permissoes', 'permissoes')
-        .where('usuario.username = :username OR usuario.email = :email', { 
-          username, 
-          email: username 
+        .where('usuario.username = :username OR usuario.email = :email', {
+          username,
+          email: username,
         })
         .getOne();
-      
+
       console.log('🔍 Usuário encontrado no banco?', !!user);
       if (user) {
         console.log('🔍 ID do usuário:', user.id);
         console.log('🔍 Username do usuário:', user.username);
         console.log('🔍 Email do usuário:', user.email);
-        console.log('🔍 Perfis do usuário:', user.perfis?.map(p => p.nome));
+        console.log(
+          '🔍 Perfis do usuário:',
+          user.perfis?.map((p) => p.nome),
+        );
       }
-      
+
       return user;
     } catch (error) {
       console.error('❌ Erro ao buscar usuário por username:', error);
@@ -177,7 +183,7 @@ export class UsuariosService {
     console.log('🔐 Hash do banco:', hashedPassword);
     console.log('🔐 Tamanho do hash:', hashedPassword?.length);
     console.log('🔐 Hash começa com $2b$?', hashedPassword?.startsWith('$2b$'));
-    
+
     try {
       const result = await bcrypt.compare(password, hashedPassword);
       console.log('🔐 Resultado do bcrypt.compare:', result);

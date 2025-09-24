@@ -10,9 +10,9 @@ export class FranqueadosService {
     const page = Math.max(1, Number(params.page) || 1);
     const pageSize = Math.min(100, Math.max(1, Number(params.pageSize) || 20));
     const offset = (page - 1) * pageSize;
-    
-    let whereConditions: string[] = [];
-    let queryParams: any[] = [];
+
+    const whereConditions: string[] = [];
+    const queryParams: any[] = [];
     let paramIndex = 1;
 
     if (params.search) {
@@ -128,7 +128,9 @@ export class FranqueadosService {
       email: row.email,
       telefone: row.telefone,
       cnpj: row.cnpj,
-      unidades_gerencia: Array.isArray(row.unidades_gerencia) ? row.unidades_gerencia : [],
+      unidades_gerencia: Array.isArray(row.unidades_gerencia)
+        ? row.unidades_gerencia
+        : [],
       data_contrato: new Date(row.data_contrato),
       taxa_franquia: row.taxa_franquia ? parseFloat(row.taxa_franquia) : 0,
       dados_bancarios: row.dados_bancarios,

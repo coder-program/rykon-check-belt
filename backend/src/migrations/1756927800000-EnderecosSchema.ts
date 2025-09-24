@@ -89,11 +89,13 @@ export class EnderecosSchema1756927800000 implements MigrationInterface {
 
   public async down(queryRunner: QueryRunner): Promise<void> {
     // Remove coluna da tabela unidades
-    await queryRunner.query(`ALTER TABLE teamcruz.unidades DROP COLUMN IF EXISTS endereco_id`);
-    
+    await queryRunner.query(
+      `ALTER TABLE teamcruz.unidades DROP COLUMN IF EXISTS endereco_id`,
+    );
+
     // Remove tabela de vínculos de endereço
     await queryRunner.query(`DROP TABLE IF EXISTS teamcruz.vinculos_endereco`);
-    
+
     // Remove tabela de endereços
     await queryRunner.query(`DROP TABLE IF EXISTS teamcruz.enderecos`);
   }

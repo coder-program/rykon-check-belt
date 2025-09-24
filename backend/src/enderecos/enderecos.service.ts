@@ -89,7 +89,10 @@ export class EnderecosService {
   }
 
   async removerEndereco(id: string) {
-    await this.dataSource.query(`DELETE FROM teamcruz.enderecos WHERE id = $1`, [id]);
+    await this.dataSource.query(
+      `DELETE FROM teamcruz.enderecos WHERE id = $1`,
+      [id],
+    );
     return true;
   }
 

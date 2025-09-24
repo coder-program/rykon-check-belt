@@ -5,12 +5,12 @@ services:
     image: postgres:15-alpine
     container_name: acesso-usuarios-postgres
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: acesso_usuarios_db
+      POSTGRES_USER: teamcruz_admin
+      POSTGRES_PASSWORD: cruz@jiujitsu2024
+      POSTGRES_DB: teamcruz_db
       POSTGRES_INITDB_ARGS: --auth-host=md5 --auth-local=trust
     ports:
-      - '5434:5432'
+      - '5436:5432'
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
@@ -29,9 +29,9 @@ services:
     environment:
       DB_HOST: postgres
       DB_PORT: 5432
-      DB_USER: postgres
-      DB_PASS: postgres
-      DB_NAME: acesso_usuarios_db
+      DB_USER: teamcruz_admin
+      DB_PASS: cruz@jiujitsu2024
+      DB_NAME: teamcruz_db
       JWT_SECRET: meu-super-secret-jwt-key-2024
       JWT_EXPIRES_IN: 24h
       PORT: 5002
