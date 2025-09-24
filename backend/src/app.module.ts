@@ -24,15 +24,16 @@ import { GraduacaoModule } from './graduacao/graduacao.module';
     ConfigModule.forRoot({ isGlobal: true }),
     TypeOrmModule.forRoot({
       type: 'postgres' as const,
-      host: process.env.NODE_ENV === 'production'
-        ? '/cloudsql/teamcruz-controle-alunos:southamerica-east1:teamcruz-db'
-        : 'localhost',
+      host: '/cloudsql/teamcruz-controle-alunos:southamerica-east1:teamcruz-db',
       port: 5432,
       username: 'teamcruz_app',
       password: 'TeamCruz2024@',
       database: 'teamcruz_db',
       autoLoadEntities: true,
       synchronize: false,
+      entities: ['dist/**/*.entity.js'],
+      migrations: ['dist/src/migrations/*.js'],
+      migrationsTableName: 'migrations',
       extra: {
         searchPath: 'teamcruz,public'
       }
