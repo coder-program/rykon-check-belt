@@ -39,7 +39,7 @@ steps:
       - '--max-instances'
       - '10'
       - '--set-env-vars'
-      - 'NODE_ENV=production,PORT=8080,DB_HOST=/cloudsql/teamcruz-controle-alunos:southamerica-east1:teamcruz-db,DB_USER=teamcruz_app,DB_PASS=TeamCruz2024@,DB_NAME=teamcruz_db,JWT_SECRET=jwt_secret_muito_forte_para_producao_123456789,CORS_ORIGIN=https://teamcruz-frontend-943403834207.southamerica-east1.run.app'
+      - 'NODE_ENV=production,DB_HOST=/cloudsql/teamcruz-controle-alunos:southamerica-east1:teamcruz-db,DB_USER=teamcruz_app,DB_PASS=TeamCruz2024@,DB_NAME=teamcruz_db,JWT_SECRET=jwt_secret_muito_forte_para_producao_123456789,CORS_ORIGIN=https://teamcruz-frontend-943403834207.southamerica-east1.run.app'
       - '--timeout'
       - '300'
 
