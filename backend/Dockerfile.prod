@@ -37,6 +37,6 @@ USER nestjs
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD node dist/health-check.js || exit 1
 
-EXPOSE 4001
+EXPOSE 8080
 
 CMD ["node", "dist/main"]

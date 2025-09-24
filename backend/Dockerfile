@@ -1,12 +1,58 @@
-FROM node:18-alpine
+# Backend Dockerfile for Google Cloud Run
+FROM node:20-alpine AS builder
 
 WORKDIR /app
 
+# Copy package files
 COPY package*.json ./
-RUN npm install
+COPY tsconfig*.json ./
 
+# Install dependencies
+RUN npm ci --legacy-peer-deps
+
+# Copy source code
 COPY . .
 
+# Build the application
 RUN npm run build
 
-CMD ["node", "dist/main"]
+# Generate JS version of ormconfig for migrations
+RUN npx tsc ormconfig.ts --outDir ./dist
+
+# Production stage
+FROM node:20-alpine AS production
+
+WORKDIR /app
+
+# Install dumb-init for proper signal handling
+RUN apk add --no-cache dumb-init
+
+# Create non-root user
+RUN addgroup -g 1001 -S nodejs && \
+    adduser -S nestjs -u 1001
+
+# Copy package files and install production dependencies
+COPY package*.json ./
+RUN npm ci --legacy-peer-deps && npm cache clean --force
+
+# Copy built application from builder stage
+COPY --from=builder --chown=nestjs:nodejs /app/dist ./dist
+COPY --from=builder --chown=nestjs:nodejs /app/package*.json ./
+COPY --from=builder --chown=nestjs:nodejs /app/src/migrations ./dist/src/migrations
+COPY --from=builder --chown=nestjs:nodejs /app/dist/ormconfig.js ./dist/
+
+# Switch to non-root user
+USER nestjs
+
+# Expose port (Cloud Run will inject PORT env var)
+EXPOSE 8080
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD node --version || exit 1
+
+# Use dumb-init to handle signals properly
+ENTRYPOINT ["dumb-init", "--"]
+
+# Start the application
+CMD ["node", "dist/src/main.js"]

@@ -7,7 +7,7 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 // Polyfill para crypto (Node.js < 20)
 if (!globalThis.crypto) {
   const { webcrypto } = require('node:crypto');
-  globalThis.crypto = webcrypto as any;
+  globalThis.crypto = webcrypto;
 }
 
 async function bootstrap() {
@@ -39,9 +39,9 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('docs', app, document);
 
-  const port = process.env.PORT || 4001;
-  await app.listen(port, '0.0.0.0'); // Importante para Vercel
-  console.log(`🚀 Backend rodando em http://localhost:${port}`);
-  console.log(`📘 Swagger em http://localhost:${port}/docs`);
+  const port = process.env.PORT || 8080;
+  await app.listen(port, '0.0.0.0');
+  console.log(`Backend rodando em http://localhost:${port}`);
+  console.log(`Swagger em http://localhost:${port}/docs`);
 }
 bootstrap();
