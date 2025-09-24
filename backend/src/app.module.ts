@@ -52,9 +52,3 @@ export class AppModule {
     consumer.apply(AuditMiddleware).forRoutes('*');
   }
 }
-})
-export class AppModule {
-  configure(consumer: MiddlewareConsumer) {
-    consumer.apply(AuditMiddleware).forRoutes('*'); // Aplicar auditoria em todas as rotas
-  }
-}
