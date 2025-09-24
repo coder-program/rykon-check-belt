@@ -6,7 +6,7 @@ if (!globalThis.crypto) {
 
 import { Module, MiddlewareConsumer } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ConfigModule } from '@nestjs/config';
 import { UsuariosModule } from './usuarios/usuarios.module';
 
 // Módulos de Segurança
@@ -23,38 +23,35 @@ import { GraduacaoModule } from './graduacao/graduacao.module';
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     TypeOrmModule.forRoot({
-        type: 'postgres' as const,
-        host: process.env.NODE_ENV === 'production' 
-          ? '/cloudsql/teamcruz-controle-alunos:southamerica-east1:teamcruz-db'
-          : 'localhost',
-        port: 5432,
-        username: 'teamcruz_app',
-        password: 'TeamCruz2024@',
-        database: 'teamcruz_db',
-        autoLoadEntities: true,
-        synchronize: false,
-        extra: {
-          searchPath: 'teamcruz,public'
-        }
-      })
-        logging: configService.get('NODE_ENV') === 'development',
-        extra: {
-          searchPath: 'teamcruz,public'
-        },
-      }),
+      type: 'postgres' as const,
+      host: process.env.NODE_ENV === 'production'
+        ? '/cloudsql/teamcruz-controle-alunos:southamerica-east1:teamcruz-db'
+        : 'localhost',
+      port: 5432,
+      username: 'teamcruz_app',
+      password: 'TeamCruz2024@',
+      database: 'teamcruz_db',
+      autoLoadEntities: true,
+      synchronize: false,
+      extra: {
+        searchPath: 'teamcruz,public'
+      }
     }),
-
-    // Módulos Funcionais
     AuthModule,
     AuditModule,
     UsuariosModule,
-    // TeamCruz
     CampanhasModule,
     PresencasModule,
     PeopleModule,
     EnderecosModule,
-    GraduacaoModule,
-  ],
+    GraduacaoModule
+  ]
+})
+export class AppModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(AuditMiddleware).forRoutes('*');
+  }
+}
 })
 export class AppModule {
   configure(consumer: MiddlewareConsumer) {
