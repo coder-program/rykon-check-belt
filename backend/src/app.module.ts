@@ -24,10 +24,8 @@ import { GraduacaoModule } from './graduacao/graduacao.module';
     ConfigModule.forRoot({ isGlobal: true }),
     TypeOrmModule.forRoot({
       type: 'postgres' as const,
-      host: process.env.NODE_ENV === 'production'
-        ? '/cloudsql/teamcruz-controle-alunos:southamerica-east1:teamcruz-db'
-        : process.env.DB_HOST || 'localhost',
-      port: process.env.NODE_ENV === 'production' ? undefined : 5432,
+      host: process.env.NODE_ENV === 'production' ? undefined : process.env.DB_HOST,
+      port: process.env.NODE_ENV === 'production' ? undefined : Number(process.env.DB_PORT),
       username: 'teamcruz_app',
       password: 'TeamCruz2024@',
       database: 'teamcruz_db',
@@ -37,11 +35,11 @@ import { GraduacaoModule } from './graduacao/graduacao.module';
       migrations: ['dist/src/migrations/*.js'],
       migrationsTableName: 'migrations',
       extra: {
-        searchPath: 'teamcruz,public',
-        socketPath: process.env.NODE_ENV === 'production'
-          ? '/cloudsql/teamcruz-controle-alunos:southamerica-east1:teamcruz-db'
-          : undefined
-      }
+        searchPath: 'teamcruz,public'
+      },
+      ...(process.env.NODE_ENV === 'production' ? {
+        host: '/cloudsql/teamcruz-controle-alunos:southamerica-east1:teamcruz-db'
+      } : {})
     }),
     AuthModule,
     AuditModule,
