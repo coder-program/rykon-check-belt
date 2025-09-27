@@ -24,18 +24,17 @@ import { GraduacaoModule } from './graduacao/graduacao.module';
     ConfigModule.forRoot({ isGlobal: true }),
     TypeOrmModule.forRoot({
       type: 'postgres' as const,
-      host: process.env.NODE_ENV === 'production'
-        ? '/cloudsql/teamcruz-controle-alunos:southamerica-east1:teamcruz-db'
-        : process.env.DB_HOST || 'localhost',
-      port: Number(process.env.DB_PORT) || 5432,
-      username: process.env.DB_USER,
-      password: process.env.DB_PASS,
-      database: process.env.DB_NAME,
+      host: '34.95.254.51',
+      port: 5432,
+      username: 'teamcruz_app',
+      password: 'TeamCruz2024@',
+      database: 'teamcruz_db',
       autoLoadEntities: true,
       synchronize: false,
       entities: ['dist/**/*.entity.js'],
       migrations: ['dist/src/migrations/*.js'],
       migrationsTableName: 'migrations',
+      ssl: process.env.NODE_ENV === 'production',
       extra: {
         searchPath: 'teamcruz,public'
       }
