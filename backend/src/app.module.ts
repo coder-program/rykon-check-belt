@@ -22,21 +22,24 @@ import { GraduacaoModule } from './graduacao/graduacao.module';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
-    TypeOrmModule.forRoot({
-      type: 'postgres' as const,
-      host: '34.39.173.213',
-      port: 5432,
-      username: 'postgres',
-      password: '••••••••••••',
-      database: 'postgres',
-      autoLoadEntities: true,
-      synchronize: false,
-      entities: ['dist/**/*.entity.js'],
-      migrations: ['dist/src/migrations/*.js'],
-      migrationsTableName: 'migrations',
-      extra: {
-        searchPath: 'teamcruz,public'
-      }
+    TypeOrmModule.forRootAsync({
+      useFactory: () => ({
+        type: 'postgres' as const,
+        host: '34.39.173.213',
+        port: 5432,
+        username: 'postgres',
+        password: '••••••••••••',
+        database: 'postgres',
+        autoLoadEntities: true,
+        synchronize: false,
+        entities: ['dist/**/*.entity.js'],
+        migrations: ['dist/src/migrations/*.js'],
+        migrationsTableName: 'migrations',
+        ssl: process.env.NODE_ENV === 'production',
+        extra: {
+          searchPath: 'teamcruz,public'
+        }
+      })
     }),
     AuthModule,
     AuditModule,
