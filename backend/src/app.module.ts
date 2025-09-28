@@ -29,9 +29,9 @@ import { GraduacaoModule } from './graduacao/graduacao.module';
         type: 'postgres',
         host: '/cloudsql/teamcruz-controle-alunos:southamerica-east1:teamcruz-db',
         port: 5432,
-        username: 'postgres',
-        password: 'TeamCruz2024@',
-        database: 'postgres',
+        username: process.env.DB_USER,
+        password: process.env.DB_PASS,
+        database: process.env.DB_NAME,
         autoLoadEntities: true,
         synchronize: false,
         extra: {
