@@ -34,8 +34,12 @@ import { GraduacaoModule } from './graduacao/graduacao.module';
         database: process.env.DB_NAME,
         autoLoadEntities: true,
         synchronize: false,
+        ssl: true,
         extra: {
-          searchPath: 'teamcruz,public'
+          searchPath: 'teamcruz,public',
+          ssl: {
+            rejectUnauthorized: false
+          }
         }
       })
     }),
