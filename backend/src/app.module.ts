@@ -34,6 +34,9 @@ import { GraduacaoModule } from './graduacao/graduacao.module';
         database: configService.get('DB_NAME'),
         autoLoadEntities: true,
         synchronize: false,
+        entities: ['dist/**/*.entity.js'],
+        migrations: ['dist/src/migrations/*.js'],
+        migrationsTableName: 'migrations',
         ssl: true,
         extra: {
           searchPath: 'teamcruz,public',
