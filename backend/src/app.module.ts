@@ -23,21 +23,24 @@ import { GraduacaoModule } from './graduacao/graduacao.module';
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     TypeOrmModule.forRootAsync({
-      useFactory: () => ({
-        type: 'postgres' as const,
-        host: '34.39.173.213',
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => ({
+        type: 'postgres',
+        host: process.env.NODE_ENV === 'production'
+          ? 'teamcruz-db.private.postgres.database.cloud.google.com'
+          : 'localhost',
         port: 5432,
-        username: 'postgres',
-        password: '••••••••••••',
-        database: 'postgres',
+        username: process.env.DB_USER || 'postgres',
+        password: process.env.DB_PASS || '••••••••••••',
+        database: process.env.DB_NAME || 'postgres',
         autoLoadEntities: true,
         synchronize: false,
-        entities: ['dist/**/*.entity.js'],
-        migrations: ['dist/src/migrations/*.js'],
-        migrationsTableName: 'migrations',
         ssl: process.env.NODE_ENV === 'production',
         extra: {
-          searchPath: 'teamcruz,public'
+          searchPath: 'teamcruz,public',
+          ssl: process.env.NODE_ENV === 'production' ? {
+            rejectUnauthorized: false
+          } : undefined
         }
       })
     }),
