@@ -17,11 +17,8 @@ async function bootstrap() {
   app.use(cookieParser());
 
   // Configuração CORS para produção
-  const corsOrigin = process.env.CORS_ORIGIN || 'http://localhost:3000';
-  const allowedOrigins = corsOrigin.split(',').map((origin) => origin.trim());
-
   app.enableCors({
-    origin: allowedOrigins,
+    origin: true,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
