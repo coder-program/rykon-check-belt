@@ -27,21 +27,15 @@ import { GraduacaoModule } from './graduacao/graduacao.module';
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
         type: 'postgres',
-        host: process.env.NODE_ENV === 'production'
-          ? 'teamcruz-db.private.postgres.database.cloud.google.com'
-          : 'localhost',
+        host: '/cloudsql/teamcruz-controle-alunos:southamerica-east1:teamcruz-db',
         port: 5432,
-        username: process.env.DB_USER || 'postgres',
-        password: process.env.DB_PASS || '••••••••••••',
-        database: process.env.DB_NAME || 'postgres',
+        username: 'postgres',
+        password: 'TeamCruz2024@',
+        database: 'postgres',
         autoLoadEntities: true,
         synchronize: false,
-        ssl: process.env.NODE_ENV === 'production',
         extra: {
-          searchPath: 'teamcruz,public',
-          ssl: process.env.NODE_ENV === 'production' ? {
-            rejectUnauthorized: false
-          } : undefined
+          searchPath: 'teamcruz,public'
         }
       })
     }),
