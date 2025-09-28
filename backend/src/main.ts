@@ -18,10 +18,13 @@ async function bootstrap() {
 
   // Configuração CORS para produção
   app.enableCors({
-    origin: true,
+    origin: '*',
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+    exposedHeaders: ['Authorization'],
+    preflightContinue: false,
+    optionsSuccessStatus: 204
   });
 
   // Adiciona prefixo global /api
