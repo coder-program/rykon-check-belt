@@ -7,7 +7,8 @@ const { DB_HOST, DB_USER, DB_PASS, DB_NAME } = process.env;
 
 export default new DataSource({
   type: 'postgres',
-  host: DB_HOST || '/cloudsql/teamcruz-controle-alunos:southamerica-east1:teamcruz-db',
+  host: DB_HOST || '34.95.254.51',
+  port: parseInt(process.env.DB_PORT || '5432'),
   username: DB_USER || 'teamcruz_app',
   password: DB_PASS || 'TeamCruz2024@',
   database: DB_NAME || 'teamcruz_db',
@@ -15,5 +16,7 @@ export default new DataSource({
   migrations: ['dist/src/migrations/*.js'],
   migrationsTableName: 'migrations',
   synchronize: false,
-  ssl: process.env.NODE_ENV === 'production',
+  ssl: {
+    rejectUnauthorized: false
+  },
 });
