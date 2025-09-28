@@ -18,7 +18,7 @@ async function bootstrap() {
 
   // Configuração CORS para produção
   app.enableCors({
-    origin: process.env.CORS_ORIGIN || 'https://teamcruz-frontend-943403834207.southamerica-east1.run.app',
+    origin: process.env.CORS_ORIGIN || 'https://teamcruz-frontend-m2olfa5bfa-rj.a.run.app',
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],

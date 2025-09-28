@@ -25,26 +25,31 @@ import { GraduacaoModule } from './graduacao/graduacao.module';
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: (configService: ConfigService) => ({
-        type: 'postgres',
-        host: '34.39.173.213',
-        port: 5432,
-        username: configService.get('DB_USER'),
-        password: configService.get('DB_PASS'),
-        database: configService.get('DB_NAME'),
-        autoLoadEntities: true,
-        synchronize: false,
-        entities: ['dist/**/*.entity.js'],
-        migrations: ['dist/src/migrations/*.js'],
-        migrationsTableName: 'migrations',
-        ssl: true,
-        extra: {
-          searchPath: 'teamcruz,public',
-          ssl: {
-            rejectUnauthorized: false
+      useFactory: (configService: ConfigService) => {
+        const dbHost = configService.get('DB_HOST', '34.39.173.213');
+        const isSocketConnection = dbHost.startsWith('/cloudsql/');
+        
+        return {
+          type: 'postgres',
+          host: dbHost,
+          port: isSocketConnection ? undefined : parseInt(configService.get('DB_PORT', '5432')),
+          username: configService.get('DB_USER'),
+          password: configService.get('DB_PASS'),
+          database: configService.get('DB_NAME'),
+          autoLoadEntities: true,
+          synchronize: false,
+          entities: ['dist/**/*.entity.js'],
+          migrations: ['dist/src/migrations/*.js'],
+          migrationsTableName: 'migrations',
+          ssl: true,
+          extra: {
+            searchPath: 'teamcruz,public',
+            ssl: {
+              rejectUnauthorized: false
+            }
           }
-        }
-      })
+        };
+      }
     }),
     AuthModule,
     AuditModule,
