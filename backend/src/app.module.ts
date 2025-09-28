@@ -27,7 +27,7 @@ import { GraduacaoModule } from './graduacao/graduacao.module';
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
         type: 'postgres',
-        host: '/cloudsql/teamcruz-controle-alunos:southamerica-east1:teamcruz-db',
+        host: '/cloudsql/teamcruz-controle-alunos:southamerica-east1:teamcruz',
         port: 5432,
         username: process.env.DB_USER,
         password: process.env.DB_PASS,
