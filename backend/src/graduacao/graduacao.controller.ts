@@ -7,6 +7,7 @@ import {
   Query,
   UseGuards,
   ParseUUIDPipe,
+  Request,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -38,6 +39,41 @@ export class GraduacaoController {
     @Query('categoria') categoria?: string,
   ): Promise<FaixaDef[]> {
     return await this.graduacaoService.listarFaixas(categoria);
+  }
+
+  @Get('faixas-definicao')
+  @ApiOperation({ summary: 'Lista todas as definições de faixas' })
+  @ApiResponse({ status: 200, description: 'Lista de definições de faixas' })
+  async listarFaixasDefinicao(): Promise<FaixaDef[]> {
+    return await this.graduacaoService.listarFaixasDefinicao();
+  }
+
+  @Get('estatisticas')
+  @ApiOperation({ summary: 'Obtém estatísticas gerais de graduação' })
+  @ApiResponse({ status: 200, description: 'Estatísticas de graduação' })
+  async getEstatisticasGraduacao() {
+    return await this.graduacaoService.getEstatisticasGraduacao();
+  }
+
+  @Post('graduar/:alunoId')
+  @ApiOperation({ summary: 'Gradua um aluno para a próxima faixa' })
+  @ApiResponse({ status: 200, description: 'Aluno graduado com sucesso' })
+  @ApiResponse({ status: 400, description: 'Aluno não está pronto para graduação' })
+  async graduarAluno(
+    @Param('alunoId', ParseUUIDPipe) alunoId: string,
+    @Body() dto?: { observacao?: string },
+  ) {
+    return await this.graduacaoService.graduarAluno(alunoId, dto?.observacao);
+  }
+
+  @Post('adicionar-grau/:alunoId')
+  @ApiOperation({ summary: 'Adiciona um grau manualmente ao aluno' })
+  @ApiResponse({ status: 200, description: 'Grau adicionado com sucesso' })
+  async adicionarGrau(
+    @Param('alunoId', ParseUUIDPipe) alunoId: string,
+    @Body() dto: { observacao: string },
+  ) {
+    return await this.graduacaoService.adicionarGrau(alunoId, dto.observacao);
   }
 
   @Get('alunos/:alunoId/status')
@@ -135,5 +171,49 @@ export class GraduacaoController {
       alunoId,
       categoria,
     });
+  }
+
+  @Get('minha-graduacao')
+  @ApiOperation({ summary: 'Obtém a graduação atual do usuário logado' })
+  @ApiResponse({ status: 200, description: 'Graduação atual do usuário' })
+  async getMinhaGraduacao(@Request() req) {
+    const userId = req.user?.id;
+    if (!userId) {
+      throw new Error('Usuário não autenticado');
+    }
+    return await this.graduacaoService.getMinhaGraduacao(userId);
+  }
+
+  @Get('meu-historico')
+  @ApiOperation({ summary: 'Histórico de graduações do usuário logado' })
+  @ApiResponse({ status: 200, description: 'Histórico do usuário' })
+  async getMeuHistorico(@Request() req) {
+    const userId = req.user?.id;
+    if (!userId) {
+      throw new Error('Usuário não autenticado');
+    }
+    return await this.graduacaoService.getMeuHistorico(userId);
+  }
+
+  @Get('minhas-competencias')
+  @ApiOperation({ summary: 'Competências técnicas do usuário logado' })
+  @ApiResponse({ status: 200, description: 'Competências técnicas' })
+  async getMinhasCompetencias(@Request() req) {
+    const userId = req.user?.id;
+    if (!userId) {
+      throw new Error('Usuário não autenticado');
+    }
+    return await this.graduacaoService.getMinhasCompetencias(userId);
+  }
+
+  @Get('meus-objetivos')
+  @ApiOperation({ summary: 'Objetivos do usuário logado' })
+  @ApiResponse({ status: 200, description: 'Objetivos pessoais' })
+  async getMeusObjetivos(@Request() req) {
+    const userId = req.user?.id;
+    if (!userId) {
+      throw new Error('Usuário não autenticado');
+    }
+    return await this.graduacaoService.getMeusObjetivos(userId);
   }
 }

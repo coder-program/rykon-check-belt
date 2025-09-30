@@ -22,7 +22,7 @@ export function PersonForm({
   defaultTipo = "ALUNO",
 }: PersonFormProps) {
   const [tipoCadastro, setTipoCadastro] = useState<"ALUNO" | "PROFESSOR">(
-    defaultTipo,
+    defaultTipo
   );
   const [formData, setFormData] = useState({
     tipo_cadastro: defaultTipo,
@@ -66,11 +66,18 @@ export function PersonForm({
     }
   }, [initialData, defaultTipo]);
 
+  // Estados para controlar restrições de faixa por idade
+  const [isUnder16, setIsUnder16] = useState(false);
+  const [is16to18, setIs16to18] = useState(false);
+  const [isOver18, setIsOver18] = useState(false);
+
   useEffect(() => {
-    // Verificar se é menor de idade
+    // Verificar restrições de idade apenas se data de nascimento for preenchida
     if (formData.data_nascimento) {
       const hoje = new Date();
       const nascimento = new Date(formData.data_nascimento);
+
+      // Para menor de idade (18 anos) - cálculo preciso
       let idade = hoje.getFullYear() - nascimento.getFullYear();
       const mesAtual = hoje.getMonth();
       const mesNascimento = nascimento.getMonth();
@@ -81,10 +88,72 @@ export function PersonForm({
       ) {
         idade--;
       }
-
       setIsMinor(idade < 18);
+
+      // Para faixas restritas - apenas verificar o ANO
+      const anoAtual = hoje.getFullYear();
+      const anoNascimento = nascimento.getFullYear();
+      const idadePorAno = anoAtual - anoNascimento;
+
+      setIsUnder16(idadePorAno < 16);
+      setIs16to18(idadePorAno >= 16 && idadePorAno < 18);
+      setIsOver18(idadePorAno >= 18);
+
+      // Validações de faixa por idade
+      if (
+        idadePorAno < 16 &&
+        ["AZUL", "ROXA", "MARROM", "PRETA"].includes(formData.faixa_atual)
+      ) {
+        setFormData((prev) => ({ ...prev, faixa_atual: "BRANCA" }));
+        toast.error(
+          "Alunos que fazem menos de 16 anos neste ano não podem ter faixas Azul, Roxa, Marrom ou Preta"
+        );
+      }
+
+      // Nova regra: 16-18 anos só podem ter BRANCA, AZUL ou ROXA
+      if (
+        idadePorAno >= 16 &&
+        idadePorAno < 18 &&
+        !["BRANCA", "AZUL", "ROXA"].includes(formData.faixa_atual)
+      ) {
+        setFormData((prev) => ({ ...prev, faixa_atual: "BRANCA" }));
+        toast.error(
+          "Alunos de 16 a 17 anos podem ter apenas faixas Branca, Azul ou Roxa"
+        );
+      }
+
+      // Nova regra: Maiores de 18 anos só podem ter faixas adultas (BRANCA, AZUL, ROXA, MARROM, PRETA)
+      const faixasInfantisJuvenis = [
+        "CINZA_BRANCA",
+        "CINZA",
+        "CINZA_PRETA",
+        "AMARELA_BRANCA",
+        "AMARELA",
+        "AMARELA_PRETA",
+        "LARANJA_BRANCA",
+        "LARANJA",
+        "LARANJA_PRETA",
+        "VERDE_BRANCA",
+        "VERDE",
+        "VERDE_PRETA",
+      ];
+
+      if (
+        idadePorAno >= 18 &&
+        faixasInfantisJuvenis.includes(formData.faixa_atual)
+      ) {
+        setFormData((prev) => ({ ...prev, faixa_atual: "BRANCA" }));
+        toast.error(
+          "Pessoas maiores de 18 anos só podem ter faixas adultas: Branca, Azul, Roxa, Marrom ou Preta"
+        );
+      }
+    } else {
+      // Resetar estados se não houver data de nascimento
+      setIsUnder16(false);
+      setIs16to18(false);
+      setIsOver18(false);
     }
-  }, [formData.data_nascimento]);
+  }, [formData.data_nascimento, formData.faixa_atual]);
 
   const queryClient = useQueryClient();
 
@@ -100,7 +169,7 @@ export function PersonForm({
       toast.success(
         `${
           tipoCadastro === "ALUNO" ? "Aluno" : "Professor"
-        } cadastrado com sucesso!`,
+        } cadastrado com sucesso!`
       );
       queryClient.invalidateQueries({ queryKey: ["alunos"] });
       queryClient.invalidateQueries({ queryKey: ["professores"] });
@@ -138,34 +207,33 @@ export function PersonForm({
     e.preventDefault();
 
     // Validações básicas
+    // Validar apenas campos realmente obrigatórios
     if (
       !formData.nome_completo ||
-      !formData.cpf ||
       !formData.data_nascimento ||
-      !formData.telefone_whatsapp
+      !formData.genero
     ) {
-      toast.error("Preencha todos os campos obrigatórios");
+      toast.error(
+        "Preencha todos os campos obrigatórios: Nome, Data de Nascimento e Gênero"
+      );
       return;
     }
 
-    // Validar responsável se for menor
-    if (tipoCadastro === "ALUNO" && isMinor) {
-      if (
-        !formData.responsavel_nome ||
-        !formData.responsavel_cpf ||
-        !formData.responsavel_telefone
-      ) {
-        toast.error(
-          "Dados do responsável são obrigatórios para menores de 18 anos",
-        );
-        return;
-      }
-    }
-
-    // Validar campos específicos
+    // Validar campos específicos por tipo
     if (tipoCadastro === "ALUNO" && !formData.faixa_atual) {
       toast.error("Faixa é obrigatória para alunos");
       return;
+    }
+
+    // Validar regra de idade para faixas restritas
+    if (tipoCadastro === "ALUNO" && isUnder16) {
+      const faixasRestritas = ["AZUL", "ROXA", "MARROM", "PRETA"];
+      if (faixasRestritas.includes(formData.faixa_atual)) {
+        toast.error(
+          "Alunos menores de 16 anos não podem ter faixas Azul, Roxa, Marrom ou Preta"
+        );
+        return;
+      }
     }
 
     if (tipoCadastro === "PROFESSOR" && !formData.faixa_ministrante) {
@@ -223,7 +291,7 @@ export function PersonForm({
   const handleChange = (
     e: React.ChangeEvent<
       HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
-    >,
+    >
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -303,15 +371,13 @@ export function PersonForm({
 
             <div className="form-control">
               <label className="label">
-                <span className="label-text">CPF *</span>
+                <span className="label-text">CPF</span>
               </label>
               <InputCPF
                 value={formData.cpf}
                 onChange={(value) =>
                   setFormData((prev) => ({ ...prev, cpf: value }))
                 }
-                className="input input-bordered"
-                required
               />
             </div>
 
@@ -331,13 +397,14 @@ export function PersonForm({
 
             <div className="form-control">
               <label className="label">
-                <span className="label-text">Gênero</span>
+                <span className="label-text">Gênero *</span>
               </label>
               <select
                 name="genero"
                 value={formData.genero}
                 onChange={handleChange}
                 className="select select-bordered"
+                required
               >
                 <option value="">Selecione</option>
                 <option value="MASCULINO">Masculino</option>
@@ -348,7 +415,7 @@ export function PersonForm({
 
             <div className="form-control">
               <label className="label">
-                <span className="label-text">Telefone/WhatsApp *</span>
+                <span className="label-text">Telefone/WhatsApp</span>
               </label>
               <input
                 type="tel"
@@ -363,7 +430,6 @@ export function PersonForm({
                 }}
                 className="input input-bordered"
                 placeholder="(99) 99999-9999"
-                required
               />
             </div>
 
@@ -398,18 +464,192 @@ export function PersonForm({
                   value={formData.faixa_atual}
                   onChange={handleChange}
                   className="select select-bordered"
+                  disabled={!formData.data_nascimento}
                   required
                 >
-                  <option value="BRANCA">Branca</option>
-                  <option value="CINZA">Cinza</option>
-                  <option value="AMARELA">Amarela</option>
-                  <option value="LARANJA">Laranja</option>
-                  <option value="VERDE">Verde</option>
-                  <option value="AZUL">Azul</option>
-                  <option value="ROXA">Roxa</option>
-                  <option value="MARROM">Marrom</option>
-                  <option value="PRETA">Preta</option>
+                  {!formData.data_nascimento ? (
+                    <option value="">
+                      Preencha a data de nascimento primeiro
+                    </option>
+                  ) : (
+                    <>
+                      <option value="BRANCA">Branca</option>
+                      <option
+                        value="CINZA_BRANCA"
+                        disabled={is16to18 || isOver18}
+                      >
+                        Cinza Branca{" "}
+                        {is16to18
+                          ? "(Não permitida 16-17 anos)"
+                          : isOver18
+                          ? "(Apenas menores de 18 anos)"
+                          : ""}
+                      </option>
+                      <option value="CINZA" disabled={is16to18 || isOver18}>
+                        Cinza{" "}
+                        {is16to18
+                          ? "(Não permitida 16-17 anos)"
+                          : isOver18
+                          ? "(Apenas menores de 18 anos)"
+                          : ""}
+                      </option>
+                      <option
+                        value="CINZA_PRETA"
+                        disabled={is16to18 || isOver18}
+                      >
+                        Cinza Preta{" "}
+                        {is16to18
+                          ? "(Não permitida 16-17 anos)"
+                          : isOver18
+                          ? "(Apenas menores de 18 anos)"
+                          : ""}
+                      </option>
+                      <option
+                        value="AMARELA_BRANCA"
+                        disabled={is16to18 || isOver18}
+                      >
+                        Amarela Branca{" "}
+                        {is16to18
+                          ? "(Não permitida 16-17 anos)"
+                          : isOver18
+                          ? "(Apenas menores de 18 anos)"
+                          : ""}
+                      </option>
+                      <option value="AMARELA" disabled={is16to18 || isOver18}>
+                        Amarela{" "}
+                        {is16to18
+                          ? "(Não permitida 16-17 anos)"
+                          : isOver18
+                          ? "(Apenas menores de 18 anos)"
+                          : ""}
+                      </option>
+                      <option
+                        value="AMARELA_PRETA"
+                        disabled={is16to18 || isOver18}
+                      >
+                        Amarela Preta{" "}
+                        {is16to18
+                          ? "(Não permitida 16-17 anos)"
+                          : isOver18
+                          ? "(Apenas menores de 18 anos)"
+                          : ""}
+                      </option>
+                      <option
+                        value="LARANJA_BRANCA"
+                        disabled={is16to18 || isOver18}
+                      >
+                        Laranja Branca{" "}
+                        {is16to18
+                          ? "(Não permitida 16-17 anos)"
+                          : isOver18
+                          ? "(Apenas menores de 18 anos)"
+                          : ""}
+                      </option>
+                      <option value="LARANJA" disabled={is16to18 || isOver18}>
+                        Laranja{" "}
+                        {is16to18
+                          ? "(Não permitida 16-17 anos)"
+                          : isOver18
+                          ? "(Apenas menores de 18 anos)"
+                          : ""}
+                      </option>
+                      <option
+                        value="LARANJA_PRETA"
+                        disabled={is16to18 || isOver18}
+                      >
+                        Laranja Preta{" "}
+                        {is16to18
+                          ? "(Não permitida 16-17 anos)"
+                          : isOver18
+                          ? "(Apenas menores de 18 anos)"
+                          : ""}
+                      </option>
+                      <option
+                        value="VERDE_BRANCA"
+                        disabled={is16to18 || isOver18}
+                      >
+                        Verde Branca{" "}
+                        {is16to18
+                          ? "(Não permitida 16-17 anos)"
+                          : isOver18
+                          ? "(Apenas menores de 18 anos)"
+                          : ""}
+                      </option>
+                      <option value="VERDE" disabled={is16to18 || isOver18}>
+                        Verde{" "}
+                        {is16to18
+                          ? "(Não permitida 16-17 anos)"
+                          : isOver18
+                          ? "(Apenas menores de 18 anos)"
+                          : ""}
+                      </option>
+                      <option
+                        value="VERDE_PRETA"
+                        disabled={is16to18 || isOver18}
+                      >
+                        Verde Preta{" "}
+                        {is16to18
+                          ? "(Não permitida 16-17 anos)"
+                          : isOver18
+                          ? "(Apenas menores de 18 anos)"
+                          : ""}
+                      </option>
+                      <option value="AZUL" disabled={isUnder16}>
+                        Azul {isUnder16 ? "(Apenas +16 anos)" : ""}
+                      </option>
+                      <option value="ROXA" disabled={isUnder16}>
+                        Roxa {isUnder16 ? "(Apenas +16 anos)" : ""}
+                      </option>
+                      <option value="MARROM" disabled={isUnder16 || is16to18}>
+                        Marrom{" "}
+                        {isUnder16
+                          ? "(Apenas +16 anos)"
+                          : is16to18
+                          ? "(Apenas +18 anos)"
+                          : ""}
+                      </option>
+                      <option value="PRETA" disabled={isUnder16 || is16to18}>
+                        Preta{" "}
+                        {isUnder16
+                          ? "(Apenas +16 anos)"
+                          : is16to18
+                          ? "(Apenas +18 anos)"
+                          : ""}
+                      </option>
+                    </>
+                  )}
                 </select>
+                {!formData.data_nascimento && (
+                  <label className="label">
+                    <span className="label-text-alt text-info">
+                      ℹ️ Preencha a data de nascimento para liberar as opções de
+                      faixa
+                    </span>
+                  </label>
+                )}
+                {isUnder16 && (
+                  <label className="label">
+                    <span className="label-text-alt text-warning">
+                      ⚠️ Menores de 16 anos: apenas faixas infantis (Branca,
+                      Cinza, Amarela, Laranja, Verde)
+                    </span>
+                  </label>
+                )}
+                {is16to18 && (
+                  <label className="label">
+                    <span className="label-text-alt text-warning">
+                      ⚠️ De 16 a 17 anos: apenas Branca, Azul ou Roxa
+                    </span>
+                  </label>
+                )}
+                {isOver18 && (
+                  <label className="label">
+                    <span className="label-text-alt text-info">
+                      ℹ️ Maiores de 18 anos: apenas faixas adultas (Branca,
+                      Azul, Roxa, Marrom, Preta)
+                    </span>
+                  </label>
+                )}
               </div>
 
               <div className="form-control">
@@ -434,13 +674,11 @@ export function PersonForm({
             {/* Responsável (se menor de idade) */}
             {isMinor && (
               <>
-                <div className="divider">
-                  Dados do Responsável (obrigatório para menores)
-                </div>
+                <div className="divider">Dados do Responsável (opcional)</div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="form-control">
                     <label className="label">
-                      <span className="label-text">Nome do Responsável *</span>
+                      <span className="label-text">Nome do Responsável</span>
                     </label>
                     <input
                       type="text"
@@ -448,13 +686,12 @@ export function PersonForm({
                       value={formData.responsavel_nome}
                       onChange={handleChange}
                       className="input input-bordered"
-                      required
                     />
                   </div>
 
                   <div className="form-control">
                     <label className="label">
-                      <span className="label-text">CPF do Responsável *</span>
+                      <span className="label-text">CPF do Responsável</span>
                     </label>
                     <InputCPF
                       value={formData.responsavel_cpf}
@@ -464,15 +701,13 @@ export function PersonForm({
                           responsavel_cpf: value,
                         }))
                       }
-                      className="input input-bordered"
-                      required
                     />
                   </div>
 
                   <div className="form-control">
                     <label className="label">
                       <span className="label-text">
-                        Telefone do Responsável *
+                        Telefone do Responsável
                       </span>
                     </label>
                     <input
@@ -488,7 +723,6 @@ export function PersonForm({
                       }}
                       className="input input-bordered"
                       placeholder="(99) 99999-9999"
-                      required
                     />
                   </div>
                 </div>

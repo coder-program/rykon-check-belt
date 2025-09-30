@@ -17,6 +17,6 @@ export default new DataSource({
   migrationsTableName: 'migrations',
   synchronize: false,
   ssl: {
-    rejectUnauthorized: false
+    rejectUnauthorized: false,
   },
 });

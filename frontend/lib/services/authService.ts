@@ -31,4 +31,19 @@ export const authService = {
     const user = await http("/auth/profile", { auth: true });
     return user;
   },
+
+  async register(userData: {
+    nome: string;
+    email: string;
+    password: string;
+    cpf: string;
+    telefone: string;
+    data_nascimento: string;
+  }) {
+    const data = await http("/auth/register", {
+      method: "POST",
+      body: userData,
+    });
+    return data;
+  },
 };

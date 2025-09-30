@@ -3,6 +3,10 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/app/auth/AuthContext";
 import { useRouter } from "next/navigation";
+import MasterDashboard from "@/components/dashboard/MasterDashboard";
+import FranqueadoDashboard from "@/components/dashboard/FranqueadoDashboard";
+import AlunoDashboard from "@/components/dashboard/AlunoDashboard";
+import InstrutorDashboard from "@/components/dashboard/InstrutorDashboard";
 import {
   Card,
   CardContent,
@@ -24,6 +28,12 @@ import {
   Building2,
 } from "lucide-react";
 
+interface User {
+  id: string;
+  name: string;
+  perfis: string[];
+}
+
 export default function DashboardPage() {
   const { user, logout } = useAuth();
   const hasPerfil = (p: string) =>
@@ -31,29 +41,19 @@ export default function DashboardPage() {
       .map((x: string) => x.toLowerCase())
       .includes(p.toLowerCase());
   const router = useRouter();
-  const [users, setUsers] = useState<any[]>([]);
-
-  // Debug do usuário
-  console.log("User:", user);
-  console.log("User perfis:", user?.perfis);
-  console.log("hasPerfil master:", hasPerfil("master"));
-  console.log("hasPerfil franqueado:", hasPerfil("franqueado"));
+  const [users, setUsers] = useState<User[]>([]);
 
   useEffect(() => {
     const load = async () => {
       try {
-        const res = await fetch(
-          process.env.NEXT_PUBLIC_API_URL +
-            "/usuarios",
-          {
-            headers: {
-              "Content-Type": "application/json",
-              ...(typeof window !== "undefined" && localStorage.getItem("token")
-                ? { Authorization: `Bearer ${localStorage.getItem("token")}` }
-                : {}),
-            },
+        const res = await fetch(process.env.NEXT_PUBLIC_API_URL + "/usuarios", {
+          headers: {
+            "Content-Type": "application/json",
+            ...(typeof window !== "undefined" && localStorage.getItem("token")
+              ? { Authorization: `Bearer ${localStorage.getItem("token")}` }
+              : {}),
           },
-        );
+        });
         const data = await res.json();
         setUsers(Array.isArray(data) ? data : []);
       } catch (e) {
@@ -63,6 +63,29 @@ export default function DashboardPage() {
     };
     load();
   }, []);
+
+  // Renderizar dashboard específico por perfil
+  if (hasPerfil("master")) {
+    return <MasterDashboard />;
+  }
+
+  if (hasPerfil("franqueado")) {
+    return <FranqueadoDashboard />;
+  }
+
+  if (hasPerfil("aluno")) {
+    return <AlunoDashboard />;
+  }
+
+  if (hasPerfil("instrutor")) {
+    return <InstrutorDashboard />;
+  }
+
+  // Debug do usuário
+  console.log("User:", user);
+  console.log("User perfis:", user?.perfis);
+  console.log("hasPerfil master:", hasPerfil("master"));
+  console.log("hasPerfil franqueado:", hasPerfil("franqueado"));
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">

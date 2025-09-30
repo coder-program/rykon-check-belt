@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useAuth } from "@/app/auth/AuthContext";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
+import { toast } from "react-hot-toast";
 import {
   Card,
   CardContent,
@@ -18,13 +20,27 @@ import { TeamCruzLogo } from "@/components/ui/teamcruz-logo";
 import { JiuJitsuWatermark } from "@/components/ui/jiujitsu-watermark";
 import { Mail, Lock, AlertCircle, LogIn, Crown } from "lucide-react";
 
-export default function LoginPage() {
+function LoginContent() {
   const [formData, setFormData] = useState({ email: "", password: "" });
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
   const { login } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    const message = searchParams.get("message");
+    if (message === "registration-success") {
+      toast.success(
+        "Cadastro realizado com sucesso! Faça login para continuar.",
+        {
+          duration: 4000,
+          position: "top-center",
+        }
+      );
+    }
+  }, [searchParams]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
@@ -151,6 +167,19 @@ export default function LoginPage() {
                 </Button>
               </form>
 
+              {/* Link de cadastro */}
+              <div className="text-center mt-6">
+                <p className="text-gray-400 text-sm">
+                  Não tem uma conta?{" "}
+                  <Link
+                    href="/register"
+                    className="text-red-400 hover:text-red-300 font-medium transition-colors"
+                  >
+                    Cadastre-se aqui
+                  </Link>
+                </p>
+              </div>
+
               <div className="relative my-8">
                 <div className="absolute inset-0 flex items-center">
                   <div className="w-full border-t border-gray-600"></div>
@@ -166,9 +195,7 @@ export default function LoginPage() {
                   variant="outline"
                   className="w-full h-12 border-2 border-gray-600 bg-gray-800/30 hover:bg-gray-700/50 text-white"
                   onClick={() =>
-                    (window.location.href = `${
-                      process.env.NEXT_PUBLIC_API_URL
-                    }/auth/google`)
+                    (window.location.href = `${process.env.NEXT_PUBLIC_API_URL}/auth/google`)
                   }
                   disabled={isLoading}
                 >
@@ -232,5 +259,13 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div>Carregando...</div>}>
+      <LoginContent />
+    </Suspense>
   );
 }

@@ -519,4 +519,416 @@ export class GraduacaoService {
       hasNextPage: page * pageSize < total,
     };
   }
+
+  /**
+   * Obtém a graduação atual do usuário logado
+   */
+  async getMinhaGraduacao(userId: string) {
+    const faixaAtiva = await this.getFaixaAtivaAluno(userId);
+
+    if (!faixaAtiva) {
+      return {
+        id: null,
+        faixa: 'Branca',
+        grau: 1,
+        dataConcessao: new Date().toISOString(),
+        pontosAtuais: 0,
+        pontosNecessarios: 100,
+        proximaFaixa: 'Azul',
+        proximoGrau: 1,
+        tempoNaGraduacao: '0 meses',
+      };
+    }
+
+    const statusAtual = await this.getStatusGraduacao(userId);
+    const proximaGraduacao = await this.calcularProximaGraduacao(faixaAtiva);
+
+    const tempoNaGraduacao = this.calcularTempoNaGraduacao(
+      faixaAtiva.created_at,
+    );
+
+    return {
+      id: faixaAtiva.id,
+      faixa: faixaAtiva.faixaDef.nome_exibicao,
+      grau: faixaAtiva.graus_atual,
+      dataConcessao: faixaAtiva.created_at.toISOString(),
+      pontosAtuais: statusAtual.presencasNoCiclo,
+      pontosNecessarios: statusAtual.aulasPorGrau,
+      proximaFaixa: proximaGraduacao.faixa,
+      proximoGrau: proximaGraduacao.grau,
+      tempoNaGraduacao,
+    };
+  }
+
+  /**
+   * Histórico de graduações do usuário
+   */
+  async getMeuHistorico(userId: string) {
+    const graduacoes = await this.alunoGraduacaoRepository.find({
+      where: { aluno_id: userId },
+      relations: ['faixaOrigem', 'faixaDestino'],
+      order: { created_at: 'DESC' },
+    });
+
+    return graduacoes.map((graduacao) => ({
+      id: graduacao.id,
+      faixa: graduacao.faixaDestino.nome_exibicao,
+      grau: 1, // Assumindo grau 1 por padrão, ajustar conforme necessário
+      dataConcessao: graduacao.created_at.toISOString(),
+      professor: graduacao.concedido_por || 'Sistema',
+      observacoes: graduacao.observacao,
+    }));
+  }
+
+  /**
+   * Competências técnicas do usuário
+   */
+  async getMinhasCompetencias(userId: string) {
+    // Por enquanto retornar dados mockados, mas pode ser implementado com uma tabela específica
+    const faixaAtiva = await this.getFaixaAtivaAluno(userId);
+
+    if (!faixaAtiva) {
+      return [];
+    }
+
+    // Competências baseadas na faixa atual
+    const competenciasPorFaixa = {
+      Branca: [
+        {
+          nome: 'Posição Básica',
+          categoria: 'Fundamentos',
+          dominada: true,
+          progresso: 100,
+          descricao: 'Postura correta e movimentação básica',
+        },
+        {
+          nome: 'Guarda Fechada',
+          categoria: 'Posições',
+          dominada: false,
+          progresso: 60,
+          descricao: 'Controle e manutenção da guarda fechada',
+        },
+      ],
+      Azul: [
+        {
+          nome: 'Guarda Fechada',
+          categoria: 'Posições',
+          dominada: true,
+          progresso: 100,
+          descricao: 'Domínio completo da guarda fechada',
+        },
+        {
+          nome: 'Passagem de Guarda',
+          categoria: 'Técnicas',
+          dominada: false,
+          progresso: 75,
+          descricao: 'Técnicas de passagem de guarda',
+        },
+        {
+          nome: 'Finalizações Básicas',
+          categoria: 'Submissões',
+          dominada: false,
+          progresso: 65,
+          descricao: 'Armlock, triângulo e estrangulamentos',
+        },
+      ],
+    };
+
+    return competenciasPorFaixa[faixaAtiva.faixaDef.nome_exibicao] || [];
+  }
+
+  /**
+   * Objetivos do usuário
+   */
+  async getMeusObjetivos(userId: string) {
+    const faixaAtiva = await this.getFaixaAtivaAluno(userId);
+    const statusAtual = await this.getStatusGraduacao(userId);
+
+    if (!faixaAtiva) {
+      return [];
+    }
+
+    const proximaGraduacao = await this.calcularProximaGraduacao(faixaAtiva);
+    const progressoAtual = Math.round(
+      (statusAtual.presencasNoCiclo / statusAtual.aulasPorGrau) * 100,
+    );
+
+    return [
+      {
+        id: '1',
+        titulo: 'Próxima Graduação',
+        descricao: `Alcançar ${proximaGraduacao.faixa} ${proximaGraduacao.grau}° Grau`,
+        prazo: this.calcularPrazoEstimado(statusAtual.faltamAulas),
+        progresso: Math.min(progressoAtual, 100),
+        concluido: progressoAtual >= 100,
+        categoria: 'graduacao',
+      },
+      {
+        id: '2',
+        titulo: 'Consistência nas Aulas',
+        descricao: 'Manter 80% de presença mensal',
+        prazo: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+          .toISOString()
+          .split('T')[0],
+        progresso: Math.min(
+          Math.round((statusAtual.presencasNoCiclo / 20) * 100),
+          100,
+        ),
+        concluido: false,
+        categoria: 'fisica',
+      },
+    ];
+  }
+
+  private async calcularProximaGraduacao(faixaAtiva: AlunoFaixa) {
+    // Se ainda pode evoluir na faixa atual
+    if (faixaAtiva.graus_atual < faixaAtiva.faixaDef.graus_max) {
+      return {
+        faixa: faixaAtiva.faixaDef.nome_exibicao,
+        grau: faixaAtiva.graus_atual + 1,
+      };
+    }
+
+    // Precisa evoluir para próxima faixa
+    const proximaFaixa = await this.faixaDefRepository.findOne({
+      where: {
+        categoria: faixaAtiva.faixaDef.categoria,
+        ordem: faixaAtiva.faixaDef.ordem + 1,
+      },
+    });
+
+    return {
+      faixa: proximaFaixa?.nome_exibicao || 'Próxima Faixa',
+      grau: 1,
+    };
+  }
+
+  private calcularTempoNaGraduacao(dataConcessao: Date): string {
+    const agora = new Date();
+    const diffMs = agora.getTime() - dataConcessao.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    const meses = Math.floor(diffDays / 30);
+
+    if (meses === 0) {
+      return `${diffDays} dias`;
+    }
+
+    return `${meses} ${meses === 1 ? 'mês' : 'meses'}`;
+  }
+
+  private calcularPrazoEstimado(presencasRestantes: number): string {
+    // Assumindo 3 aulas por semana, calcular prazo estimado
+    const semanasNecessarias = Math.ceil(presencasRestantes / 3);
+    const prazoEstimado = new Date();
+    prazoEstimado.setDate(prazoEstimado.getDate() + semanasNecessarias * 7);
+
+    return prazoEstimado.toISOString().split('T')[0];
+  }
+
+  /**
+   * Lista todas as definições de faixas
+   */
+  async listarFaixasDefinicao(): Promise<FaixaDef[]> {
+    return await this.faixaDefRepository.find({
+      where: { ativo: true },
+      order: { categoria: 'ASC', ordem: 'ASC' },
+    });
+  }
+
+  /**
+   * Obtém estatísticas gerais de graduação
+   */
+  async getEstatisticasGraduacao() {
+    const totalAlunos = await this.personRepository.count({
+      where: { tipo_cadastro: TipoCadastro.ALUNO },
+    });
+
+    const totalComFaixa = await this.alunoFaixaRepository.count({
+      where: { ativa: true },
+    });
+
+    const prontosGraduar = await this.alunoFaixaRepository
+      .createQueryBuilder('af')
+      .innerJoin('af.faixaDef', 'fd')
+      .where('af.ativa = true')
+      .andWhere('af.presencas_no_ciclo >= fd.aulas_por_grau')
+      .getCount();
+
+    const graduacoesEsteAno = await this.alunoGraduacaoRepository
+      .createQueryBuilder('ag')
+      .where('EXTRACT(YEAR FROM ag.dt_graduacao) = :ano', {
+        ano: new Date().getFullYear(),
+      })
+      .getCount();
+
+    return {
+      totalAlunos,
+      totalComFaixa,
+      prontosGraduar,
+      graduacoesEsteAno,
+      percentualComFaixa:
+        totalAlunos > 0 ? (totalComFaixa / totalAlunos) * 100 : 0,
+    };
+  }
+
+  /**
+   * Gradua um aluno para a próxima faixa
+   */
+  async graduarAluno(alunoId: string, observacao?: string) {
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      const faixaAtiva = await this.getFaixaAtivaAluno(alunoId);
+      if (!faixaAtiva) {
+        throw new BadRequestException('Aluno não possui faixa ativa');
+      }
+
+      // Verificar se está pronto para graduação
+      const faixaDef = await this.faixaDefRepository.findOne({
+        where: { id: faixaAtiva.faixa_def_id },
+      });
+
+      if (!faixaDef) {
+        throw new NotFoundException('Faixa não encontrada');
+      }
+
+      if (faixaAtiva.presencas_no_ciclo < faixaDef.aulas_por_grau) {
+        throw new BadRequestException(
+          'Aluno não possui presenças suficientes para graduação',
+        );
+      }
+
+      // Buscar próxima faixa
+      const proximaFaixa = await this.faixaDefRepository.findOne({
+        where: {
+          categoria: faixaDef.categoria,
+          ordem: faixaDef.ordem + 1,
+          ativo: true,
+        },
+      });
+
+      if (!proximaFaixa) {
+        throw new BadRequestException('Não há próxima faixa disponível');
+      }
+
+      // Desativar faixa atual
+      await queryRunner.manager.update(AlunoFaixa, faixaAtiva.id, {
+        ativa: false,
+        dt_fim: new Date(),
+      });
+
+      // Criar nova faixa
+      const novaFaixa = queryRunner.manager.create(AlunoFaixa, {
+        aluno_id: alunoId,
+        faixa_def_id: proximaFaixa.id,
+        ativa: true,
+        dt_inicio: new Date(),
+        graus_atual: 1, // Começa com primeiro grau da nova faixa
+        presencas_no_ciclo: 0,
+        presencas_total_fx: 0,
+      });
+
+      await queryRunner.manager.save(novaFaixa);
+
+      // Registrar graduação
+      const graduacao = queryRunner.manager.create(AlunoGraduacao, {
+        aluno_id: alunoId,
+        faixa_origem_id: faixaAtiva.faixa_def_id,
+        faixa_destino_id: proximaFaixa.id,
+        dt_graduacao: new Date(),
+        observacao: observacao || 'Graduação automática',
+      });
+
+      await queryRunner.manager.save(graduacao);
+
+      // Atualizar dados do aluno na tabela pessoas
+      await queryRunner.manager.update(Person, alunoId, {
+        faixa_atual: proximaFaixa.codigo,
+        grau_atual: 1,
+      });
+
+      await queryRunner.commitTransaction();
+
+      return {
+        success: true,
+        message: `Aluno graduado para ${proximaFaixa.nome_exibicao}`,
+        novaFaixa: proximaFaixa.nome_exibicao,
+      };
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
+  /**
+   * Adiciona um grau manualmente ao aluno
+   */
+  async adicionarGrau(alunoId: string, observacao: string) {
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      const faixaAtiva = await this.getFaixaAtivaAluno(alunoId);
+      if (!faixaAtiva) {
+        throw new BadRequestException('Aluno não possui faixa ativa');
+      }
+
+      const faixaDef = await this.faixaDefRepository.findOne({
+        where: { id: faixaAtiva.faixa_def_id },
+      });
+
+      if (!faixaDef) {
+        throw new NotFoundException('Faixa não encontrada');
+      }
+
+      // Verificar se pode receber mais graus
+      if (faixaAtiva.graus_atual >= faixaDef.graus_max) {
+        throw new BadRequestException(
+          'Aluno já possui o máximo de graus para esta faixa',
+        );
+      }
+
+      // Incrementar grau
+      const novoGrau = faixaAtiva.graus_atual + 1;
+
+      await queryRunner.manager.update(AlunoFaixa, faixaAtiva.id, {
+        graus_atual: novoGrau,
+        presencas_no_ciclo: 0, // Reset das presenças para o novo ciclo
+      });
+
+      // Registrar grau
+      const grau = queryRunner.manager.create(AlunoFaixaGrau, {
+        aluno_faixa_id: faixaAtiva.id,
+        grau_num: novoGrau,
+        dt_concessao: new Date(),
+        observacao,
+        origem: OrigemGrau.MANUAL,
+      });
+
+      await queryRunner.manager.save(grau);
+
+      // Atualizar tabela pessoas
+      await queryRunner.manager.update(Person, alunoId, {
+        grau_atual: novoGrau,
+      });
+
+      await queryRunner.commitTransaction();
+
+      return {
+        success: true,
+        message: `${novoGrau}º grau adicionado com sucesso`,
+        grauAtual: novoGrau,
+      };
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
+  }
 }

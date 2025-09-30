@@ -18,6 +18,12 @@ export class Presenca {
   @Column({ name: 'pessoa_id' })
   pessoaId: string;
 
+  @Column({ name: 'metodo', nullable: true })
+  metodo?: string;
+
+  @Column({ name: 'detalhes', type: 'jsonb', nullable: true })
+  detalhes?: any;
+
   @ManyToOne(() => Person)
   @JoinColumn({ name: 'pessoa_id' })
   pessoa: Person;

@@ -8,7 +8,7 @@ import {
 } from "@tanstack/react-query";
 import { FixedSizeList as List } from "react-window";
 import { listAlunos, createAluno } from "@/lib/peopleApi";
-import { Search, Plus, Edit, Trash2 } from "lucide-react";
+import { Search, Plus, Edit, Trash2, Users } from "lucide-react";
 import { PersonForm } from "@/components/people/PersonForm";
 import { useAuth } from "@/app/auth/AuthContext";
 
@@ -19,7 +19,9 @@ export default function PageAlunos() {
   const [tipoCadastro, setTipoCadastro] = useState<
     "todos" | "aluno" | "professor"
   >("todos");
-  const [faixa, setFaixa] = useState<"todos" | "kids" | "adulto">("todos");
+  const [faixa, setFaixa] = useState<"todos" | "kids" | "jovem" | "adulto">(
+    "todos"
+  );
   const [unidade, setUnidade] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [editingPerson, setEditingPerson] = useState(null);
@@ -147,84 +149,111 @@ export default function PageAlunos() {
             onChange={(e) => setFaixa(e.target.value as any)}
           >
             <option value="todos">Todas as Faixas</option>
-            <option value="kids">Kids</option>
-            <option value="adulto">Adulto</option>
+            <option value="kids">Kids (menos de 16 anos)</option>
+            <option value="jovem">Jovem (16-17 anos)</option>
+            <option value="adulto">Adulto (18+ anos)</option>
           </select>
         </div>
 
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-          <List
-            height={600}
-            itemCount={items.length + (query.hasNextPage ? 1 : 0)}
-            itemSize={80}
-            width={"100%"}
-            onItemsRendered={({ visibleStopIndex }) => {
-              if (
-                visibleStopIndex >= items.length - 5 &&
-                query.hasNextPage &&
-                !query.isFetchingNextPage
-              )
-                query.fetchNextPage();
-            }}
-          >
-            {({ index, style }) => {
-              const a = items[index];
-              if (!a)
+        {/* Estado vazio quando não há alunos */}
+        {items.length === 0 && !query.isLoading ? (
+          <div className="bg-white rounded-lg shadow p-8 text-center text-gray-500">
+            <Users className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+            <p className="text-lg mb-2">Nenhum aluno cadastrado</p>
+            <p className="text-sm text-gray-400 mb-4">
+              Comece cadastrando o primeiro aluno da academia
+            </p>
+            {canCreate && (
+              <button
+                className="btn btn-primary"
+                onClick={() => setShowForm(true)}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Cadastrar Primeiro Aluno
+              </button>
+            )}
+          </div>
+        ) : (
+          <div className="bg-white rounded-lg shadow overflow-hidden">
+            <List
+              height={600}
+              itemCount={items.length + (query.hasNextPage ? 1 : 0)}
+              itemSize={80}
+              width={"100%"}
+              onItemsRendered={({ visibleStopIndex }) => {
+                if (
+                  visibleStopIndex >= items.length - 5 &&
+                  query.hasNextPage &&
+                  !query.isFetchingNextPage
+                )
+                  query.fetchNextPage();
+              }}
+            >
+              {({ index, style }) => {
+                const a = items[index];
+                if (!a)
+                  return (
+                    <div style={style} className="p-3">
+                      <div className="skeleton h-10 w-full" />
+                    </div>
+                  );
                 return (
-                  <div style={style} className="p-3">
-                    <div className="skeleton h-10 w-full" />
+                  <div
+                    style={style}
+                    className="px-4 py-3 border-b hover:bg-gray-50 flex items-center justify-between"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="avatar placeholder">
+                        <div className="bg-primary text-white rounded-full w-10">
+                          <span className="text-xl">
+                            {a.nome_completo?.charAt(0) || "A"}
+                          </span>
+                        </div>
+                      </div>
+                      <div>
+                        <div className="font-semibold">
+                          {a.nome_completo}{" "}
+                          <span className="text-xs text-gray-500">
+                            ({a.cpf})
+                          </span>
+                        </div>
+                        <div className="text-sm text-gray-600">
+                          {a.tipo_cadastro === "PROFESSOR" ? (
+                            <>
+                              Professor • Faixa: {a.faixa_ministrante || "N/A"}
+                            </>
+                          ) : (
+                            <>
+                              {a.faixa_atual} • {a.grau_atual || 0}º grau
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`badge ${
+                          a.status === "ATIVO" ? "badge-success" : "badge-ghost"
+                        }`}
+                      >
+                        {a.status || "Ativo"}
+                      </span>
+                      <button
+                        className="btn btn-ghost btn-sm btn-circle"
+                        onClick={() => {
+                          setEditingPerson(a);
+                          setShowForm(true);
+                        }}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </button>
+                    </div>
                   </div>
                 );
-              return (
-                <div
-                  style={style}
-                  className="px-4 py-3 border-b hover:bg-gray-50 flex items-center justify-between"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="avatar placeholder">
-                      <div className="bg-primary text-white rounded-full w-10">
-                        <span className="text-xl">
-                          {a.nome_completo?.charAt(0) || "A"}
-                        </span>
-                      </div>
-                    </div>
-                    <div>
-                      <div className="font-semibold">
-                        {a.nome_completo}{" "}
-                        <span className="text-xs text-gray-500">({a.cpf})</span>
-                      </div>
-                      <div className="text-sm text-gray-600">
-                        {a.tipo_cadastro === "PROFESSOR" ? (
-                          <>Professor • Faixa: {a.faixa_ministrante || "N/A"}</>
-                        ) : (
-                          <>
-                            {a.faixa_atual} • {a.grau_atual || 0}º grau
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={`badge ${a.status === "ATIVO" ? "badge-success" : "badge-ghost"}`}
-                    >
-                      {a.status || "Ativo"}
-                    </span>
-                    <button
-                      className="btn btn-ghost btn-sm btn-circle"
-                      onClick={() => {
-                        setEditingPerson(a);
-                        setShowForm(true);
-                      }}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </button>
-                  </div>
-                </div>
-              );
-            }}
-          </List>
-        </div>
+              }}
+            </List>
+          </div>
+        )}
       </div>
     </div>
   );

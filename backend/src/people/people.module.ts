@@ -13,11 +13,19 @@ import { EnderecosModule } from '../enderecos/enderecos.module';
 import { Franqueado } from './entities/franqueado.entity';
 import { Unidade } from './entities/unidade.entity';
 import { Person } from './entities/person.entity';
+import { FaixaDef } from '../graduacao/entities/faixa-def.entity';
+import { AlunoFaixa } from '../graduacao/entities/aluno-faixa.entity';
 
 @Module({
   imports: [
     UsuariosModule,
-    TypeOrmModule.forFeature([Person, Franqueado, Unidade]),
+    TypeOrmModule.forFeature([
+      Person,
+      Franqueado,
+      Unidade,
+      FaixaDef,
+      AlunoFaixa,
+    ]),
     EnderecosModule,
   ],
   controllers: [

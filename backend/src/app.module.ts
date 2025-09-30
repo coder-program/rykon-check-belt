@@ -18,6 +18,8 @@ import { PresencasModule } from './teamcruz/presencas/presencas.module';
 import { PeopleModule } from './people/people.module';
 import { EnderecosModule } from './enderecos/enderecos.module';
 import { GraduacaoModule } from './graduacao/graduacao.module';
+import { PresencaModule } from './presenca/presenca.module';
+import { DashboardModule } from './dashboard/dashboard.module';
 
 @Module({
   imports: [
@@ -28,11 +30,13 @@ import { GraduacaoModule } from './graduacao/graduacao.module';
       useFactory: (configService: ConfigService) => {
         const dbHost = configService.get('DB_HOST', '34.39.173.213');
         const isSocketConnection = dbHost.startsWith('/cloudsql/');
-        
+
         return {
           type: 'postgres',
           host: dbHost,
-          port: isSocketConnection ? undefined : parseInt(configService.get('DB_PORT', '5432')),
+          port: isSocketConnection
+            ? undefined
+            : parseInt(configService.get('DB_PORT', '5432')),
           username: configService.get('DB_USER'),
           password: configService.get('DB_PASS'),
           database: configService.get('DB_NAME'),
@@ -45,21 +49,23 @@ import { GraduacaoModule } from './graduacao/graduacao.module';
           extra: {
             searchPath: 'teamcruz,public',
             ssl: {
-              rejectUnauthorized: false
-            }
-          }
+              rejectUnauthorized: false,
+            },
+          },
         };
-      }
+      },
     }),
     AuthModule,
     AuditModule,
     UsuariosModule,
     CampanhasModule,
     PresencasModule,
+    PresencaModule,
     PeopleModule,
     EnderecosModule,
-    GraduacaoModule
-  ]
+    GraduacaoModule,
+    DashboardModule,
+  ],
 })
 export class AppModule {
   configure(consumer: MiddlewareConsumer) {

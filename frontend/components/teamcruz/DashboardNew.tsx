@@ -504,21 +504,58 @@ export default function DashboardNew() {
 
   // Hook para buscar estatísticas reais das unidades
   const unidadesStats = useUnidadesStats();
+
+  // Query para buscar estatísticas reais do dashboard
+  const statsQuery = useQuery({
+    queryKey: ["dashboard-stats"],
+    queryFn: async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/alunos?page=1&pageSize=1&search=&faixa=todos`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+        const data = await response.json();
+
+        return {
+          totalAlunos: data.total || 0,
+          aulaHoje: 12, // Manter mockado por enquanto
+          proximosGraduaveis: 15, // Manter mockado por enquanto
+          presencasHoje: 45, // Manter mockado por enquanto
+        };
+      } catch (error) {
+        console.error("Erro ao buscar estatísticas:", error);
+        // Fallback para dados mockados em caso de erro
+        return {
+          totalAlunos: 287,
+          aulaHoje: 12,
+          proximosGraduaveis: 15,
+          presencasHoje: 45,
+        };
+      }
+    },
+    refetchInterval: 30000, // Atualizar a cada 30 segundos
+  });
   const [selectedAula, setSelectedAula] = React.useState<any | null>(null);
   const [searchTerm, setSearchTerm] = React.useState("");
   const [debouncedSearch, setDebouncedSearch] = React.useState("");
   const [selectedAlunos, setSelectedAlunos] = React.useState<any[]>([]);
   const [presencasRegistradas, setPresencasRegistradas] = React.useState<any[]>(
-    [],
+    []
   );
   const [totalPresencasHoje, setTotalPresencasHoje] = React.useState(
-    mockData.stats.presencasHoje,
+    mockData.stats.presencasHoje
   );
   const [showQRModal, setShowQRModal] = React.useState(false);
   const [showCPFModal, setShowCPFModal] = React.useState(false);
   const [cpfInput, setCpfInput] = React.useState("");
   const [selectedAlunoQR, setSelectedAlunoQR] = React.useState<any | null>(
-    null,
+    null
   );
   const [showLocationModal, setShowLocationModal] = React.useState(false);
   const [showConfigModal, setShowConfigModal] = React.useState(false);
@@ -538,7 +575,7 @@ export default function DashboardNew() {
         .filter(
           (a) =>
             a.nome.toLowerCase().includes(q) ||
-            a.matricula.toLowerCase().includes(q),
+            a.matricula.toLowerCase().includes(q)
         )
         .filter((a) => {
           const isKids = parseKidsPattern(a.faixa).isKids;
@@ -547,7 +584,7 @@ export default function DashboardNew() {
           return true;
         });
     },
-    [debouncedSearch, filterFaixa],
+    [debouncedSearch, filterFaixa]
   );
 
   // Query para Alunos (aba Alunos) - DADOS REAIS DO BANCO
@@ -742,13 +779,13 @@ export default function DashboardNew() {
         const sorted = [...adaptedItems].sort((a, b) =>
           overviewSort === "faltam-asc"
             ? a.faltam - b.faltam
-            : b.faltam - a.faltam,
+            : b.faltam - a.faltam
         );
 
         // Filtrar por busca localmente
         const filtered = overviewDebounced
           ? sorted.filter((a) =>
-              a.nome.toLowerCase().includes(overviewDebounced.toLowerCase()),
+              a.nome.toLowerCase().includes(overviewDebounced.toLowerCase())
             )
           : sorted;
 
@@ -808,7 +845,7 @@ export default function DashboardNew() {
   const handleCheckinAluno = (
     aluno: any,
     aula: any,
-    skipLocationCheck: boolean = false,
+    skipLocationCheck: boolean = false
   ) => {
     // Valida localização antes do check-in (exceto se skipLocationCheck for true)
     if (!skipLocationCheck) {
@@ -818,7 +855,7 @@ export default function DashboardNew() {
         // Se requer confirmação do instrutor
         if (locationValidation.requireConfirmation) {
           const confirmed = window.confirm(
-            `${locationValidation.message}\n\nDeseja continuar com o check-in mesmo assim?\n(Requer autorização do instrutor)`,
+            `${locationValidation.message}\n\nDeseja continuar com o check-in mesmo assim?\n(Requer autorização do instrutor)`
           );
 
           if (!confirmed) {
@@ -854,12 +891,12 @@ export default function DashboardNew() {
 
       // Verifica se já não foi registrada hoje
       const presencasHoje = JSON.parse(
-        localStorage.getItem("presencas_hoje") || "[]",
+        localStorage.getItem("presencas_hoje") || "[]"
       );
 
       if (
         !presencasHoje.find(
-          (p: any) => p.alunoId === aluno.id && p.data === hoje,
+          (p: any) => p.alunoId === aluno.id && p.data === hoje
         )
       ) {
         const novaPresenca = {
@@ -891,7 +928,7 @@ export default function DashboardNew() {
               background: "#10b981",
               color: "white",
             },
-          },
+          }
         );
       } else {
         toast.error(`${aluno.nome} já fez check-in hoje!`, {
@@ -906,15 +943,15 @@ export default function DashboardNew() {
       // Remove a presença do localStorage
       const hoje = format(new Date(), "yyyy-MM-dd");
       const presencasHoje = JSON.parse(
-        localStorage.getItem("presencas_hoje") || "[]",
+        localStorage.getItem("presencas_hoje") || "[]"
       );
       const novasPresencas = presencasHoje.filter(
-        (p: any) => !(p.alunoId === aluno.id && p.data === hoje),
+        (p: any) => !(p.alunoId === aluno.id && p.data === hoje)
       );
       localStorage.setItem("presencas_hoje", JSON.stringify(novasPresencas));
 
       setPresencasRegistradas((prev) =>
-        prev.filter((p) => p.alunoId !== aluno.id),
+        prev.filter((p) => p.alunoId !== aluno.id)
       );
       setTotalPresencasHoje((prev) => Math.max(0, prev - 1));
 
@@ -938,12 +975,12 @@ export default function DashboardNew() {
             color: "white",
             fontSize: "16px",
           },
-        },
+        }
       );
 
       // Salva histórico da aula
       const historico = JSON.parse(
-        localStorage.getItem("historico_aulas") || "[]",
+        localStorage.getItem("historico_aulas") || "[]"
       );
       historico.push({
         id: Date.now(),
@@ -982,12 +1019,12 @@ export default function DashboardNew() {
   React.useEffect(() => {
     const hoje = format(new Date(), "yyyy-MM-dd");
     const presencasHoje = JSON.parse(
-      localStorage.getItem("presencas_hoje") || "[]",
+      localStorage.getItem("presencas_hoje") || "[]"
     );
     const presencasDeHoje = presencasHoje.filter((p: any) => p.data === hoje);
     setPresencasRegistradas(presencasDeHoje);
     setTotalPresencasHoje(
-      mockData.stats.presencasHoje + presencasDeHoje.length,
+      mockData.stats.presencasHoje + presencasDeHoje.length
     );
   }, []);
 
@@ -1079,7 +1116,8 @@ export default function DashboardNew() {
                       Total de Alunos
                     </div>
                     <div className="stat-value">
-                      {mockData.stats.totalAlunos}
+                      {statsQuery.data?.totalAlunos ||
+                        mockData.stats.totalAlunos}
                     </div>
                     <div className="stat-desc text-blue-200">
                       ↗︎ 12% vs último mês
@@ -1092,7 +1130,9 @@ export default function DashboardNew() {
                       <Activity className="h-8 w-8 opacity-80" />
                     </div>
                     <div className="stat-title text-green-100">Aulas Hoje</div>
-                    <div className="stat-value">{mockData.stats.aulaHoje}</div>
+                    <div className="stat-value">
+                      {statsQuery.data?.aulaHoje || mockData.stats.aulaHoje}
+                    </div>
                     <div className="stat-desc text-green-200">
                       4 turmas agendadas
                     </div>
@@ -1107,7 +1147,8 @@ export default function DashboardNew() {
                       Próximos Graduáveis
                     </div>
                     <div className="stat-value">
-                      {mockData.stats.proximosGraduaveis}
+                      {statsQuery.data?.proximosGraduaveis ||
+                        mockData.stats.proximosGraduaveis}
                     </div>
                     <div className="stat-desc text-yellow-200">
                       ↗︎ 5 novos este mês
@@ -1123,7 +1164,8 @@ export default function DashboardNew() {
                       Presenças Hoje
                     </div>
                     <div className="stat-value">
-                      {mockData.stats.presencasHoje}
+                      {statsQuery.data?.presencasHoje ||
+                        mockData.stats.presencasHoje}
                     </div>
                     <div className="stat-desc text-purple-200">
                       ↗︎ 18% vs média
@@ -1300,8 +1342,8 @@ export default function DashboardNew() {
                             index === 0
                               ? "bg-yellow-400 text-yellow-900"
                               : index === 1
-                                ? "bg-gray-400 text-white"
-                                : "bg-orange-400 text-orange-900"
+                              ? "bg-gray-400 text-white"
+                              : "bg-orange-400 text-orange-900"
                           }`}
                         >
                           {index + 1}
@@ -1355,8 +1397,8 @@ export default function DashboardNew() {
                           aula.status === "concluída"
                             ? "border-green-500"
                             : aula.status === "em andamento"
-                              ? "border-blue-500 animate-pulse"
-                              : "border-gray-200"
+                            ? "border-blue-500 animate-pulse"
+                            : "border-gray-200"
                         }`}
                       >
                         <div className="flex justify-between items-start mb-2">
@@ -1377,8 +1419,8 @@ export default function DashboardNew() {
                               aula.status === "concluída"
                                 ? "bg-green-100 text-green-800"
                                 : aula.status === "em andamento"
-                                  ? "bg-blue-100 text-blue-800"
-                                  : "bg-gray-100 text-gray-700"
+                                ? "bg-blue-100 text-blue-800"
+                                : "bg-gray-100 text-gray-700"
                             }`}
                           >
                             {aula.status}
@@ -1486,8 +1528,8 @@ export default function DashboardNew() {
                           isInAcademy === true
                             ? "bg-green-50 border border-green-300"
                             : isInAcademy === false
-                              ? "bg-yellow-50 border border-yellow-300"
-                              : "bg-gray-50 border border-gray-300"
+                            ? "bg-yellow-50 border border-yellow-300"
+                            : "bg-gray-50 border border-gray-300"
                         }`}
                       >
                         <div className="flex items-center gap-2">
@@ -1496,18 +1538,18 @@ export default function DashboardNew() {
                               isInAcademy === true
                                 ? "text-green-600"
                                 : isInAcademy === false
-                                  ? "text-yellow-600"
-                                  : "text-gray-600"
+                                ? "text-yellow-600"
+                                : "text-gray-600"
                             }`}
                           />
                           <span className="text-sm font-medium">
                             {isInAcademy === true
                               ? "✅ Você está dentro da academia"
                               : isInAcademy === false
-                                ? "⚠️ Você está fora da academia"
-                                : locationLoading
-                                  ? "📍 Obtendo localização..."
-                                  : "📍 Localização não disponível"}
+                              ? "⚠️ Você está fora da academia"
+                              : locationLoading
+                              ? "📍 Obtendo localização..."
+                              : "📍 Localização não disponível"}
                           </span>
                         </div>
                         {!locationLoading && (
@@ -1572,7 +1614,7 @@ export default function DashboardNew() {
                   <div className="h-[600px]">
                     {(() => {
                       const items = (checkinQuery.data?.pages || []).flatMap(
-                        (p) => p.items,
+                        (p) => p.items
                       );
                       const itemCount = items.length;
                       const isItemLoaded = (index: number) => index < itemCount;
@@ -1605,7 +1647,7 @@ export default function DashboardNew() {
                         }
                         const aluno = items[index];
                         const marcado = selectedAlunos.some(
-                          (aa) => aa.id === aluno.id,
+                          (aa) => aa.id === aluno.id
                         );
                         return (
                           <div style={style}>
@@ -1721,7 +1763,7 @@ export default function DashboardNew() {
               <div className="h-[700px]">
                 {(() => {
                   const items = (alunosQuery.data?.pages || []).flatMap(
-                    (p) => p.items,
+                    (p) => p.items
                   );
                   const itemCount = items.length;
                   const loadMoreIfNeeded = ({
@@ -1776,7 +1818,7 @@ export default function DashboardNew() {
                               <div className="text-right">
                                 <span
                                   className={`badge ${getBeltClass(
-                                    aluno.faixa,
+                                    aluno.faixa
                                   )} mr-2`}
                                 >
                                   {aluno.faixa}
@@ -1875,14 +1917,14 @@ export default function DashboardNew() {
                   itemCount={
                     professoresQuery.data.pages.reduce(
                       (acc, page) => acc + page.items.length,
-                      0,
+                      0
                     ) + (professoresQuery.hasNextPage ? 1 : 0)
                   }
                   itemSize={120}
                   onItemsRendered={({ visibleStopIndex }) => {
                     const totalItems = professoresQuery.data.pages.reduce(
                       (acc, page) => acc + page.items.length,
-                      0,
+                      0
                     );
                     if (
                       visibleStopIndex >= totalItems - 5 &&
@@ -1896,7 +1938,7 @@ export default function DashboardNew() {
                   {({ index, style }) => {
                     const allItems = professoresQuery.data.pages.reduce(
                       (acc, page) => [...acc, ...page.items],
-                      [],
+                      []
                     );
                     const professor = allItems[index];
 
@@ -2252,10 +2294,21 @@ export default function DashboardNew() {
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     <Card className="lg:col-span-2 bg-white border border-blue-200">
                       <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                          <GraduationCap className="h-5 w-5 text-warning" />{" "}
-                          Próximos a Graduar
-                        </CardTitle>
+                        <div className="flex items-center justify-between">
+                          <CardTitle className="flex items-center gap-2">
+                            <GraduationCap className="h-5 w-5 text-warning" />{" "}
+                            Próximos a Graduar
+                          </CardTitle>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => window.open("/graduacao", "_blank")}
+                            className="flex items-center gap-2"
+                          >
+                            <Settings className="h-4 w-4" />
+                            Gerenciar Graduação
+                          </Button>
+                        </div>
                       </CardHeader>
                       <CardContent className="space-y-3">
                         {graduacoesQuery.isLoading ? (
@@ -2378,7 +2431,7 @@ export default function DashboardNew() {
                               </div>
                               <p className="text-xs text-gray-500 mt-1">
                                 {new Date(g.dataGraduacao).toLocaleDateString(
-                                  "pt-BR",
+                                  "pt-BR"
                                 )}
                               </p>
                             </div>
@@ -2662,8 +2715,8 @@ export default function DashboardNew() {
                           aula.status === "concluída"
                             ? "border-green-500"
                             : aula.status === "em andamento"
-                              ? "border-blue-500 animate-pulse"
-                              : "border-gray-200"
+                            ? "border-blue-500 animate-pulse"
+                            : "border-gray-200"
                         }`}
                       >
                         <div className="flex justify-between items-start mb-2">
@@ -2684,8 +2737,8 @@ export default function DashboardNew() {
                               aula.status === "concluída"
                                 ? "bg-green-100 text-green-800"
                                 : aula.status === "em andamento"
-                                  ? "bg-blue-100 text-blue-800"
-                                  : "bg-gray-100 text-gray-700"
+                                ? "bg-blue-100 text-blue-800"
+                                : "bg-gray-100 text-gray-700"
                             }`}
                           >
                             {aula.status}

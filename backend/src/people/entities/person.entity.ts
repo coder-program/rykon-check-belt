@@ -31,10 +31,18 @@ export enum Genero {
 
 export enum FaixaAluno {
   BRANCA = 'BRANCA',
+  CINZA_BRANCA = 'CINZA_BRANCA',
   CINZA = 'CINZA',
+  CINZA_PRETA = 'CINZA_PRETA',
+  AMARELA_BRANCA = 'AMARELA_BRANCA',
   AMARELA = 'AMARELA',
+  AMARELA_PRETA = 'AMARELA_PRETA',
+  LARANJA_BRANCA = 'LARANJA_BRANCA',
   LARANJA = 'LARANJA',
+  LARANJA_PRETA = 'LARANJA_PRETA',
+  VERDE_BRANCA = 'VERDE_BRANCA',
   VERDE = 'VERDE',
+  VERDE_PRETA = 'VERDE_PRETA',
   AZUL = 'AZUL',
   ROXA = 'ROXA',
   MARROM = 'MARROM',
@@ -65,16 +73,16 @@ export class Person {
   @Column({ type: 'varchar', length: 255 })
   nome_completo: string;
 
-  @Column({ type: 'varchar', length: 14, unique: true })
+  @Column({ type: 'varchar', length: 14, unique: true, nullable: true })
   cpf: string;
 
   @Column({ type: 'date' })
   data_nascimento: Date;
 
-  @Column({ type: 'enum', enum: Genero, nullable: true })
+  @Column({ type: 'enum', enum: Genero })
   genero: Genero;
 
-  @Column({ type: 'varchar', length: 20 })
+  @Column({ type: 'varchar', length: 20, nullable: true })
   telefone_whatsapp: string;
 
   @Column({ type: 'varchar', length: 255, nullable: true })
@@ -182,6 +190,44 @@ export class Person {
       }
 
       this.idade = idade;
+    }
+  }
+
+  // Validação de faixa por idade (baseado no ano)
+  @BeforeInsert()
+  @BeforeUpdate()
+  validateFaixaRestrita() {
+    if (
+      this.tipo_cadastro === TipoCadastro.ALUNO &&
+      this.data_nascimento &&
+      this.faixa_atual
+    ) {
+      const hoje = new Date();
+      const nascimento = new Date(this.data_nascimento);
+      const anoAtual = hoje.getFullYear();
+      const anoNascimento = nascimento.getFullYear();
+      const idadePorAno = anoAtual - anoNascimento;
+
+      // Menores de 16 anos: apenas faixas infantis
+      if (
+        idadePorAno < 16 &&
+        ['AZUL', 'ROXA', 'MARROM', 'PRETA'].includes(this.faixa_atual)
+      ) {
+        throw new Error(
+          'Alunos que fazem menos de 16 anos neste ano não podem ter faixas Azul, Roxa, Marrom ou Preta',
+        );
+      }
+
+      // 16-17 anos: apenas BRANCA, AZUL ou ROXA
+      if (
+        idadePorAno >= 16 &&
+        idadePorAno < 18 &&
+        !['BRANCA', 'AZUL', 'ROXA'].includes(this.faixa_atual)
+      ) {
+        throw new Error(
+          'Alunos de 16 a 17 anos podem ter apenas faixas Branca, Azul ou Roxa',
+        );
+      }
     }
   }
 

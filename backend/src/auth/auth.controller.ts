@@ -16,6 +16,7 @@ import { LoginDto } from './dto/login.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+import { RegisterDto } from './dto/register.dto';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 
 @ApiTags('Auth')
@@ -85,7 +86,7 @@ export class AuthController {
   @Post('register')
   @ApiOperation({ summary: 'Auto-cadastro de aluno' })
   async register(
-    @Body() body: any,
+    @Body() body: RegisterDto,
     @Res({ passthrough: true }) res: Response,
   ): Promise<LoginResponse> {
     const user = await this.authService.registerAluno(body);

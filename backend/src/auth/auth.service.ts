@@ -193,17 +193,13 @@ export class AuthService {
 
     // cria registro de aluno vinculado (status pendente até professor aprovar)
     await this.alunosService.create({
-      nome: payload.nome,
+      tipo_cadastro: 'ALUNO',
+      nome_completo: payload.nome,
+      cpf: payload.cpf,
       email: payload.email,
       telefone: payload.telefone,
       data_nascimento: payload.data_nascimento,
-      academia_unidade: payload.academia_unidade,
-      peso: payload.peso,
-      faixa: payload.faixa || 'Branca',
-      graus: payload.graus || 0,
-      professor_id: payload.professor_id || null,
-      categoria_ibjjf: payload.categoria_ibjjf || null,
-      status_validacao: 'pendente',
+      status: 'PENDENTE',
     } as any);
 
     return user;
