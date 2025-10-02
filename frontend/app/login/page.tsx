@@ -39,6 +39,20 @@ function LoginContent() {
           position: "top-center",
         }
       );
+    } else if (message === "pending-approval") {
+      toast(
+        "⚠️ Cadastro realizado! Sua conta está aguardando aprovação do administrador. Você receberá um email quando for aprovado.",
+        {
+          duration: 8000,
+          position: "top-center",
+          icon: "⚠️",
+          style: {
+            background: "#fef3c7",
+            color: "#92400e",
+            border: "1px solid #fbbf24",
+          },
+        }
+      );
     }
   }, [searchParams]);
 

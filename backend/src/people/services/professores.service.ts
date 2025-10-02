@@ -2,26 +2,34 @@ import {
   Injectable,
   ConflictException,
   NotFoundException,
+  BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import {
-  Person,
-  TipoCadastro,
-  StatusCadastro,
-} from '../entities/person.entity';
-import { CreatePersonDto } from '../dto/create-person.dto';
-import { UpdatePersonDto } from '../dto/update-person.dto';
-import { FilterPersonDto } from '../dto/filter-person.dto';
+import { Repository, DataSource } from 'typeorm';
+import { Person, TipoCadastro, StatusCadastro } from '../entities/person.entity';
+import { ProfessorUnidade } from '../entities/professor-unidade.entity';
+import { CreateProfessorDto } from '../dto/create-professor.dto';
+import { UpdateProfessorDto } from '../dto/update-professor.dto';
+
+interface ListProfessoresParams {
+  page?: number;
+  pageSize?: number;
+  search?: string;
+  unidade_id?: string;
+  status?: StatusCadastro;
+}
 
 @Injectable()
 export class ProfessoresService {
   constructor(
     @InjectRepository(Person)
     private readonly personRepository: Repository<Person>,
+    @InjectRepository(ProfessorUnidade)
+    private readonly professorUnidadeRepository: Repository<ProfessorUnidade>,
+    private dataSource: DataSource,
   ) {}
 
-  async list(params: FilterPersonDto) {
+  async list(params: ListProfessoresParams) {
     const page = Math.max(1, Number(params.page) || 1);
     const pageSize = Math.min(100, Math.max(1, Number(params.pageSize) || 20));
 
@@ -52,14 +60,34 @@ export class ProfessoresService {
       query.andWhere('person.status = :status', { status: params.status });
     }
 
+    // Ordenar por nome
+    query.orderBy('person.nome_completo', 'ASC');
+
     // Paginação
     const [items, total] = await query
       .skip((page - 1) * pageSize)
       .take(pageSize)
       .getManyAndCount();
 
+    // Buscar unidades de cada professor
+    const itemsWithUnidades = await Promise.all(
+      items.map(async (professor) => {
+        const unidades = await this.professorUnidadeRepository.find({
+          where: { professor_id: professor.id, ativo: true },
+          relations: ['unidade'],
+        });
+        return {
+          ...professor,
+          unidades: unidades.map((pu) => ({
+            ...pu.unidade,
+            is_principal: pu.is_principal,
+          })),
+        };
+      }),
+    );
+
     return {
-      items,
+      items: itemsWithUnidades,
       page,
       pageSize,
       total,
@@ -67,35 +95,37 @@ export class ProfessoresService {
     };
   }
 
-  async create(dto: CreatePersonDto): Promise<Person> {
-    // Verificar se CPF já existe
-    const existingPerson = await this.personRepository.findOne({
-      where: { cpf: dto.cpf },
+  async findById(id: string): Promise<any> {
+    const professor = await this.personRepository.findOne({
+      where: { id, tipo_cadastro: TipoCadastro.PROFESSOR },
     });
 
-    if (existingPerson) {
-      throw new ConflictException('CPF já cadastrado');
+    if (!professor) {
+      throw new NotFoundException(`Professor com ID ${id} não encontrado`);
     }
 
-    // Criar nova pessoa com tipo PROFESSOR
-    const person = this.personRepository.create({
-      ...dto,
-      tipo_cadastro: TipoCadastro.PROFESSOR,
-      status: dto.status || StatusCadastro.ATIVO,
+    // Buscar unidades
+    const unidades = await this.professorUnidadeRepository.find({
+      where: { professor_id: id, ativo: true },
+      relations: ['unidade'],
     });
 
-    return await this.personRepository.save(person);
+    return {
+      ...professor,
+      unidades: unidades.map((pu) => ({
+        ...pu.unidade,
+        is_principal: pu.is_principal,
+      })),
+    };
   }
 
-  async update(id: string, dto: UpdatePersonDto): Promise<Person> {
-    const person = await this.personRepository.findOne({ where: { id } });
+  async create(dto: CreateProfessorDto): Promise<Person> {
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
 
-    if (!person) {
-      throw new NotFoundException('Professor não encontrado');
-    }
-
-    // Se mudou o CPF, verificar se já não existe
-    if (dto.cpf && dto.cpf !== person.cpf) {
+    try {
+      // 1. Verificar se CPF já existe
       const existingPerson = await this.personRepository.findOne({
         where: { cpf: dto.cpf },
       });
@@ -103,23 +133,204 @@ export class ProfessoresService {
       if (existingPerson) {
         throw new ConflictException('CPF já cadastrado');
       }
-    }
 
-    Object.assign(person, dto);
-    return await this.personRepository.save(person);
+      // 2. Validar faixa (apenas AZUL, ROXA, MARROM, PRETA, CORAL, VERMELHA)
+      const faixasPermitidas = ['AZUL', 'ROXA', 'MARROM', 'PRETA', 'CORAL', 'VERMELHA'];
+      if (!faixasPermitidas.includes(dto.faixa_ministrante)) {
+        throw new BadRequestException(
+          'Professores devem ter faixa Azul, Roxa, Marrom, Preta, Coral ou Vermelha',
+        );
+      }
+
+      // 3. Criar professor
+      const professorData: any = {
+        ...dto,
+        tipo_cadastro: TipoCadastro.PROFESSOR,
+        status: dto.status || StatusCadastro.ATIVO,
+        data_nascimento: new Date(dto.data_nascimento),
+        data_inicio_docencia: dto.data_inicio_docencia
+          ? new Date(dto.data_inicio_docencia)
+          : undefined,
+      };
+
+      const professor = this.personRepository.create(professorData);
+      const savedProfessor: any = await queryRunner.manager.save(professor);
+
+      // 4. Vincular à unidade principal
+      const unidadePrincipal = queryRunner.manager.create(ProfessorUnidade, {
+        professor_id: savedProfessor.id,
+        unidade_id: dto.unidade_id,
+        is_principal: true,
+        ativo: true,
+      });
+      await queryRunner.manager.save(ProfessorUnidade, unidadePrincipal);
+
+      // 5. Vincular a unidades adicionais (se houver)
+      if (dto.unidades_adicionais && dto.unidades_adicionais.length > 0) {
+        for (const unidadeId of dto.unidades_adicionais) {
+          if (unidadeId !== dto.unidade_id) {
+            const unidadeAdicional = queryRunner.manager.create(
+              ProfessorUnidade,
+              {
+                professor_id: savedProfessor.id,
+                unidade_id: unidadeId,
+                is_principal: false,
+                ativo: true,
+              },
+            );
+            await queryRunner.manager.save(ProfessorUnidade, unidadeAdicional);
+          }
+        }
+      }
+
+      await queryRunner.commitTransaction();
+
+      return this.findById(savedProfessor.id);
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
   }
 
-  async get(id: string): Promise<Person | null> {
-    return await this.personRepository.findOne({
+  async update(id: string, dto: UpdateProfessorDto): Promise<Person> {
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      const professor = await this.personRepository.findOne({
+        where: { id, tipo_cadastro: TipoCadastro.PROFESSOR },
+      });
+
+      if (!professor) {
+        throw new NotFoundException('Professor não encontrado');
+      }
+
+      // Verificar CPF único (se estiver sendo alterado)
+      if (dto.cpf && dto.cpf !== professor.cpf) {
+        const existingPerson = await this.personRepository.findOne({
+          where: { cpf: dto.cpf },
+        });
+
+        if (existingPerson) {
+          throw new ConflictException('CPF já cadastrado');
+        }
+      }
+
+      // Validar faixa (se estiver sendo alterada)
+      if (dto.faixa_ministrante) {
+        const faixasPermitidas = ['AZUL', 'ROXA', 'MARROM', 'PRETA', 'CORAL', 'VERMELHA'];
+        if (!faixasPermitidas.includes(dto.faixa_ministrante)) {
+          throw new BadRequestException(
+            'Professores devem ter faixa Azul, Roxa, Marrom, Preta, Coral ou Vermelha',
+          );
+        }
+      }
+
+      // Atualizar dados do professor
+      Object.assign(professor, {
+        ...dto,
+        data_nascimento: dto.data_nascimento
+          ? new Date(dto.data_nascimento)
+          : professor.data_nascimento,
+        data_inicio_docencia: dto.data_inicio_docencia
+          ? new Date(dto.data_inicio_docencia)
+          : professor.data_inicio_docencia,
+      });
+
+      await queryRunner.manager.save(professor);
+
+      // Atualizar unidades (se fornecidas)
+      if (dto.unidade_id || dto.unidades_adicionais) {
+        // Desativar todas as unidades antigas
+        await queryRunner.manager.update(
+          ProfessorUnidade,
+          { professor_id: id },
+          { ativo: false },
+        );
+
+        // Adicionar unidade principal
+        if (dto.unidade_id) {
+          const existing = await queryRunner.manager.findOne(ProfessorUnidade, {
+            where: { professor_id: id, unidade_id: dto.unidade_id },
+          });
+
+          if (existing) {
+            await queryRunner.manager.update(
+              ProfessorUnidade,
+              { id: existing.id },
+              { ativo: true, is_principal: true },
+            );
+          } else {
+            const unidadePrincipal = queryRunner.manager.create(
+              ProfessorUnidade,
+              {
+                professor_id: id,
+                unidade_id: dto.unidade_id,
+                is_principal: true,
+                ativo: true,
+              },
+            );
+            await queryRunner.manager.save(unidadePrincipal);
+          }
+        }
+
+        // Adicionar unidades adicionais
+        if (dto.unidades_adicionais && dto.unidades_adicionais.length > 0) {
+          for (const unidadeId of dto.unidades_adicionais) {
+            if (unidadeId !== dto.unidade_id) {
+              const existing = await queryRunner.manager.findOne(
+                ProfessorUnidade,
+                {
+                  where: { professor_id: id, unidade_id: unidadeId },
+                },
+              );
+
+              if (existing) {
+                await queryRunner.manager.update(
+                  ProfessorUnidade,
+                  { id: existing.id },
+                  { ativo: true, is_principal: false },
+                );
+              } else {
+                const unidadeAdicional = queryRunner.manager.create(
+                  ProfessorUnidade,
+                  {
+                    professor_id: id,
+                    unidade_id: unidadeId,
+                    is_principal: false,
+                    ativo: true,
+                  },
+                );
+                await queryRunner.manager.save(unidadeAdicional);
+              }
+            }
+          }
+        }
+      }
+
+      await queryRunner.commitTransaction();
+
+      return this.findById(id);
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
+  async delete(id: string): Promise<void> {
+    const professor = await this.personRepository.findOne({
       where: { id, tipo_cadastro: TipoCadastro.PROFESSOR },
     });
-  }
 
-  async remove(id: string): Promise<boolean> {
-    const result = await this.personRepository.delete({
-      id,
-      tipo_cadastro: TipoCadastro.PROFESSOR,
-    });
-    return (result.affected ?? 0) > 0;
+    if (!professor) {
+      throw new NotFoundException('Professor não encontrado');
+    }
+
+    await this.personRepository.remove(professor);
   }
 }

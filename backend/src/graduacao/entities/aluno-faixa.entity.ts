@@ -9,7 +9,7 @@ import {
   JoinColumn,
   Index,
 } from 'typeorm';
-import { Person } from '../../people/entities/person.entity';
+import { Aluno } from '../../people/entities/aluno.entity';
 import { FaixaDef } from './faixa-def.entity';
 import { AlunoFaixaGrau } from './aluno-faixa-grau.entity';
 
@@ -50,9 +50,9 @@ export class AlunoFaixa {
   updated_at: Date;
 
   // Relações
-  @ManyToOne(() => Person, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Aluno, (aluno) => aluno.faixas, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'aluno_id' })
-  aluno: Person;
+  aluno: Aluno;
 
   @ManyToOne(() => FaixaDef, (faixaDef) => faixaDef.alunoFaixas, {
     eager: true,

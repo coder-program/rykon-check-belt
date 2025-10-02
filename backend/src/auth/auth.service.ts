@@ -171,27 +171,81 @@ export class AuthService {
   }
 
   async registerAluno(payload: any) {
-    // garantir perfil "aluno"
-    let perfilAluno = await this.perfisService.findByName('aluno');
-    if (!perfilAluno) {
-      perfilAluno = await this.perfisService.create({
-        nome: 'aluno',
-        descricao: 'Perfil de aluno',
-        permissao_ids: [],
-      } as any);
+    // Determinar perfil: usa perfil_id se fornecido, caso contrário usa "aluno" por padrão
+    let perfilId: string = ''; // Inicializar vazio
+    let perfilNome: string = 'aluno'; // Padrão aluno
+    let usuarioAtivo = true; // Por padrão ativo
+
+    // Validar se perfil_id é um UUID válido (formato: 8-4-4-4-12 caracteres hexadecimais)
+    const uuidRegex =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+    let perfilValido = false;
+
+    // Tentar usar o perfil_id fornecido se for um UUID válido
+    if (payload.perfil_id && uuidRegex.test(payload.perfil_id)) {
+      try {
+        const perfilEscolhido =
+          await this.perfisService.findOne(payload.perfil_id);
+        if (perfilEscolhido) {
+          perfilId = payload.perfil_id;
+          perfilNome = perfilEscolhido.nome.toLowerCase();
+          perfilValido = true;
+
+          // VALIDAÇÃO DE SEGURANÇA: Perfis elevados requerem aprovação
+          const perfisQueRequeremAprovacao = [
+            'instrutor',
+            'professor',
+            'gerente_unidade',
+            'franqueado',
+            'master',
+          ];
+
+          if (perfisQueRequeremAprovacao.includes(perfilNome)) {
+            // Usuário criado como INATIVO até ser aprovado por um admin
+            usuarioAtivo = false;
+            console.log(
+              `⚠️  Cadastro com perfil "${perfilNome}" requer aprovação. Usuário criado como INATIVO.`,
+            );
+          }
+        } else {
+          console.warn(
+            `⚠️  Perfil não encontrado: ${payload.perfil_id}. Usando "aluno" como padrão.`,
+          );
+        }
+      } catch (error) {
+        console.error(`Erro ao buscar perfil: ${error.message}`);
+      }
     }
 
-    // cria usuário com perfil aluno
+    // Se não tem perfil válido, usa "aluno" como padrão
+    if (!perfilValido) {
+      let perfilAluno = await this.perfisService.findByName('aluno');
+      if (!perfilAluno) {
+        perfilAluno = await this.perfisService.create({
+          nome: 'aluno',
+          descricao: 'Perfil de aluno',
+          permissao_ids: [],
+        } as any);
+      }
+      perfilId = perfilAluno.id;
+      perfilNome = 'aluno';
+      usuarioAtivo = true; // Aluno sempre ativo
+      console.log('✅ Usando perfil "aluno" como padrão.');
+    }
+
+    // Cria usuário com perfil selecionado
     const user = await this.usuariosService.create({
       username: payload.email,
       email: payload.email,
       nome: payload.nome,
       password: payload.password,
-      ativo: true,
-      perfil_ids: [perfilAluno.id],
+      ativo: usuarioAtivo, // Ativo apenas se perfil não requer aprovação
+      perfil_ids: [perfilId],
     } as any);
 
-    // cria registro de aluno vinculado (status pendente até professor aprovar)
+    // Cria registro de aluno vinculado
+    // Status: INATIVO se usuário precisa aprovação, ATIVO caso contrário
     await this.alunosService.create({
       tipo_cadastro: 'ALUNO',
       nome_completo: payload.nome,
@@ -199,7 +253,8 @@ export class AuthService {
       email: payload.email,
       telefone: payload.telefone,
       data_nascimento: payload.data_nascimento,
-      status: 'PENDENTE',
+      status: usuarioAtivo ? 'ATIVO' : 'INATIVO', // INATIVO se aguarda aprovação
+      genero: 'OUTRO', // Padrão, pode ser atualizado depois
     } as any);
 
     return user;

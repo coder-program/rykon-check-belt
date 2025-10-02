@@ -1,117 +1,110 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-
-// CSS importado globalmente em app/globals.css
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  getUsuarios,
+  getPerfis,
+  getPermissoes,
+  updateUsuario,
+  deleteUsuario,
+  createPerfil,
+  updatePerfil,
+  deletePerfil,
+  type Usuario,
+  type Perfil,
+  type Permissao,
+  type UpdateUsuarioDto,
+  type CreatePerfilDto,
+  type UpdatePerfilDto,
+} from "@/lib/usuariosApi";
 
 const UsuariosManager = () => {
-  const [usuarios, setUsuarios] = useState<any[]>([]);
-  const [perfis, setPerfis] = useState<any[]>([]);
-  const [permissoes, setPermissoes] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState("usuarios");
   const [modalOpen, setModalOpen] = useState(false);
-  const [modalType, setModalType] = useState("");
+  const [modalType, setModalType] = useState<"user" | "profile" | "">("");
   const [editingItem, setEditingItem] = useState<any>(null);
   const [formData, setFormData] = useState<any>({});
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  // Queries
+  const {
+    data: usuarios,
+    isLoading: loadingUsuarios,
+    error: errorUsuarios,
+  } = useQuery({
+    queryKey: ["usuarios"],
+    queryFn: getUsuarios,
+  });
 
-  const loadData = async () => {
-    try {
-      setLoading(true);
-      // mocks iguais ao projeto original
-      const mockUsuarios = [
-        {
-          id: 1,
-          username: "admin",
-          email: "admin@gestao.gov.br",
-          nome: "Administrador",
-          cpf: "123.456.789-00",
-          telefone: "(11) 99999-9999",
-          ativo: true,
-          perfis: [{ id: 1, nome: "Administrador" }],
-        },
-        {
-          id: 2,
-          username: "contador",
-          email: "contador@gestao.gov.br",
-          nome: "João Silva",
-          cpf: "987.654.321-00",
-          telefone: "(11) 88888-8888",
-          ativo: true,
-          perfis: [{ id: 2, nome: "Contador" }],
-        },
-      ];
+  const {
+    data: perfis,
+    isLoading: loadingPerfis,
+    error: errorPerfis,
+  } = useQuery({
+    queryKey: ["perfis"],
+    queryFn: getPerfis,
+  });
 
-      const mockPerfis = [
-        {
-          id: 1,
-          nome: "Administrador",
-          descricao: "Acesso total ao sistema",
-          ativo: true,
-          permissoes: [
-            { id: 1, nome: "usuarios.visualizar" },
-            { id: 2, nome: "usuarios.criar" },
-            { id: 3, nome: "usuarios.editar" },
-            { id: 4, nome: "usuarios.excluir" },
-          ],
-        },
-        {
-          id: 2,
-          nome: "Contador",
-          descricao: "Acesso ao módulo contábil",
-          ativo: true,
-          permissoes: [
-            { id: 5, nome: "contabilidade.visualizar" },
-            { id: 6, nome: "contabilidade.lancar" },
-          ],
-        },
-      ];
+  const {
+    data: permissoes,
+    isLoading: loadingPermissoes,
+    error: errorPermissoes,
+  } = useQuery({
+    queryKey: ["permissoes"],
+    queryFn: getPermissoes,
+  });
 
-      const mockPermissoes = [
-        {
-          id: 1,
-          nome: "usuarios.visualizar",
-          descricao: "Visualizar usuários",
-        },
-        { id: 2, nome: "usuarios.criar", descricao: "Criar usuários" },
-        { id: 3, nome: "usuarios.editar", descricao: "Editar usuários" },
-        { id: 4, nome: "usuarios.excluir", descricao: "Excluir usuários" },
-        {
-          id: 5,
-          nome: "contabilidade.visualizar",
-          descricao: "Visualizar contabilidade",
-        },
-        { id: 6, nome: "contabilidade.lancar", descricao: "Fazer lançamentos" },
-      ];
+  // Mutations
+  const updateUsuarioMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: UpdateUsuarioDto }) =>
+      updateUsuario(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["usuarios"] });
+      setModalOpen(false);
+      setFormData({});
+      setEditingItem(null);
+    },
+  });
 
-      await new Promise((r) => setTimeout(r, 300));
-      setUsuarios(mockUsuarios);
-      setPerfis(mockPerfis);
-      setPermissoes(mockPermissoes);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const deleteUsuarioMutation = useMutation({
+    mutationFn: deleteUsuario,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["usuarios"] });
+    },
+  });
 
-  const handleCreateUser = () => {
-    setModalType("user");
-    setEditingItem(null);
-    setFormData({
-      username: "",
-      email: "",
-      password: "",
-      nome: "",
-      cpf: "",
-      telefone: "",
-      ativo: true,
-      perfil_ids: [],
-    });
-    setModalOpen(true);
-  };
+  const createPerfilMutation = useMutation({
+    mutationFn: createPerfil,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["perfis"] });
+      setModalOpen(false);
+      setFormData({});
+      setEditingItem(null);
+    },
+  });
+
+  const updatePerfilMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: UpdatePerfilDto }) =>
+      updatePerfil(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["perfis"] });
+      setModalOpen(false);
+      setFormData({});
+      setEditingItem(null);
+    },
+  });
+
+  const deletePerfilMutation = useMutation({
+    mutationFn: deletePerfil,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["perfis"] });
+    },
+  });
+
+  const loading = loadingUsuarios || loadingPerfis || loadingPermissoes;
+
+  // Removido handleCreateUser - usar tela de cadastro no login
 
   const handleEditUser = (user: any) => {
     setModalType("user");
@@ -148,61 +141,83 @@ const UsuariosManager = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await new Promise((r) => setTimeout(r, 300));
 
-    if (modalType === "user") {
-      if (editingItem) {
-        setUsuarios((prev) =>
-          prev.map((u) =>
-            u.id === editingItem.id ? { ...u, ...formData } : u,
-          ),
-        );
-      } else {
-        const newUser = {
-          id: Date.now(),
-          ...formData,
-          perfis:
-            formData.perfil_ids?.map((id: number) =>
-              perfis.find((p: any) => p.id === id),
-            ) || [],
-        };
-        setUsuarios((prev) => [...prev, newUser]);
+    try {
+      if (modalType === "user") {
+        if (editingItem) {
+          // Atualizar usuário
+          await updateUsuarioMutation.mutateAsync({
+            id: editingItem.id,
+            data: {
+              email: formData.email,
+              nome: formData.nome,
+              cpf: formData.cpf,
+              telefone: formData.telefone,
+              ativo: formData.ativo,
+              perfil_ids: formData.perfil_ids,
+            },
+          });
+        } else {
+          // Criar usuário não é permitido aqui (usar tela de registro)
+          alert(
+            "Para criar novos usuários, use a tela de cadastro no login."
+          );
+          setModalOpen(false);
+        }
+      } else if (modalType === "profile") {
+        if (editingItem) {
+          // Atualizar perfil
+          await updatePerfilMutation.mutateAsync({
+            id: editingItem.id,
+            data: {
+              nome: formData.nome,
+              descricao: formData.descricao,
+              ativo: formData.ativo,
+              permissao_ids: formData.permissao_ids,
+            },
+          });
+        } else {
+          // Criar perfil
+          await createPerfilMutation.mutateAsync({
+            nome: formData.nome,
+            descricao: formData.descricao,
+            ativo: formData.ativo,
+            permissao_ids: formData.permissao_ids,
+          });
+        }
       }
-    } else {
-      if (editingItem) {
-        setPerfis((prev) =>
-          prev.map((p) =>
-            p.id === editingItem.id ? { ...p, ...formData } : p,
-          ),
-        );
-      } else {
-        const newProfile = {
-          id: Date.now(),
-          ...formData,
-          permissoes:
-            formData.permissao_ids?.map((id: number) =>
-              permissoes.find((perm: any) => perm.id === id),
-            ) || [],
-        };
-        setPerfis((prev) => [...prev, newProfile]);
-      }
+    } catch (error) {
+      console.error("Erro ao salvar:", error);
+      alert("Erro ao salvar. Verifique os dados e tente novamente.");
     }
-
-    setModalOpen(false);
-    setFormData({});
-    setEditingItem(null);
   };
 
-  const handleDelete = async (type: "user" | "profile", id: number) => {
-    if (window.confirm("Tem certeza que deseja excluir este item?")) {
-      await new Promise((r) => setTimeout(r, 200));
-      if (type === "user")
-        setUsuarios((prev) => prev.filter((u) => u.id !== id));
-      else setPerfis((prev) => prev.filter((p) => p.id !== id));
+  const handleDelete = async (type: "user" | "profile", id: string) => {
+    if (!window.confirm("Tem certeza que deseja excluir este item?")) {
+      return;
+    }
+
+    try {
+      if (type === "user") {
+        await deleteUsuarioMutation.mutateAsync(id);
+      } else {
+        await deletePerfilMutation.mutateAsync(id);
+      }
+    } catch (error) {
+      console.error("Erro ao excluir:", error);
+      alert("Erro ao excluir. Tente novamente.");
     }
   };
 
   if (loading) return <div className="loading">Carregando...</div>;
+
+  if (errorUsuarios || errorPerfis || errorPermissoes) {
+    return (
+      <div className="error">
+        Erro ao carregar dados. Verifique sua conexão com o backend.
+      </div>
+    );
+  }
 
   return (
     <div className="usuarios-manager">
@@ -215,19 +230,19 @@ const UsuariosManager = () => {
           className={activeTab === "usuarios" ? "active" : ""}
           onClick={() => setActiveTab("usuarios")}
         >
-          Usuários ({usuarios.length})
+          Usuários ({usuarios?.length || 0})
         </button>
         <button
           className={activeTab === "perfis" ? "active" : ""}
           onClick={() => setActiveTab("perfis")}
         >
-          Perfis ({perfis.length})
+          Perfis ({perfis?.length || 0})
         </button>
         <button
           className={activeTab === "permissoes" ? "active" : ""}
           onClick={() => setActiveTab("permissoes")}
         >
-          Permissões ({permissoes.length})
+          Permissões ({permissoes?.length || 0})
         </button>
       </div>
 
@@ -235,9 +250,9 @@ const UsuariosManager = () => {
         <div className="usuarios-tab">
           <div className="tab-header">
             <h2>Usuários</h2>
-            <button className="btn-primary" onClick={handleCreateUser}>
-              ➕ Novo Usuário
-            </button>
+            <p className="info-text">
+              💡 Para criar novos usuários, use a tela de cadastro no login.
+            </p>
           </div>
 
           <div className="table-container">
@@ -254,7 +269,8 @@ const UsuariosManager = () => {
                 </tr>
               </thead>
               <tbody>
-                {usuarios.map((user) => (
+                {usuarios && usuarios.length > 0 ? (
+                  usuarios.map((user) => (
                   <tr key={user.id}>
                     <td>{user.nome}</td>
                     <td>{user.username}</td>
@@ -293,7 +309,14 @@ const UsuariosManager = () => {
                       </button>
                     </td>
                   </tr>
-                ))}
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={7} className="text-center">
+                      Nenhum usuário encontrado
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
@@ -320,7 +343,8 @@ const UsuariosManager = () => {
                 </tr>
               </thead>
               <tbody>
-                {perfis.map((p) => (
+                {perfis && perfis.length > 0 ? (
+                  perfis.map((p) => (
                   <tr key={p.id}>
                     <td>{p.nome}</td>
                     <td>{p.descricao}</td>
@@ -346,7 +370,14 @@ const UsuariosManager = () => {
                       </button>
                     </td>
                   </tr>
-                ))}
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={4} className="text-center">
+                      Nenhum perfil encontrado
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
@@ -357,11 +388,14 @@ const UsuariosManager = () => {
         <div className="permissoes-tab">
           <div className="tab-header">
             <h2>Permissões</h2>
-            <span className="permission-count">Total: {permissoes.length}</span>
+            <span className="permission-count">
+              Total: {permissoes?.length || 0}
+            </span>
           </div>
 
           <div className="permissions-grid">
-            {permissoes.map((perm) => (
+            {permissoes && permissoes.length > 0 ? (
+              permissoes.map((perm) => (
               <div key={perm.id} className="permission-module">
                 <h3>{perm.nome}</h3>
                 <div className="permission-list">
@@ -371,7 +405,10 @@ const UsuariosManager = () => {
                   </div>
                 </div>
               </div>
-            ))}
+              ))
+            ) : (
+              <p className="text-center">Nenhuma permissão encontrada</p>
+            )}
           </div>
         </div>
       )}

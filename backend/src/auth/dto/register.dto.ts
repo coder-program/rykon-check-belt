@@ -5,6 +5,8 @@ import {
   MinLength,
   IsDateString,
   Matches,
+  IsOptional,
+  IsUUID,
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
@@ -46,4 +48,13 @@ export class RegisterDto {
   @IsDateString()
   @IsNotEmpty()
   data_nascimento: string;
+
+  @ApiProperty({
+    example: 'uuid-do-perfil',
+    required: false,
+    description: 'ID do perfil (padrão: aluno)',
+  })
+  @IsOptional()
+  @IsUUID()
+  perfil_id?: string;
 }

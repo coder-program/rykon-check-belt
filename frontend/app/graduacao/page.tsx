@@ -42,7 +42,12 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { api } from "@/lib/api";
-import { getProximosGraduar } from "@/lib/graduacaoApi";
+import { 
+  getProximosGraduar, 
+  getHistoricoGraduacoes,
+  getPendentesAprovacao,
+  aprovarGraduacao 
+} from "@/lib/graduacaoApi";
 
 // Tipos
 interface Aluno {
@@ -72,6 +77,10 @@ export default function GraduacaoPage() {
   const [filtroCategoria, setFiltroCategoria] = useState("todos");
   const [filtroFaixa, setFiltroFaixa] = useState("todos");
   const [alunoSelecionado, setAlunoSelecionado] = useState<Aluno | null>(null);
+  const [showHistoricoModal, setShowHistoricoModal] = useState(false);
+  const [showAprovacaoModal, setShowAprovacaoModal] = useState(false);
+  const [graduacaoParaAprovar, setGraduacaoParaAprovar] = useState<any>(null);
+  const [observacaoAprovacao, setObservacaoAprovacao] = useState("");
 
   // Queries
   const { data: proximosGraduar, isLoading: loadingProximos } = useQuery({
@@ -100,6 +109,20 @@ export default function GraduacaoPage() {
     },
   });
 
+  const { data: historicoData, isLoading: historicoLoading } = useQuery({
+    queryKey: ["historico-graduacoes", alunoSelecionado?.id],
+    queryFn: () => getHistoricoGraduacoes({
+      alunoId: alunoSelecionado?.id,
+      pageSize: 50,
+    }),
+    enabled: !!alunoSelecionado?.id,
+  });
+
+  const { data: pendentesAprovacao, refetch: refetchPendentes } = useQuery({
+    queryKey: ["pendentes-aprovacao"],
+    queryFn: () => getPendentesAprovacao({ pageSize: 50 }),
+  });
+
   // Funções
   const handleGraduar = async (alunoId: string) => {
     try {
@@ -122,6 +145,19 @@ export default function GraduacaoPage() {
       window.location.reload();
     } catch (error) {
       console.error("Erro ao adicionar grau:", error);
+    }
+  };
+
+  const handleAprovarGraduacao = async (graduacaoId: string, observacao?: string) => {
+    try {
+      await aprovarGraduacao(graduacaoId, observacao);
+      refetchPendentes();
+      setShowAprovacaoModal(false);
+      setGraduacaoParaAprovar(null);
+      alert("Gradua\u00e7\u00e3o aprovada com sucesso!");
+    } catch (error) {
+      console.error("Erro ao aprovar gradua\u00e7\u00e3o:", error);
+      alert("Erro ao aprovar gradua\u00e7\u00e3o");
     }
   };
 
@@ -160,15 +196,30 @@ export default function GraduacaoPage() {
 
       {/* Cards de Estatísticas */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Card>
+        <Card className="border-l-4 border-l-yellow-500">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              Pendentes Aprova\u00e7\u00e3o
+            </CardTitle>
+            <Award className="h-4 w-4 text-yellow-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-yellow-600">
+              {pendentesAprovacao?.total || 0}
+            </div>
+            <p className="text-xs text-muted-foreground">aguardando aprova\u00e7\u00e3o</p>
+          </CardContent>
+        </Card>
+
+        <Card className="border-l-4 border-l-green-500">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
               Prontos para Graduar
             </CardTitle>
-            <Trophy className="h-4 w-4 text-muted-foreground" />
+            <Trophy className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
+            <div className="text-2xl font-bold text-green-600">
               {alunos.filter((a) => a.aulas_restantes === 0).length}
             </div>
             <p className="text-xs text-muted-foreground">alunos prontos</p>
@@ -214,6 +265,102 @@ export default function GraduacaoPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Graduações Pendentes de Aprovação */}
+      {pendentesAprovacao && pendentesAprovacao.items && pendentesAprovacao.items.length > 0 && (
+        <Card className="border-l-4 border-l-yellow-500">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Award className="h-5 w-5 text-yellow-500" />
+              Graduações Pendentes de Aprovação
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">
+              {pendentesAprovacao.total} graduação(es) aguardando aprovação do professor
+            </p>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {pendentesAprovacao.items.map((grad: any) => (
+                <div
+                  key={grad.id}
+                  className="border rounded-lg p-4 bg-yellow-50 hover:bg-yellow-100 transition-colors"
+                >
+                  <div className="flex justify-between items-start">
+                    <div className="space-y-2 flex-1">
+                      <div className="flex items-center gap-3">
+                        <h4 className="font-semibold text-lg">{grad.aluno_nome}</h4>
+                        <Badge
+                          style={{
+                            backgroundColor: getCorFaixa(grad.faixa),
+                            color: grad.faixa === "BRANCA" ? "#000" : "#fff",
+                          }}
+                        >
+                          {grad.faixa} - {grad.grau}º Grau
+                        </Badge>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 text-sm">
+                        <div>
+                          <span className="text-muted-foreground">Data:</span>{" "}
+                          <strong>{new Date(grad.data_graduacao).toLocaleDateString("pt-BR")}</strong>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Categoria:</span>{" "}
+                          <strong>{grad.categoria}</strong>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Aulas Completadas:</span>{" "}
+                          <strong>{grad.aulas_completadas || 0}</strong>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Tempo na Faixa:</span>{" "}
+                          <strong>{grad.tempo_na_faixa || 0} meses</strong>
+                        </div>
+                      </div>
+                      {grad.observacao && (
+                        <div className="text-sm mt-2">
+                          <span className="text-muted-foreground">Observação:</span>
+                          <p className="mt-1 text-gray-700">{grad.observacao}</p>
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex flex-col gap-2 ml-4">
+                      <Button
+                        size="sm"
+                        className="bg-green-600 hover:bg-green-700"
+                        onClick={() => {
+                          setGraduacaoParaAprovar(grad);
+                          setShowAprovacaoModal(true);
+                        }}
+                      >
+                        <Award className="w-4 h-4 mr-1" />
+                        Aprovar
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setAlunoSelecionado({
+                            id: grad.aluno_id,
+                            nome_completo: grad.aluno_nome,
+                            faixa_atual: grad.faixa,
+                            grau_atual: grad.grau,
+                            categoria: grad.categoria,
+                            aulas_restantes: 0,
+                            progresso: 100,
+                            total_presencas: grad.aulas_completadas || 0,
+                          });
+                        }}
+                      >
+                        Ver Detalhes
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Filtros */}
       <Card>
@@ -436,11 +583,48 @@ export default function GraduacaoPage() {
                                   </div>
                                 </TabsContent>
 
-                                <TabsContent value="historico">
-                                  <p className="text-muted-foreground">
-                                    Histórico de graduações será implementado
-                                    aqui
-                                  </p>
+                                <TabsContent value="historico" className="space-y-4">
+                                  {historicoLoading ? (
+                                    <p className="text-muted-foreground">Carregando histórico...</p>
+                                  ) : historicoData?.items && historicoData.items.length > 0 ? (
+                                    <div className="space-y-3">
+                                      {historicoData.items.map((grad: any, idx: number) => (
+                                        <div key={idx} className="border rounded-lg p-4 space-y-2">
+                                          <div className="flex justify-between items-center">
+                                            <Badge
+                                              style={{
+                                                backgroundColor: getCorFaixa(grad.faixa),
+                                                color: grad.faixa === "BRANCA" ? "#000" : "#fff",
+                                              }}
+                                            >
+                                              {grad.faixa} - {grad.grau}º Grau
+                                            </Badge>
+                                            <span className="text-sm text-muted-foreground">
+                                              {new Date(grad.data_graduacao).toLocaleDateString("pt-BR")}
+                                            </span>
+                                          </div>
+                                          <div className="text-sm">
+                                            <strong>Status:</strong>{" "}
+                                            <Badge variant={grad.status === "APROVADA" ? "default" : "secondary"}>
+                                              {grad.status}
+                                            </Badge>
+                                          </div>
+                                          {grad.observacao && (
+                                            <p className="text-sm text-muted-foreground">
+                                              <strong>Observação:</strong> {grad.observacao}
+                                            </p>
+                                          )}
+                                          {grad.aprovado_por && (
+                                            <p className="text-xs text-muted-foreground">
+                                              Aprovado por: {grad.aprovado_por}
+                                            </p>
+                                          )}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  ) : (
+                                    <p className="text-muted-foreground">Nenhuma graduação registrada ainda.</p>
+                                  )}
                                 </TabsContent>
 
                                 <TabsContent
@@ -498,6 +682,94 @@ export default function GraduacaoPage() {
           </Table>
         </CardContent>
       </Card>
+
+      {/* Modal de Aprovação */}
+      <Dialog open={showAprovacaoModal} onOpenChange={setShowAprovacaoModal}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Award className="h-5 w-5 text-green-600" />
+              Aprovar Graduação
+            </DialogTitle>
+          </DialogHeader>
+          {graduacaoParaAprovar && (
+            <div className="space-y-4">
+              <div className="bg-gray-50 rounded-lg p-4 space-y-2">
+                <div className="flex justify-between items-center">
+                  <h4 className="font-semibold text-lg">
+                    {graduacaoParaAprovar.aluno_nome}
+                  </h4>
+                  <Badge
+                    style={{
+                      backgroundColor: getCorFaixa(graduacaoParaAprovar.faixa),
+                      color:
+                        graduacaoParaAprovar.faixa === "BRANCA" ? "#000" : "#fff",
+                    }}
+                  >
+                    {graduacaoParaAprovar.faixa} - {graduacaoParaAprovar.grau}º Grau
+                  </Badge>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div>
+                    <span className="text-muted-foreground">Data:</span>{" "}
+                    <strong>
+                      {new Date(
+                        graduacaoParaAprovar.data_graduacao
+                      ).toLocaleDateString("pt-BR")}
+                    </strong>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Categoria:</span>{" "}
+                    <strong>{graduacaoParaAprovar.categoria}</strong>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label
+                  htmlFor="observacao-aprovacao"
+                  className="text-sm font-medium mb-2 block"
+                >
+                  Observação (opcional)
+                </label>
+                <textarea
+                  id="observacao-aprovacao"
+                  className="w-full border rounded-md p-2 text-sm min-h-[80px]"
+                  placeholder="Adicione uma observação sobre esta aprovação..."
+                  value={observacaoAprovacao}
+                  onChange={(e) => setObservacaoAprovacao(e.target.value)}
+                />
+              </div>
+
+              <div className="flex gap-2 justify-end">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowAprovacaoModal(false);
+                    setGraduacaoParaAprovar(null);
+                    setObservacaoAprovacao("");
+                  }}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  className="bg-green-600 hover:bg-green-700"
+                  onClick={() => {
+                    handleAprovarGraduacao(
+                      graduacaoParaAprovar.id,
+                      observacaoAprovacao || undefined
+                    );
+                    setObservacaoAprovacao("");
+                  }}
+                >
+                  <Award className="w-4 h-4 mr-2" />
+                  Confirmar Aprovação
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

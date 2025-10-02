@@ -216,4 +216,36 @@ export class GraduacaoController {
     }
     return await this.graduacaoService.getMeusObjetivos(userId);
   }
+
+  @Post('graduacoes/:graduacaoId/aprovar')
+  @ApiOperation({ summary: 'Aprova uma graduação pendente' })
+  @ApiResponse({ status: 200, description: 'Graduação aprovada com sucesso' })
+  @ApiResponse({ status: 404, description: 'Graduação não encontrada' })
+  async aprovarGraduacao(
+    @Param('graduacaoId', ParseUUIDPipe) graduacaoId: string,
+    @Body() dto?: { observacao?: string },
+    @Request() req?: any,
+  ) {
+    const userId = req?.user?.id; // ID do professor aprovando
+    return await this.graduacaoService.aprovarGraduacao(
+      graduacaoId,
+      userId,
+      dto?.observacao,
+    );
+  }
+
+  @Get('pendentes-aprovacao')
+  @ApiOperation({ summary: 'Lista graduações pendentes de aprovação' })
+  @ApiResponse({ status: 200, description: 'Lista de graduações pendentes' })
+  async getPendentesAprovacao(
+    @Query('page') page?: number,
+    @Query('pageSize') pageSize?: number,
+    @Query('unidadeId') unidadeId?: string,
+  ) {
+    return await this.graduacaoService.getPendentesAprovacao({
+      page,
+      pageSize,
+      unidadeId,
+    });
+  }
 }

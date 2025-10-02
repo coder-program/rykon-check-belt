@@ -6,7 +6,7 @@ import {
   ManyToOne,
   JoinColumn,
 } from 'typeorm';
-import { Person } from '../../people/entities/person.entity';
+import { Aluno } from '../../people/entities/aluno.entity';
 import { FaixaDef } from './faixa-def.entity';
 import { Usuario } from '../../usuarios/entities/usuario.entity';
 
@@ -33,13 +33,22 @@ export class AlunoGraduacao {
   @Column({ type: 'text', nullable: true })
   observacao: string;
 
+  @Column({ type: 'boolean', default: false })
+  aprovado: boolean;
+
+  @Column({ type: 'uuid', nullable: true })
+  aprovado_por: string;
+
+  @Column({ type: 'timestamp', nullable: true })
+  dt_aprovacao: Date;
+
   @CreateDateColumn()
   created_at: Date;
 
   // Relações
-  @ManyToOne(() => Person, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Aluno, (aluno) => aluno.graduacoes, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'aluno_id' })
-  aluno: Person;
+  aluno: Aluno;
 
   @ManyToOne(() => FaixaDef, (faixaDef) => faixaDef.graduacoesOrigem)
   @JoinColumn({ name: 'faixa_origem_id' })

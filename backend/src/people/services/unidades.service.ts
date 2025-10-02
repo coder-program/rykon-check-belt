@@ -309,23 +309,43 @@ export class UnidadesService {
       id: row.id,
       franqueado_id: row.franqueado_id,
       franqueado: null, // Será populado se necessário
+      // Identificação
       nome: row.nome,
       cnpj: row.cnpj,
+      razao_social: row.razao_social,
+      nome_fantasia: row.nome_fantasia,
+      inscricao_estadual: row.inscricao_estadual,
+      inscricao_municipal: row.inscricao_municipal,
+      codigo_interno: row.codigo_interno,
+      // Contato
+      telefone_fixo: row.telefone_fixo,
+      telefone_celular: row.telefone_celular,
+      email: row.email,
+      website: row.website,
+      redes_sociais: row.redes_sociais,
+      // Status
       status: row.status,
+      // Responsável da Unidade (diferente do instrutor principal)
       responsavel_nome: row.responsavel_nome,
       responsavel_cpf: row.responsavel_cpf,
       responsavel_papel: row.responsavel_papel,
       responsavel_contato: row.responsavel_contato,
+      // Estrutura
       qtde_tatames: row.qtde_tatames,
+      area_tatame_m2: row.area_tatame_m2 ? parseFloat(row.area_tatame_m2) : null,
       capacidade_max_alunos: row.capacidade_max_alunos,
+      qtde_instrutores: row.qtde_instrutores || 0,
       valor_plano_padrao: row.valor_plano_padrao
         ? parseFloat(row.valor_plano_padrao)
         : null,
       horarios_funcionamento: row.horarios_funcionamento,
       modalidades: row.modalidades,
+      // Responsável Técnico
+      instrutor_principal_id: row.instrutor_principal_id,
+      // Endereço
       endereco_id: row.endereco_id || null,
       criado_em: new Date(row.criado_em),
       atualizado_em: new Date(row.atualizado_em),
-    };
+    } as Unidade;
   }
 }

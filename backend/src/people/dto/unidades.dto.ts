@@ -1,12 +1,15 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
+  IsEmail,
   IsEnum,
   IsNotEmpty,
   IsNumber,
   IsOptional,
   IsString,
   IsUUID,
+  IsUrl,
   Length,
+  Matches,
   Min,
 } from 'class-validator';
 import {
@@ -22,6 +25,7 @@ export class CreateUnidadeDto {
   @IsNotEmpty()
   franqueado_id!: string;
 
+  // Identificação
   @ApiProperty({ example: 'TeamCruz Barueri - Matriz' })
   @IsString()
   @IsNotEmpty()
@@ -31,8 +35,75 @@ export class CreateUnidadeDto {
   @ApiProperty({ example: '12.345.678/0001-90' })
   @IsString()
   @IsNotEmpty()
-  @Length(14, 18)
+  @Matches(/^\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}$/, {
+    message: 'CNPJ deve estar no formato XX.XXX.XXX/XXXX-XX',
+  })
   cnpj!: string;
+
+  @ApiProperty({ example: 'TeamCruz Barueri Ltda' })
+  @IsString()
+  @IsNotEmpty()
+  @Length(1, 200)
+  razao_social!: string;
+
+  @ApiPropertyOptional({ example: 'TeamCruz Barueri' })
+  @IsOptional()
+  @IsString()
+  @Length(1, 150)
+  nome_fantasia?: string;
+
+  @ApiPropertyOptional({ example: '123.456.789.012' })
+  @IsOptional()
+  @IsString()
+  inscricao_estadual?: string;
+
+  @ApiPropertyOptional({ example: '9876543' })
+  @IsOptional()
+  @IsString()
+  inscricao_municipal?: string;
+
+  @ApiPropertyOptional({ example: 'TCR001', description: 'Código interno (gerado automaticamente se não fornecido)' })
+  @IsOptional()
+  @IsString()
+  @Length(1, 50)
+  codigo_interno?: string;
+
+  // Contato
+  @ApiPropertyOptional({ example: '(11) 3456-7890' })
+  @IsOptional()
+  @IsString()
+  @Matches(/^\(\d{2}\)\s\d{4,5}-\d{4}$/, {
+    message: 'Telefone deve estar no formato (XX) XXXX-XXXX ou (XX) XXXXX-XXXX',
+  })
+  telefone_fixo?: string;
+
+  @ApiProperty({ example: '(11) 98765-4321' })
+  @IsString()
+  @IsNotEmpty()
+  @Matches(/^\(\d{2}\)\s\d{5}-\d{4}$/, {
+    message: 'Telefone celular deve estar no formato (XX) XXXXX-XXXX',
+  })
+  telefone_celular!: string;
+
+  @ApiProperty({ example: 'contato@teamcruz.com.br' })
+  @IsEmail({}, { message: 'Email deve ser válido' })
+  @IsNotEmpty()
+  email!: string;
+
+  @ApiPropertyOptional({ example: 'https://www.teamcruz.com.br' })
+  @IsOptional()
+  @IsUrl({}, { message: 'Website deve ser uma URL válida' })
+  website?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  redes_sociais?: {
+    instagram?: string;
+    facebook?: string;
+    youtube?: string;
+    tiktok?: string;
+    linkedin?: string;
+  };
 
   @ApiPropertyOptional({
     enum: ['ATIVA', 'INATIVA', 'HOMOLOGACAO'],
@@ -66,17 +137,30 @@ export class CreateUnidadeDto {
   @Length(1, 120)
   responsavel_contato!: string;
 
+  // Estrutura
   @ApiPropertyOptional({ example: 3 })
   @IsOptional()
   @IsNumber()
   @Min(0)
   qtde_tatames?: number;
 
+  @ApiPropertyOptional({ example: 120.50, description: 'Área do tatame em m²' })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  area_tatame_m2?: number;
+
   @ApiPropertyOptional({ example: 100 })
   @IsOptional()
   @IsNumber()
   @Min(1)
   capacidade_max_alunos?: number;
+
+  @ApiPropertyOptional({ example: 5, description: 'Quantidade de instrutores' })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  qtde_instrutores?: number;
 
   @ApiPropertyOptional({ example: 150.0 })
   @IsOptional()
@@ -111,6 +195,12 @@ export class CreateUnidadeDto {
   @IsOptional()
   @IsString()
   endereco_id?: string;
+
+  // Responsável Técnico
+  @ApiPropertyOptional({ description: 'ID do instrutor principal (faixa-preta)' })
+  @IsOptional()
+  @IsUUID()
+  instrutor_principal_id?: string;
 }
 
 export class UpdateUnidadeDto {

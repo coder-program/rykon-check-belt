@@ -169,28 +169,48 @@ export class CreatePresencasTable1735589400000 implements MigrationInterface {
       true,
     );
 
-    // Criar índices para otimização usando SQL direto
+    // Criar índices para otimização usando SQL direto (apenas se as colunas existirem)
     await queryRunner.query(`
-      CREATE INDEX IDX_presenca_pessoa_data ON teamcruz.presencas (pessoa_id, data_presenca);
+      DO $$
+      BEGIN
+        IF EXISTS (
+          SELECT 1 FROM information_schema.columns 
+          WHERE table_schema = 'teamcruz' 
+          AND table_name = 'presencas' 
+          AND column_name = 'pessoa_id'
+        ) THEN
+          CREATE INDEX IF NOT EXISTS IDX_presenca_pessoa_data ON teamcruz.presencas (pessoa_id, data_presenca);
+        END IF;
+      END$$;
     `);
 
     await queryRunner.query(`
-      CREATE INDEX IDX_presenca_unidade_data ON teamcruz.presencas (unidade_id, data_presenca);
+      CREATE INDEX IF NOT EXISTS IDX_presenca_unidade_data ON teamcruz.presencas (unidade_id, data_presenca);
     `);
 
     await queryRunner.query(`
-      CREATE INDEX IDX_presenca_data ON teamcruz.presencas (data_presenca);
+      CREATE INDEX IF NOT EXISTS IDX_presenca_data ON teamcruz.presencas (data_presenca);
     `);
 
     await queryRunner.query(`
-      CREATE INDEX IDX_presenca_metodo ON teamcruz.presencas (metodo_checkin);
+      CREATE INDEX IF NOT EXISTS IDX_presenca_metodo ON teamcruz.presencas (metodo_checkin);
     `);
 
-    // Constraint única para evitar múltiplas presenças no mesmo dia
+    // Constraint única para evitar múltiplas presenças no mesmo dia (apenas se a coluna existir)
     await queryRunner.query(`
-      ALTER TABLE teamcruz.presencas
-      ADD CONSTRAINT UQ_presenca_pessoa_data
-      UNIQUE (pessoa_id, data_presenca)
+      DO $$
+      BEGIN
+        IF EXISTS (
+          SELECT 1 FROM information_schema.columns 
+          WHERE table_schema = 'teamcruz' 
+          AND table_name = 'presencas' 
+          AND column_name = 'pessoa_id'
+        ) THEN
+          ALTER TABLE teamcruz.presencas
+          ADD CONSTRAINT IF NOT EXISTS UQ_presenca_pessoa_data
+          UNIQUE (pessoa_id, data_presenca);
+        END IF;
+      END$$;
     `);
 
     // Criar função para atualizar updated_at

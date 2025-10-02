@@ -66,6 +66,12 @@ export async function deleteFranqueado(id: string) {
   return http(`/franqueados/${id}`, { method: "DELETE", auth: true });
 }
 
+// Instrutores
+export async function listInstrutores(params: any): Promise<PageResp<any>> {
+  const qs = new URLSearchParams(params).toString();
+  return http(`/instrutores?${qs}`);
+}
+
 // Unidades
 export async function listUnidades(params: any): Promise<PageResp<any>> {
   const qs = new URLSearchParams(params).toString();

@@ -28,16 +28,58 @@ import {
   X,
 } from "lucide-react";
 import toast, { Toaster } from "react-hot-toast";
+import FranqueadoForm from "@/components/franqueados/FranqueadoForm";
+
+interface RedesSociais {
+  instagram?: string;
+  facebook?: string;
+  youtube?: string;
+  tiktok?: string;
+  linkedin?: string;
+}
+
+type SituacaoFranqueado = 'ATIVA' | 'INATIVA' | 'EM_HOMOLOGACAO';
 
 interface Franqueado {
   id: string;
+  // Identificação
   nome: string;
-  email: string;
-  telefone: string;
   cnpj: string;
+  razao_social?: string;
+  nome_fantasia?: string;
+  inscricao_estadual?: string;
+  inscricao_municipal?: string;
+  // Contato
+  email?: string;
+  telefone?: string;
+  telefone_fixo?: string;
+  telefone_celular?: string;
+  website?: string;
+  redes_sociais?: RedesSociais;
+  // Endereço
+  endereco_id?: string;
+  endereco?: any;
+  // Responsável Legal
+  responsavel_nome?: string;
+  responsavel_cpf?: string;
+  responsavel_cargo?: string;
+  responsavel_email?: string;
+  responsavel_telefone?: string;
+  // Informações
+  ano_fundacao?: number;
+  total_unidades?: number; // Calculado automaticamente
+  missao?: string;
+  visao?: string;
+  valores?: string;
+  historico?: string;
+  logotipo_url?: string;
+  // Relacionamento Hierárquico
+  id_matriz?: string | null; // Se NULL = matriz, se preenchido = filial
+  matriz?: any;
+  // Gestão
   unidades_gerencia: string[];
-  data_contrato: string;
-  taxa_franquia: number;
+  data_contrato?: string;
+  taxa_franquia?: number;
   dados_bancarios?: {
     banco: string;
     agencia: string;
@@ -45,25 +87,46 @@ interface Franqueado {
     titular: string;
     documento: string;
   };
+  // Status
+  situacao: SituacaoFranqueado;
   ativo: boolean;
   created_at: string;
   updated_at: string;
 }
 
 interface FranqueadoFormData {
+  // Identificação
   nome: string;
-  email: string;
-  telefone: string;
   cnpj: string;
-  data_contrato: string;
-  taxa_franquia: number;
-  dados_bancarios?: {
-    banco: string;
-    agencia: string;
-    conta: string;
-    titular: string;
-    documento: string;
-  };
+  razao_social: string;
+  nome_fantasia?: string;
+  inscricao_estadual?: string;
+  inscricao_municipal?: string;
+  // Contato
+  email: string;
+  telefone_fixo?: string;
+  telefone_celular: string;
+  website?: string;
+  redes_sociais?: RedesSociais;
+  // Endereço
+  endereco_id?: string;
+  // Responsável Legal
+  responsavel_nome: string;
+  responsavel_cpf: string;
+  responsavel_cargo?: string;
+  responsavel_email?: string;
+  responsavel_telefone?: string;
+  // Informações
+  ano_fundacao?: number;
+  missao?: string;
+  visao?: string;
+  valores?: string;
+  historico?: string;
+  logotipo_url?: string;
+  // Relacionamento Hierárquico
+  id_matriz?: string | null;
+  // Status
+  situacao: SituacaoFranqueado;
   ativo: boolean;
 }
 
@@ -80,11 +143,30 @@ export default function PageFranqueados() {
     React.useState<Franqueado | null>(null);
   const [formData, setFormData] = React.useState<FranqueadoFormData>({
     nome: "",
-    email: "",
-    telefone: "",
     cnpj: "",
-    data_contrato: new Date().toISOString().split("T")[0],
-    taxa_franquia: 0,
+    razao_social: "",
+    nome_fantasia: "",
+    inscricao_estadual: "",
+    inscricao_municipal: "",
+    email: "",
+    telefone_fixo: "",
+    telefone_celular: "",
+    website: "",
+    redes_sociais: {},
+    endereco_id: "",
+    responsavel_nome: "",
+    responsavel_cpf: "",
+    responsavel_cargo: "",
+    responsavel_email: "",
+    responsavel_telefone: "",
+    ano_fundacao: undefined,
+    missao: "",
+    visao: "",
+    valores: "",
+    historico: "",
+    logotipo_url: "",
+    id_matriz: null,
+    situacao: "EM_HOMOLOGACAO",
     ativo: true,
   });
 
@@ -141,11 +223,30 @@ export default function PageFranqueados() {
   const resetForm = () => {
     setFormData({
       nome: "",
-      email: "",
-      telefone: "",
       cnpj: "",
-      data_contrato: new Date().toISOString().split("T")[0],
-      taxa_franquia: 0,
+      razao_social: "",
+      nome_fantasia: "",
+      inscricao_estadual: "",
+      inscricao_municipal: "",
+      email: "",
+      telefone_fixo: "",
+      telefone_celular: "",
+      website: "",
+      redes_sociais: {},
+      endereco_id: "",
+      responsavel_nome: "",
+      responsavel_cpf: "",
+      responsavel_cargo: "",
+      responsavel_email: "",
+      responsavel_telefone: "",
+      ano_fundacao: undefined,
+      missao: "",
+      visao: "",
+      valores: "",
+      historico: "",
+      logotipo_url: "",
+      id_matriz: null,
+      situacao: "EM_HOMOLOGACAO",
       ativo: true,
     });
     setEditingFranqueado(null);
@@ -160,14 +261,30 @@ export default function PageFranqueados() {
     setEditingFranqueado(franqueado);
     setFormData({
       nome: franqueado.nome,
-      email: franqueado.email,
-      telefone: franqueado.telefone,
       cnpj: franqueado.cnpj,
-      data_contrato:
-        franqueado.data_contrato?.split("T")[0] ||
-        new Date().toISOString().split("T")[0],
-      taxa_franquia: franqueado.taxa_franquia || 0,
-      dados_bancarios: franqueado.dados_bancarios,
+      razao_social: franqueado.razao_social || "",
+      nome_fantasia: franqueado.nome_fantasia || "",
+      inscricao_estadual: franqueado.inscricao_estadual || "",
+      inscricao_municipal: franqueado.inscricao_municipal || "",
+      email: franqueado.email || "",
+      telefone_fixo: franqueado.telefone_fixo || "",
+      telefone_celular: franqueado.telefone_celular || "",
+      website: franqueado.website || "",
+      redes_sociais: franqueado.redes_sociais || {},
+      endereco_id: franqueado.endereco_id || "",
+      responsavel_nome: franqueado.responsavel_nome || "",
+      responsavel_cpf: franqueado.responsavel_cpf || "",
+      responsavel_cargo: franqueado.responsavel_cargo || "",
+      responsavel_email: franqueado.responsavel_email || "",
+      responsavel_telefone: franqueado.responsavel_telefone || "",
+      ano_fundacao: franqueado.ano_fundacao,
+      missao: franqueado.missao || "",
+      visao: franqueado.visao || "",
+      valores: franqueado.valores || "",
+      historico: franqueado.historico || "",
+      logotipo_url: franqueado.logotipo_url || "",
+      id_matriz: franqueado.id_matriz || null,
+      situacao: franqueado.situacao,
       ativo: franqueado.ativo,
     });
     setShowModal(true);
@@ -176,8 +293,18 @@ export default function PageFranqueados() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.nome || !formData.cnpj) {
-      toast.error("Nome e CNPJ são obrigatórios");
+    if (!formData.nome || !formData.cnpj || !formData.razao_social) {
+      toast.error("Nome, CNPJ e Razão Social são obrigatórios");
+      return;
+    }
+
+    if (!formData.email || !formData.telefone_celular) {
+      toast.error("Email institucional e Telefone celular são obrigatórios");
+      return;
+    }
+
+    if (!formData.responsavel_nome || !formData.responsavel_cpf) {
+      toast.error("Nome e CPF do responsável legal são obrigatórios");
       return;
     }
 
@@ -186,24 +313,6 @@ export default function PageFranqueados() {
     } else {
       createMutation.mutate(formData);
     }
-  };
-
-  const formatCNPJ = (value: string) => {
-    return value
-      .replace(/\D/g, "")
-      .replace(/(\d{2})(\d)/, "$1.$2")
-      .replace(/(\d{3})(\d)/, "$1.$2")
-      .replace(/(\d{3})(\d)/, "$1/$2")
-      .replace(/(\d{4})(\d)/, "$1-$2")
-      .slice(0, 18);
-  };
-
-  const formatPhone = (value: string) => {
-    return value
-      .replace(/\D/g, "")
-      .replace(/(\d{2})(\d)/, "($1) $2")
-      .replace(/(\d{5})(\d)/, "$1-$2")
-      .slice(0, 15);
   };
 
   return (
@@ -233,15 +342,13 @@ export default function PageFranqueados() {
                 onChange={(e) => setSearch(e.target.value)}
               />
             </div>
-            {hasPerfil("master") && (
-              <button
-                onClick={openCreateModal}
-                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
-              >
-                <Plus className="h-4 w-4" />
-                Novo Franqueado
-              </button>
-            )}
+            <button
+              onClick={openCreateModal}
+              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+            >
+              <Plus className="h-4 w-4" />
+              Novo Franqueado
+            </button>
           </div>
         </div>
 
@@ -326,15 +433,13 @@ export default function PageFranqueados() {
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
-                          {hasPerfil("master") && (
-                            <button
-                              onClick={() => openEditModal(f)}
-                              className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                              title="Editar franqueado"
-                            >
-                              <Edit className="h-4 w-4" />
-                            </button>
-                          )}
+                          <button
+                            onClick={() => openEditModal(f)}
+                            className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                            title="Editar franqueado"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </button>
                         </div>
                       </div>
                     </div>
@@ -356,201 +461,16 @@ export default function PageFranqueados() {
         </div>
       </div>
 
-      {/* Modal */}
+      {/* Modal - Novo Componente */}
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <form onSubmit={handleSubmit}>
-              {/* Header */}
-              <div className="flex items-center justify-between p-6 border-b border-gray-200">
-                <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
-                  <Building2 className="h-5 w-5 text-blue-600" />
-                  {editingFranqueado ? "Editar Franqueado" : "Novo Franqueado"}
-                </h2>
-                <button
-                  type="button"
-                  onClick={() => setShowModal(false)}
-                  className="text-gray-400 hover:text-gray-600 transition-colors"
-                >
-                  <X className="h-6 w-6" />
-                </button>
-              </div>
-
-              {/* Content */}
-              <div className="p-6 space-y-6">
-                {/* Dados Básicos */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium text-gray-900 flex items-center gap-2">
-                    <User className="h-5 w-5 text-gray-600" />
-                    Dados Básicos
-                  </h3>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Nome *
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={formData.nome}
-                        onChange={(e) =>
-                          setFormData({ ...formData, nome: e.target.value })
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        placeholder="Nome do franqueado"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        CNPJ *
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={formData.cnpj}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            cnpj: formatCNPJ(e.target.value),
-                          })
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        placeholder="00.000.000/0000-00"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Email
-                      </label>
-                      <input
-                        type="email"
-                        value={formData.email}
-                        onChange={(e) =>
-                          setFormData({ ...formData, email: e.target.value })
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        placeholder="email@exemplo.com"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Telefone
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.telefone}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            telefone: formatPhone(e.target.value),
-                          })
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        placeholder="(00) 00000-0000"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Dados do Contrato */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium text-gray-900 flex items-center gap-2">
-                    <FileText className="h-5 w-5 text-gray-600" />
-                    Dados do Contrato
-                  </h3>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Data do Contrato
-                      </label>
-                      <input
-                        type="date"
-                        value={formData.data_contrato}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            data_contrato: e.target.value,
-                          })
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Taxa de Franquia (%)
-                      </label>
-                      <input
-                        type="number"
-                        min="0"
-                        max="100"
-                        step="0.01"
-                        value={formData.taxa_franquia}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            taxa_franquia: Number(e.target.value),
-                          })
-                        }
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        placeholder="0.00"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Status */}
-                <div className="space-y-4">
-                  <div className="flex items-center">
-                    <input
-                      type="checkbox"
-                      id="ativo"
-                      checked={formData.ativo}
-                      onChange={(e) =>
-                        setFormData({ ...formData, ativo: e.target.checked })
-                      }
-                      className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
-                    />
-                    <label
-                      htmlFor="ativo"
-                      className="ml-2 text-sm font-medium text-gray-700"
-                    >
-                      Franqueado ativo
-                    </label>
-                  </div>
-                </div>
-              </div>
-
-              {/* Footer */}
-              <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-200">
-                <button
-                  type="button"
-                  onClick={() => setShowModal(false)}
-                  className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium transition-colors"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  disabled={
-                    createMutation.isPending || updateMutation.isPending
-                  }
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                >
-                  {(createMutation.isPending || updateMutation.isPending) && (
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  )}
-                  {editingFranqueado ? "Atualizar" : "Criar"} Franqueado
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+        <FranqueadoForm
+          formData={formData}
+          setFormData={setFormData}
+          onSubmit={handleSubmit}
+          onClose={() => setShowModal(false)}
+          isEditing={!!editingFranqueado}
+          isLoading={createMutation.isPending || updateMutation.isPending}
+        />
       )}
     </>
   );

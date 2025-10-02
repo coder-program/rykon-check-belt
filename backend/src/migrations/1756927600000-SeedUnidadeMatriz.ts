@@ -17,7 +17,7 @@ export class SeedUnidadeMatriz1756927600000 implements MigrationInterface {
         0.00,
         true
       )
-      ON CONFLICT (cnpj) DO NOTHING
+      ON CONFLICT DO NOTHING
     `);
 
     // Criar unidade matriz (sem endereço por enquanto - será adicionado depois das migrações de endereços)

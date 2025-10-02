@@ -180,3 +180,41 @@ export async function getHistoricoGraduacoes(params?: {
 
   return http(url, { auth: true });
 }
+
+// Aprovar graduação pendente
+export async function aprovarGraduacao(
+  graduacaoId: string,
+  observacao?: string,
+): Promise<any> {
+  return http(`/graduacao/graduacoes/${graduacaoId}/aprovar`, {
+    method: "POST",
+    body: { observacao },
+    auth: true,
+  });
+}
+
+// Listar graduações pendentes de aprovação
+export async function getPendentesAprovacao(params?: {
+  page?: number;
+  pageSize?: number;
+  unidadeId?: string;
+}): Promise<{
+  items: any[];
+  total: number;
+  page: number;
+  pageSize: number;
+  hasNextPage: boolean;
+}> {
+  const queryParams = new URLSearchParams();
+  if (params?.page) queryParams.append("page", params.page.toString());
+  if (params?.pageSize)
+    queryParams.append("pageSize", params.pageSize.toString());
+  if (params?.unidadeId) queryParams.append("unidadeId", params.unidadeId);
+
+  const queryString = queryParams.toString();
+  const url = queryString
+    ? `/graduacao/pendentes-aprovacao?${queryString}`
+    : "/graduacao/pendentes-aprovacao";
+
+  return http(url, { auth: true });
+}

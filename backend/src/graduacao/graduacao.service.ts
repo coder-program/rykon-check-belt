@@ -931,4 +931,120 @@ export class GraduacaoService {
       await queryRunner.release();
     }
   }
+
+  /**
+   * Aprova uma graduação pendente
+   */
+  async aprovarGraduacao(
+    graduacaoId: string,
+    aprovadoPor: string,
+    observacao?: string,
+  ) {
+    const graduacao = await this.alunoGraduacaoRepository.findOne({
+      where: { id: graduacaoId },
+      relations: ['aluno', 'faixaOrigem', 'faixaDestino'],
+    });
+
+    if (!graduacao) {
+      throw new NotFoundException('Graduação não encontrada');
+    }
+
+    if (graduacao.aprovado) {
+      throw new BadRequestException('Graduação já foi aprovada');
+    }
+
+    // Atualizar graduação
+    graduacao.aprovado = true;
+    graduacao.aprovado_por = aprovadoPor;
+    graduacao.dt_aprovacao = new Date();
+
+    if (observacao) {
+      graduacao.observacao = `${graduacao.observacao || ''}\n\nAprovação: ${observacao}`;
+    }
+
+    await this.alunoGraduacaoRepository.save(graduacao);
+
+    return {
+      success: true,
+      message: 'Graduação aprovada com sucesso',
+      graduacao,
+    };
+  }
+
+  /**
+   * Lista graduações pendentes de aprovação
+   */
+  async getPendentesAprovacao(params: {
+    page?: number;
+    pageSize?: number;
+    unidadeId?: string;
+  }) {
+    const page = Math.max(1, params.page || 1);
+    const pageSize = Math.min(100, Math.max(1, params.pageSize || 20));
+
+    const query = this.alunoGraduacaoRepository
+      .createQueryBuilder('ag')
+      .leftJoinAndSelect('ag.aluno', 'a')
+      .leftJoinAndSelect('ag.faixaOrigem', 'fo')
+      .leftJoinAndSelect('ag.faixaDestino', 'fd')
+      .leftJoinAndSelect('ag.concedidoPor', 'cp')
+      .where('ag.aprovado = :aprovado', { aprovado: false });
+
+    if (params.unidadeId) {
+      query.andWhere('a.unidade_id = :unidadeId', {
+        unidadeId: params.unidadeId,
+      });
+    }
+
+    query.orderBy('ag.dt_graduacao', 'DESC');
+
+    const [items, total] = await query
+      .skip((page - 1) * pageSize)
+      .take(pageSize)
+      .getManyAndCount();
+
+    return {
+      items,
+      total,
+      page,
+      pageSize,
+      hasNextPage: page * pageSize < total,
+    };
+  }
+
+  /**
+   * Valida tempo mínimo na faixa antes de graduar
+   */
+  async validarTempoMinimo(alunoId: string): Promise<{
+    valido: boolean;
+    mesesNaFaixa: number;
+    tempoMinimo: number;
+    faixaAtual: string;
+  }> {
+    const faixaAtiva = await this.getFaixaAtivaAluno(alunoId);
+
+    if (!faixaAtiva) {
+      return {
+        valido: false,
+        mesesNaFaixa: 0,
+        tempoMinimo: 0,
+        faixaAtual: '',
+      };
+    }
+
+    const agora = new Date();
+    const inicio = new Date(faixaAtiva.dt_inicio);
+    const diffMs = agora.getTime() - inicio.getTime();
+    const mesesNaFaixa = Math.floor(diffMs / (1000 * 60 * 60 * 24 * 30));
+
+    // Definir tempo mínimo por faixa
+    const tempoMinimo = faixaAtiva.faixaDef.codigo === 'BRANCA' ? 12 : 24; // 1 ano para branca, 2 anos para demais
+
+    return {
+      valido: mesesNaFaixa >= tempoMinimo,
+      mesesNaFaixa,
+      tempoMinimo,
+      faixaAtual: faixaAtiva.faixaDef.nome_exibicao,
+    };
+  }
 }

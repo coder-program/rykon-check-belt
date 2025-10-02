@@ -39,6 +39,7 @@ export const authService = {
     cpf: string;
     telefone: string;
     data_nascimento: string;
+    perfil_id?: string;
   }) {
     const data = await http("/auth/register", {
       method: "POST",
