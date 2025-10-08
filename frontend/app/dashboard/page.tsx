@@ -26,6 +26,8 @@ import {
   Mail,
   Plus,
   Building2,
+  Calendar,
+  UserCheck,
 } from "lucide-react";
 
 interface User {
@@ -36,10 +38,22 @@ interface User {
 
 export default function DashboardPage() {
   const { user, logout } = useAuth();
-  const hasPerfil = (p: string) =>
-    (user?.perfis || [])
-      .map((x: string) => x.toLowerCase())
+  const hasPerfil = (p: string) => {
+    if (!user?.perfis || !Array.isArray(user.perfis)) return false;
+
+    return user.perfis
+      .map((x: string | { nome?: string; name?: string }) => {
+        // Se x é uma string, retorna ela mesma
+        if (typeof x === "string") return x.toLowerCase();
+        // Se x é um objeto com propriedade nome, usa nome
+        if (typeof x === "object" && x?.nome) return x.nome.toLowerCase();
+        // Se x é um objeto com propriedade name, usa name
+        if (typeof x === "object" && x?.name) return x.name.toLowerCase();
+        // Caso contrário, converte para string
+        return String(x).toLowerCase();
+      })
       .includes(p.toLowerCase());
+  };
   const router = useRouter();
   const [users, setUsers] = useState<User[]>([]);
 
@@ -278,6 +292,24 @@ export default function DashboardPage() {
             </Card>
 
             <Card
+              className="cursor-pointer hover:shadow-xl transition-all hover:scale-105 border-green-200 bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20"
+              onClick={() => router.push("/admin/usuarios-pendentes")}
+            >
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  <span className="flex items-center">
+                    <UserCheck className="mr-2 h-5 w-5" />
+                    Aprovar Usuários
+                  </span>
+                  <span className="badge badge-success text-xs">Master</span>
+                </CardTitle>
+                <CardDescription>
+                  Aprovar cadastros de instrutores, franqueados e gestores
+                </CardDescription>
+              </CardHeader>
+            </Card>
+
+            <Card
               className="cursor-pointer hover:shadow-xl transition-all hover:scale-105 border-yellow-200 bg-gradient-to-br from-yellow-50 to-yellow-100 dark:from-yellow-900/20 dark:to-yellow-800/20"
               onClick={() => router.push("/aprovacao-alunos")}
             >
@@ -287,10 +319,10 @@ export default function DashboardPage() {
                     <CheckCircle className="mr-2 h-5 w-5" />
                     Aprovação de Alunos
                   </span>
-                  <span className="badge badge-warning text-xs">Pendente</span>
+                  <span className="badge badge-warning text-xs">🥋 Alunos</span>
                 </CardTitle>
                 <CardDescription>
-                  Sistema de aprovação e validação de novos cadastros de alunos
+                  Aprovar cadastros de ALUNOS de Jiu-Jitsu (estudantes)
                 </CardDescription>
               </CardHeader>
             </Card>
@@ -365,6 +397,60 @@ export default function DashboardPage() {
                 </CardTitle>
                 <CardDescription>
                   Cadastro e administração de todas as unidades
+                </CardDescription>
+              </CardHeader>
+            </Card>
+
+            <Card
+              className="cursor-pointer hover:shadow-xl transition-all hover:scale-105 border-pink-200 bg-gradient-to-br from-pink-50 to-pink-100 dark:from-pink-900/20 dark:to-pink-800/20"
+              onClick={() => router.push("/horarios")}
+            >
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  <span className="flex items-center">
+                    <Calendar className="mr-2 h-5 w-5" />
+                    Horários de Aulas
+                  </span>
+                  <span className="badge badge-success text-xs">Novo!</span>
+                </CardTitle>
+                <CardDescription>
+                  Visualize os horários das aulas disponíveis na sua unidade
+                </CardDescription>
+              </CardHeader>
+            </Card>
+
+            <Card
+              className="cursor-pointer hover:shadow-xl transition-all hover:scale-105 border-amber-200 bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-900/20 dark:to-amber-800/20"
+              onClick={() => router.push("/aulas")}
+            >
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  <span className="flex items-center">
+                    <Calendar className="mr-2 h-5 w-5" />
+                    Gerenciamento de Aulas
+                  </span>
+                  <span className="badge badge-warning text-xs animate-pulse">Admin</span>
+                </CardTitle>
+                <CardDescription>
+                  Cadastre, edite e gerencie as aulas das unidades
+                </CardDescription>
+              </CardHeader>
+            </Card>
+
+            <Card
+              className="cursor-pointer hover:shadow-xl transition-all hover:scale-105 border-emerald-200 bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-900/20 dark:to-emerald-800/20"
+              onClick={() => router.push("/presenca")}
+            >
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  <span className="flex items-center">
+                    <CheckCircle className="mr-2 h-5 w-5" />
+                    Presença
+                  </span>
+                  <span className="badge badge-success text-xs">Ativo</span>
+                </CardTitle>
+                <CardDescription>
+                  Registre sua presença nas aulas e acompanhe sua evolução
                 </CardDescription>
               </CardHeader>
             </Card>

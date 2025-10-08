@@ -33,8 +33,19 @@ import toast from "react-hot-toast";
 import UnidadeForm from "@/components/unidades/UnidadeForm";
 
 type StatusUnidade = "ATIVA" | "INATIVA" | "HOMOLOGACAO";
-type PapelResponsavel = "PROPRIETARIO" | "GERENTE" | "INSTRUTOR" | "ADMINISTRATIVO";
-type Modalidade = "INFANTIL" | "ADULTO" | "NO_GI" | "COMPETICAO" | "FEMININO" | "AUTODEFESA" | "CONDICIONAMENTO";
+type PapelResponsavel =
+  | "PROPRIETARIO"
+  | "GERENTE"
+  | "INSTRUTOR"
+  | "ADMINISTRATIVO";
+type Modalidade =
+  | "INFANTIL"
+  | "ADULTO"
+  | "NO_GI"
+  | "COMPETICAO"
+  | "FEMININO"
+  | "AUTODEFESA"
+  | "CONDICIONAMENTO";
 
 interface RedesSociais {
   instagram?: string;
@@ -96,7 +107,7 @@ export default function PageUnidades() {
   const hasPerfil = (p: string) => {
     if (!user?.perfis) return false;
     return user.perfis.some(
-      (perfil: any) => perfil.nome?.toLowerCase() === p.toLowerCase(),
+      (perfil: any) => perfil.nome?.toLowerCase() === p.toLowerCase()
     );
   };
   const [search, setSearch] = useState("");
@@ -211,7 +222,6 @@ export default function PageUnidades() {
     },
   });
 
-
   const items = (query.data?.pages || []).flatMap((p) => p.items);
 
   const resetForm = () => {
@@ -249,10 +259,21 @@ export default function PageUnidades() {
     e.preventDefault();
     console.log("[DEBUG] handleSubmit", formData);
 
+    // Limpar formatação antes de enviar
+    const cleanedData = {
+      ...formData,
+      cnpj: formData.cnpj?.replace(/\D/g, "") || "",
+      telefone: formData.telefone?.replace(/\D/g, "") || "",
+      cep: formData.cep?.replace(/\D/g, "") || "",
+      responsavel_cpf: formData.responsavel_cpf?.replace(/\D/g, "") || "",
+      responsavel_telefone:
+        formData.responsavel_telefone?.replace(/\D/g, "") || "",
+    };
+
     if (editingUnidade?.id) {
-      updateMutation.mutate({ id: editingUnidade.id, data: formData });
+      updateMutation.mutate({ id: editingUnidade.id, data: cleanedData });
     } else {
-      createMutation.mutate(formData);
+      createMutation.mutate(cleanedData);
     }
   };
 
@@ -289,7 +310,6 @@ export default function PageUnidades() {
       instrutor_principal_id: unidade.instrutor_principal_id,
     });
   };
-
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -397,7 +417,7 @@ export default function PageUnidades() {
                       <h3 className="font-semibold text-lg">{unidade.nome}</h3>
                       <span
                         className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(
-                          unidade.status,
+                          unidade.status
                         )}`}
                       >
                         {getStatusIcon(unidade.status)}
@@ -441,7 +461,7 @@ export default function PageUnidades() {
                       onClick={() => {
                         if (
                           confirm(
-                            `Tem certeza que deseja remover a unidade "${unidade.nome}"?`,
+                            `Tem certeza que deseja remover a unidade "${unidade.nome}"?`
                           )
                         ) {
                           deleteMutation.mutate(unidade.id);
@@ -472,7 +492,9 @@ export default function PageUnidades() {
             resetForm();
           }}
           isEditing={!!editingUnidade}
-          isLoading={editingUnidade ? updateMutation.isPending : createMutation.isPending}
+          isLoading={
+            editingUnidade ? updateMutation.isPending : createMutation.isPending
+          }
           franqueados={franqueadosQuery.data?.items || []}
           instrutores={instrutoresQuery.data?.items || []}
         />

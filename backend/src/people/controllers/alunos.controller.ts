@@ -19,6 +19,21 @@ import { UpdateAlunoDto } from '../dto/update-aluno.dto';
 export class AlunosController {
   constructor(private readonly service: AlunosService) {}
 
+  @Get('buscar-por-nome')
+  @ApiOperation({ summary: 'Buscar alunos por nome (autocomplete)' })
+  @ApiQuery({ name: 'nome', required: true })
+  async buscarPorNome(@Query('nome') nome: string) {
+    return this.service.buscarPorNome(nome);
+  }
+
+  @Get('stats/counts')
+  @ApiOperation({ summary: 'Obter contadores de alunos por filtros' })
+  @ApiQuery({ name: 'search', required: false })
+  @ApiQuery({ name: 'unidade_id', required: false })
+  async getStats(@Query(ValidationPipe) query: any) {
+    return this.service.getStats(query);
+  }
+
   @Get()
   @ApiOperation({ summary: 'Listar alunos (paginado/filtrado)' })
   @ApiQuery({ name: 'search', required: false })

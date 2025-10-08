@@ -4,20 +4,22 @@ export class SeedUnidadeMatriz1756927600000 implements MigrationInterface {
   name = 'SeedUnidadeMatriz1756927600000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    // Criar franqueado matriz se não existir
+    // Criar franqueado matriz se não existir (ignorar se já existe por CNPJ ou EMAIL)
     await queryRunner.query(`
       INSERT INTO teamcruz.franqueados (id, nome, email, telefone, cnpj, data_contrato, taxa_franquia, ativo)
-      VALUES (
+      SELECT 
         'f47ac10b-58cc-4372-a567-0e02b2c3d479',
         'TeamCruz Franchising Ltda',
         'contato@teamcruz.com.br',
         '(11) 4444-5555',
         '12.345.678/0001-90',
-        '2020-01-01',
+        '2020-01-01'::date,
         0.00,
         true
+      WHERE NOT EXISTS (
+        SELECT 1 FROM teamcruz.franqueados 
+        WHERE cnpj = '12.345.678/0001-90' OR email = 'contato@teamcruz.com.br'
       )
-      ON CONFLICT DO NOTHING
     `);
 
     // Criar unidade matriz (sem endereço por enquanto - será adicionado depois das migrações de endereços)

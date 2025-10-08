@@ -55,6 +55,9 @@ export class UsuariosService {
       ...createUsuarioDto,
       password: hashedPassword,
       perfis,
+      // Admin pode definir o status, senão usa padrões
+      ativo: createUsuarioDto.ativo ?? true,
+      cadastro_completo: createUsuarioDto.cadastro_completo ?? false,
     });
 
     return await this.usuarioRepository.save(usuario);
@@ -71,6 +74,7 @@ export class UsuariosService {
         cpf: true,
         telefone: true,
         ativo: true,
+        cadastro_completo: true,
         ultimo_login: true,
         created_at: true,
         updated_at: true,
@@ -90,6 +94,7 @@ export class UsuariosService {
         cpf: true,
         telefone: true,
         ativo: true,
+        cadastro_completo: true,
         ultimo_login: true,
         created_at: true,
         updated_at: true,
@@ -284,5 +289,74 @@ export class UsuariosService {
     }
 
     return usuario.perfis.map((perfil) => perfil.nome);
+  }
+
+  async findPendingApproval(): Promise<Usuario[]> {
+    // Buscar usuários que estão inativos (aguardando aprovação do administrador)
+    // Independentemente do status do cadastro_completo
+    return await this.usuarioRepository.find({
+      where: {
+        ativo: false,
+      },
+      relations: ['perfis'],
+      select: {
+        id: true,
+        username: true,
+        email: true,
+        nome: true,
+        cpf: true,
+        telefone: true,
+        ativo: true,
+        cadastro_completo: true,
+        created_at: true,
+        updated_at: true,
+      },
+      order: {
+        created_at: 'DESC',
+      },
+    });
+  }
+  async approveUser(userId: string): Promise<{ message: string }> {
+    const usuario = await this.findOne(userId);
+
+    if (!usuario) {
+      throw new NotFoundException('Usuário não encontrado');
+    }
+
+    if (usuario.ativo) {
+      throw new ConflictException('Usuário já está ativo');
+    }
+
+    // Ativar o usuário
+    await this.usuarioRepository.update(userId, {
+      ativo: true,
+    });
+
+    console.log(`✅ Usuário ${usuario.nome} aprovado e ativado com sucesso!`);
+
+    // TODO: Enviar email de confirmação ao usuário
+
+    return {
+      message: 'Usuário aprovado com sucesso!',
+    };
+  }
+
+  async rejectUser(userId: string): Promise<{ message: string }> {
+    const usuario = await this.findOne(userId);
+
+    if (!usuario) {
+      throw new NotFoundException('Usuário não encontrado');
+    }
+
+    // Remover o usuário do sistema
+    await this.usuarioRepository.remove(usuario);
+
+    console.log(`❌ Usuário ${usuario.nome} rejeitado e removido do sistema.`);
+
+    // TODO: Enviar email informando sobre a rejeição
+
+    return {
+      message: 'Cadastro rejeitado e usuário removido do sistema.',
+    };
   }
 }

@@ -32,6 +32,7 @@ import {
   User,
 } from "lucide-react";
 import { Html5QrcodeScanner } from "html5-qrcode";
+import QRCode from "qrcode";
 import toast from "react-hot-toast";
 
 interface Aluno {
@@ -73,6 +74,7 @@ export default function PresencaPage() {
   const [scanner, setScanner] = useState<Html5QrcodeScanner | null>(null);
   const [scannerActive, setScannerActive] = useState(false);
   const [aulaAtiva, setAulaAtiva] = useState<AulaAtiva | null>(null);
+  const [qrCodeImageUrl, setQrCodeImageUrl] = useState<string>("");
   const [presencas, setPresencas] = useState<Presenca[]>([]);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{
@@ -89,10 +91,14 @@ export default function PresencaPage() {
 
   // Novos estados para funcionalidades expandidas
   const [metodoCheckin, setMetodoCheckin] = useState<
-    "qr" | "cpf" | "facial" | "responsavel"
-  >("qr");
+    "QR_CODE" | "CPF" | "FACIAL" | "NOME"
+  >("QR_CODE");
   const [cpfInput, setCpfInput] = useState("");
   const [nomeInput, setNomeInput] = useState("");
+  const [sugestoesNomes, setSugestoesNomes] = useState<
+    Array<{ id: string; nome: string; cpf: string }>
+  >([]);
+  const [mostrandoSugestoes, setMostrandoSugestoes] = useState(false);
   const [facialActive, setFacialActive] = useState(false);
   const [alunosEncontrados, setAlunosEncontrados] = useState<Aluno[]>([]);
   const [meusFilhos, setMeusFilhos] = useState<Aluno[]>([]);
@@ -103,7 +109,7 @@ export default function PresencaPage() {
     loadHistoricoPresenca();
     loadEstatisticas();
     loadMeusFilhos();
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     // Verificar se é responsável e tem filhos cadastrados
@@ -113,8 +119,10 @@ export default function PresencaPage() {
   }, [user, meusFilhos]);
 
   const loadAulaAtiva = async () => {
+    console.log("🔵 [Frontend] Iniciando busca por aula ativa...");
     try {
       const token = localStorage.getItem("token");
+      console.log("🔵 [Frontend] Token encontrado:", token ? "Sim" : "Não");
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/presenca/aula-ativa`,
         {
@@ -125,12 +133,64 @@ export default function PresencaPage() {
         }
       );
 
+      console.log("🔵 [Frontend] Status da resposta:", response.status);
+      console.log("🔵 [Frontend] Response OK:", response.ok);
+
       if (response.ok) {
-        const data = await response.json();
-        setAulaAtiva(data);
+        const text = await response.text();
+        console.log("Response text from aula-ativa:", text);
+
+        if (text && text.trim() !== "") {
+          try {
+            const data = JSON.parse(text);
+            console.log("Aula ativa recebida:", data);
+            // Se o servidor retorna null explicitamente, aceitar
+            if (data === null) {
+              console.log("Nenhuma aula ativa no momento");
+              setAulaAtiva(null);
+            } else {
+              console.log("Aula ativa definida:", data);
+              setAulaAtiva(data);
+              // Gerar QR code visual
+              if (data.qrCode) {
+                generateQRCodeImage(data.qrCode);
+              }
+            }
+          } catch (parseError) {
+            console.error("Erro ao fazer parse do JSON:", parseError);
+            console.error("Texto recebido:", text);
+            setAulaAtiva(null);
+          }
+        } else {
+          setAulaAtiva(null);
+        }
+      } else {
+        console.error(
+          "Erro na resposta da API:",
+          response.status,
+          response.statusText
+        );
+        setAulaAtiva(null);
       }
     } catch (error) {
       console.error("Erro ao carregar aula ativa:", error);
+      setAulaAtiva(null);
+    }
+  };
+
+  const generateQRCodeImage = async (qrText: string) => {
+    try {
+      const qrCodeDataURL = await QRCode.toDataURL(qrText, {
+        width: 200,
+        margin: 2,
+        color: {
+          dark: "#000000",
+          light: "#FFFFFF",
+        },
+      });
+      setQrCodeImageUrl(qrCodeDataURL);
+    } catch (error) {
+      console.error("Erro ao gerar QR code:", error);
     }
   };
 
@@ -184,7 +244,7 @@ export default function PresencaPage() {
     try {
       const token = localStorage.getItem("token");
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/pessoas/meus-filhos`,
+        `${process.env.NEXT_PUBLIC_API_URL}/presenca/meus-filhos`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -207,33 +267,46 @@ export default function PresencaPage() {
       scanner.clear();
     }
 
-    const newScanner = new Html5QrcodeScanner(
-      "qr-reader",
-      {
-        fps: 10,
-        qrbox: { width: 250, height: 250 },
-        aspectRatio: 1.0,
-      },
-      false
-    );
-
-    newScanner.render(
-      (decodedText) => {
-        console.log("QR Code detectado:", decodedText);
-        processQRCode(decodedText);
-        newScanner.clear();
-        setScannerActive(false);
-      },
-      (error) => {
-        // Silenciar erros de scan contínuo
-        if (!error.includes("QR code parse error")) {
-          console.warn("Erro no scanner:", error);
-        }
-      }
-    );
-
-    setScanner(newScanner);
+    // Primeiro ativa o scanner state para renderizar o elemento
     setScannerActive(true);
+
+    // Aguarda o próximo tick para garantir que o elemento foi renderizado
+    setTimeout(() => {
+      const element = document.getElementById("qr-reader");
+      if (!element) {
+        console.error("Elemento qr-reader não encontrado");
+        setMessage({ type: "error", text: "Erro ao inicializar scanner" });
+        setScannerActive(false);
+        return;
+      }
+
+      const newScanner = new Html5QrcodeScanner(
+        "qr-reader",
+        {
+          fps: 10,
+          qrbox: { width: 250, height: 250 },
+          aspectRatio: 1.0,
+        },
+        false
+      );
+
+      newScanner.render(
+        (decodedText) => {
+          console.log("QR Code detectado:", decodedText);
+          processQRCode(decodedText);
+          newScanner.clear();
+          setScannerActive(false);
+        },
+        (error) => {
+          // Silenciar erros de scan contínuo
+          if (!error.includes("QR code parse error")) {
+            console.warn("Erro no scanner:", error);
+          }
+        }
+      );
+
+      setScanner(newScanner);
+    }, 100);
   };
 
   const processQRCode = async (qrData: string) => {
@@ -366,6 +439,51 @@ export default function PresencaPage() {
     }
   };
 
+  const buscarSugestoesNome = async (termo: string) => {
+    if (termo.length < 2) {
+      setSugestoesNomes([]);
+      setMostrandoSugestoes(false);
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(
+        `${
+          process.env.NEXT_PUBLIC_API_URL
+        }/alunos/buscar-por-nome?nome=${encodeURIComponent(termo)}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (response.ok) {
+        const pessoas = await response.json();
+        const sugestoes = pessoas
+          .slice(0, 5)
+          .map(
+            (pessoa: {
+              id: string;
+              nome_completo: string;
+              cpf?: string;
+              documento?: string;
+            }) => ({
+              id: pessoa.id,
+              nome: pessoa.nome_completo,
+              cpf: pessoa.cpf || pessoa.documento,
+            })
+          );
+        setSugestoesNomes(sugestoes);
+        setMostrandoSugestoes(true);
+      }
+    } catch (error) {
+      console.error("Erro ao buscar sugestões:", error);
+    }
+  };
+
   const buscarPorNome = async () => {
     if (!nomeInput.trim()) return;
 
@@ -391,6 +509,58 @@ export default function PresencaPage() {
     } catch (error) {
       console.error("Erro ao buscar alunos:", error);
       toast.error("Erro ao buscar alunos");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const checkInPorSugestao = async (pessoa: {
+    id: string;
+    nome: string;
+    cpf: string;
+  }) => {
+    if (!aulaAtiva) return;
+
+    setLoading(true);
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/presenca/check-in-nome`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            aulaId: aulaAtiva.id,
+            nomeCompleto: pessoa.nome,
+            alunoId: pessoa.id,
+          }),
+        }
+      );
+
+      const result = await response.json();
+
+      if (response.ok) {
+        setMessage({
+          type: "success",
+          text: `Check-in realizado para ${pessoa.nome}!`,
+        });
+        setNomeInput("");
+        setSugestoesNomes([]);
+        setMostrandoSugestoes(false);
+        loadHistoricoPresenca();
+        loadEstatisticas();
+      } else {
+        setMessage({
+          type: "error",
+          text: result.message || "Erro ao realizar check-in",
+        });
+      }
+    } catch (error) {
+      console.error("Erro no check-in:", error);
+      setMessage({ type: "error", text: "Erro ao processar check-in" });
     } finally {
       setLoading(false);
     }
@@ -688,6 +858,34 @@ export default function PresencaPage() {
                       <Clock className="h-4 w-4" />
                       {aulaAtiva.horarioInicio} - {aulaAtiva.horarioFim}
                     </div>
+                    {aulaAtiva.qrCode && (
+                      <div className="mt-4 p-4 bg-white rounded-lg border text-center">
+                        <p className="text-sm font-medium mb-3">
+                          QR Code da Aula
+                        </p>
+                        {qrCodeImageUrl ? (
+                          <div className="inline-block p-3 bg-white rounded-lg border-2 border-gray-200 shadow-sm">
+                            <img
+                              src={qrCodeImageUrl}
+                              alt="QR Code da Aula"
+                              className="w-48 h-48 mx-auto"
+                            />
+                          </div>
+                        ) : (
+                          <div className="bg-gray-100 p-8 rounded border-2 border-dashed border-gray-300 inline-block">
+                            <div className="text-gray-500">
+                              Gerando QR Code...
+                            </div>
+                          </div>
+                        )}
+                        <p className="text-xs text-gray-500 mt-3">
+                          Escaneie este QR Code para fazer check-in na aula
+                        </p>
+                        <p className="text-xs text-gray-400 mt-1 font-mono break-all">
+                          {aulaAtiva.qrCode}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -797,7 +995,9 @@ export default function PresencaPage() {
                         type="text"
                         placeholder="000.000.000-00"
                         value={cpfInput}
-                        onChange={(e) => setCpfInput(formatCPF(e.target.value))}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                          setCpfInput(formatCPF(e.target.value))
+                        }
                         maxLength={14}
                       />
                     </div>
@@ -880,16 +1080,54 @@ export default function PresencaPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    <div>
+                    <div className="relative">
                       <Label htmlFor="nome">Digite o nome do aluno</Label>
                       <div className="flex gap-2">
-                        <Input
-                          id="nome"
-                          type="text"
-                          placeholder="Nome do aluno..."
-                          value={nomeInput}
-                          onChange={(e) => setNomeInput(e.target.value)}
-                        />
+                        <div className="relative flex-1">
+                          <Input
+                            id="nome"
+                            type="text"
+                            placeholder="Nome do aluno..."
+                            value={nomeInput}
+                            onChange={(
+                              e: React.ChangeEvent<HTMLInputElement>
+                            ) => {
+                              const valor = e.target.value;
+                              setNomeInput(valor);
+                              buscarSugestoesNome(valor);
+                            }}
+                            onFocus={() => {
+                              if (
+                                nomeInput.length >= 2 &&
+                                sugestoesNomes.length > 0
+                              ) {
+                                setMostrandoSugestoes(true);
+                              }
+                            }}
+                          />
+
+                          {/* Dropdown de Sugestões */}
+                          {mostrandoSugestoes && sugestoesNomes.length > 0 && (
+                            <div className="absolute top-full left-0 right-0 bg-white border border-gray-300 rounded-md shadow-lg z-50 max-h-60 overflow-y-auto">
+                              {sugestoesNomes.map((pessoa) => (
+                                <div
+                                  key={pessoa.id}
+                                  className="p-3 hover:bg-gray-100 cursor-pointer border-b border-gray-100 last:border-b-0"
+                                  onClick={() => checkInPorSugestao(pessoa)}
+                                >
+                                  <div className="font-medium text-sm">
+                                    {pessoa.nome}
+                                  </div>
+                                  {pessoa.cpf && (
+                                    <div className="text-xs text-gray-500 mt-1">
+                                      CPF: {pessoa.cpf}
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                         <Button
                           onClick={buscarPorNome}
                           disabled={loading || !nomeInput.trim()}
@@ -897,6 +1135,14 @@ export default function PresencaPage() {
                           <Search className="h-4 w-4" />
                         </Button>
                       </div>
+
+                      {/* Clique fora para fechar sugestões */}
+                      {mostrandoSugestoes && (
+                        <div
+                          className="fixed inset-0 z-40"
+                          onClick={() => setMostrandoSugestoes(false)}
+                        />
+                      )}
                     </div>
 
                     {alunosEncontrados.length > 0 && (

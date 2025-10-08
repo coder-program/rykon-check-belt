@@ -63,7 +63,7 @@ const mockCampanhas: Campanha[] = [
     abertos: 0,
     cliques: 0,
     botaoCTA: "MATRICULE-SE AGORA",
-    linkCTA: "https://www.teamcruz.com.br/matricula",
+    linkCTA: "https://www.lojateamcruz.com.br/matricula",
   },
   {
     id: "2",
@@ -153,8 +153,7 @@ export default function CampanhasManager() {
     const load = async () => {
       try {
         const res = await fetch(
-          process.env.NEXT_PUBLIC_API_URL +
-            "/teamcruz/campanhas",
+          process.env.NEXT_PUBLIC_API_URL + "/teamcruz/campanhas",
           {
             headers: {
               "Content-Type": "application/json",
@@ -162,7 +161,7 @@ export default function CampanhasManager() {
                 ? { Authorization: `Bearer ${localStorage.getItem("token")}` }
                 : {}),
             },
-          },
+          }
         );
         const data = await res.json();
         setCampanhas(Array.isArray(data) ? data : []);
@@ -218,7 +217,7 @@ export default function CampanhasManager() {
         .then((r) => r.json())
         .then((saved) => {
           setCampanhas((prev) =>
-            prev.map((c) => (c.id === saved.id ? saved : c)),
+            prev.map((c) => (c.id === saved.id ? saved : c))
           );
           toast.success("Campanha atualizada com sucesso!");
           setShowModal(false);
@@ -277,7 +276,7 @@ export default function CampanhasManager() {
       .then((r) => r.json())
       .then((updated) => {
         setCampanhas((prev) =>
-          prev.map((c) => (c.id === updated.id ? updated : c)),
+          prev.map((c) => (c.id === updated.id ? updated : c))
         );
         toast.success(`Campanha "${campanha.titulo}" enviada com sucesso!`, {
           duration: 4000,
@@ -419,7 +418,9 @@ export default function CampanhasManager() {
                           {tipoInfo.label}
                         </span>
                         <span
-                          className={`badge ${getStatusBadge(campanha.status)} badge-sm`}
+                          className={`badge ${getStatusBadge(
+                            campanha.status
+                          )} badge-sm`}
                         >
                           {campanha.status}
                         </span>

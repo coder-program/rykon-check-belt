@@ -74,6 +74,9 @@ export default function HorariosPage() {
   const loadHorarios = async () => {
     try {
       const token = localStorage.getItem("token");
+      
+      // 🔒 Backend automaticamente filtra pela unidade do aluno
+      // Não é necessário enviar unidade_id no frontend
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/aulas/horarios`,
         {
@@ -86,99 +89,15 @@ export default function HorariosPage() {
 
       if (response.ok) {
         const data = await response.json();
+        console.log('✅ Horários carregados (filtrados pela sua unidade):', data.length);
         setHorarios(data);
       } else {
-        // Dados mockados se a API não estiver disponível
-        setHorarios([
-          {
-            id: "1",
-            nome: "Jiu-Jitsu Gi Fundamental",
-            professor: "Carlos Silva",
-            unidade: "TeamCruz Vila Madalena",
-            diaSemana: "segunda",
-            horarioInicio: "19:00",
-            horarioFim: "20:30",
-            nivel: "Iniciante",
-            modalidade: "Gi",
-            vagasDisponiveis: 8,
-            vagasTotal: 20,
-            inscrito: true,
-          },
-          {
-            id: "2",
-            nome: "Jiu-Jitsu NoGi",
-            professor: "Ana Santos",
-            unidade: "TeamCruz Vila Madalena",
-            diaSemana: "terca",
-            horarioInicio: "18:00",
-            horarioFim: "19:30",
-            nivel: "Intermediário",
-            modalidade: "NoGi",
-            vagasDisponiveis: 5,
-            vagasTotal: 15,
-            inscrito: false,
-          },
-          {
-            id: "3",
-            nome: "Jiu-Jitsu Gi Avançado",
-            professor: "Roberto Lima",
-            unidade: "TeamCruz Vila Madalena",
-            diaSemana: "quarta",
-            horarioInicio: "20:00",
-            horarioFim: "21:30",
-            nivel: "Avançado",
-            modalidade: "Gi",
-            vagasDisponiveis: 12,
-            vagasTotal: 18,
-            inscrito: true,
-          },
-          {
-            id: "4",
-            nome: "Open Mat",
-            professor: "Treino Livre",
-            unidade: "TeamCruz Vila Madalena",
-            diaSemana: "quinta",
-            horarioInicio: "19:30",
-            horarioFim: "21:00",
-            nivel: "Todos",
-            modalidade: "Misto",
-            vagasDisponiveis: 25,
-            vagasTotal: 30,
-            inscrito: false,
-          },
-          {
-            id: "5",
-            nome: "Jiu-Jitsu Gi Fundamental",
-            professor: "Mariana Costa",
-            unidade: "TeamCruz Vila Madalena",
-            diaSemana: "sexta",
-            horarioInicio: "18:30",
-            horarioFim: "20:00",
-            nivel: "Iniciante",
-            modalidade: "Gi",
-            vagasDisponiveis: 3,
-            vagasTotal: 20,
-            inscrito: true,
-          },
-          {
-            id: "6",
-            nome: "Competição Team",
-            professor: "Carlos Silva",
-            unidade: "TeamCruz Vila Madalena",
-            diaSemana: "sabado",
-            horarioInicio: "09:00",
-            horarioFim: "11:00",
-            nivel: "Avançado",
-            modalidade: "Gi",
-            vagasDisponiveis: 0,
-            vagasTotal: 12,
-            inscrito: false,
-            observacoes: "Apenas para competidores ativos",
-          },
-        ]);
+        console.error('❌ Erro ao buscar horários:', response.status);
+        setHorarios([]);
       }
     } catch (error) {
-      console.error("Erro ao carregar horários:", error);
+      console.error("❌ Erro ao carregar horários:", error);
+      setHorarios([]);
     } finally {
       setLoading(false);
     }

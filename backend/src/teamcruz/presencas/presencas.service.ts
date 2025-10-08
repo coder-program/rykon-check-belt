@@ -58,8 +58,8 @@ export class PresencasService {
 
     // Salvar presença
     const p = this.presencasRepo.create({
-      pessoaId,
-      pessoa,
+      aluno_id: pessoaId,
+      aluno: pessoa,
       data: new Date(),
     });
     const presencaSalva = await this.presencasRepo.save(p);

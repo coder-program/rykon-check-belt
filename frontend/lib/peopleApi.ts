@@ -9,7 +9,13 @@ export type PageResp<T> = {
 };
 
 export async function listAlunos(params: any): Promise<PageResp<any>> {
-  const qs = new URLSearchParams(params).toString();
+  // Filtrar valores undefined/null antes de criar URLSearchParams
+  const filteredParams = Object.fromEntries(
+    Object.entries(params).filter(
+      ([, value]) => value !== undefined && value !== null && value !== ""
+    )
+  );
+  const qs = new URLSearchParams(filteredParams).toString();
   return http(`/alunos?${qs}`);
 }
 

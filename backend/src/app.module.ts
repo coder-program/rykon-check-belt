@@ -19,6 +19,7 @@ import { PeopleModule } from './people/people.module';
 import { EnderecosModule } from './enderecos/enderecos.module';
 import { GraduacaoModule } from './graduacao/graduacao.module';
 import { PresencaModule } from './presenca/presenca.module';
+import { AulaModule } from './presenca/aula.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 
 @Module({
@@ -61,6 +62,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
     CampanhasModule,
     PresencasModule,
     PresencaModule,
+    AulaModule,
     PeopleModule,
     EnderecosModule,
     GraduacaoModule,

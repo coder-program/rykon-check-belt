@@ -6,7 +6,11 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
-import { Person, TipoCadastro, StatusCadastro } from '../entities/person.entity';
+import {
+  Person,
+  TipoCadastro,
+  StatusCadastro,
+} from '../entities/person.entity';
 import { ProfessorUnidade } from '../entities/professor-unidade.entity';
 import { CreateProfessorDto } from '../dto/create-professor.dto';
 import { UpdateProfessorDto } from '../dto/update-professor.dto';
@@ -72,10 +76,28 @@ export class ProfessoresService {
     // Buscar unidades de cada professor
     const itemsWithUnidades = await Promise.all(
       items.map(async (professor) => {
-        const unidades = await this.professorUnidadeRepository.find({
-          where: { professor_id: professor.id, ativo: true },
-          relations: ['unidade'],
-        });
+        const unidades = await this.professorUnidadeRepository
+          .createQueryBuilder('pu')
+          .leftJoinAndSelect('pu.unidade', 'unidade')
+          .select([
+            'pu.id',
+            'pu.is_principal',
+            'pu.data_vinculo',
+            'pu.data_desvinculo',
+            'pu.ativo',
+            'pu.observacoes',
+            'unidade.id',
+            'unidade.nome',
+            'unidade.cnpj',
+            'unidade.telefone_fixo',
+            'unidade.telefone_celular',
+            'unidade.email',
+          ])
+          .where('pu.professor_id = :professorId', {
+            professorId: professor.id,
+          })
+          .andWhere('pu.ativo = :ativo', { ativo: true })
+          .getMany();
         return {
           ...professor,
           unidades: unidades.map((pu) => ({
@@ -135,7 +157,14 @@ export class ProfessoresService {
       }
 
       // 2. Validar faixa (apenas AZUL, ROXA, MARROM, PRETA, CORAL, VERMELHA)
-      const faixasPermitidas = ['AZUL', 'ROXA', 'MARROM', 'PRETA', 'CORAL', 'VERMELHA'];
+      const faixasPermitidas = [
+        'AZUL',
+        'ROXA',
+        'MARROM',
+        'PRETA',
+        'CORAL',
+        'VERMELHA',
+      ];
       if (!faixasPermitidas.includes(dto.faixa_ministrante)) {
         throw new BadRequestException(
           'Professores devem ter faixa Azul, Roxa, Marrom, Preta, Coral ou Vermelha',
@@ -221,7 +250,14 @@ export class ProfessoresService {
 
       // Validar faixa (se estiver sendo alterada)
       if (dto.faixa_ministrante) {
-        const faixasPermitidas = ['AZUL', 'ROXA', 'MARROM', 'PRETA', 'CORAL', 'VERMELHA'];
+        const faixasPermitidas = [
+          'AZUL',
+          'ROXA',
+          'MARROM',
+          'PRETA',
+          'CORAL',
+          'VERMELHA',
+        ];
         if (!faixasPermitidas.includes(dto.faixa_ministrante)) {
           throw new BadRequestException(
             'Professores devem ter faixa Azul, Roxa, Marrom, Preta, Coral ou Vermelha',

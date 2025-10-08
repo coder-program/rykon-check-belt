@@ -9,9 +9,15 @@ import { Repository, DataSource, ILike } from 'typeorm';
 import { Aluno, StatusAluno, FaixaEnum } from '../entities/aluno.entity';
 import { CreateAlunoDto } from '../dto/create-aluno.dto';
 import { UpdateAlunoDto } from '../dto/update-aluno.dto';
-import { FaixaDef } from '../../graduacao/entities/faixa-def.entity';
+import {
+  FaixaDef,
+  CategoriaFaixa,
+} from '../../graduacao/entities/faixa-def.entity';
 import { AlunoFaixa } from '../../graduacao/entities/aluno-faixa.entity';
-import { AlunoFaixaGrau, OrigemGrau } from '../../graduacao/entities/aluno-faixa-grau.entity';
+import {
+  AlunoFaixaGrau,
+  OrigemGrau,
+} from '../../graduacao/entities/aluno-faixa-grau.entity';
 
 interface ListAlunosParams {
   page?: number;
@@ -43,6 +49,10 @@ export class AlunosService {
     const query = this.alunoRepository.createQueryBuilder('aluno');
 
     query.leftJoinAndSelect('aluno.unidade', 'unidade');
+    query.leftJoinAndSelect('aluno.faixas', 'faixas', 'faixas.ativa = :ativa', {
+      ativa: true,
+    });
+    query.leftJoinAndSelect('faixas.faixaDef', 'faixaDef');
 
     // Busca por nome ou CPF
     if (params.search) {
@@ -90,7 +100,7 @@ export class AlunosService {
   async findById(id: string): Promise<Aluno> {
     const aluno = await this.alunoRepository.findOne({
       where: { id },
-      relations: ['unidade', 'faixas', 'graduacoes'],
+      relations: ['unidade'], // Removendo relações problemáticas temporariamente
     });
 
     if (!aluno) {
@@ -100,56 +110,173 @@ export class AlunosService {
     return aluno;
   }
 
+  async findByUsuarioId(usuarioId: string): Promise<Aluno | null> {
+    const aluno = await this.alunoRepository.findOne({
+      where: { usuario_id: usuarioId },
+      relations: ['unidade'],
+    });
+
+    return aluno || null;
+  }
+
   async create(dto: CreateAlunoDto): Promise<Aluno> {
+    console.log('🔵 [AlunosService.create] Iniciando criação de aluno...');
+    console.log(
+      '🔵 [AlunosService.create] DTO recebido:',
+      JSON.stringify(dto, null, 2),
+    );
+
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
+    console.log('🔵 [AlunosService.create] Transação iniciada');
+
+    let savedAluno: any;
 
     try {
       // 1. Verificar se CPF já existe
+      console.log(
+        '🔵 [AlunosService.create] Verificando CPF existente:',
+        dto.cpf,
+      );
       const existingAluno = await this.alunoRepository.findOne({
         where: { cpf: dto.cpf },
       });
 
       if (existingAluno) {
+        console.error('❌ [AlunosService.create] CPF já cadastrado:', dto.cpf);
         throw new ConflictException('CPF já cadastrado');
       }
+      console.log('✅ [AlunosService.create] CPF OK (não existe duplicata)');
 
       // 2. Validar se é menor de idade e tem responsável
+      console.log('🔵 [AlunosService.create] Validando idade e responsável...');
       const dataNascimento = new Date(dto.data_nascimento);
       const idade = this.calcularIdade(dataNascimento);
-      
+      console.log('🔵 [AlunosService.create] Idade calculada:', idade);
+
       if (idade < 18) {
-        if (!dto.responsavel_nome || !dto.responsavel_cpf || !dto.responsavel_telefone) {
+        console.log(
+          '🔵 [AlunosService.create] Aluno menor de idade, validando responsável...',
+        );
+        if (
+          !dto.responsavel_nome ||
+          !dto.responsavel_cpf ||
+          !dto.responsavel_telefone
+        ) {
+          console.error(
+            '❌ [AlunosService.create] Dados do responsável incompletos para menor de idade',
+          );
           throw new BadRequestException(
             'Para alunos menores de 18 anos é obrigatório informar os dados do responsável',
           );
         }
+        console.log('✅ [AlunosService.create] Dados do responsável OK');
       }
 
-      // 3. Criar aluno na tabela alunos
+      // 3. Preparar dados do aluno
+      console.log('🔵 [AlunosService.create] Preparando dados do aluno...');
       const alunoData: any = {
         ...dto,
         status: dto.status || StatusAluno.ATIVO,
         faixa_atual: dto.faixa_atual || FaixaEnum.BRANCA,
         graus: dto.graus || 0,
-        data_matricula: dto.data_matricula ? new Date(dto.data_matricula) : new Date(),
+        data_matricula: dto.data_matricula
+          ? new Date(dto.data_matricula)
+          : new Date(),
         data_nascimento: new Date(dto.data_nascimento),
-        data_ultima_graduacao: dto.data_ultima_graduacao ? new Date(dto.data_ultima_graduacao) : undefined,
+        data_ultima_graduacao: dto.data_ultima_graduacao
+          ? new Date(dto.data_ultima_graduacao)
+          : undefined,
       };
+      console.log(
+        '🔵 [AlunosService.create] alunoData preparado:',
+        JSON.stringify(alunoData, null, 2),
+      );
 
-      const aluno = this.alunoRepository.create(alunoData);
-      const savedAluno: any = await queryRunner.manager.save(aluno);
+      console.log('🔵 [AlunosService.create] Criando entidade aluno...');
+      const aluno = queryRunner.manager.create(Aluno, alunoData);
+      console.log('🔵 [AlunosService.create] Salvando aluno no banco...');
+      savedAluno = await queryRunner.manager.save(Aluno, aluno);
+      console.log(
+        '✅ [AlunosService.create] Aluno salvo com ID:',
+        savedAluno.id,
+      );
 
       // 4. Buscar a definição da faixa
-      const faixaDef = await this.buscarFaixaDef(dto.faixa_atual || FaixaEnum.BRANCA, idade, queryRunner);
+      console.log(
+        '🔵 [AlunosService.create] Buscando definição da faixa:',
+        dto.faixa_atual || FaixaEnum.BRANCA,
+      );
+      let faixaDef = await this.buscarFaixaDef(
+        dto.faixa_atual || FaixaEnum.BRANCA,
+        idade,
+        queryRunner,
+      );
 
       if (!faixaDef) {
-        throw new BadRequestException('Faixa inválida para a idade do aluno');
+        console.warn(
+          '⚠️ [AlunosService.create] Faixa não encontrada para a idade, permitindo cadastro com faixa solicitada:',
+          idade,
+          'Faixa solicitada:',
+          dto.faixa_atual || FaixaEnum.BRANCA,
+        );
+
+        // Para o complete-profile, vamos permitir qualquer faixa e criar uma definição temporária se necessário
+        const categoria =
+          idade < 16 ? CategoriaFaixa.INFANTIL : CategoriaFaixa.ADULTO;
+        const faixaDefRepository = queryRunner.manager.getRepository(FaixaDef);
+
+        let tempFaixaDef = await faixaDefRepository.findOne({
+          where: {
+            codigo: dto.faixa_atual || FaixaEnum.BRANCA,
+            categoria,
+            ativo: true,
+          },
+        });
+
+        // Se ainda não encontrou, criar uma entrada básica temporária
+        if (!tempFaixaDef) {
+          console.warn(
+            '⚠️ [AlunosService.create] Criando definição de faixa temporária para:',
+            dto.faixa_atual || FaixaEnum.BRANCA,
+          );
+          const novaFaixaDef = faixaDefRepository.create({
+            codigo: dto.faixa_atual || FaixaEnum.BRANCA,
+            nome_exibicao: (dto.faixa_atual || FaixaEnum.BRANCA).replace(
+              '_',
+              ' ',
+            ),
+            categoria,
+            ordem: 1,
+            cor_hex: '#FFFFFF',
+            graus_max: 4,
+            aulas_por_grau: 40,
+            ativo: true,
+          });
+          tempFaixaDef = await faixaDefRepository.save(novaFaixaDef);
+          console.log(
+            '✅ [AlunosService.create] Faixa temporária criada com ID:',
+            tempFaixaDef.id,
+          );
+        }
+
+        // Assign the temporary faixa to the main variable
+        const finalFaixaDef = tempFaixaDef;
+        faixaDef = finalFaixaDef;
       }
+      console.log(
+        '✅ [AlunosService.create] FaixaDef encontrada - ID:',
+        faixaDef.id,
+        'Nome:',
+        faixaDef,
+      );
 
       // 5. Criar registro em aluno_faixa
-      const alunoFaixa = queryRunner.manager.create(AlunoFaixa, {
+      console.log(
+        '🔵 [AlunosService.create] Criando registro em aluno_faixa...',
+      );
+      const alunoFaixaData = {
         aluno_id: savedAluno.id,
         faixa_def_id: faixaDef.id,
         ativa: true,
@@ -157,12 +284,30 @@ export class AlunosService {
         graus_atual: dto.graus || 0,
         presencas_no_ciclo: 0,
         presencas_total_fx: 0,
-      });
+      };
+      console.log(
+        '🔵 [AlunosService.create] Dados aluno_faixa:',
+        JSON.stringify(alunoFaixaData, null, 2),
+      );
 
-      const savedAlunoFaixa = await queryRunner.manager.save(AlunoFaixa, alunoFaixa);
+      const alunoFaixa = queryRunner.manager.create(AlunoFaixa, alunoFaixaData);
+      console.log('🔵 [AlunosService.create] Salvando aluno_faixa...');
+      const savedAlunoFaixa = await queryRunner.manager.save(
+        AlunoFaixa,
+        alunoFaixa,
+      );
+      console.log(
+        '✅ [AlunosService.create] aluno_faixa salvo com ID:',
+        savedAlunoFaixa.id,
+      );
 
       // 6. Criar registros de graus em aluno_faixa_grau (se houver graus)
       if (dto.graus && dto.graus > 0) {
+        console.log(
+          '🔵 [AlunosService.create] Criando',
+          dto.graus,
+          'grau(s)...',
+        );
         for (let i = 1; i <= dto.graus; i++) {
           const grau = queryRunner.manager.create(AlunoFaixaGrau, {
             aluno_faixa_id: savedAlunoFaixa.id,
@@ -173,18 +318,45 @@ export class AlunosService {
           });
 
           await queryRunner.manager.save(AlunoFaixaGrau, grau);
+          console.log('✅ [AlunosService.create] Grau', i, 'salvo');
         }
+      } else {
+        console.log('🔵 [AlunosService.create] Nenhum grau para criar');
       }
 
+      console.log('🔵 [AlunosService.create] Commitando transação...');
       await queryRunner.commitTransaction();
-
-      // Retornar aluno com relações
-      return this.findById(savedAluno.id);
+      console.log('✅ [AlunosService.create] Transação commitada com sucesso!');
     } catch (error) {
+      console.error('❌ [AlunosService.create] ERRO durante criação do aluno!');
+      console.error(
+        '❌ [AlunosService.create] Tipo do erro:',
+        error.constructor.name,
+      );
+      console.error('❌ [AlunosService.create] Mensagem:', error.message);
+      console.error('❌ [AlunosService.create] Stack:', error.stack);
       await queryRunner.rollbackTransaction();
+      console.log('🔴 [AlunosService.create] Transação revertida (rollback)');
       throw error;
     } finally {
       await queryRunner.release();
+    }
+
+    // Retornar aluno com relações (fora da transação)
+    try {
+      console.log(
+        '🔵 [AlunosService.create] Buscando aluno completo com relações...',
+      );
+      const alunoCompleto = await this.findById(savedAluno.id);
+      console.log('✅ [AlunosService.create] ALUNO CRIADO COM SUCESSO!');
+      return alunoCompleto;
+    } catch (findError) {
+      console.error(
+        '❌ [AlunosService.create] ERRO ao buscar aluno criado:',
+        findError.message,
+      );
+      // Se der erro no findById, retornar pelo menos o aluno básico
+      return savedAluno;
     }
   }
 
@@ -206,11 +378,12 @@ export class AlunosService {
     if (dto.data_nascimento) {
       const dataNascimento = new Date(dto.data_nascimento);
       const idade = this.calcularIdade(dataNascimento);
-      
+
       if (idade < 18) {
         const responsavelNome = dto.responsavel_nome || aluno.responsavel_nome;
         const responsavelCpf = dto.responsavel_cpf || aluno.responsavel_cpf;
-        const responsavelTelefone = dto.responsavel_telefone || aluno.responsavel_telefone;
+        const responsavelTelefone =
+          dto.responsavel_telefone || aluno.responsavel_telefone;
 
         if (!responsavelNome || !responsavelCpf || !responsavelTelefone) {
           throw new BadRequestException(
@@ -223,9 +396,15 @@ export class AlunosService {
     // Atualizar os dados
     Object.assign(aluno, {
       ...dto,
-      data_nascimento: dto.data_nascimento ? new Date(dto.data_nascimento) : aluno.data_nascimento,
-      data_matricula: dto.data_matricula ? new Date(dto.data_matricula) : aluno.data_matricula,
-      data_ultima_graduacao: dto.data_ultima_graduacao ? new Date(dto.data_ultima_graduacao) : aluno.data_ultima_graduacao,
+      data_nascimento: dto.data_nascimento
+        ? new Date(dto.data_nascimento)
+        : aluno.data_nascimento,
+      data_matricula: dto.data_matricula
+        ? new Date(dto.data_matricula)
+        : aluno.data_matricula,
+      data_ultima_graduacao: dto.data_ultima_graduacao
+        ? new Date(dto.data_ultima_graduacao)
+        : aluno.data_ultima_graduacao,
     });
 
     await this.alunoRepository.save(aluno);
@@ -246,7 +425,7 @@ export class AlunosService {
     idade: number,
     queryRunner?: any,
   ): Promise<FaixaDef | null> {
-    const repository = queryRunner 
+    const repository = queryRunner
       ? queryRunner.manager.getRepository(FaixaDef)
       : this.faixaDefRepository;
 
@@ -313,5 +492,103 @@ export class AlunosService {
       where: { numero_matricula },
       relations: ['unidade', 'faixas'],
     });
+  }
+
+  /**
+   * Busca alunos por nome (para autocomplete)
+   */
+  async buscarPorNome(
+    nome: string,
+  ): Promise<Array<{ id: string; nome_completo: string; cpf?: string }>> {
+    if (!nome || nome.length < 2) {
+      return [];
+    }
+
+    const alunos = await this.alunoRepository.find({
+      where: {
+        nome_completo: ILike(`%${nome}%`),
+      },
+      select: ['id', 'nome_completo', 'cpf'],
+      take: 10,
+      order: {
+        nome_completo: 'ASC',
+      },
+    });
+
+    return alunos.map((aluno) => ({
+      id: aluno.id,
+      nome_completo: aluno.nome_completo,
+      cpf: aluno.cpf,
+    }));
+  }
+
+  /**
+   * Obter estatísticas de alunos por filtros
+   */
+  async getStats(params: { search?: string; unidade_id?: string }) {
+    const baseQuery = this.alunoRepository.createQueryBuilder('aluno');
+
+    // Aplicar filtros básicos se fornecidos
+    if (params.search) {
+      baseQuery.andWhere(
+        '(LOWER(aluno.nome_completo) LIKE :search OR aluno.cpf LIKE :search OR aluno.numero_matricula LIKE :search)',
+        { search: `%${params.search.toLowerCase()}%` },
+      );
+    }
+
+    if (params.unidade_id) {
+      baseQuery.andWhere('aluno.unidade_id = :unidade', {
+        unidade: params.unidade_id,
+      });
+    }
+
+    // Contadores por status
+    const totalAtivos = await baseQuery
+      .clone()
+      .andWhere('aluno.status = :status', { status: StatusAluno.ATIVO })
+      .getCount();
+
+    const totalInativos = await baseQuery
+      .clone()
+      .andWhere('aluno.status = :status', { status: StatusAluno.INATIVO })
+      .getCount();
+
+    const totalSuspensos = await baseQuery
+      .clone()
+      .andWhere('aluno.status = :status', { status: StatusAluno.SUSPENSO })
+      .getCount();
+
+    const totalCancelados = await baseQuery
+      .clone()
+      .andWhere('aluno.status = :status', { status: StatusAluno.CANCELADO })
+      .getCount();
+
+    // Contadores por faixa (apenas alunos ativos)
+    const faixaStats = await this.alunoRepository
+      .createQueryBuilder('aluno')
+      .select('aluno.faixa_atual', 'faixa')
+      .addSelect('COUNT(*)', 'count')
+      .where('aluno.status = :status', { status: StatusAluno.ATIVO })
+      .groupBy('aluno.faixa_atual')
+      .getRawMany();
+
+    const faixaCounts = faixaStats.reduce((acc, item) => {
+      acc[item.faixa] = parseInt(item.count);
+      return acc;
+    }, {});
+
+    // Total geral
+    const total = await baseQuery.getCount();
+
+    return {
+      total,
+      porStatus: {
+        ativos: totalAtivos,
+        inativos: totalInativos,
+        suspensos: totalSuspensos,
+        cancelados: totalCancelados,
+      },
+      porFaixa: faixaCounts,
+    };
   }
 }

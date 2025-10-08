@@ -33,6 +33,10 @@ export class CreateUsuarioDto {
   ativo?: boolean;
 
   @IsOptional()
+  @IsBoolean()
+  cadastro_completo?: boolean;
+
+  @IsOptional()
   @IsArray()
   @IsUUID(4, { each: true })
   perfil_ids?: string[];

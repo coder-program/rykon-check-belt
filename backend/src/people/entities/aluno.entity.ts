@@ -100,6 +100,9 @@ export class Aluno {
   @Column({ type: 'date', default: () => 'CURRENT_DATE' })
   data_matricula: Date;
 
+  @Column({ type: 'uuid', nullable: true })
+  usuario_id: string;
+
   @Column({ type: 'uuid' })
   unidade_id: string;
 
@@ -134,6 +137,15 @@ export class Aluno {
   @Column({ type: 'text', nullable: true })
   medicamentos_uso_continuo: string;
 
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  plano_saude: string;
+
+  @Column({ type: 'date', nullable: true })
+  atestado_medico_validade: Date;
+
+  @Column({ type: 'text', nullable: true })
+  restricoes_medicas: string;
+
   // ===== RESPONSÁVEL (para menores) =====
   @Column({ type: 'varchar', length: 255, nullable: true })
   responsavel_nome: string;
@@ -156,6 +168,16 @@ export class Aluno {
 
   @Column({ type: 'decimal', precision: 5, scale: 2, default: 0 })
   desconto_percentual: number;
+
+  // ===== CONSENTIMENTOS LGPD =====
+  @Column({ type: 'boolean', default: false, nullable: true })
+  consent_lgpd: boolean;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  consent_lgpd_date: Date;
+
+  @Column({ type: 'boolean', default: false, nullable: true })
+  consent_imagem: boolean;
 
   // ===== METADADOS =====
   @Column({ type: 'text', nullable: true })

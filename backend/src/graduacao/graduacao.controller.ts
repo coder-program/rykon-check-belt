@@ -30,7 +30,9 @@ import { FaixaDef } from './entities/faixa-def.entity';
 // @UseGuards(JwtAuthGuard) // Descomentar quando auth estiver configurado
 // @ApiBearerAuth()
 export class GraduacaoController {
-  constructor(private readonly graduacaoService: GraduacaoService) {}
+  constructor(private readonly graduacaoService: GraduacaoService) {
+    console.log('🚀 GraduacaoController inicializado!');
+  }
 
   @Get('faixas')
   @ApiOperation({ summary: 'Lista todas as faixas disponíveis' })
@@ -58,7 +60,10 @@ export class GraduacaoController {
   @Post('graduar/:alunoId')
   @ApiOperation({ summary: 'Gradua um aluno para a próxima faixa' })
   @ApiResponse({ status: 200, description: 'Aluno graduado com sucesso' })
-  @ApiResponse({ status: 400, description: 'Aluno não está pronto para graduação' })
+  @ApiResponse({
+    status: 400,
+    description: 'Aluno não está pronto para graduação',
+  })
   async graduarAluno(
     @Param('alunoId', ParseUUIDPipe) alunoId: string,
     @Body() dto?: { observacao?: string },
@@ -81,8 +86,12 @@ export class GraduacaoController {
   @ApiResponse({ status: 200, type: StatusGraduacaoDto })
   @ApiResponse({ status: 404, description: 'Aluno não encontrado' })
   async getStatusGraduacao(
-    @Param('alunoId', ParseUUIDPipe) alunoId: string,
+    @Param('alunoId') alunoId: string,
   ): Promise<StatusGraduacaoDto> {
+    console.log(
+      '🎯 [Controller] getStatusGraduacao chamado para alunoId:',
+      alunoId,
+    );
     return await this.graduacaoService.getStatusGraduacao(alunoId);
   }
 

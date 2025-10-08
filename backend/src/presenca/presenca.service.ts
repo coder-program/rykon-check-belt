@@ -5,14 +5,25 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between, MoreThan, Like, DataSource, In } from 'typeorm';
-// import { format, startOfMonth, endOfMonth, parseISO, startOfDay, endOfDay } from 'date-fns';
+import {
+  Repository,
+  Between,
+  MoreThan,
+  Like,
+  DataSource,
+  In,
+  IsNull,
+  Not,
+} from 'typeorm';
 import {
   Presenca,
   PresencaMetodo,
   PresencaStatus,
 } from './entities/presenca.entity';
+import { Aula } from './entities/aula.entity';
 import { Person, TipoCadastro } from '../people/entities/person.entity';
+import { Aluno } from '../people/entities/aluno.entity';
+import { AlunoFaixa } from '../graduacao/entities/aluno-faixa.entity';
 import { Unidade } from '../people/entities/unidade.entity';
 import { GraduacaoService } from '../graduacao/graduacao.service';
 
@@ -40,46 +51,127 @@ export class PresencaService {
     private readonly personRepository: Repository<Person>,
     @InjectRepository(Presenca)
     private readonly presencaRepository: Repository<Presenca>,
+    @InjectRepository(Aula)
+    private readonly aulaRepository: Repository<Aula>,
+    @InjectRepository(Aluno)
+    private readonly alunoRepository: Repository<Aluno>,
+    @InjectRepository(AlunoFaixa)
+    private readonly alunoFaixaRepository: Repository<AlunoFaixa>,
     private readonly graduacaoService: GraduacaoService,
   ) {}
 
   async getAulaAtiva(user: any): Promise<AulaAtiva | null> {
-    // Por enquanto, simular uma aula ativa baseada no horário atual
+    console.log('🔵 [getAulaAtiva] Buscando aula ativa...');
+
     const agora = new Date();
-    const hora = agora.getHours();
+    const diaHoje = agora.getDay();
+    const horaAgora = agora.toTimeString().slice(0, 5); // HH:MM
 
-    // Definir aulas por horário (mockado por enquanto)
-    let aulaAtiva: AulaAtiva | null = null;
+    console.log(
+      '🔵 [getAulaAtiva] Dia da semana:',
+      diaHoje,
+      'Hora:',
+      horaAgora,
+    );
 
-    if (hora >= 7 && hora < 9) {
-      aulaAtiva = {
-        id: 'aula-manha-1',
-        nome: 'Jiu-Jitsu Gi - Adultos Manhã',
-        professor: 'Carlos Silva',
-        unidade: 'TeamCruz Vila Madalena',
-        horarioInicio: '07:00',
-        horarioFim: '08:30',
-        qrCode: `QR-AULA-${Date.now()}`,
-      };
-    } else if (hora >= 18 && hora < 20) {
-      aulaAtiva = {
-        id: 'aula-noite-1',
-        nome: 'Jiu-Jitsu Gi - Adultos Noite',
-        professor: 'Ana Santos',
-        unidade: 'TeamCruz Vila Madalena',
-        horarioInicio: '19:00',
-        horarioFim: '20:30',
-        qrCode: `QR-AULA-${Date.now()}`,
-      };
+    // Buscar aulas ativas no banco
+    const aulas = await this.aulaRepository.find({
+      where: {
+        dia_semana: diaHoje,
+        ativo: true,
+      },
+      relations: ['unidade', 'professor'],
+    });
+
+    console.log('🔵 [getAulaAtiva] Aulas encontradas para hoje:', aulas.length);
+
+    if (aulas.length > 0) {
+      console.log('🔵 [getAulaAtiva] Detalhes das aulas encontradas:');
+      aulas.forEach((aula, index) => {
+        console.log(
+          `  Aula ${index + 1}: ${aula.nome} - Ativo: ${aula.ativo} - Data início: ${aula.data_hora_inicio} - Data fim: ${aula.data_hora_fim}`,
+        );
+      });
     }
 
-    return aulaAtiva;
+    // Filtrar aulas que estão acontecendo agora
+    for (const aula of aulas) {
+      console.log(
+        `🔵 [getAulaAtiva] Verificando se aula "${aula.nome}" está ativa...`,
+      );
+      if (aula.estaAtiva()) {
+        console.log('✅ [getAulaAtiva] Aula ativa encontrada:', aula.nome);
+
+        // Gerar QR Code se ainda não tiver ou se for antigo (mais de 1 hora)
+        const precisaNovoQR =
+          !aula.qr_code ||
+          !aula.qr_code_gerado_em ||
+          Date.now() - aula.qr_code_gerado_em.getTime() > 3600000;
+
+        if (precisaNovoQR) {
+          aula.qr_code = aula.gerarQRCode();
+          aula.qr_code_gerado_em = new Date();
+          await this.aulaRepository.save(aula);
+          console.log('🔵 [getAulaAtiva] QR Code gerado:', aula.qr_code);
+        }
+
+        return {
+          id: aula.id,
+          nome: aula.nome,
+          professor: aula.professor?.nome_completo || 'Professor',
+          unidade: aula.unidade?.nome || 'Unidade',
+          horarioInicio: aula.hora_inicio,
+          horarioFim: aula.hora_fim,
+          qrCode: aula.qr_code,
+        };
+      }
+    }
+
+    console.log('⚠️ [getAulaAtiva] Nenhuma aula ativa no momento');
+    return null;
   }
 
   async checkInQR(qrCode: string, user: any) {
+    console.log('🔵 [checkInQR] Iniciando check-in por QR Code');
+    console.log('🔵 [checkInQR] QR Code:', qrCode);
+    console.log('🔵 [checkInQR] User ID:', user.id);
+
     // Validar QR Code
     if (!qrCode || !qrCode.startsWith('QR-AULA-')) {
       throw new BadRequestException('QR Code inválido');
+    }
+
+    // Extrair aula_id do QR Code
+    const qrParts = qrCode.split('-');
+    const aulaId = qrParts.length >= 3 ? qrParts[2] : null;
+
+    if (!aulaId) {
+      throw new BadRequestException('QR Code inválido - não contém ID da aula');
+    }
+
+    // Verificar se a aula existe e está ativa
+    const aula = await this.aulaRepository.findOne({
+      where: { id: aulaId },
+      relations: ['unidade'],
+    });
+
+    if (!aula) {
+      throw new NotFoundException('Aula não encontrada');
+    }
+
+    if (!aula.estaAtiva()) {
+      throw new BadRequestException(
+        'Esta aula não está disponível para check-in no momento',
+      );
+    }
+
+    // Buscar aluno
+    const aluno = await this.alunoRepository.findOne({
+      where: { usuario_id: user.id },
+    });
+
+    if (!aluno) {
+      throw new NotFoundException('Aluno não encontrado');
     }
 
     // Verificar se já fez check-in hoje
@@ -90,8 +182,8 @@ export class PresencaService {
 
     const presencaHoje = await this.presencaRepository.findOne({
       where: {
-        pessoaId: user.id,
-        dataPresenca: Between(hoje, amanha),
+        aluno_id: aluno.id,
+        created_at: Between(hoje, amanha),
       },
     });
 
@@ -101,21 +193,41 @@ export class PresencaService {
 
     // Registrar presença
     const presenca = this.presencaRepository.create({
-      pessoaId: user.id,
-      dataPresenca: new Date(),
-      metodoCheckin: PresencaMetodo.QR_CODE,
+      aluno_id: aluno.id,
+      aula_id: aula.id,
+      status: PresencaStatus.PRESENTE,
+      modo_registro: PresencaMetodo.QR_CODE,
+      hora_checkin: new Date(),
       observacoes: `QR Code: ${qrCode}`,
+      created_by: user.id,
     });
 
     const presencaSalva = await this.presencaRepository.save(presenca);
+    console.log('✅ [checkInQR] Presença registrada:', presencaSalva.id);
 
-    // Incrementar contador de graduação se for aluno
-    if (user.perfis?.includes('aluno')) {
-      try {
-        await this.graduacaoService.incrementarPresenca(user.id);
-      } catch (error) {
-        console.log('Erro ao incrementar graduação:', error.message);
+    // Incrementar contador de graduação - buscar aluno_faixa ativa
+    try {
+      const alunoFaixaAtiva = await this.alunoFaixaRepository.findOne({
+        where: {
+          aluno_id: aluno.id,
+          ativa: true,
+        },
+      });
+
+      if (alunoFaixaAtiva) {
+        alunoFaixaAtiva.presencas_no_ciclo += 1;
+        alunoFaixaAtiva.presencas_total_fx += 1;
+        await this.alunoFaixaRepository.save(alunoFaixaAtiva);
+        console.log(
+          '✅ [checkInQR] Presenças incrementadas:',
+          alunoFaixaAtiva.presencas_no_ciclo,
+        );
       }
+    } catch (error) {
+      console.error(
+        '❌ [checkInQR] Erro ao incrementar graduação:',
+        error.message,
+      );
     }
 
     return {
@@ -126,6 +238,26 @@ export class PresencaService {
   }
 
   async checkInManual(aulaId: string, user: any) {
+    console.log('🔵 [checkInManual] Iniciando check-in manual');
+
+    // Buscar aluno
+    const aluno = await this.alunoRepository.findOne({
+      where: { usuario_id: user.id },
+    });
+
+    if (!aluno) {
+      throw new NotFoundException('Aluno não encontrado');
+    }
+
+    // Buscar aula
+    const aula = await this.aulaRepository.findOne({
+      where: { id: aulaId },
+    });
+
+    if (!aula) {
+      throw new NotFoundException('Aula não encontrada');
+    }
+
     // Verificar se já fez check-in hoje
     const hoje = new Date();
     hoje.setHours(0, 0, 0, 0);
@@ -134,8 +266,8 @@ export class PresencaService {
 
     const presencaHoje = await this.presencaRepository.findOne({
       where: {
-        pessoaId: user.id,
-        dataPresenca: Between(hoje, amanha),
+        aluno_id: aluno.id,
+        created_at: Between(hoje, amanha),
       },
     });
 
@@ -145,21 +277,37 @@ export class PresencaService {
 
     // Registrar presença manual
     const presenca = this.presencaRepository.create({
-      pessoaId: user.id,
-      dataPresenca: new Date(),
-      metodoCheckin: PresencaMetodo.MANUAL,
-      observacoes: `Aula ID: ${aulaId}`,
+      aluno_id: aluno.id,
+      aula_id: aula.id,
+      status: PresencaStatus.PRESENTE,
+      modo_registro: PresencaMetodo.MANUAL,
+      hora_checkin: new Date(),
+      observacoes: `Check-in manual - Aula: ${aula.nome}`,
+      created_by: user.id,
     });
 
     const presencaSalva = await this.presencaRepository.save(presenca);
+    console.log('✅ [checkInManual] Presença registrada:', presencaSalva.id);
 
-    // Incrementar contador de graduação se for aluno
-    if (user.perfis?.includes('aluno')) {
-      try {
-        await this.graduacaoService.incrementarPresenca(user.id);
-      } catch (error) {
-        console.log('Erro ao incrementar graduação:', error.message);
+    // Incrementar contador de graduação
+    try {
+      const alunoFaixaAtiva = await this.alunoFaixaRepository.findOne({
+        where: {
+          aluno_id: aluno.id,
+          ativa: true,
+        },
+      });
+
+      if (alunoFaixaAtiva) {
+        alunoFaixaAtiva.presencas_no_ciclo += 1;
+        alunoFaixaAtiva.presencas_total_fx += 1;
+        await this.alunoFaixaRepository.save(alunoFaixaAtiva);
       }
+    } catch (error) {
+      console.error(
+        '❌ [checkInManual] Erro ao incrementar graduação:',
+        error.message,
+      );
     }
 
     return {
@@ -170,6 +318,20 @@ export class PresencaService {
   }
 
   async getMinhasEstatisticas(user: any): Promise<EstatisticasPresenca> {
+    // Buscar aluno pelo usuario_id
+    const aluno = await this.alunoRepository.findOne({
+      where: { usuario_id: user.id },
+    });
+
+    if (!aluno) {
+      return {
+        presencaMensal: 0,
+        aulasMes: 0,
+        sequenciaAtual: 0,
+        ultimaPresenca: null,
+      };
+    }
+
     const agora = new Date();
     const inicioMes = new Date(agora.getFullYear(), agora.getMonth(), 1);
     const fimMes = new Date(agora.getFullYear(), agora.getMonth() + 1, 0);
@@ -177,8 +339,8 @@ export class PresencaService {
     // Presenças do mês atual
     const presencasMes = await this.presencaRepository.count({
       where: {
-        pessoaId: user.id,
-        dataPresenca: Between(inicioMes, fimMes),
+        aluno_id: aluno.id,
+        created_at: Between(inicioMes, fimMes),
       },
     });
 
@@ -188,48 +350,69 @@ export class PresencaService {
 
     // Última presença
     const ultimaPresenca = await this.presencaRepository.findOne({
-      where: { pessoaId: user.id },
-      order: { dataPresenca: 'DESC' },
+      where: { aluno_id: aluno.id },
+      order: { created_at: 'DESC' },
     });
 
     // Sequência atual (simplificado)
-    const sequenciaAtual = await this.calcularSequenciaAtual(user.id);
+    const sequenciaAtual = await this.calcularSequenciaAtual(aluno.id);
 
     return {
       presencaMensal: Math.min(presencaMensal, 100),
       aulasMes: presencasMes,
       sequenciaAtual,
-      ultimaPresenca: ultimaPresenca?.dataPresenca.toISOString() || null,
+      ultimaPresenca: ultimaPresenca?.created_at.toISOString() || null,
     };
   }
 
   async getMinhaHistorico(user: any, limit: number = 10) {
+    // Buscar aluno pelo usuario_id
+    const aluno = await this.alunoRepository.findOne({
+      where: { usuario_id: user.id },
+    });
+
+    if (!aluno) {
+      return [];
+    }
+
     const presencas = await this.presencaRepository.find({
-      where: { pessoaId: user.id },
-      order: { dataPresenca: 'DESC' },
+      where: { aluno_id: aluno.id },
+      order: { created_at: 'DESC' },
       take: limit,
     });
 
-    return presencas.map((p) => ({
-      id: p.id,
-      data: p.dataPresenca,
-      horario: p.horaCheckin.toTimeString().slice(0, 5),
-      tipo: 'entrada',
-      aula: {
-        nome: 'Jiu-Jitsu Gi',
-        professor: 'Professor',
-        unidade: 'TeamCruz Vila Madalena',
-      },
-    }));
+    // Buscar informações das aulas para cada presença
+    const presencasComAulas = await Promise.all(
+      presencas.map(async (p) => {
+        const aula = await this.aulaRepository.findOne({
+          where: { id: p.aula_id },
+          relations: ['unidade', 'professor'],
+        });
+
+        return {
+          id: p.id,
+          data: p.created_at,
+          horario: p.hora_checkin.toTimeString().slice(0, 5),
+          tipo: 'entrada',
+          aula: {
+            nome: aula?.nome || 'Aula não encontrada',
+            professor: aula?.professor?.nome_completo || 'Professor',
+            unidade: aula?.unidade?.nome || 'Unidade',
+          },
+        };
+      }),
+    );
+
+    return presencasComAulas;
   }
 
   async checkInCPF(cpf: string, aulaId: string, adminUser: any) {
-    // Buscar aluno pelo CPF
-    const aluno = await this.personRepository.findOne({
-      where: {
-        cpf: cpf.replace(/\D/g, ''),
-        tipo_cadastro: TipoCadastro.ALUNO,
-      },
+    // Buscar aluno pelo CPF na tabela alunos - tentar com e sem formatação
+    const cpfSemFormatacao = cpf.replace(/\D/g, '');
+    const cpfComFormatacao = cpf;
+
+    const aluno = await this.alunoRepository.findOne({
+      where: [{ cpf: cpfSemFormatacao }, { cpf: cpfComFormatacao }],
     });
 
     if (!aluno) {
@@ -240,11 +423,10 @@ export class PresencaService {
   }
 
   async checkInNome(nome: string, aulaId: string, adminUser: any) {
-    // Buscar aluno pelo nome
-    const aluno = await this.personRepository.findOne({
+    // Buscar aluno pelo nome na tabela alunos
+    const aluno = await this.alunoRepository.findOne({
       where: {
         nome_completo: nome,
-        tipo_cadastro: TipoCadastro.ALUNO,
       },
     });
 
@@ -269,8 +451,8 @@ export class PresencaService {
 
     const presencaHoje = await this.presencaRepository.findOne({
       where: {
-        pessoaId: alunoId,
-        dataPresenca: Between(hoje, amanha),
+        aluno_id: alunoId,
+        created_at: Between(hoje, amanha),
       },
     });
 
@@ -280,10 +462,13 @@ export class PresencaService {
 
     // Registrar presença
     const presenca = this.presencaRepository.create({
-      pessoaId: alunoId,
-      dataPresenca: new Date(),
-      metodoCheckin: metodo as PresencaMetodo,
-      observacoes: `Registrado por: ${adminUser.id}, Aula: ${aulaId}`,
+      aluno_id: alunoId,
+      aula_id: aulaId,
+      status: PresencaStatus.PRESENTE,
+      modo_registro: metodo as PresencaMetodo,
+      hora_checkin: new Date(),
+      observacoes: `Registrado por: ${adminUser.id}`,
+      created_by: adminUser.id,
     });
 
     const presencaSalva = await this.presencaRepository.save(presenca);
@@ -326,30 +511,30 @@ export class PresencaService {
 
     const totalPresencas = await this.presencaRepository.count({
       where: {
-        dataPresenca: Between(dataInicio, dataFim),
+        created_at: Between(dataInicio, dataFim),
       },
     });
 
     const presencasPorMetodo = await this.presencaRepository
       .createQueryBuilder('presenca')
-      .select('presenca.metodoCheckin', 'metodo')
+      .select('presenca.modo_registro', 'metodo')
       .addSelect('COUNT(*)', 'count')
-      .where('presenca.dataPresenca BETWEEN :inicio AND :fim', {
+      .where('presenca.created_at BETWEEN :inicio AND :fim', {
         inicio: dataInicio,
         fim: dataFim,
       })
-      .groupBy('presenca.metodoCheckin')
+      .groupBy('presenca.modo_registro')
       .getRawMany();
 
     const presencasPorHora = await this.presencaRepository
       .createQueryBuilder('presenca')
-      .select('EXTRACT(HOUR FROM presenca.horaCheckin)', 'hora')
+      .select('EXTRACT(HOUR FROM presenca.hora_checkin)', 'hora')
       .addSelect('COUNT(*)', 'count')
-      .where('presenca.dataPresenca BETWEEN :inicio AND :fim', {
+      .where('presenca.created_at BETWEEN :inicio AND :fim', {
         inicio: dataInicio,
         fim: dataFim,
       })
-      .groupBy('EXTRACT(HOUR FROM presenca.horaCheckin)')
+      .groupBy('EXTRACT(HOUR FROM presenca.hora_checkin)')
       .orderBy('hora')
       .getRawMany();
 
@@ -405,12 +590,12 @@ export class PresencaService {
       total: presencas.length,
       presencas: presencas.map((p) => ({
         id: p.id,
-        data: p.dataPresenca,
+        data: p.created_at,
         aluno: {
-          id: p.pessoaId,
-          nome: p.pessoa?.nome_completo || 'Nome não encontrado',
+          id: p.aluno_id,
+          nome: 'Nome não encontrado', // Remover relação pessoa por enquanto
         },
-        metodo: p.metodoCheckin || PresencaMetodo.MANUAL,
+        metodo: p.modo_registro || PresencaMetodo.MANUAL,
         detalhes: p.observacoes || '',
       })),
     };
@@ -482,8 +667,8 @@ export class PresencaService {
 
     const presencaHoje = await this.presencaRepository.findOne({
       where: {
-        pessoaId: user.id,
-        dataPresenca: Between(hoje, amanha),
+        aluno_id: user.id,
+        created_at: Between(hoje, amanha),
       },
     });
 
@@ -499,15 +684,14 @@ export class PresencaService {
 
     // Registrar presença facial
     const presenca = this.presencaRepository.create({
-      pessoaId: user.id,
-      dataPresenca: new Date(),
-      metodoCheckin: PresencaMetodo.FACIAL,
+      aluno_id: user.id,
+      aula_id: aulaId,
+      status: PresencaStatus.PRESENTE,
+      modo_registro: PresencaMetodo.FACIAL,
+      hora_checkin: new Date(),
       observacoes: 'Check-in via reconhecimento facial',
-      fotoCheckin: foto.substring(0, 500), // Salvar parte da foto
-      dispositivoInfo: {
-        metodo: 'facial_recognition',
-        timestamp: new Date().toISOString(),
-      },
+      created_by: user.id,
+      peso_presenca: 1.0,
     });
 
     const presencaSalva = await this.presencaRepository.save(presenca);
@@ -554,8 +738,8 @@ export class PresencaService {
 
     const presencaHoje = await this.presencaRepository.findOne({
       where: {
-        pessoaId: alunoId,
-        dataPresenca: Between(hoje, amanha),
+        aluno_id: alunoId,
+        created_at: Between(hoje, amanha),
       },
     });
 
@@ -565,11 +749,13 @@ export class PresencaService {
 
     // Registrar presença pelo responsável
     const presenca = this.presencaRepository.create({
-      pessoaId: alunoId,
-      dataPresenca: new Date(),
-      metodoCheckin: PresencaMetodo.RESPONSAVEL,
-      responsavelCheckinId: responsavelUser.id,
+      aluno_id: alunoId,
+      aula_id: aulaId,
+      status: PresencaStatus.PRESENTE,
+      modo_registro: PresencaMetodo.RESPONSAVEL,
+      hora_checkin: new Date(),
       observacoes: `Check-in realizado pelo responsável: ${responsavelUser.name || responsavelUser.email}`,
+      created_by: responsavelUser.id,
     });
 
     const presencaSalva = await this.presencaRepository.save(presenca);
@@ -609,12 +795,12 @@ export class PresencaService {
 
     const presencasHoje = await this.presencaRepository.find({
       where: {
-        pessoaId: In(alunos.map((a) => a.id)),
-        dataPresenca: Between(hoje, amanha),
+        aluno_id: In(alunos.map((a) => a.id)),
+        created_at: Between(hoje, amanha),
       },
     });
 
-    const idsComPresenca = new Set(presencasHoje.map((p) => p.pessoaId));
+    const idsComPresenca = new Set(presencasHoje.map((p) => p.aluno_id));
 
     return alunos.map((aluno) => ({
       id: aluno.id,
@@ -631,10 +817,10 @@ export class PresencaService {
 
     const presencas = await this.presencaRepository.find({
       where: {
-        pessoaId,
-        dataPresenca: Between(trintaDiasAtras, new Date()),
+        aluno_id: pessoaId,
+        created_at: Between(trintaDiasAtras, new Date()),
       },
-      order: { dataPresenca: 'DESC' },
+      order: { created_at: 'DESC' },
     });
 
     if (presencas.length === 0) return 0;
@@ -645,7 +831,7 @@ export class PresencaService {
     dataAtual.setHours(0, 0, 0, 0);
 
     for (const presenca of presencas) {
-      const dataPresenca = new Date(presenca.dataPresenca);
+      const dataPresenca = new Date(presenca.created_at);
       dataPresenca.setHours(0, 0, 0, 0);
 
       if (dataPresenca.getTime() === dataAtual.getTime()) {

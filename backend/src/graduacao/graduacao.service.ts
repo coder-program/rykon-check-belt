@@ -10,6 +10,7 @@ import { AlunoFaixa } from './entities/aluno-faixa.entity';
 import { AlunoFaixaGrau, OrigemGrau } from './entities/aluno-faixa-grau.entity';
 import { AlunoGraduacao } from './entities/aluno-graduacao.entity';
 import { Person, TipoCadastro } from '../people/entities/person.entity';
+import { Aluno } from '../people/entities/aluno.entity';
 import { StatusGraduacaoDto } from './dto/status-graduacao.dto';
 import {
   ProximoGraduarDto,
@@ -34,6 +35,8 @@ export class GraduacaoService {
     private alunoGraduacaoRepository: Repository<AlunoGraduacao>,
     @InjectRepository(Person)
     private personRepository: Repository<Person>,
+    @InjectRepository(Aluno)
+    private alunoRepository: Repository<Aluno>,
     private dataSource: DataSource,
   ) {}
 
@@ -56,15 +59,40 @@ export class GraduacaoService {
    * Obtém o status de graduação do aluno
    */
   async getStatusGraduacao(alunoId: string): Promise<StatusGraduacaoDto> {
-    const aluno = await this.personRepository.findOne({
-      where: { id: alunoId, tipo_cadastro: TipoCadastro.ALUNO },
+    console.log(
+      '🥋 [getStatusGraduacao] Buscando status de graus para aluno (usuario_id):',
+      alunoId,
+    );
+
+    // Buscar aluno pelo usuario_id (que é o que vem no JWT)
+    const aluno = await this.alunoRepository.findOne({
+      where: { usuario_id: alunoId },
     });
 
     if (!aluno) {
+      console.log(
+        '❌ [getStatusGraduacao] Aluno não encontrado com usuario_id:',
+        alunoId,
+      );
       throw new NotFoundException('Aluno não encontrado');
     }
 
-    const faixaAtiva = await this.getFaixaAtivaAluno(alunoId);
+    console.log(
+      '👤 [getStatusGraduacao] Aluno encontrado:',
+      aluno.nome_completo,
+      'Faixa atual:',
+      aluno.faixa_atual,
+      'Graus:',
+      aluno.graus,
+    );
+
+    const faixaAtiva = await this.getFaixaAtivaAluno(aluno.id);
+    console.log(
+      '🎯 [getStatusGraduacao] Faixa ativa encontrada:',
+      faixaAtiva
+        ? `${faixaAtiva.faixaDef?.nome_exibicao} (${faixaAtiva.graus_atual} graus)`
+        : 'Nenhuma',
+    );
 
     if (!faixaAtiva) {
       // Se não tem faixa ativa, criar uma baseada na faixa_atual do aluno
@@ -74,9 +102,9 @@ export class GraduacaoService {
         });
 
         if (faixaDef) {
-          await this.criarFaixaAluno(alunoId, {
+          await this.criarFaixaAluno(aluno.id, {
             faixaDefId: faixaDef.id,
-            grausInicial: aluno.grau_atual || 0,
+            grausInicial: aluno.graus || 0,
           });
 
           return this.getStatusGraduacao(alunoId); // Recursão para buscar novamente
@@ -87,17 +115,25 @@ export class GraduacaoService {
     }
 
     const faltamAulas = faixaAtiva.getAulasFaltantes();
-    const prontoParaGraduar = faixaAtiva.isProntoParaGraduar();
-    const progressoPercentual =
-      faixaAtiva.faixaDef.aulas_por_grau > 0
-        ? Math.min(
-            1,
-            faixaAtiva.presencas_no_ciclo / faixaAtiva.faixaDef.aulas_por_grau,
-          )
-        : 0;
+    const progresso = faixaAtiva.getProgressoGraduacao();
+    const prontoParaProximoGrau = faixaAtiva.podeReceberGrau();
+
+    // Progresso baseado no que estiver mais próximo de completar
+    const progressoPercentual = Math.max(progresso.aulas, progresso.tempo);
 
     // Buscar próxima faixa na sequência
     const proximaFaixa = await this.getProximaFaixa(faixaAtiva.faixaDef.id);
+
+    // Calcular tempo na faixa
+    const agora = new Date();
+    const dataInicio =
+      faixaAtiva.dt_inicio instanceof Date
+        ? faixaAtiva.dt_inicio
+        : new Date(faixaAtiva.dt_inicio);
+    const tempoNaFaixa = agora.getTime() - dataInicio.getTime();
+    const diasNaFaixa = Math.floor(tempoNaFaixa / (1000 * 60 * 60 * 24));
+    const tempoMinimo = faixaAtiva.faixaDef.codigo === 'BRANCA' ? 365 : 730;
+    const diasRestantes = Math.max(0, tempoMinimo - diasNaFaixa);
 
     return {
       faixaAtual: faixaAtiva.faixaDef.nome_exibicao,
@@ -108,10 +144,15 @@ export class GraduacaoService {
       presencasNoCiclo: faixaAtiva.presencas_no_ciclo,
       presencasTotalFaixa: faixaAtiva.presencas_total_fx,
       faltamAulas,
-      prontoParaGraduar,
+      prontoParaGraduar: prontoParaProximoGrau,
       progressoPercentual,
+      progressoAulas: progresso.aulas,
+      progressoTempo: progresso.tempo,
+      diasNaFaixa,
+      diasRestantes,
+      tempoMinimoAnos: faixaAtiva.faixaDef.codigo === 'BRANCA' ? 1 : 2,
       proximaFaixa: proximaFaixa?.nome_exibicao,
-      dtInicioFaixa: faixaAtiva.dt_inicio,
+      dtInicioFaixa: dataInicio,
       alunoFaixaId: faixaAtiva.id,
     };
   }
@@ -125,78 +166,17 @@ export class GraduacaoService {
     unidadeId?: string;
     categoria?: 'adulto' | 'kids' | 'todos';
   }): Promise<ListaProximosGraduarDto> {
-    const page = Math.max(1, params.page || 1);
-    const pageSize = Math.min(100, Math.max(1, params.pageSize || 50));
-
-    const query = this.alunoFaixaRepository
-      .createQueryBuilder('af')
-      .innerJoinAndSelect('af.faixaDef', 'fd')
-      .innerJoinAndSelect('af.aluno', 'a')
-      .where('af.ativa = :ativa', { ativa: true })
-      .andWhere('a.tipo_cadastro = :tipo', { tipo: TipoCadastro.ALUNO })
-      .andWhere('a.status = :status', { status: 'ATIVO' });
-
-    // Filtro por unidade
-    if (params.unidadeId) {
-      query.andWhere('a.unidade_id = :unidadeId', {
-        unidadeId: params.unidadeId,
-      });
-    }
-
-    // Filtro por categoria
-    if (params.categoria && params.categoria !== 'todos') {
-      if (params.categoria === 'kids') {
-        query.andWhere('fd.categoria = :categoria', { categoria: 'INFANTIL' });
-      } else {
-        query.andWhere('fd.categoria = :categoria', { categoria: 'ADULTO' });
-      }
-    }
-
-    // Ordenar por quem está mais próximo de graduar
-    query.addSelect(
-      'CASE WHEN af.graus_atual >= fd.graus_max THEN 0 ' +
-        'ELSE GREATEST(fd.aulas_por_grau - af.presencas_no_ciclo, 0) END',
-      'faltam_aulas',
+    // Desabilitado para evitar consultas automáticas ao banco
+    console.log(
+      'getProximosGraduar desabilitado - não executando query automática',
     );
-    query.orderBy('faltam_aulas', 'ASC');
-    query.addOrderBy('fd.ordem', 'ASC');
-
-    // Paginação
-    const [items, total] = await query
-      .skip((page - 1) * pageSize)
-      .take(pageSize)
-      .getManyAndCount();
-
-    // Mapear para DTO
-    const proximosGraduar: ProximoGraduarDto[] = items.map((af) => {
-      const faltamAulas = af.getAulasFaltantes();
-      const prontoParaGraduar = af.isProntoParaGraduar();
-      const progressoPercentual =
-        af.faixaDef.aulas_por_grau > 0
-          ? Math.min(1, af.presencas_no_ciclo / af.faixaDef.aulas_por_grau)
-          : 0;
-
-      return {
-        alunoId: af.aluno.id,
-        nomeCompleto: af.aluno.nome_completo,
-        faixa: af.faixaDef.nome_exibicao,
-        corHex: af.faixaDef.cor_hex,
-        grausAtual: af.graus_atual,
-        grausMax: af.faixaDef.graus_max,
-        faltamAulas,
-        prontoParaGraduar,
-        progressoPercentual,
-        unidadeId: af.aluno.unidade_id,
-        presencasTotalFaixa: af.presencas_total_fx,
-      };
-    });
 
     return {
-      items: proximosGraduar,
-      total,
-      page,
-      pageSize,
-      hasNextPage: page * pageSize < total,
+      items: [],
+      total: 0,
+      page: params.page || 1,
+      pageSize: params.pageSize || 50,
+      hasNextPage: false,
     };
   }
 

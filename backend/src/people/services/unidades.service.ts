@@ -261,7 +261,7 @@ export class UnidadesService {
     }
 
     const q = `
-      SELECT 
+      SELECT
         COUNT(*) as total,
         COUNT(*) FILTER (WHERE status = 'ATIVA') as ativas,
         COUNT(*) FILTER (WHERE status = 'INATIVA') as inativas,
@@ -332,7 +332,9 @@ export class UnidadesService {
       responsavel_contato: row.responsavel_contato,
       // Estrutura
       qtde_tatames: row.qtde_tatames,
-      area_tatame_m2: row.area_tatame_m2 ? parseFloat(row.area_tatame_m2) : null,
+      area_tatame_m2: row.area_tatame_m2
+        ? parseFloat(row.area_tatame_m2)
+        : null,
       capacidade_max_alunos: row.capacidade_max_alunos,
       qtde_instrutores: row.qtde_instrutores || 0,
       valor_plano_padrao: row.valor_plano_padrao
@@ -344,8 +346,8 @@ export class UnidadesService {
       instrutor_principal_id: row.instrutor_principal_id,
       // Endereço
       endereco_id: row.endereco_id || null,
-      criado_em: new Date(row.criado_em),
-      atualizado_em: new Date(row.atualizado_em),
+      created_at: new Date(row.created_at),
+      updated_at: new Date(row.updated_at),
     } as Unidade;
   }
 }

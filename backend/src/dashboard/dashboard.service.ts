@@ -1,59 +1,83 @@
-import { Injectable } from '@nestjs/common';
+﻿import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { Usuario } from '../usuarios/entities/usuario.entity';
 import { Person, TipoCadastro } from '../people/entities/person.entity';
-import { AlunoFaixa } from '../graduacao/entities/aluno-faixa.entity';
-import { Presenca } from '../presenca/entities/presenca.entity';
+import { Aluno, StatusAluno } from '../people/entities/aluno.entity';
+import { Unidade } from '../people/entities/unidade.entity';
+import { Franqueado } from '../people/entities/franqueado.entity';
 
 @Injectable()
 export class DashboardService {
   constructor(
+    @InjectRepository(Usuario)
+    private readonly usuarioRepository: Repository<Usuario>,
     @InjectRepository(Person)
-    private personRepository: Repository<Person>,
-    @InjectRepository(AlunoFaixa)
-    private alunoFaixaRepository: Repository<AlunoFaixa>,
-    @InjectRepository(Presenca)
-    private presencaRepository: Repository<Presenca>,
+    private readonly personRepository: Repository<Person>,
+    @InjectRepository(Aluno)
+    private readonly alunoRepository: Repository<Aluno>,
+    @InjectRepository(Unidade)
+    private readonly unidadeRepository: Repository<Unidade>,
+    @InjectRepository(Franqueado)
+    private readonly franqueadoRepository: Repository<Franqueado>,
   ) {}
 
-  async getStats() {
-    // Total de alunos
-    const totalAlunos = await this.personRepository.count({
-      where: { tipo_cadastro: TipoCadastro.ALUNO },
-    });
+  async getStats(unidadeId?: string) {
+    console.log('📊 Carregando estatísticas reais do dashboard...');
 
-    // Aulas hoje (baseado em presenças hoje)
-    const hoje = new Date();
-    hoje.setHours(0, 0, 0, 0);
-    const amanha = new Date(hoje);
-    amanha.setDate(amanha.getDate() + 1);
+    try {
+      // Buscar usuários pendentes (inativos aguardando aprovação)
+      const usuariosPendentes = await this.usuarioRepository.count({
+        where: {
+          ativo: false,
+          cadastro_completo: true,
+        },
+      });
 
-    const aulasHoje = await this.presencaRepository
-      .createQueryBuilder('p')
-      .where('p.data_presenca >= :hoje', { hoje })
-      .andWhere('p.data_presenca < :amanha', { amanha })
-      .getCount();
+      // Total de usuários
+      const totalUsuarios = await this.usuarioRepository.count();
 
-    // Próximos graduáveis (alunos com faixa ativa que completaram as aulas necessárias)
-    const proximosGraduaveis = await this.alunoFaixaRepository
-      .createQueryBuilder('af')
-      .innerJoin('af.faixaDef', 'fd')
-      .where('af.ativa = true')
-      .andWhere('af.presencas_no_ciclo >= fd.aulas_por_grau')
-      .getCount();
+      // Total de alunos (da tabela alunos específica)
+      const totalAlunos = await this.alunoRepository.count({
+        where: { status: StatusAluno.ATIVO },
+      });
 
-    // Presenças hoje
-    const presencasHoje = await this.presencaRepository.count({
-      where: {
-        dataPresenca: hoje,
-      },
-    });
+      // Total de professores
+      const totalProfessores = await this.personRepository.count({
+        where: { tipo_cadastro: TipoCadastro.PROFESSOR },
+      }); // Total de unidades
+      const totalUnidades = await this.unidadeRepository.count();
 
-    return {
-      totalAlunos,
-      aulaHoje: aulasHoje,
-      proximosGraduaveis,
-      presencasHoje,
-    };
+      // Total de franqueados
+      const totalFranqueados = await this.franqueadoRepository.count();
+
+      const stats = {
+        totalUsuarios,
+        usuariosPendentes,
+        totalFranqueados,
+        totalAlunos,
+        totalProfessores,
+        totalUnidades,
+        aulasHoje: 0, // TODO: implementar
+        proximosGraduaveis: 0, // TODO: implementar
+        presencasHoje: 0, // TODO: implementar
+      };
+
+      console.log('✅ Estatísticas carregadas:', stats);
+      return stats;
+    } catch (error) {
+      console.error('❌ Erro ao carregar estatísticas:', error);
+      return {
+        totalUsuarios: 0,
+        usuariosPendentes: 0,
+        totalFranqueados: 0,
+        totalAlunos: 0,
+        totalProfessores: 0,
+        totalUnidades: 0,
+        aulasHoje: 0,
+        proximosGraduaveis: 0,
+        presencasHoje: 0,
+      };
+    }
   }
 }

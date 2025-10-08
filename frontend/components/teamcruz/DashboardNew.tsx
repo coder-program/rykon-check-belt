@@ -389,6 +389,33 @@ function getBeltClass(faixa: string) {
   return classes[faixa] || "badge-ghost";
 }
 
+// Converter enum de faixa para nome exibível
+function convertFaixaEnumToDisplayName(faixaEnum: string): string {
+  const faixaMap: Record<string, string> = {
+    BRANCA: "Branca",
+    CINZA_BRANCA: "Cinza e Branca",
+    CINZA: "Cinza",
+    CINZA_PRETA: "Cinza e Preta",
+    AMARELA_BRANCA: "Amarela e Branca",
+    AMARELA: "Amarela",
+    AMARELA_PRETA: "Amarela e Preta",
+    LARANJA_BRANCA: "Laranja e Branca",
+    LARANJA: "Laranja",
+    LARANJA_PRETA: "Laranja e Preta",
+    VERDE_BRANCA: "Verde e Branca",
+    VERDE: "Verde",
+    VERDE_PRETA: "Verde e Preta",
+    AZUL: "Azul",
+    ROXA: "Roxa",
+    MARROM: "Marrom",
+    PRETA: "Preta",
+    CORAL: "Coral",
+    VERMELHA: "Vermelha",
+  };
+
+  return faixaMap[faixaEnum] || "Branca";
+}
+
 // Visual da ponteira (tip) com graus. Regra padrão: ponteira preta com graus brancos.
 function getBeltTipStyle(faixa: string) {
   let tip = "bg-black";
@@ -499,48 +526,9 @@ function BeltTip({ faixa, graus }: { faixa: string; graus: number }) {
 }
 
 export default function DashboardNew() {
+  // Estados
   const [selectedTab, setSelectedTab] = React.useState("overview");
   const [currentTime, setCurrentTime] = React.useState(new Date());
-
-  // Hook para buscar estatísticas reais das unidades
-  const unidadesStats = useUnidadesStats();
-
-  // Query para buscar estatísticas reais do dashboard
-  const statsQuery = useQuery({
-    queryKey: ["dashboard-stats"],
-    queryFn: async () => {
-      try {
-        const token = localStorage.getItem("token");
-        const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/alunos?page=1&pageSize=1&search=&faixa=todos`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json",
-            },
-          }
-        );
-        const data = await response.json();
-
-        return {
-          totalAlunos: data.total || 0,
-          aulaHoje: 12, // Manter mockado por enquanto
-          proximosGraduaveis: 15, // Manter mockado por enquanto
-          presencasHoje: 45, // Manter mockado por enquanto
-        };
-      } catch (error) {
-        console.error("Erro ao buscar estatísticas:", error);
-        // Fallback para dados mockados em caso de erro
-        return {
-          totalAlunos: 287,
-          aulaHoje: 12,
-          proximosGraduaveis: 15,
-          presencasHoje: 45,
-        };
-      }
-    },
-    refetchInterval: 30000, // Atualizar a cada 30 segundos
-  });
   const [selectedAula, setSelectedAula] = React.useState<any | null>(null);
   const [searchTerm, setSearchTerm] = React.useState("");
   const [debouncedSearch, setDebouncedSearch] = React.useState("");
@@ -548,18 +536,31 @@ export default function DashboardNew() {
   const [presencasRegistradas, setPresencasRegistradas] = React.useState<any[]>(
     []
   );
-  const [totalPresencasHoje, setTotalPresencasHoje] = React.useState(
-    mockData.stats.presencasHoje
-  );
+  const [totalPresencasHoje, setTotalPresencasHoje] = React.useState(0);
   const [showQRModal, setShowQRModal] = React.useState(false);
   const [showCPFModal, setShowCPFModal] = React.useState(false);
+  const [showConfigModal, setShowConfigModal] = React.useState(false);
   const [cpfInput, setCpfInput] = React.useState("");
+
+  // Configurações de graduação
+  const [graduationConfig, setGraduationConfig] = React.useState({
+    BRANCA: { aulasPorGrau: 20, maximoGraus: 4, tempoMinimo: 3 },
+    CINZA: { aulasPorGrau: 20, maximoGraus: 4, tempoMinimo: 3 },
+    AMARELA: { aulasPorGrau: 20, maximoGraus: 4, tempoMinimo: 3 },
+    LARANJA: { aulasPorGrau: 20, maximoGraus: 4, tempoMinimo: 3 },
+    VERDE: { aulasPorGrau: 20, maximoGraus: 4, tempoMinimo: 3 },
+    AZUL: { aulasPorGrau: 20, maximoGraus: 4, tempoMinimo: 3 },
+    ROXA: { aulasPorGrau: 20, maximoGraus: 4, tempoMinimo: 3 },
+    MARROM: { aulasPorGrau: 20, maximoGraus: 4, tempoMinimo: 3 },
+    PRETA: { aulasPorGrau: 20, maximoGraus: 4, tempoMinimo: 3 },
+  });
   const [selectedAlunoQR, setSelectedAlunoQR] = React.useState<any | null>(
     null
   );
   const [showLocationModal, setShowLocationModal] = React.useState(false);
-  const [showConfigModal, setShowConfigModal] = React.useState(false);
-  const [selectedUnidade, setSelectedUnidade] = React.useState("unidade-1");
+
+  // Estado do filtro de unidade - deve vir antes das queries
+  const [selectedUnidade, setSelectedUnidade] = React.useState<string>("todas");
 
   // Paginação e filtros
   const pageSize = 30; // quantidade por página para infinite scroll
@@ -586,6 +587,99 @@ export default function DashboardNew() {
     },
     [debouncedSearch, filterFaixa]
   );
+
+  // QUERIES - Todas as queries vêm depois dos estados
+
+  // Hook para buscar estatísticas reais das unidades
+  const unidadesStats = useUnidadesStats();
+
+  // Query para buscar unidades disponíveis
+  const unidadesQuery = useQuery({
+    queryKey: ["unidades"],
+    queryFn: async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/unidades`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error("Erro ao buscar unidades");
+        }
+
+        const data = await response.json();
+        return data.items || [];
+      } catch (error) {
+        console.error("Erro ao buscar unidades:", error);
+        return [];
+      }
+    },
+    staleTime: 10 * 60 * 1000, // Considerar fresh por 10 minutos
+  });
+
+  // Query para buscar estatísticas reais do dashboard
+  const statsQuery = useQuery({
+    queryKey: ["dashboard-stats", selectedUnidade],
+    queryFn: async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const params = new URLSearchParams();
+
+        if (selectedUnidade && selectedUnidade !== "todas") {
+          params.append("unidadeId", selectedUnidade);
+        }
+
+        const url = `${process.env.NEXT_PUBLIC_API_URL}/dashboard/stats${
+          params.toString() ? `?${params.toString()}` : ""
+        }`;
+
+        const response = await fetch(url, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error("Erro ao buscar estatísticas");
+        }
+
+        const data = await response.json();
+
+        return {
+          totalAlunos: data.totalAlunos || 0,
+          aulaHoje: data.aulasHoje || 0,
+          proximosGraduaveis: data.proximosGraduaveis || 0,
+          presencasHoje: data.presencasHoje || 0,
+          totalUsuarios: data.totalUsuarios || 0,
+          totalFranqueados: data.totalFranqueados || 0,
+          totalProfessores: data.totalProfessores || 0,
+          totalUnidades: data.totalUnidades || 0,
+        };
+      } catch (error) {
+        console.error("Erro ao buscar estatísticas:", error);
+        // Fallback para dados zerados em caso de erro
+        return {
+          totalAlunos: 0,
+          aulaHoje: 0,
+          proximosGraduaveis: 0,
+          presencasHoje: 0,
+          totalUsuarios: 0,
+          totalFranqueados: 0,
+          totalProfessores: 0,
+          totalUnidades: 0,
+        };
+      }
+    },
+    refetchInterval: 5 * 60 * 1000, // Atualizar a cada 5 minutos
+    staleTime: 2 * 60 * 1000, // Considerar fresh por 2 minutos
+  });
 
   // Query para Alunos (aba Alunos) - DADOS REAIS DO BANCO
   const alunosQuery = useInfiniteQuery({
@@ -749,96 +843,116 @@ export default function DashboardNew() {
     return () => clearTimeout(id);
   }, [overviewSearch]);
 
-  // Query para buscar dados REAIS de graduação do backend
+  // Query para buscar dados REAIS dos alunos para mostrar próximos graduáveis
   const proximosQuery = useQuery({
-    queryKey: ["proximos-graus", overviewFilterFaixa, selectedUnidade],
+    queryKey: [
+      "proximos-graus",
+      overviewFilterFaixa,
+      selectedUnidade,
+      overviewDebounced,
+    ],
     queryFn: async () => {
       try {
-        const response = await getProximosGraduar({
-          page: 1,
-          pageSize: 100, // Buscar mais alunos de uma vez
-          categoria: overviewFilterFaixa,
-          unidadeId:
-            selectedUnidade === "unidade-1" ? undefined : selectedUnidade,
+        const token = localStorage.getItem("token");
+        const params = new URLSearchParams({
+          page: "1",
+          pageSize: "50",
+          faixa:
+            overviewFilterFaixa === "todos" ? "todos" : overviewFilterFaixa,
         });
 
-        // Adaptar os dados para o formato esperado pelo componente
-        const adaptedItems = response.items.map((item: ProximoGraduar) => ({
-          id: item.alunoId,
-          nome: item.nomeCompleto,
-          faixa: item.faixa,
-          graus: item.grausAtual,
-          faltam: item.faltamAulas,
-          prontoParaGraduar: item.prontoParaGraduar,
-          progressoPercentual: item.progressoPercentual,
-          presencasTotalFaixa: item.presencasTotalFaixa,
-          foto: null,
-        }));
+        if (overviewDebounced) {
+          params.append("search", overviewDebounced);
+        }
 
-        // Ordenar localmente
-        const sorted = [...adaptedItems].sort((a, b) =>
-          overviewSort === "faltam-asc"
-            ? a.faltam - b.faltam
-            : b.faltam - a.faltam
+        if (selectedUnidade && selectedUnidade !== "todas") {
+          params.append("unidadeId", selectedUnidade);
+        }
+
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/alunos?${params.toString()}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+          }
         );
 
-        // Filtrar por busca localmente
-        const filtered = overviewDebounced
-          ? sorted.filter((a) =>
-              a.nome.toLowerCase().includes(overviewDebounced.toLowerCase())
-            )
-          : sorted;
+        if (!response.ok) {
+          throw new Error("Erro ao buscar alunos");
+        }
 
-        return { items: filtered, total: response.total };
-      } catch (error) {
-        console.error("Erro ao buscar próximos a graduar:", error);
-        // Fallback para dados mockados em caso de erro
+        const data = await response.json();
+
+        // Mapear os dados reais dos alunos para o formato esperado
+        const items = data.items.map((aluno: any) => {
+          const faixaEnum = aluno.faixa_atual || "BRANCA";
+          const faixaNome = convertFaixaEnumToDisplayName(faixaEnum);
+
+          // Buscar a faixa ativa do aluno (relacionamento com aluno_faixa)
+          const faixaAtiva = aluno.faixas?.find((f: any) => f.ativa === true);
+          const grausAtual = faixaAtiva?.graus_atual || 0;
+          const presencasNoCiclo = faixaAtiva?.presencas_no_ciclo || 0;
+
+          // Obter configuração para a faixa atual
+          const configFaixa =
+            graduationConfig[faixaEnum as keyof typeof graduationConfig] ||
+            graduationConfig.BRANCA;
+          const aulasPorGrau = configFaixa.aulasPorGrau;
+          const faltamAulas = Math.max(
+            0,
+            aulasPorGrau - (presencasNoCiclo % aulasPorGrau)
+          );
+
+          return {
+            id: aluno.id,
+            nome: aluno.nome_completo || aluno.nome,
+            faixa: faixaNome,
+            graus: grausAtual, // Graus reais da tabela aluno_faixa
+            faltam: faltamAulas, // Cálculo real baseado nas presenças
+            foto: null,
+            categoria: aluno.categoria || "adulto",
+          };
+        });
+
         return {
-          items: mockData.proximosGraus.map((item, idx) => ({
-            ...item,
-            id: item.id || idx + 1,
-            prontoParaGraduar: item.faltam === 0,
-            progressoPercentual: 1 - item.faltam / 40,
-          })),
-          total: mockData.proximosGraus.length,
+          items,
+          total: data.total || 0,
+          page: 1,
+          pageSize: 50,
+          hasNextPage: false,
+        };
+      } catch (error) {
+        console.error("Erro ao buscar alunos para próximos graduáveis:", error);
+        return {
+          items: [],
+          total: 0,
+          page: 1,
+          pageSize: 50,
+          hasNextPage: false,
         };
       }
     },
-    refetchInterval: 30000, // Atualizar a cada 30 segundos
+    staleTime: 5 * 60 * 1000, // 5 minutos
   });
 
-  // Query para buscar dados de graduação para aba de graduações
+  // Query para buscar dados de graduação para aba de graduações (DESABILITADA)
   const graduacoesQuery = useQuery({
     queryKey: ["proximos-graus-graduacoes", selectedUnidade],
     queryFn: async () => {
-      const response = await getProximosGraduar({
-        page: 1,
-        pageSize: 20,
-        categoria: "todos",
-        unidadeId:
-          selectedUnidade === "unidade-1" ? undefined : selectedUnidade,
-      });
-      return response.items;
+      return [];
     },
-    refetchInterval: 30000,
-    enabled: selectedTab === "graduacoes", // Só executa quando a aba está ativa
+    enabled: false, // Desabilitada para evitar queries automáticas
   });
 
-  // Query para buscar histórico de graduações
+  // Query para buscar histórico de graduações (DESABILITADA)
   const historicoQuery = useQuery({
     queryKey: ["historico-graduacoes", selectedUnidade],
     queryFn: async () => {
-      const response = await getHistoricoGraduacoes({
-        page: 1,
-        pageSize: 10,
-        categoria: "todos",
-        unidadeId:
-          selectedUnidade === "unidade-1" ? undefined : selectedUnidade,
-      });
-      return response.items;
+      return [];
     },
-    refetchInterval: 60000,
-    enabled: selectedTab === "graduacoes", // Só executa quando a aba está ativa
+    enabled: false, // Desabilitada para evitar queries automáticas
   });
 
   // Função para registrar check-in e presença automaticamente
@@ -1024,7 +1138,7 @@ export default function DashboardNew() {
     const presencasDeHoje = presencasHoje.filter((p: any) => p.data === hoje);
     setPresencasRegistradas(presencasDeHoje);
     setTotalPresencasHoje(
-      mockData.stats.presencasHoje + presencasDeHoje.length
+      (statsQuery.data?.presencasHoje || 0) + presencasDeHoje.length
     );
   }, []);
 
@@ -1049,7 +1163,24 @@ export default function DashboardNew() {
             </div>
           </div>
         </div>
-        <div className="flex-none gap-2">
+        <div className="flex-none gap-4 items-center">
+          <div className="form-control">
+            <label className="label">
+              <span className="label-text text-xs">Filtrar por Unidade:</span>
+            </label>
+            <select
+              className="select select-bordered select-sm w-48"
+              value={selectedUnidade}
+              onChange={(e) => setSelectedUnidade(e.target.value)}
+            >
+              <option value="todas">📍 Todas as Unidades</option>
+              {unidadesQuery.data?.map((unidade: any) => (
+                <option key={unidade.id} value={unidade.id}>
+                  📍 {unidade.nome}
+                </option>
+              ))}
+            </select>
+          </div>
           <div className="text-right mr-4">
             <p className="text-sm opacity-70">
               {format(currentTime, "EEEE, d 'de' MMMM", { locale: ptBR })}
@@ -1116,8 +1247,9 @@ export default function DashboardNew() {
                       Total de Alunos
                     </div>
                     <div className="stat-value">
-                      {statsQuery.data?.totalAlunos ||
-                        mockData.stats.totalAlunos}
+                      {statsQuery.isLoading
+                        ? "..."
+                        : statsQuery.data?.totalAlunos || 0}
                     </div>
                     <div className="stat-desc text-blue-200">
                       ↗︎ 12% vs último mês
@@ -1131,7 +1263,9 @@ export default function DashboardNew() {
                     </div>
                     <div className="stat-title text-green-100">Aulas Hoje</div>
                     <div className="stat-value">
-                      {statsQuery.data?.aulaHoje || mockData.stats.aulaHoje}
+                      {statsQuery.isLoading
+                        ? "..."
+                        : statsQuery.data?.aulaHoje || 0}
                     </div>
                     <div className="stat-desc text-green-200">
                       4 turmas agendadas
@@ -1147,8 +1281,9 @@ export default function DashboardNew() {
                       Próximos Graduáveis
                     </div>
                     <div className="stat-value">
-                      {statsQuery.data?.proximosGraduaveis ||
-                        mockData.stats.proximosGraduaveis}
+                      {statsQuery.isLoading
+                        ? "..."
+                        : statsQuery.data?.proximosGraduaveis || 0}
                     </div>
                     <div className="stat-desc text-yellow-200">
                       ↗︎ 5 novos este mês
@@ -1164,8 +1299,9 @@ export default function DashboardNew() {
                       Presenças Hoje
                     </div>
                     <div className="stat-value">
-                      {statsQuery.data?.presencasHoje ||
-                        mockData.stats.presencasHoje}
+                      {statsQuery.isLoading
+                        ? "..."
+                        : statsQuery.data?.presencasHoje || 0}
                     </div>
                     <div className="stat-desc text-purple-200">
                       ↗︎ 18% vs média
@@ -1315,9 +1451,9 @@ export default function DashboardNew() {
                         );
                       })()}
                     </div>
-                    {proximosQuery.isFetchingNextPage && (
+                    {proximosQuery.isLoading && (
                       <div className="flex justify-center py-2 text-sm text-gray-500">
-                        Carregando mais...
+                        Carregando...
                       </div>
                     )}
                   </CardContent>
@@ -1332,46 +1468,58 @@ export default function DashboardNew() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    {mockData.ranking.map((aluno, index) => (
-                      <div
-                        key={aluno.id}
-                        className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg"
-                      >
+                    {/* TODO: Implementar API de ranking quando disponível */}
+                    {(statsQuery.data ? [] : mockData.ranking).map(
+                      (aluno, index) => (
                         <div
-                          className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${
-                            index === 0
-                              ? "bg-yellow-400 text-yellow-900"
-                              : index === 1
-                              ? "bg-gray-400 text-white"
-                              : "bg-orange-400 text-orange-900"
-                          }`}
+                          key={aluno.id}
+                          className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg"
                         >
-                          {index + 1}
+                          <div
+                            className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${
+                              index === 0
+                                ? "bg-yellow-400 text-yellow-900"
+                                : index === 1
+                                ? "bg-gray-400 text-white"
+                                : "bg-orange-400 text-orange-900"
+                            }`}
+                          >
+                            {index + 1}
+                          </div>
+                          <div className="flex-1">
+                            <p className="font-medium text-sm text-gray-900">
+                              {aluno.nome}
+                            </p>
+                            <div className="w-full bg-gray-200 rounded-full h-2 mt-1">
+                              <motion.div
+                                initial={{ width: 0 }}
+                                animate={{ width: `${aluno.percent}%` }}
+                                transition={{ duration: 1, delay: index * 0.1 }}
+                                className="bg-gradient-to-r from-blue-500 to-blue-600 h-full rounded-full"
+                              />
+                            </div>
+                            <div className="flex items-center gap-1 mt-1">
+                              <Zap className="h-3 w-3 text-yellow-500" />
+                              <span className="text-xs text-gray-600">
+                                {aluno.streak} dias consecutivos
+                              </span>
+                            </div>
+                          </div>
+                          <span className="text-sm font-bold text-gray-900">
+                            {aluno.percent}%
+                          </span>
                         </div>
-                        <div className="flex-1">
-                          <p className="font-medium text-sm text-gray-900">
-                            {aluno.nome}
+                      )
+                    )}
+                    {statsQuery.data &&
+                      (!mockData.ranking || mockData.ranking.length === 0) && (
+                        <div className="text-center py-8 text-gray-500">
+                          <Zap className="h-12 w-12 mx-auto mb-2 opacity-30" />
+                          <p className="text-sm">
+                            Ranking será calculado com base nas presenças
                           </p>
-                          <div className="w-full bg-gray-200 rounded-full h-2 mt-1">
-                            <motion.div
-                              initial={{ width: 0 }}
-                              animate={{ width: `${aluno.percent}%` }}
-                              transition={{ duration: 1, delay: index * 0.1 }}
-                              className="bg-gradient-to-r from-blue-500 to-blue-600 h-full rounded-full"
-                            />
-                          </div>
-                          <div className="flex items-center gap-1 mt-1">
-                            <Zap className="h-3 w-3 text-yellow-500" />
-                            <span className="text-xs text-gray-600">
-                              {aluno.streak} dias consecutivos
-                            </span>
-                          </div>
                         </div>
-                        <span className="text-sm font-bold text-gray-900">
-                          {aluno.percent}%
-                        </span>
-                      </div>
-                    ))}
+                      )}
                   </CardContent>
                 </Card>
               </div>
@@ -1383,13 +1531,17 @@ export default function DashboardNew() {
                     <Calendar className="h-5 w-5 text-info" />
                     Aulas de Hoje
                   </CardTitle>
-                  <Button className="btn btn-primary btn-sm">
+                  <Button
+                    className="btn btn-primary btn-sm"
+                    onClick={() => (window.location.href = "/aulas")}
+                  >
                     + Nova Aula
                   </Button>
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                    {mockData.aulasHoje.map((aula) => (
+                    {/* TODO: Implementar API de aulas quando disponível */}
+                    {(statsQuery.data ? [] : mockData.aulasHoje).map((aula) => (
                       <motion.div
                         key={aula.id}
                         whileHover={{ scale: 1.03 }}
@@ -1433,6 +1585,25 @@ export default function DashboardNew() {
                         </div>
                       </motion.div>
                     ))}
+                    {statsQuery.data &&
+                      (!mockData.aulasHoje ||
+                        mockData.aulasHoje.length === 0) && (
+                        <div className="col-span-full text-center py-12 text-gray-500">
+                          <Calendar className="h-16 w-16 mx-auto mb-4 opacity-30" />
+                          <p className="text-lg font-medium mb-2">
+                            Nenhuma aula agendada para hoje
+                          </p>
+                          <p className="text-sm mb-4">
+                            Cadastre aulas para começar a gerenciar presenças
+                          </p>
+                          <Button
+                            className="btn btn-primary"
+                            onClick={() => (window.location.href = "/aulas")}
+                          >
+                            Cadastrar Primeira Aula
+                          </Button>
+                        </div>
+                      )}
                   </div>
                 </CardContent>
               </Card>
@@ -2465,7 +2636,7 @@ export default function DashboardNew() {
                         Equipamentos, uniformes e produtos oficiais da equipe
                       </p>
                       <a
-                        href="https://www.teamcruz.com.br"
+                        href="https://www.lojateamcruz.com.br/"
                         target="_blank"
                         rel="noopener noreferrer"
                         className="inline-flex items-center gap-2 bg-white text-red-600 px-6 py-3 rounded-lg font-bold hover:bg-gray-100 transition-colors"
@@ -2570,7 +2741,7 @@ export default function DashboardNew() {
                       ].map((cat, idx) => (
                         <a
                           key={idx}
-                          href="https://www.teamcruz.com.br"
+                          href="https://www.lojateamcruz.com.br/"
                           target="_blank"
                           rel="noopener noreferrer"
                           className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-blue-50 transition-colors cursor-pointer"
@@ -2939,11 +3110,132 @@ export default function DashboardNew() {
         </div>
       )}
 
-      {/* Modal de Configurações */}
-      <ConfiguracoesModal
-        isOpen={showConfigModal}
-        onClose={() => setShowConfigModal(false)}
-      />
+      {/* Modal de Configurações do Sistema */}
+      {showConfigModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto m-4">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold text-gray-900">
+                  Configurações do Sistema
+                </h2>
+                <button
+                  onClick={() => setShowConfigModal(false)}
+                  className="btn btn-ghost btn-circle"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="space-y-6">
+                <div>
+                  <h3 className="text-lg font-semibold mb-4">
+                    Regras de Graduação
+                  </h3>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Configure as regras de graduação para cada faixa. Estas
+                    configurações determinam quantas aulas são necessárias para
+                    cada grau e o tempo mínimo entre graduações.
+                  </p>
+
+                  <div className="grid gap-4">
+                    {Object.entries(graduationConfig).map(([faixa, config]) => (
+                      <div key={faixa} className="bg-gray-50 p-4 rounded-lg">
+                        <h4 className="font-medium mb-3 flex items-center gap-2">
+                          <div
+                            className={`w-4 h-4 rounded ${colorBgClass(
+                              convertFaixaEnumToDisplayName(faixa)
+                            )}`}
+                          ></div>
+                          {convertFaixaEnumToDisplayName(faixa)}
+                        </h4>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Aulas por Grau
+                            </label>
+                            <input
+                              type="number"
+                              min="1"
+                              max="100"
+                              value={config.aulasPorGrau}
+                              onChange={(e) => {
+                                const newConfig = { ...graduationConfig };
+                                newConfig[
+                                  faixa as keyof typeof graduationConfig
+                                ].aulasPorGrau = parseInt(e.target.value) || 20;
+                                setGraduationConfig(newConfig);
+                              }}
+                              className="input input-bordered w-full input-sm"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Máximo de Graus
+                            </label>
+                            <input
+                              type="number"
+                              min="1"
+                              max="10"
+                              value={config.maximoGraus}
+                              onChange={(e) => {
+                                const newConfig = { ...graduationConfig };
+                                newConfig[
+                                  faixa as keyof typeof graduationConfig
+                                ].maximoGraus = parseInt(e.target.value) || 4;
+                                setGraduationConfig(newConfig);
+                              }}
+                              className="input input-bordered w-full input-sm"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Tempo Mínimo (meses)
+                            </label>
+                            <input
+                              type="number"
+                              min="1"
+                              max="24"
+                              value={config.tempoMinimo}
+                              onChange={(e) => {
+                                const newConfig = { ...graduationConfig };
+                                newConfig[
+                                  faixa as keyof typeof graduationConfig
+                                ].tempoMinimo = parseInt(e.target.value) || 3;
+                                setGraduationConfig(newConfig);
+                              }}
+                              className="input input-bordered w-full input-sm"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 mt-8 pt-6 border-t border-gray-200">
+                <button
+                  onClick={() => setShowConfigModal(false)}
+                  className="btn btn-ghost"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={() => {
+                    // TODO: Salvar configurações no backend
+                    console.log("Salvando configurações:", graduationConfig);
+                    setShowConfigModal(false);
+                  }}
+                  className="btn btn-primary"
+                >
+                  Salvar Configurações
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

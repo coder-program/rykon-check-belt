@@ -5,6 +5,8 @@ import { AuthProvider } from "./auth/AuthContext";
 import React from "react";
 import QueryProvider from "@/components/QueryProvider";
 import { Toaster } from "react-hot-toast";
+import Header from "@/components/layout/Header";
+import Footer from "@/components/layout/Footer";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -46,11 +48,15 @@ export default function RootLayout({
         <meta name="theme-color" content="#dc2626" />
       </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased flex flex-col min-h-screen`}
       >
         <QueryProvider>
           <AuthProvider>
-            {children}
+            <Header />
+            <main className="flex-1">
+              {children}
+            </main>
+            <Footer />
             <Toaster
               position="top-right"
               toastOptions={{

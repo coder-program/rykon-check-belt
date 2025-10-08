@@ -17,6 +17,7 @@ import { ChangePasswordDto } from './dto/change-password.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { RegisterDto } from './dto/register.dto';
+import { CompleteProfileDto } from './dto/complete-profile.dto';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 
 @ApiTags('Auth')
@@ -51,8 +52,39 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @Get('profile')
   @ApiOperation({ summary: 'Perfil do usuário autenticado' })
-  getProfile(@Request() req) {
-    return req.user;
+  async getProfile(@Request() req) {
+    // Retornar getUserProfile para incluir perfis formatados corretamente
+    return this.authService.getUserProfile(req.user.id);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('me')
+  @ApiOperation({ summary: 'Dados completos do usuário logado incluindo status do cadastro' })
+  async getMe(@Request() req) {
+    return this.authService.getUserProfile(req.user.id);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('complete-profile')
+  @ApiOperation({ summary: 'Completar dados do perfil após primeiro login' })
+  async completeProfile(
+    @Request() req,
+    @Body() completeProfileDto: CompleteProfileDto,
+  ) {
+    console.log('📥 [AuthController.completeProfile] Requisição recebida');
+    console.log('📥 [AuthController.completeProfile] User ID:', req.user?.id);
+    console.log('📥 [AuthController.completeProfile] User:', JSON.stringify(req.user, null, 2));
+    console.log('📥 [AuthController.completeProfile] Body recebido:', JSON.stringify(completeProfileDto, null, 2));
+    
+    try {
+      const result = await this.authService.completeProfile(req.user.id, completeProfileDto);
+      console.log('✅ [AuthController.completeProfile] Sucesso! Resultado:', JSON.stringify(result, null, 2));
+      return result;
+    } catch (error) {
+      console.error('❌ [AuthController.completeProfile] ERRO:', error.message);
+      console.error('❌ [AuthController.completeProfile] Stack:', error.stack);
+      throw error;
+    }
   }
 
   @UseGuards(JwtAuthGuard)

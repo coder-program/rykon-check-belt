@@ -23,6 +23,11 @@ export interface StatusGraduacao {
   faltamAulas: number;
   prontoParaGraduar: boolean;
   progressoPercentual: number;
+  progressoAulas: number;
+  progressoTempo: number;
+  diasNaFaixa: number;
+  diasRestantes: number;
+  tempoMinimoAnos: number;
   proximaFaixa?: string;
   dtInicioFaixa?: Date;
   alunoFaixaId?: string;
@@ -60,7 +65,7 @@ export async function listarFaixas(categoria?: string): Promise<FaixaDef[]> {
 
 // Obter status de graduação de um aluno
 export async function getStatusGraduacao(
-  alunoId: string,
+  alunoId: string
 ): Promise<StatusGraduacao> {
   return http(`/graduacao/alunos/${alunoId}/status`, { auth: true });
 }
@@ -90,7 +95,7 @@ export async function getProximosGraduar(params?: {
 // Conceder grau a um aluno
 export async function concederGrau(
   alunoId: string,
-  data: { observacao?: string; concedidoPor?: string },
+  data: { observacao?: string; concedidoPor?: string }
 ): Promise<any> {
   return http(`/graduacao/alunos/${alunoId}/graus`, {
     method: "POST",
@@ -102,7 +107,7 @@ export async function concederGrau(
 // Graduar aluno para nova faixa
 export async function graduarFaixa(
   alunoId: string,
-  data: { faixaDestinoId: string; observacao?: string; concedidoPor?: string },
+  data: { faixaDestinoId: string; observacao?: string; concedidoPor?: string }
 ): Promise<any> {
   return http(`/graduacao/alunos/${alunoId}/graduacoes`, {
     method: "POST",
@@ -114,7 +119,7 @@ export async function graduarFaixa(
 // Criar faixa para aluno (inicializar)
 export async function criarFaixaAluno(
   alunoId: string,
-  data: { faixaDefId: string; dtInicio?: Date; grausInicial?: number },
+  data: { faixaDefId: string; dtInicio?: Date; grausInicial?: number }
 ): Promise<any> {
   return http(`/graduacao/alunos/${alunoId}/faixas`, {
     method: "POST",
@@ -184,7 +189,7 @@ export async function getHistoricoGraduacoes(params?: {
 // Aprovar graduação pendente
 export async function aprovarGraduacao(
   graduacaoId: string,
-  observacao?: string,
+  observacao?: string
 ): Promise<any> {
   return http(`/graduacao/graduacoes/${graduacaoId}/aprovar`, {
     method: "POST",

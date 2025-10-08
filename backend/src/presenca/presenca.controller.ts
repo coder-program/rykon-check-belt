@@ -27,7 +27,14 @@ export class PresencaController {
   @ApiResponse({ status: 200, description: 'Aula ativa encontrada' })
   @ApiResponse({ status: 404, description: 'Nenhuma aula ativa' })
   async getAulaAtiva(@Request() req): Promise<AulaAtiva | null> {
-    return this.presencaService.getAulaAtiva(req.user);
+    try {
+      const result = await this.presencaService.getAulaAtiva(req.user);
+      console.log('🔵 [Controller] Resultado da aula ativa:', result);
+      return result;
+    } catch (error) {
+      console.error('❌ [Controller] Erro ao buscar aula ativa:', error);
+      return null;
+    }
   }
 
   @Post('check-in-qr')

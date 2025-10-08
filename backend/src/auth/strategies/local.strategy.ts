@@ -19,14 +19,14 @@ export class LocalStrategy extends PassportStrategy(Strategy) {
       password?.length,
     );
 
-    const user = await this.authService.validateUser(email, password);
-    console.log('🔑 LocalStrategy.validate - User validated?', !!user);
+    const result = await this.authService.validateUser(email, password);
+    console.log('🔑 LocalStrategy.validate - User validated?', !!result.user);
 
-    if (!user) {
-      console.error('❌ LocalStrategy.validate - Credenciais inválidas');
-      throw new UnauthorizedException('Credenciais inválidas');
+    if (!result.user) {
+      console.error('❌ LocalStrategy.validate -', result.error);
+      throw new UnauthorizedException(result.error || 'Credenciais inválidas');
     }
 
-    return user;
+    return result.user;
   }
 }

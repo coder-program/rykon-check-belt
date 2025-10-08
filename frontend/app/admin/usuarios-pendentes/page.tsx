@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useAuth } from "@/app/auth/AuthContext";
+import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import {
   User,
   Check,
@@ -32,66 +32,83 @@ interface PendingUser {
   created_at: string;
 }
 
-export default function AprovacaoUsuariosPage() {
-  const { user: currentUser } = useAuth();
+function AprovacaoUsuariosPage() {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("pendentes"); // pendentes, todos, aprovados
   const queryClient = useQueryClient();
 
-  // Verificar se usuário tem permissão (apenas master/admin)
-  const hasPermission = (currentUser?.perfis || []).some((p: any) =>
-    ["master", "admin", "administrador"].includes(p.toLowerCase())
-  );
+  // Query separada para estatísticas (sempre busca todos os usuários)
+  const { data: allUsersForStats = [] } = useQuery({
+    queryKey: ["todos-usuarios-stats"],
+    queryFn: async () => {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/usuarios`,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Erro ao carregar estatísticas");
+      }
+
+      const data = await response.json();
+      return data.map((user: any) => ({
+        id: user.id,
+        ativo: user.ativo,
+      }));
+    },
+  });
 
   const { data: users = [], isLoading } = useQuery({
     queryKey: ["usuarios-pendentes", search, filter],
     queryFn: async () => {
-      // Mock data - você pode substituir pela chamada real da API
-      const mockUsers: PendingUser[] = [
+      // Buscar todos os usuários se o filtro for "todos" ou "aprovados"
+      const endpoint =
+        filter === "pendentes" ? "/usuarios/pendentes/list" : "/usuarios";
+
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}${endpoint}`,
         {
-          id: "1",
-          nome: "João Silva",
-          email: "joao@email.com",
-          telefone: "(11) 99999-9999",
-          data_nascimento: "1990-01-01",
-          perfis: ["aluno"],
-          ativo: false,
-          created_at: "2025-01-01T10:00:00Z",
-        },
-        {
-          id: "2",
-          nome: "Maria Santos",
-          email: "maria@email.com",
-          telefone: "(11) 88888-8888",
-          data_nascimento: "1995-05-15",
-          perfis: ["aluno"],
-          ativo: false,
-          created_at: "2025-01-01T11:30:00Z",
-        },
-        {
-          id: "3",
-          nome: "Pedro Costa",
-          email: "pedro@email.com",
-          telefone: "(11) 77777-7777",
-          data_nascimento: "1988-08-20",
-          perfis: ["aluno"],
-          ativo: true,
-          created_at: "2025-01-01T09:15:00Z",
-        },
-      ];
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Erro ao carregar usuários");
+      }
+
+      const data = await response.json();
+
+      // Transformar dados para o formato esperado
+      let allUsers = data.map((user: any) => ({
+        id: user.id,
+        nome: user.nome,
+        email: user.email,
+        telefone: user.telefone,
+        data_nascimento: user.data_nascimento,
+        perfis: user.perfis?.map((p: any) => p.nome || p) || [],
+        ativo: user.ativo,
+        created_at: user.created_at,
+      }));
 
       // Filtrar baseado no estado
-      let filtered = mockUsers;
+      let filtered = allUsers;
       if (filter === "pendentes") {
-        filtered = mockUsers.filter((u) => !u.ativo);
+        filtered = allUsers.filter((u: any) => !u.ativo);
       } else if (filter === "aprovados") {
-        filtered = mockUsers.filter((u) => u.ativo);
+        filtered = allUsers.filter((u: any) => u.ativo);
       }
+      // Se filter === "todos", não filtra por status
 
       // Filtrar por busca
       if (search) {
         filtered = filtered.filter(
-          (u) =>
+          (u: any) =>
             u.nome.toLowerCase().includes(search.toLowerCase()) ||
             u.email.toLowerCase().includes(search.toLowerCase())
         );
@@ -99,17 +116,25 @@ export default function AprovacaoUsuariosPage() {
 
       return filtered;
     },
-    enabled: hasPermission,
   });
 
   const approveMutation = useMutation({
     mutationFn: async (userId: string) => {
-      // Aqui você faria a chamada real para a API
-      // return http(`/usuarios/${userId}/approve`, { method: 'PATCH', auth: true });
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/usuarios/${userId}/aprovar`,
+        {
+          method: "PATCH",
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
 
-      // Mock - simular aprovação
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      return { success: true };
+      if (!response.ok) {
+        throw new Error("Erro ao aprovar usuário");
+      }
+
+      return response.json();
     },
     onSuccess: () => {
       toast.success("Usuário aprovado com sucesso!");
@@ -122,12 +147,21 @@ export default function AprovacaoUsuariosPage() {
 
   const rejectMutation = useMutation({
     mutationFn: async (userId: string) => {
-      // Aqui você faria a chamada real para a API
-      // return http(`/usuarios/${userId}/reject`, { method: 'PATCH', auth: true });
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/usuarios/${userId}/rejeitar`,
+        {
+          method: "PATCH",
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
 
-      // Mock - simular rejeição
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      return { success: true };
+      if (!response.ok) {
+        throw new Error("Erro ao rejeitar usuário");
+      }
+
+      return response.json();
     },
     onSuccess: () => {
       toast.success("Usuário rejeitado");
@@ -149,24 +183,6 @@ export default function AprovacaoUsuariosPage() {
       rejectMutation.mutate(userId);
     }
   };
-
-  if (!hasPermission) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Card className="w-full max-w-md">
-          <CardContent className="pt-6">
-            <div className="text-center">
-              <Shield className="mx-auto h-12 w-12 text-red-500 mb-4" />
-              <h3 className="text-lg font-semibold mb-2">Acesso Negado</h3>
-              <p className="text-gray-600">
-                Você não tem permissão para acessar esta área.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
@@ -222,7 +238,7 @@ export default function AprovacaoUsuariosPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-yellow-600">
-                {users.filter((u) => !u.ativo).length}
+                {allUsersForStats.filter((u) => !u.ativo).length}
               </div>
             </CardContent>
           </Card>
@@ -234,7 +250,7 @@ export default function AprovacaoUsuariosPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-green-600">
-                {users.filter((u) => u.ativo).length}
+                {allUsersForStats.filter((u) => u.ativo).length}
               </div>
             </CardContent>
           </Card>
@@ -246,7 +262,7 @@ export default function AprovacaoUsuariosPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-blue-600">
-                {users.length}
+                {allUsersForStats.length}
               </div>
             </CardContent>
           </Card>
@@ -377,5 +393,13 @@ export default function AprovacaoUsuariosPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function ProtectedAprovacaoUsuariosPage() {
+  return (
+    <ProtectedRoute requiredPerfis={["master"]}>
+      <AprovacaoUsuariosPage />
+    </ProtectedRoute>
   );
 }

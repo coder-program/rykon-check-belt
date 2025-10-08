@@ -62,7 +62,10 @@ export class CreateUnidadeDto {
   @IsString()
   inscricao_municipal?: string;
 
-  @ApiPropertyOptional({ example: 'TCR001', description: 'Código interno (gerado automaticamente se não fornecido)' })
+  @ApiPropertyOptional({
+    example: 'TCR001',
+    description: 'Código interno (gerado automaticamente se não fornecido)',
+  })
   @IsOptional()
   @IsString()
   @Length(1, 50)
@@ -90,7 +93,7 @@ export class CreateUnidadeDto {
   @IsNotEmpty()
   email!: string;
 
-  @ApiPropertyOptional({ example: 'https://www.teamcruz.com.br' })
+  @ApiPropertyOptional({ example: 'https://www.lojateamcruz.com.br/' })
   @IsOptional()
   @IsUrl({}, { message: 'Website deve ser uma URL válida' })
   website?: string;
@@ -144,7 +147,7 @@ export class CreateUnidadeDto {
   @Min(0)
   qtde_tatames?: number;
 
-  @ApiPropertyOptional({ example: 120.50, description: 'Área do tatame em m²' })
+  @ApiPropertyOptional({ example: 120.5, description: 'Área do tatame em m²' })
   @IsOptional()
   @IsNumber()
   @Min(0)
@@ -197,7 +200,9 @@ export class CreateUnidadeDto {
   endereco_id?: string;
 
   // Responsável Técnico
-  @ApiPropertyOptional({ description: 'ID do instrutor principal (faixa-preta)' })
+  @ApiPropertyOptional({
+    description: 'ID do instrutor principal (faixa-preta)',
+  })
   @IsOptional()
   @IsUUID()
   instrutor_principal_id?: string;

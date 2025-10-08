@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import SimpleModal from "@/components/ui/SimpleModal";
 import {
   getUsuarios,
   getPerfis,
@@ -159,9 +160,7 @@ const UsuariosManager = () => {
           });
         } else {
           // Criar usuário não é permitido aqui (usar tela de registro)
-          alert(
-            "Para criar novos usuários, use a tela de cadastro no login."
-          );
+          alert("Para criar novos usuários, use a tela de cadastro no login.");
           setModalOpen(false);
         }
       } else if (modalType === "profile") {
@@ -250,9 +249,34 @@ const UsuariosManager = () => {
         <div className="usuarios-tab">
           <div className="tab-header">
             <h2>Usuários</h2>
-            <p className="info-text">
-              💡 Para criar novos usuários, use a tela de cadastro no login.
-            </p>
+            <button
+              className="btn-primary"
+              onClick={() => {
+                setModalType("user");
+                setEditingItem(null);
+                setFormData({
+                  username: "",
+                  email: "",
+                  password: "",
+                  nome: "",
+                  cpf: "",
+                  telefone: "",
+                  ativo: true,
+                  perfil_ids: [],
+                });
+                setModalOpen(true);
+              }}
+              style={{
+                padding: '10px 20px',
+                background: '#28a745',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer'
+              }}
+            >
+              ➕ Novo Usuário
+            </button>
           </div>
 
           <div className="table-container">
@@ -262,57 +286,77 @@ const UsuariosManager = () => {
                   <th>Nome</th>
                   <th>Username</th>
                   <th>Email</th>
+                  <th>CPF</th>
+                  <th>Telefone</th>
                   <th>Perfis</th>
                   <th>Status</th>
+                  <th>Cadastro Completo</th>
                   <th>Último Login</th>
+                  <th>Data Criação</th>
                   <th>Ações</th>
                 </tr>
               </thead>
               <tbody>
                 {usuarios && usuarios.length > 0 ? (
                   usuarios.map((user) => (
-                  <tr key={user.id}>
-                    <td>{user.nome}</td>
-                    <td>{user.username}</td>
-                    <td>{user.email}</td>
-                    <td>
-                      {user.perfis?.map((p: any) => (
-                        <span key={p.id} className="badge">
-                          {p.nome}
+                    <tr key={user.id}>
+                      <td>{user.nome}</td>
+                      <td>{user.username}</td>
+                      <td>{user.email}</td>
+                      <td>{user.cpf || "—"}</td>
+                      <td>{user.telefone || "—"}</td>
+                      <td>
+                        {user.perfis?.map((p: any) => (
+                          <span key={p.id} className="badge">
+                            {p.nome}
+                          </span>
+                        ))}
+                      </td>
+                      <td>
+                        <span
+                          className={`status ${
+                            user.ativo ? "active" : "inactive"
+                          }`}
+                        >
+                          {user.ativo ? "Ativo" : "Inativo"}
                         </span>
-                      ))}
-                    </td>
-                    <td>
-                      <span
-                        className={`status ${user.ativo ? "active" : "inactive"}`}
-                      >
-                        {user.ativo ? "Ativo" : "Inativo"}
-                      </span>
-                    </td>
-                    <td>
-                      {user.ultimo_login
-                        ? new Date(user.ultimo_login).toLocaleString()
-                        : "Nunca"}
-                    </td>
-                    <td>
-                      <button
-                        className="btn-edit"
-                        onClick={() => handleEditUser(user)}
-                      >
-                        ✏️
-                      </button>
-                      <button
-                        className="btn-delete"
-                        onClick={() => handleDelete("user", user.id)}
-                      >
-                        🗑️
-                      </button>
-                    </td>
-                  </tr>
+                      </td>
+                      <td>
+                        <span
+                          className={`status ${
+                            user.cadastro_completo ? "active" : "inactive"
+                          }`}
+                        >
+                          {user.cadastro_completo ? "✅ Sim" : "❌ Não"}
+                        </span>
+                      </td>
+                      <td>
+                        {user.ultimo_login
+                          ? new Date(user.ultimo_login).toLocaleString("pt-BR")
+                          : "Nunca"}
+                      </td>
+                      <td>
+                        {new Date(user.created_at).toLocaleString("pt-BR")}
+                      </td>
+                      <td>
+                        <button
+                          className="btn-edit"
+                          onClick={() => handleEditUser(user)}
+                        >
+                          ✏️
+                        </button>
+                        <button
+                          className="btn-delete"
+                          onClick={() => handleDelete("user", user.id)}
+                        >
+                          🗑️
+                        </button>
+                      </td>
+                    </tr>
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={7} className="text-center">
+                    <td colSpan={11} className="text-center">
                       Nenhum usuário encontrado
                     </td>
                   </tr>
@@ -327,7 +371,18 @@ const UsuariosManager = () => {
         <div className="perfis-tab">
           <div className="tab-header">
             <h2>Perfis</h2>
-            <button className="btn-primary" onClick={handleCreateProfile}>
+            <button
+              className="btn-primary"
+              onClick={handleCreateProfile}
+              style={{
+                padding: "10px 20px",
+                background: "#28a745",
+                color: "white",
+                border: "none",
+                borderRadius: "4px",
+                cursor: "pointer",
+              }}
+            >
               ➕ Novo Perfil
             </button>
           </div>
@@ -345,31 +400,31 @@ const UsuariosManager = () => {
               <tbody>
                 {perfis && perfis.length > 0 ? (
                   perfis.map((p) => (
-                  <tr key={p.id}>
-                    <td>{p.nome}</td>
-                    <td>{p.descricao}</td>
-                    <td>
-                      {p.permissoes?.map((perm: any) => (
-                        <span key={perm.id} className="badge">
-                          {perm.nome}
-                        </span>
-                      ))}
-                    </td>
-                    <td>
-                      <button
-                        className="btn-edit"
-                        onClick={() => handleEditProfile(p)}
-                      >
-                        ✏️
-                      </button>
-                      <button
-                        className="btn-delete"
-                        onClick={() => handleDelete("profile", p.id)}
-                      >
-                        🗑️
-                      </button>
-                    </td>
-                  </tr>
+                    <tr key={p.id}>
+                      <td>{p.nome}</td>
+                      <td>{p.descricao}</td>
+                      <td>
+                        {p.permissoes?.map((perm: any) => (
+                          <span key={perm.id} className="badge">
+                            {perm.nome}
+                          </span>
+                        ))}
+                      </td>
+                      <td>
+                        <button
+                          className="btn-edit"
+                          onClick={() => handleEditProfile(p)}
+                        >
+                          ✏️
+                        </button>
+                        <button
+                          className="btn-delete"
+                          onClick={() => handleDelete("profile", p.id)}
+                        >
+                          🗑️
+                        </button>
+                      </td>
+                    </tr>
                   ))
                 ) : (
                   <tr>
@@ -396,15 +451,15 @@ const UsuariosManager = () => {
           <div className="permissions-grid">
             {permissoes && permissoes.length > 0 ? (
               permissoes.map((perm) => (
-              <div key={perm.id} className="permission-module">
-                <h3>{perm.nome}</h3>
-                <div className="permission-list">
-                  <div className="permission-item">
-                    <span className="permission-name">{perm.descricao}</span>
-                    <code className="permission-code">{perm.nome}</code>
+                <div key={perm.id} className="permission-module">
+                  <h3>{perm.nome}</h3>
+                  <div className="permission-list">
+                    <div className="permission-item">
+                      <span className="permission-name">{perm.descricao}</span>
+                      <code className="permission-code">{perm.nome}</code>
+                    </div>
                   </div>
                 </div>
-              </div>
               ))
             ) : (
               <p className="text-center">Nenhuma permissão encontrada</p>
@@ -413,50 +468,418 @@ const UsuariosManager = () => {
         </div>
       )}
 
-      {modalOpen && (
-        <div className="modal-overlay" onClick={() => setModalOpen(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2>{modalType === "user" ? "Usuário" : "Perfil"}</h2>
-              <button
-                className="modal-close"
-                onClick={() => setModalOpen(false)}
-              >
-                ×
-              </button>
-            </div>
-            <form onSubmit={handleSubmit}>
-              {/* Inputs simples (exemplo) */}
-              <div className="form-group">
-                <label>Nome</label>
+      <SimpleModal
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+        title={
+          modalType === "user" ? "✏️ Editar Usuário" : "➕ Criar Novo Perfil"
+        }
+      >
+        <form onSubmit={handleSubmit}>
+          {modalType === "user" ? (
+            // Formulário de Usuário
+            <>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '15px' }}>
+                <div>
+                  <label style={{ display: "block", marginBottom: "5px", fontWeight: "bold" }}>
+                    Nome Completo *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.nome || ""}
+                    onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
+                    style={{
+                      width: "100%",
+                      padding: "10px",
+                      border: "2px solid #ddd",
+                      borderRadius: "6px",
+                      fontSize: "16px",
+                      boxSizing: "border-box",
+                    }}
+                    placeholder="Ex: João Silva Santos"
+                  />
+                </div>
+                <div>
+                  <label style={{ display: "block", marginBottom: "5px", fontWeight: "bold" }}>
+                    Username *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.username || ""}
+                    onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                    style={{
+                      width: "100%",
+                      padding: "10px",
+                      border: "2px solid #ddd",
+                      borderRadius: "6px",
+                      fontSize: "16px",
+                      boxSizing: "border-box",
+                    }}
+                    placeholder="Ex: joao.silva"
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '15px' }}>
+                <div>
+                  <label style={{ display: "block", marginBottom: "5px", fontWeight: "bold" }}>
+                    Email *
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    value={formData.email || ""}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    style={{
+                      width: "100%",
+                      padding: "10px",
+                      border: "2px solid #ddd",
+                      borderRadius: "6px",
+                      fontSize: "16px",
+                      boxSizing: "border-box",
+                    }}
+                    placeholder="Ex: joao@teamcruz.com"
+                  />
+                </div>
+                <div>
+                  <label style={{ display: "block", marginBottom: "5px", fontWeight: "bold" }}>
+                    {editingItem ? "Nova Senha (deixe vazio para manter)" : "Senha *"}
+                  </label>
+                  <input
+                    type="password"
+                    required={!editingItem}
+                    value={formData.password || ""}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    style={{
+                      width: "100%",
+                      padding: "10px",
+                      border: "2px solid #ddd",
+                      borderRadius: "6px",
+                      fontSize: "16px",
+                      boxSizing: "border-box",
+                    }}
+                    placeholder="Digite a senha"
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '15px' }}>
+                <div>
+                  <label style={{ display: "block", marginBottom: "5px", fontWeight: "bold" }}>
+                    CPF
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.cpf || ""}
+                    onChange={(e) => setFormData({ ...formData, cpf: e.target.value })}
+                    style={{
+                      width: "100%",
+                      padding: "10px",
+                      border: "2px solid #ddd",
+                      borderRadius: "6px",
+                      fontSize: "16px",
+                      boxSizing: "border-box",
+                    }}
+                    placeholder="000.000.000-00"
+                  />
+                </div>
+                <div>
+                  <label style={{ display: "block", marginBottom: "5px", fontWeight: "bold" }}>
+                    Telefone
+                  </label>
+                  <input
+                    type="tel"
+                    value={formData.telefone || ""}
+                    onChange={(e) => setFormData({ ...formData, telefone: e.target.value })}
+                    style={{
+                      width: "100%",
+                      padding: "10px",
+                      border: "2px solid #ddd",
+                      borderRadius: "6px",
+                      fontSize: "16px",
+                      boxSizing: "border-box",
+                    }}
+                    placeholder="(11) 99999-9999"
+                  />
+                </div>
+              </div>
+
+              <div style={{ marginBottom: '15px' }}>
+                <label style={{ display: "flex", alignItems: "center", gap: "10px", fontWeight: "bold" }}>
+                  <input
+                    type="checkbox"
+                    checked={formData.ativo !== false}
+                    onChange={(e) => setFormData({ ...formData, ativo: e.target.checked })}
+                    style={{ transform: "scale(1.3)" }}
+                  />
+                  Usuário Ativo
+                </label>
+              </div>
+
+              {perfis && perfis.length > 0 && (
+                <div style={{ marginBottom: '15px' }}>
+                  <label style={{ display: "block", marginBottom: "5px", fontWeight: "bold" }}>
+                    Perfis do Usuário
+                  </label>
+                  <div style={{
+                    maxHeight: '150px',
+                    overflow: 'auto',
+                    border: '2px solid #ddd',
+                    borderRadius: '6px',
+                    padding: '10px'
+                  }}>
+                    {perfis.map((perfil) => (
+                      <label key={perfil.id} style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '10px',
+                        marginBottom: '8px',
+                        cursor: 'pointer',
+                        padding: '5px',
+                        borderRadius: '4px',
+                        backgroundColor: formData.perfil_ids?.includes(perfil.id) ? '#e3f2fd' : 'transparent'
+                      }}>
+                        <input
+                          type="checkbox"
+                          checked={formData.perfil_ids?.includes(perfil.id) || false}
+                          onChange={(e) => {
+                            const perfilIds = formData.perfil_ids || [];
+                            if (e.target.checked) {
+                              setFormData({
+                                ...formData,
+                                perfil_ids: [...perfilIds, perfil.id]
+                              });
+                            } else {
+                              setFormData({
+                                ...formData,
+                                perfil_ids: perfilIds.filter((id: string) => id !== perfil.id)
+                              });
+                            }
+                          }}
+                          style={{ transform: "scale(1.3)" }}
+                        />
+                        <div>
+                          <strong>{perfil.nome}</strong>
+                          {perfil.descricao && <div style={{ fontSize: '12px', color: '#666' }}>{perfil.descricao}</div>}
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          ) : (
+            // Formulário de Perfil
+            <>
+              <div style={{ marginBottom: "15px" }}>
+                <label style={{ display: "block", marginBottom: "5px", fontWeight: "bold" }}>
+                  Nome *
+                </label>
                 <input
+                  type="text"
+                  required
                   value={formData.nome || ""}
-                  onChange={(e) =>
-                    setFormData({ ...formData, nome: e.target.value })
-                  }
+                  onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
+                  style={{
+                    width: "100%",
+                    padding: "10px",
+                    border: "2px solid #ddd",
+                    borderRadius: "6px",
+                    fontSize: "16px",
+                    boxSizing: "border-box",
+                  }}
+                  placeholder="Ex: Supervisor Regional"
                 />
               </div>
-              <div className="form-group">
-                <label>Descrição</label>
-                <input
-                  value={formData.descricao || ""}
-                  onChange={(e) =>
-                    setFormData({ ...formData, descricao: e.target.value })
-                  }
-                />
+
+              <div style={{ marginBottom: "15px" }}>
+                <label style={{ display: "block", marginBottom: "5px", fontWeight: "bold" }}>
+                  Descrição
+                </label>
+                            </>
+          )}
               </div>
-              <div className="modal-footer">
-                <button type="button" onClick={() => setModalOpen(false)}>
-                  Cancelar
-                </button>
-                <button type="submit" className="btn-primary">
-                  Salvar
-                </button>
-              </div>
-            </form>
+
+              {permissoes && permissoes.length > 0 && (
+                <div style={{ marginBottom: '15px' }}>
+                  <label style={{ display: "block", marginBottom: "5px", fontWeight: "bold" }}>
+                    Permissões do Perfil
+                  </label>
+                  <div style={{
+                    maxHeight: '200px',
+                    overflow: 'auto',
+                    border: '2px solid #ddd',
+                    borderRadius: '6px',
+                    padding: '10px'
+                  }}>
+                    {permissoes.map((perm) => (
+                      <label key={perm.id} style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '10px',
+                        marginBottom: '8px',
+                        cursor: 'pointer',
+                        padding: '5px',
+                        borderRadius: '4px',
+                        backgroundColor: formData.permissao_ids?.includes(perm.id) ? '#e8f5e8' : 'transparent'
+                      }}>
+                        <input
+                          type="checkbox"
+                          checked={formData.permissao_ids?.includes(perm.id) || false}
+                          onChange={(e) => {
+                            const permissaoIds = formData.permissao_ids || [];
+                            if (e.target.checked) {
+                              setFormData({
+                                ...formData,
+                                permissao_ids: [...permissaoIds, perm.id]
+                              });
+                            } else {
+                              setFormData({
+                                ...formData,
+                                permissao_ids: permissaoIds.filter((id: string) => id !== perm.id)
+                              });
+                            }
+                          }}
+                          style={{ transform: "scale(1.3)" }}
+                        />
+                        <div>
+                          <strong>{perm.nome}</strong> - {perm.modulo}
+                          {perm.descricao && <div style={{ fontSize: '12px', color: '#666' }}>{perm.descricao}</div>}
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+                setFormData({ ...formData, descricao: e.target.value })
+              }
+              style={{
+                width: "100%",
+                padding: "10px",
+                border: "2px solid #ddd",
+                borderRadius: "6px",
+                fontSize: "16px",
+                minHeight: "80px",
+                resize: "vertical",
+                boxSizing: "border-box",
+              }}
+              placeholder="Descrição do perfil..."
+            />
           </div>
-        </div>
-      )}
+
+          {modalType === "profile" && permissoes && (
+            <div style={{ marginBottom: "20px" }}>
+              <label
+                style={{
+                  display: "block",
+                  marginBottom: "10px",
+                  fontWeight: "bold",
+                }}
+              >
+                Permissões
+              </label>
+              <div
+                style={{
+                  maxHeight: "200px",
+                  overflow: "auto",
+                  border: "2px solid #ddd",
+                  borderRadius: "6px",
+                  padding: "15px",
+                  backgroundColor: "#f8f9fa",
+                }}
+              >
+                {permissoes.map((perm) => (
+                  <label
+                    key={perm.id}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      marginBottom: "10px",
+                      cursor: "pointer",
+                      padding: "8px",
+                      borderRadius: "4px",
+                      backgroundColor: "white",
+                      border: "1px solid #e9ecef",
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={
+                        formData.permissao_ids?.includes(perm.id) || false
+                      }
+                      onChange={(e) => {
+                        const permissaoIds = formData.permissao_ids || [];
+                        if (e.target.checked) {
+                          setFormData({
+                            ...formData,
+                            permissao_ids: [...permissaoIds, perm.id],
+                          });
+                        } else {
+                          setFormData({
+                            ...formData,
+                            permissao_ids: permissaoIds.filter(
+                              (id: string) => id !== perm.id
+                            ),
+                          });
+                        }
+                      }}
+                      style={{ marginRight: "10px", transform: "scale(1.3)" }}
+                    />
+                    <span style={{ fontSize: "14px", flex: 1 }}>
+                      <strong>{perm.nome}</strong> - {perm.modulo}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "flex-end",
+              gap: "15px",
+              paddingTop: "20px",
+              borderTop: "2px solid #e9ecef",
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => setModalOpen(false)}
+              style={{
+                padding: "12px 24px",
+                border: "2px solid #6c757d",
+                background: "white",
+                borderRadius: "8px",
+                cursor: "pointer",
+                fontSize: "16px",
+                fontWeight: "bold",
+              }}
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              style={{
+                padding: "12px 24px",
+                background: "#28a745",
+                color: "white",
+                border: "none",
+                borderRadius: "8px",
+                cursor: "pointer",
+                fontSize: "16px",
+                fontWeight: "bold",
+              }}
+            >
+              💾 Salvar Perfil
+            </button>
+          </div>
+        </form>
+      </SimpleModal>
     </div>
   );
 };

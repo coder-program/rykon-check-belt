@@ -151,9 +151,9 @@ export class Unidade {
   endereco_id: string | null;
 
   // Metadados
-  @CreateDateColumn()
-  criado_em: Date;
+  @CreateDateColumn({ name: 'created_at' })
+  created_at: Date;
 
-  @UpdateDateColumn()
-  atualizado_em: Date;
+  @UpdateDateColumn({ name: 'updated_at' })
+  updated_at: Date;
 }

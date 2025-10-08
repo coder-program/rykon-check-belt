@@ -1,10 +1,18 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { createAluno, createProfessor } from "@/lib/peopleApi";
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
+import { createAluno, createProfessor, listUnidades } from "@/lib/peopleApi";
 import { InputCPF } from "@/components/form/InputCPF";
 import toast from "react-hot-toast";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 
 interface PersonFormProps {
   onSuccess?: () => void;
@@ -54,12 +62,30 @@ export function PersonForm({
     observacoes: "",
   });
 
+  // Estado para unidades adicionais do professor
+  const [unidadesAdicionais, setUnidadesAdicionais] = useState<string[]>([]);
+
   const [isMinor, setIsMinor] = useState(false);
+
+  // Carregar unidades disponíveis
+  const { data: unidadesData } = useQuery({
+    queryKey: ["unidades"],
+    queryFn: () => listUnidades({ page: 1, pageSize: 100 }),
+  });
+
+  const unidadesDisponiveis = unidadesData?.items || [];
 
   useEffect(() => {
     if (initialData) {
       setFormData(initialData);
       setTipoCadastro(initialData.tipo_cadastro || defaultTipo);
+      // Carregar unidades adicionais se for professor
+      if (initialData.unidades && Array.isArray(initialData.unidades)) {
+        const adiconais = initialData.unidades
+          .filter((u: any) => !u.is_principal)
+          .map((u: any) => u.id);
+        setUnidadesAdicionais(adiconais);
+      }
     } else {
       setTipoCadastro(defaultTipo);
       setFormData((prev) => ({ ...prev, tipo_cadastro: defaultTipo }));
@@ -241,13 +267,19 @@ export function PersonForm({
       return;
     }
 
-    // Preparar dados formatados
-    const dataToSend = {
+    // Validar unidade principal para professor
+    if (tipoCadastro === "PROFESSOR" && !formData.unidade_id) {
+      toast.error("Selecione a unidade principal do professor");
+      return;
+    }
+
+    // Preparar dados formatados (remover formatação de CPF/telefone)
+    const dataToSend: any = {
       ...formData,
       tipo_cadastro: tipoCadastro,
-      cpf: formatCPF(formData.cpf),
+      cpf: formData.cpf.replace(/\D/g, ""), // Remove formatação, mantém apenas números
       responsavel_cpf: formData.responsavel_cpf
-        ? formatCPF(formData.responsavel_cpf)
+        ? formData.responsavel_cpf.replace(/\D/g, "") // Remove formatação, mantém apenas números
         : undefined,
       cep: formData.cep ? formatCEP(formData.cep) : undefined,
       grau_atual:
@@ -270,6 +302,11 @@ export function PersonForm({
       data_inicio_docencia: formData.data_inicio_docencia || undefined,
       registro_profissional: formData.registro_profissional || undefined,
     };
+
+    // Adicionar unidades adicionais se for professor
+    if (tipoCadastro === "PROFESSOR" && unidadesAdicionais.length > 0) {
+      dataToSend.unidades_adicionais = unidadesAdicionais;
+    }
 
     // Remover campos não necessários baseado no tipo
     if (tipoCadastro === "ALUNO") {
@@ -310,50 +347,16 @@ export function PersonForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {/* Seleção de Tipo */}
-      <div className="card bg-base-100 shadow-xl">
-        <div className="card-body">
-          <h2 className="card-title">Tipo de Cadastro</h2>
-          <div className="flex gap-4">
-            <label className="label cursor-pointer flex items-center gap-2">
-              <input
-                type="radio"
-                name="tipo"
-                className="radio radio-primary"
-                checked={tipoCadastro === "ALUNO"}
-                onChange={() => {
-                  setTipoCadastro("ALUNO");
-                  setFormData((prev) => ({ ...prev, tipo_cadastro: "ALUNO" }));
-                }}
-                disabled={isEdit}
-              />
-              <span className="label-text">Aluno</span>
-            </label>
-            <label className="label cursor-pointer flex items-center gap-2">
-              <input
-                type="radio"
-                name="tipo"
-                className="radio radio-primary"
-                checked={tipoCadastro === "PROFESSOR"}
-                onChange={() => {
-                  setTipoCadastro("PROFESSOR");
-                  setFormData((prev) => ({
-                    ...prev,
-                    tipo_cadastro: "PROFESSOR",
-                  }));
-                }}
-                disabled={isEdit}
-              />
-              <span className="label-text">Professor</span>
-            </label>
-          </div>
-        </div>
-      </div>
-
       {/* Dados Pessoais */}
-      <div className="card bg-base-100 shadow-xl">
-        <div className="card-body">
-          <h2 className="card-title">Dados Pessoais</h2>
+      <Card>
+        <CardHeader>
+          <CardTitle>Dados Pessoais</CardTitle>
+          <CardDescription>
+            Informações básicas do{" "}
+            {tipoCadastro === "ALUNO" ? "aluno" : "professor"}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="form-control">
               <label className="label">
@@ -446,14 +449,19 @@ export function PersonForm({
               />
             </div>
           </div>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
       {/* Campos Específicos de Aluno */}
       {tipoCadastro === "ALUNO" && (
-        <div className="card bg-base-100 shadow-xl">
-          <div className="card-body">
-            <h2 className="card-title">Dados de Aluno</h2>
+        <Card>
+          <CardHeader>
+            <CardTitle>Dados de Aluno</CardTitle>
+            <CardDescription>
+              Informações de graduação e responsabilidade
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="form-control">
                 <label className="label">
@@ -728,15 +736,20 @@ export function PersonForm({
                 </div>
               </>
             )}
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* Campos Específicos de Professor */}
       {tipoCadastro === "PROFESSOR" && (
-        <div className="card bg-base-100 shadow-xl">
-          <div className="card-body">
-            <h2 className="card-title">Dados de Professor</h2>
+        <Card>
+          <CardHeader>
+            <CardTitle>Dados de Professor</CardTitle>
+            <CardDescription>
+              Qualificações e unidades de atuação
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="form-control">
                 <label className="label">
@@ -784,14 +797,121 @@ export function PersonForm({
                 />
               </div>
             </div>
-          </div>
-        </div>
+
+            {/* Seleção de Unidades */}
+            <div className="divider">Unidades</div>
+            <div className="grid grid-cols-1 gap-4">
+              <div className="form-control">
+                <label className="label">
+                  <span className="label-text">Unidade Principal *</span>
+                </label>
+                <select
+                  name="unidade_id"
+                  value={formData.unidade_id}
+                  onChange={handleChange}
+                  className="select select-bordered"
+                  required
+                >
+                  <option value="">Selecione a unidade principal</option>
+                  {unidadesDisponiveis.map((unidade: any) => (
+                    <option key={unidade.id} value={unidade.id}>
+                      {unidade.nome}
+                    </option>
+                  ))}
+                </select>
+                <label className="label">
+                  <span className="label-text-alt text-info">
+                    ℹ️ A unidade principal é onde o professor atua
+                    prioritariamente
+                  </span>
+                </label>
+              </div>
+
+              <div className="form-control">
+                <label className="label">
+                  <span className="label-text">
+                    Unidades Adicionais (Opcional)
+                  </span>
+                </label>
+                <div className="border border-base-300 rounded-lg p-4 space-y-2 max-h-48 overflow-y-auto">
+                  {unidadesDisponiveis
+                    .filter((u: any) => u.id !== formData.unidade_id)
+                    .map((unidade: any) => (
+                      <label
+                        key={unidade.id}
+                        className="label cursor-pointer justify-start gap-3"
+                      >
+                        <input
+                          type="checkbox"
+                          className="checkbox checkbox-sm"
+                          checked={unidadesAdicionais.includes(unidade.id)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setUnidadesAdicionais([
+                                ...unidadesAdicionais,
+                                unidade.id,
+                              ]);
+                            } else {
+                              setUnidadesAdicionais(
+                                unidadesAdicionais.filter(
+                                  (id) => id !== unidade.id
+                                )
+                              );
+                            }
+                          }}
+                        />
+                        <span className="label-text">{unidade.nome}</span>
+                      </label>
+                    ))}
+                  {unidadesDisponiveis.filter(
+                    (u: any) => u.id !== formData.unidade_id
+                  ).length === 0 && (
+                    <p className="text-sm text-gray-500">
+                      Selecione uma unidade principal primeiro
+                    </p>
+                  )}
+                </div>
+                <label className="label">
+                  <span className="label-text-alt text-info">
+                    ℹ️ Selecione outras unidades onde o professor também pode
+                    dar aulas
+                  </span>
+                </label>
+              </div>
+
+              {unidadesAdicionais.length > 0 && (
+                <div className="alert alert-info">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    className="stroke-current shrink-0 w-6 h-6"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                    ></path>
+                  </svg>
+                  <span>
+                    Professor vinculado a {unidadesAdicionais.length + 1}{" "}
+                    unidade(s) no total
+                  </span>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* Observações */}
-      <div className="card bg-base-100 shadow-xl">
-        <div className="card-body">
-          <h2 className="card-title">Observações</h2>
+      <Card>
+        <CardHeader>
+          <CardTitle>Observações</CardTitle>
+          <CardDescription>Anotações adicionais</CardDescription>
+        </CardHeader>
+        <CardContent>
           <div className="form-control">
             <textarea
               name="observacoes"
@@ -802,21 +922,17 @@ export function PersonForm({
               placeholder="Observações adicionais..."
             />
           </div>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
       {/* Botões */}
       <div className="flex justify-end gap-4">
         {onCancel && (
-          <button type="button" onClick={onCancel} className="btn btn-ghost">
+          <Button type="button" onClick={onCancel} variant="outline">
             Cancelar
-          </button>
+          </Button>
         )}
-        <button
-          type="submit"
-          className="btn btn-primary"
-          disabled={mutation.isPending}
-        >
+        <Button type="submit" disabled={mutation.isPending}>
           {mutation.isPending ? (
             <span className="loading loading-spinner"></span>
           ) : isEdit ? (
@@ -824,7 +940,7 @@ export function PersonForm({
           ) : (
             "Cadastrar"
           )}
-        </button>
+        </Button>
       </div>
     </form>
   );

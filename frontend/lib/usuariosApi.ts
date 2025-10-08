@@ -10,6 +10,7 @@ export interface Usuario {
   cpf?: string;
   telefone?: string;
   ativo: boolean;
+  cadastro_completo?: boolean;
   perfis?: Perfil[];
   ultimo_login?: string;
   created_at: string;
@@ -24,6 +25,7 @@ export interface CreateUsuarioDto {
   cpf?: string;
   telefone?: string;
   ativo?: boolean;
+  cadastro_completo?: boolean;
   perfil_ids?: string[];
 }
 
@@ -33,16 +35,34 @@ export interface UpdateUsuarioDto {
   cpf?: string;
   telefone?: string;
   ativo?: boolean;
+  cadastro_completo?: boolean;
   perfil_ids?: string[];
 }
 
 export const getUsuarios = async (): Promise<Usuario[]> => {
-  const response = await api("/usuarios");
-  return response;
+  try {
+    console.log("getUsuarios: Fazendo requisição para /usuarios");
+    const response = await api("/usuarios");
+    console.log("getUsuarios: Resposta recebida:", response);
+    return response;
+  } catch (error) {
+    console.error("getUsuarios: Erro na requisição:", error);
+    throw error;
+  }
 };
 
 export const getUsuario = async (id: string): Promise<Usuario> => {
   const response = await api(`/usuarios/${id}`);
+  return response;
+};
+
+export const createUsuario = async (
+  data: CreateUsuarioDto
+): Promise<Usuario> => {
+  const response = await api("/usuarios", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
   return response;
 };
 

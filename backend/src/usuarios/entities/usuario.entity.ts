@@ -35,6 +35,9 @@ export class Usuario {
   @Column({ default: true })
   ativo: boolean;
 
+  @Column({ default: false })
+  cadastro_completo: boolean;
+
   @Column({ nullable: true })
   ultimo_login: Date;
 

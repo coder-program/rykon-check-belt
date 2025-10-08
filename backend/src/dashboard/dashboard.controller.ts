@@ -10,7 +10,7 @@ export class DashboardController {
   @Get('stats')
   @ApiOperation({ summary: 'Obter estatísticas gerais do dashboard' })
   @ApiResponse({ status: 200, description: 'Estatísticas obtidas com sucesso' })
-  async getStats() {
-    return this.dashboardService.getStats();
+  async getStats(@Query('unidadeId') unidadeId?: string) {
+    return this.dashboardService.getStats(unidadeId);
   }
 }

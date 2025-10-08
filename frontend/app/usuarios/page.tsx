@@ -1,8 +1,8 @@
 "use client";
 
 import React from "react";
-import UsuariosManager from "@/components/usuarios/UsuariosManager";
+import UsuariosManagerNew from "@/components/usuarios/UsuariosManagerNew";
 
 export default function UsuariosPage() {
-  return <UsuariosManager />;
+  return <UsuariosManagerNew />;
 }

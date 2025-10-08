@@ -364,7 +364,7 @@ export class CreateGraduacaoTables1757100000000 implements MigrationInterface {
           {
             name: 'FK_aluno_faixa_aluno',
             columnNames: ['aluno_id'],
-            referencedTableName: 'pessoas',
+            referencedTableName: 'alunos',
             referencedColumnNames: ['id'],
             onDelete: 'CASCADE',
           },

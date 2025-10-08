@@ -38,7 +38,7 @@ interface RedesSociais {
   linkedin?: string;
 }
 
-type SituacaoFranqueado = 'ATIVA' | 'INATIVA' | 'EM_HOMOLOGACAO';
+type SituacaoFranqueado = "ATIVA" | "INATIVA" | "EM_HOMOLOGACAO";
 
 interface Franqueado {
   id: string;
@@ -308,10 +308,22 @@ export default function PageFranqueados() {
       return;
     }
 
+    // Limpar formatação antes de enviar
+    const cleanedData = {
+      ...formData,
+      cnpj: formData.cnpj.replace(/\D/g, ""), // Remove formatação do CNPJ
+      telefone_celular: formData.telefone_celular?.replace(/\D/g, "") || "",
+      telefone_fixo: formData.telefone_fixo?.replace(/\D/g, "") || "",
+      responsavel_cpf: formData.responsavel_cpf?.replace(/\D/g, "") || "",
+      responsavel_telefone:
+        formData.responsavel_telefone?.replace(/\D/g, "") || "",
+      cep: formData.cep?.replace(/\D/g, "") || "",
+    };
+
     if (editingFranqueado) {
-      updateMutation.mutate({ id: editingFranqueado.id, data: formData });
+      updateMutation.mutate({ id: editingFranqueado.id, data: cleanedData });
     } else {
-      createMutation.mutate(formData);
+      createMutation.mutate(cleanedData);
     }
   };
 

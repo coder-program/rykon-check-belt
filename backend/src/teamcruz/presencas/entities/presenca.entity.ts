@@ -15,16 +15,16 @@ export class Presenca {
   @Column({ type: 'date' })
   data: Date;
 
-  @Column({ name: 'pessoa_id' })
-  pessoaId: string;
+  @Column({ name: 'aluno_id' })
+  aluno_id: string;
 
-  @Column({ name: 'metodo', nullable: true })
-  metodo?: string;
+  @Column({ name: 'modo_registro', nullable: true })
+  modo_registro?: string;
 
-  @Column({ name: 'detalhes', type: 'jsonb', nullable: true })
-  detalhes?: any;
+  @Column({ name: 'observacoes', type: 'text', nullable: true })
+  observacoes?: string;
 
   @ManyToOne(() => Person)
-  @JoinColumn({ name: 'pessoa_id' })
-  pessoa: Person;
+  @JoinColumn({ name: 'aluno_id' })
+  aluno: Person;
 }

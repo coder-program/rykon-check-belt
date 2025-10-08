@@ -7,22 +7,12 @@ export const authService = {
       body: { email, password },
     });
 
-    // Se o login foi bem-sucedido e temos um token
+    // O backend já retorna todos os dados do usuário no login
+    // incluindo access_token e user com cadastro_completo
     if (typeof window !== "undefined" && data?.access_token) {
-      // Salva o token imediatamente
       localStorage.setItem("token", data.access_token);
-
-      try {
-        // Agora busca o perfil com o token já salvo
-        const user = await http("/auth/profile", { auth: true });
-        return { ...data, user };
-      } catch (error) {
-        console.error("Erro ao buscar perfil após login:", error);
-        // Se falhar ao buscar o perfil, ainda retorna os dados do login
-        // O backend já retorna o user básico no login
-        return data;
-      }
     }
+
     return data;
   },
 
@@ -44,6 +34,20 @@ export const authService = {
     const data = await http("/auth/register", {
       method: "POST",
       body: userData,
+    });
+    return data;
+  },
+
+  async getMe() {
+    const data = await http("/auth/me", { auth: true });
+    return data;
+  },
+
+  async completeProfile(profileData: any) {
+    const data = await http("/auth/complete-profile", {
+      method: "POST",
+      body: profileData,
+      auth: true,
     });
     return data;
   },

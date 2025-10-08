@@ -1,8 +1,9 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useAuth } from "@/app/auth/AuthContext";
 import { useRouter } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
 import {
   Card,
   CardContent,
@@ -23,65 +24,102 @@ import {
   Target,
 } from "lucide-react";
 
+interface InstrutorStats {
+  meusAlunos: number;
+  aulasSemana: number;
+  graduacoesPendentes: number;
+  novasInscricoes: number;
+  presencaMedia: number;
+  proximasAulas: number;
+  alunosAtivos: number;
+  avaliacoesPendentes: number;
+}
+
+interface ProximaAula {
+  id: string;
+  horario: string;
+  tipo: string;
+  alunos: number;
+  local: string;
+  data: Date;
+}
+
+interface AlunoDestaque {
+  id: string;
+  nome: string;
+  faixa: string;
+  presencas: number;
+  proximaGraduacao: boolean;
+  ultimaPresenca: Date;
+}
+
 export default function InstrutorDashboard() {
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const router = useRouter();
 
-  const instrutorStats = {
-    meusAlunos: 48,
-    aulasSemana: 12,
-    graduacoesPendentes: 5,
-    novasInscricoes: 3,
-    presencaMedia: 78,
-    proximasAulas: 3,
-    alunosAtivos: 45,
-    avaliacoesPendentes: 8,
+  // Buscar estatísticas do instrutor
+  const { data: instrutorStats, isLoading: statsLoading } =
+    useQuery<InstrutorStats>({
+      queryKey: ["dashboard-instrutor-stats"],
+      queryFn: async () => {
+        const response = await fetch("/api/dashboard/instrutor/stats", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        if (!response.ok) throw new Error("Erro ao buscar estatísticas");
+        return response.json();
+      },
+      enabled: !!token,
+    });
+
+  // Buscar próximas aulas
+  const { data: proximasAulas, isLoading: aulasLoading } = useQuery<
+    ProximaAula[]
+  >({
+    queryKey: ["dashboard-instrutor-proximas-aulas"],
+    queryFn: async () => {
+      const response = await fetch("/api/dashboard/instrutor/proximas-aulas", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      if (!response.ok) throw new Error("Erro ao buscar próximas aulas");
+      return response.json();
+    },
+    enabled: !!token,
+  });
+
+  // Buscar alunos em destaque
+  const { data: alunosDestaque, isLoading: alunosLoading } = useQuery<
+    AlunoDestaque[]
+  >({
+    queryKey: ["dashboard-instrutor-alunos-destaque"],
+    queryFn: async () => {
+      const response = await fetch("/api/dashboard/instrutor/alunos-destaque", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      if (!response.ok) throw new Error("Erro ao buscar alunos em destaque");
+      return response.json();
+    },
+    enabled: !!token,
+  });
+
+  // Dados padrão enquanto carrega
+  const defaultStats: InstrutorStats = {
+    meusAlunos: 0,
+    aulasSemana: 0,
+    graduacoesPendentes: 0,
+    novasInscricoes: 0,
+    presencaMedia: 0,
+    proximasAulas: 0,
+    alunosAtivos: 0,
+    avaliacoesPendentes: 0,
   };
 
-  const proximasAulas = [
-    {
-      horario: "18:00 - 19:30",
-      tipo: "Jiu-Jitsu Gi Iniciantes",
-      alunos: 12,
-      local: "Tatame Principal",
-    },
-    {
-      horario: "19:30 - 21:00",
-      tipo: "Jiu-Jitsu NoGi Avançados",
-      alunos: 18,
-      local: "Tatame Principal",
-    },
-    {
-      horario: "21:00 - 22:00",
-      tipo: "Treino Livre",
-      alunos: 8,
-      local: "Tatame Secundário",
-    },
-  ];
-
-  const alunosDestaque = [
-    {
-      nome: "Carlos Mendes",
-      graduacao: "Faixa Branca 4° Grau",
-      presenca: 95,
-      evolucao: "Excelente",
-      proximaGraduacao: true,
-    },
-    {
-      nome: "Ana Silva",
-      graduacao: "Faixa Azul 1° Grau",
-      presenca: 88,
-      evolucao: "Boa",
-      proximaGraduacao: false,
-    },
-    {
-      nome: "Pedro Santos",
-      graduacao: "Faixa Branca 2° Grau",
-      presenca: 92,
-      evolucao: "Muito Boa",
-      proximaGraduacao: false,
-    },
-  ];
+  const stats = instrutorStats || defaultStats;
 
   const quickActions = [
     {
@@ -141,10 +179,10 @@ export default function InstrutorDashboard() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {instrutorStats.meusAlunos}
+                {statsLoading ? "..." : stats.meusAlunos}
               </div>
               <p className="text-xs text-muted-foreground">
-                {instrutorStats.alunosAtivos} ativos
+                {statsLoading ? "..." : stats.alunosAtivos} ativos
               </p>
             </CardContent>
           </Card>
@@ -158,10 +196,10 @@ export default function InstrutorDashboard() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {instrutorStats.aulasSemana}
+                {statsLoading ? "..." : stats.aulasSemana}
               </div>
               <p className="text-xs text-muted-foreground">
-                {instrutorStats.proximasAulas} hoje
+                {statsLoading ? "..." : stats.proximasAulas} hoje
               </p>
             </CardContent>
           </Card>
@@ -173,7 +211,7 @@ export default function InstrutorDashboard() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-yellow-600">
-                {instrutorStats.graduacoesPendentes}
+                {statsLoading ? "..." : stats.graduacoesPendentes}
               </div>
               <p className="text-xs text-muted-foreground">
                 Avaliações pendentes
@@ -190,7 +228,7 @@ export default function InstrutorDashboard() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-green-600">
-                {instrutorStats.presencaMedia}%
+                {statsLoading ? "..." : stats.presencaMedia}%
               </div>
               <p className="text-xs text-muted-foreground">Últimas 4 semanas</p>
             </CardContent>
@@ -240,33 +278,50 @@ export default function InstrutorDashboard() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {proximasAulas.map((aula, index) => (
-                  <div
-                    key={index}
-                    className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 cursor-pointer transition-colors"
-                    onClick={() => router.push(`/aulas/${index + 1}`)}
-                  >
-                    <div>
-                      <div className="font-semibold">{aula.tipo}</div>
-                      <div className="text-sm text-gray-600">{aula.local}</div>
-                      <div className="text-xs text-gray-500">
-                        {aula.alunos} alunos esperados
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="font-semibold text-blue-600">
-                        {aula.horario}
-                      </div>
-                      <div className="text-xs text-gray-500">
-                        {index === 0
-                          ? "Próxima"
-                          : index === 1
-                          ? "Em seguida"
-                          : "Última"}
-                      </div>
-                    </div>
+                {aulasLoading ? (
+                  <div className="text-center py-8 text-gray-500">
+                    Carregando próximas aulas...
                   </div>
-                ))}
+                ) : proximasAulas && proximasAulas.length > 0 ? (
+                  proximasAulas.map((aula, index) => (
+                    <div
+                      key={aula.id}
+                      className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 cursor-pointer transition-colors"
+                      onClick={() => router.push(`/aulas/${aula.id}`)}
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                          <Clock className="h-6 w-6 text-blue-600" />
+                        </div>
+                        <div>
+                          <div className="font-semibold">{aula.tipo}</div>
+                          <div className="text-sm text-gray-600">
+                            {aula.local}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {aula.alunos} alunos esperados
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="font-semibold text-blue-600">
+                          {aula.horario}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          {index === 0
+                            ? "Próxima"
+                            : index === 1
+                            ? "Em seguida"
+                            : "Última"}
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    Nenhuma aula programada para hoje
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -281,38 +336,46 @@ export default function InstrutorDashboard() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {alunosDestaque.map((aluno, index) => (
-                  <div
-                    key={index}
-                    className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 cursor-pointer transition-colors"
-                    onClick={() => router.push(`/alunos/${index + 1}`)}
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                        <Users className="h-5 w-5 text-blue-600" />
-                      </div>
-                      <div>
-                        <div className="font-semibold flex items-center gap-2">
-                          {aluno.nome}
-                          {aluno.proximaGraduacao && (
-                            <Target className="h-4 w-4 text-yellow-600" />
-                          )}
-                        </div>
-                        <div className="text-sm text-gray-600">
-                          {aluno.graduacao}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="font-semibold text-green-600">
-                        {aluno.presenca}%
-                      </div>
-                      <div className="text-xs text-gray-500">
-                        {aluno.evolucao}
-                      </div>
-                    </div>
+                {alunosLoading ? (
+                  <div className="text-center py-8 text-gray-500">
+                    Carregando alunos em destaque...
                   </div>
-                ))}
+                ) : alunosDestaque && alunosDestaque.length > 0 ? (
+                  alunosDestaque.map((aluno, index) => (
+                    <div
+                      key={aluno.id}
+                      className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 cursor-pointer transition-colors"
+                      onClick={() => router.push(`/alunos/${aluno.id}`)}
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                          <Users className="h-5 w-5 text-blue-600" />
+                        </div>
+                        <div>
+                          <div className="font-semibold flex items-center gap-2">
+                            {aluno.nome}
+                            {aluno.proximaGraduacao && (
+                              <Target className="h-4 w-4 text-yellow-600" />
+                            )}
+                          </div>
+                          <div className="text-sm text-gray-600">
+                            {aluno.faixa}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="font-semibold text-green-600">
+                          {aluno.presencas}
+                        </div>
+                        <div className="text-xs text-gray-500">presenças</div>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    Nenhum aluno encontrado
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>

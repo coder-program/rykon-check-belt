@@ -66,7 +66,7 @@ export default function ConfiguracoesModal({
           aulasNecessarias: 20,
           maxGraus: 4,
           tempoMinimo: 3,
-        }),
+        })
       );
       setRegrasGraduacao(defaultRegras);
     }
@@ -102,7 +102,7 @@ export default function ConfiguracoesModal({
   const salvarConfiguracoes = () => {
     localStorage.setItem(
       "config_regras_graduacao",
-      JSON.stringify(regrasGraduacao),
+      JSON.stringify(regrasGraduacao)
     );
     localStorage.setItem("config_unidades", JSON.stringify(unidades));
 
@@ -115,24 +115,24 @@ export default function ConfiguracoesModal({
   const atualizarRegra = (
     id: string,
     campo: keyof RegraGraduacao,
-    valor: any,
+    valor: any
   ) => {
     setRegrasGraduacao((prev) =>
       prev.map((regra) =>
-        regra.id === id ? { ...regra, [campo]: valor } : regra,
-      ),
+        regra.id === id ? { ...regra, [campo]: valor } : regra
+      )
     );
   };
 
   const atualizarUnidade = (
     id: string,
     campo: keyof ConfigUnidade,
-    valor: any,
+    valor: any
   ) => {
     setUnidades((prev) =>
       prev.map((unidade) =>
-        unidade.id === id ? { ...unidade, [campo]: valor } : unidade,
-      ),
+        unidade.id === id ? { ...unidade, [campo]: valor } : unidade
+      )
     );
   };
 
@@ -215,7 +215,7 @@ export default function ConfiguracoesModal({
               <div className="space-y-3">
                 {regrasGraduacao.map((regra) => {
                   const faixaInfo = FAIXAS_DEFAULT.find(
-                    (f) => f.nome === regra.faixa,
+                    (f) => f.nome === regra.faixa
                   );
                   const isEditing = editingRegra === regra.id;
 
@@ -255,7 +255,7 @@ export default function ConfiguracoesModal({
                               atualizarRegra(
                                 regra.id,
                                 "aulasNecessarias",
-                                parseInt(e.target.value),
+                                parseInt(e.target.value)
                               )
                             }
                             disabled={!isEditing}
@@ -275,7 +275,7 @@ export default function ConfiguracoesModal({
                               atualizarRegra(
                                 regra.id,
                                 "maxGraus",
-                                parseInt(e.target.value),
+                                parseInt(e.target.value)
                               )
                             }
                             disabled={!isEditing}
@@ -295,7 +295,7 @@ export default function ConfiguracoesModal({
                               atualizarRegra(
                                 regra.id,
                                 "tempoMinimo",
-                                parseInt(e.target.value),
+                                parseInt(e.target.value)
                               )
                             }
                             disabled={!isEditing}
@@ -346,7 +346,7 @@ export default function ConfiguracoesModal({
                                 atualizarUnidade(
                                   unidade.id,
                                   "ativa",
-                                  e.target.checked,
+                                  e.target.checked
                                 )
                               }
                               className="w-5 h-5"
@@ -359,7 +359,7 @@ export default function ConfiguracoesModal({
                                   atualizarUnidade(
                                     unidade.id,
                                     "nome",
-                                    e.target.value,
+                                    e.target.value
                                   )
                                 }
                                 className="text-lg font-semibold border-b-2 border-blue-400 focus:outline-none"
@@ -383,7 +383,7 @@ export default function ConfiguracoesModal({
                                   atualizarUnidade(
                                     unidade.id,
                                     "endereco",
-                                    e.target.value,
+                                    e.target.value
                                   )
                                 }
                                 disabled={!isEditing}
@@ -403,7 +403,7 @@ export default function ConfiguracoesModal({
                                   atualizarUnidade(
                                     unidade.id,
                                     "raioCheckin",
-                                    parseInt(e.target.value),
+                                    parseInt(e.target.value)
                                   )
                                 }
                                 disabled={!isEditing}
@@ -424,7 +424,7 @@ export default function ConfiguracoesModal({
                                   atualizarUnidade(
                                     unidade.id,
                                     "latitude",
-                                    parseFloat(e.target.value),
+                                    parseFloat(e.target.value)
                                   )
                                 }
                                 disabled={!isEditing}
@@ -445,7 +445,7 @@ export default function ConfiguracoesModal({
                                   atualizarUnidade(
                                     unidade.id,
                                     "longitude",
-                                    parseFloat(e.target.value),
+                                    parseFloat(e.target.value)
                                   )
                                 }
                                 disabled={!isEditing}
@@ -536,7 +536,7 @@ export default function ConfiguracoesModal({
                     <label className="text-sm text-gray-600">URL da Loja</label>
                     <input
                       type="text"
-                      defaultValue="https://www.teamcruz.com.br"
+                      defaultValue="https://www.lojateamcruz.com.br/"
                       className="w-full p-2 border rounded-lg mt-1"
                     />
                   </div>

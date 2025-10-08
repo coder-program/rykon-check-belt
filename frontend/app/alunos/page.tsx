@@ -8,7 +8,14 @@ import {
   useQuery,
 } from "@tanstack/react-query";
 import { FixedSizeList as List } from "react-window";
-import { Search, Plus, Edit2, Trash2, Users, GraduationCap } from "lucide-react";
+import {
+  Search,
+  Plus,
+  Edit2,
+  Trash2,
+  Users,
+  GraduationCap,
+} from "lucide-react";
 import toast from "react-hot-toast";
 import AlunoForm from "@/components/alunos/AlunoForm";
 import { http } from "@/lib/api";
@@ -65,14 +72,31 @@ async function deleteAluno(id: string) {
 }
 
 async function listUnidades(params: any) {
-  const qs = new URLSearchParams(params).toString();
+  const filteredParams = Object.fromEntries(
+    Object.entries(params).filter(
+      ([, value]) => value !== undefined && value !== null && value !== ""
+    )
+  );
+  const qs = new URLSearchParams(filteredParams).toString();
   return http(`/unidades?${qs}`);
+}
+
+async function getAlunosStats(params: any) {
+  const filteredParams = Object.fromEntries(
+    Object.entries(params).filter(
+      ([, value]) => value !== undefined && value !== null && value !== ""
+    )
+  );
+  const qs = new URLSearchParams(filteredParams).toString();
+  return http(`/alunos/stats/counts?${qs}`);
 }
 
 export default function PageAlunos() {
   const [search, setSearch] = useState("");
   const [debounced, setDebounced] = useState("");
   const [status, setStatus] = useState("todos");
+  const [unidadeId, setUnidadeId] = useState("");
+  const [faixa, setFaixa] = useState("todos");
   const [showModal, setShowModal] = useState(false);
   const [editingAluno, setEditingAluno] = useState<any>(null);
   const [formData, setFormData] = useState<AlunoFormData>({
@@ -86,26 +110,63 @@ export default function PageAlunos() {
   });
 
   React.useEffect(() => {
-    const id = setTimeout(() => setDebounced(search), 300);
+    const id = setTimeout(() => setDebounced(search), 500); // Aumentei para 500ms
     return () => clearTimeout(id);
   }, [search]);
 
   const query = useInfiniteQuery({
-    queryKey: ["alunos", debounced, status],
+    queryKey: ["alunos", debounced, status, unidadeId, faixa],
     initialPageParam: 1,
-    getNextPageParam: (last) => (last.hasNextPage ? last.page + 1 : undefined),
-    queryFn: async ({ pageParam }) =>
-      listAlunos({
+    getNextPageParam: (last: any) =>
+      last.hasNextPage ? last.page + 1 : undefined,
+    queryFn: async ({ pageParam }) => {
+      const params: any = {
         page: pageParam,
         pageSize: 20,
-        search: debounced,
-        status: status === "todos" ? undefined : status,
-      }),
-  });
+      };
 
+      // Só adicionar parâmetros que têm valor
+      if (debounced && debounced.trim()) params.search = debounced;
+      if (status && status !== "todos") params.status = status;
+      if (unidadeId && unidadeId.trim()) params.unidade_id = unidadeId;
+      if (faixa && faixa !== "todos") params.faixa = faixa;
+
+      return listAlunos(params);
+    },
+    enabled: true, // Só executa uma vez quando o componente monta
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    refetchOnReconnect: false,
+    refetchInterval: false,
+    refetchIntervalInBackground: false,
+    staleTime: Infinity, // Nunca considera os dados como "stale"
+    gcTime: Infinity, // Mantém no cache para sempre
+  });
   const unidadesQuery = useQuery({
     queryKey: ["unidades"],
     queryFn: () => listUnidades({ pageSize: 100 }),
+    staleTime: Infinity, // Unidades nunca ficam stale
+    gcTime: Infinity,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    refetchOnReconnect: false,
+    refetchInterval: false,
+  });
+
+  const statsQuery = useQuery({
+    queryKey: ["alunos-stats", debounced, unidadeId],
+    queryFn: () => {
+      const params: any = {};
+      if (debounced && debounced.trim()) params.search = debounced;
+      if (unidadeId && unidadeId.trim()) params.unidade_id = unidadeId;
+      return getAlunosStats(params);
+    },
+    staleTime: Infinity, // Stats nunca ficam stale - só atualiza quando filtros mudam
+    gcTime: Infinity,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    refetchOnReconnect: false,
+    refetchInterval: false,
   });
 
   const qc = useQueryClient();
@@ -148,6 +209,12 @@ export default function PageAlunos() {
 
   const items = (query.data?.pages || []).flatMap((p) => p.items);
 
+  // Debug para verificar se os dados estão chegando
+  console.log("Query data:", query.data);
+  console.log("Items count:", items.length);
+  console.log("Query loading:", query.isLoading);
+  console.log("Query error:", query.error);
+
   const resetForm = () => {
     setFormData({
       nome_completo: "",
@@ -163,10 +230,22 @@ export default function PageAlunos() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Limpar formatação do CPF e telefone antes de enviar
+    const cleanedData = {
+      ...formData,
+      cpf: formData.cpf.replace(/\D/g, ""), // Remove pontos, traços e outros caracteres
+      telefone: formData.telefone?.replace(/\D/g, "") || "", // Remove formatação do telefone
+      telefone_emergencia:
+        formData.telefone_emergencia?.replace(/\D/g, "") || "",
+      responsavel_cpf: formData.responsavel_cpf?.replace(/\D/g, "") || "",
+      responsavel_telefone:
+        formData.responsavel_telefone?.replace(/\D/g, "") || "",
+    };
+
     if (editingAluno?.id) {
-      updateMutation.mutate({ id: editingAluno.id, data: formData });
+      updateMutation.mutate({ id: editingAluno.id, data: cleanedData });
     } else {
-      createMutation.mutate(formData);
+      createMutation.mutate(cleanedData);
     }
   };
 
@@ -225,7 +304,7 @@ export default function PageAlunos() {
           <Users className="h-6 w-6" />
           Alunos
         </h1>
-        <button
+        {/* <button
           className="btn btn-primary flex items-center gap-2"
           onClick={() => {
             setEditingAluno(null);
@@ -235,32 +314,151 @@ export default function PageAlunos() {
         >
           <Plus className="h-4 w-4" />
           Novo Aluno
-        </button>
+        </button> */}
       </div>
 
       {/* Filtros */}
-      <div className="flex gap-4 items-center">
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-          <input
-            className="input input-bordered w-full pl-9"
-            placeholder="Buscar por nome, CPF ou matrícula"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+        <div className="relative flex-1">
+          <label className="label">
+            <span className="label-text">
+              Buscar por nome, CPF ou matrícula
+            </span>
+          </label>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <input
+              className="input input-bordered w-full pl-9"
+              placeholder="Digite para buscar..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
         </div>
-        <select
-          className="select select-bordered"
-          value={status}
-          onChange={(e) => setStatus(e.target.value)}
-        >
-          <option value="todos">Todos os Status</option>
-          <option value="ATIVO">Ativos</option>
-          <option value="INATIVO">Inativos</option>
-          <option value="SUSPENSO">Suspensos</option>
-          <option value="CANCELADO">Cancelados</option>
-        </select>
+
+        <div>
+          <label className="label">
+            <span className="label-text">Status</span>
+          </label>
+          <select
+            className="select select-bordered w-full"
+            value={status}
+            onChange={(e) => setStatus(e.target.value)}
+          >
+            <option value="todos">Todos os Status</option>
+            <option value="ATIVO">Ativos</option>
+            <option value="INATIVO">Inativos</option>
+            <option value="SUSPENSO">Suspensos</option>
+            <option value="CANCELADO">Cancelados</option>
+          </select>
+        </div>
+
+        <div>
+          <label className="label">
+            <span className="label-text">Unidade</span>
+          </label>
+          <select
+            className="select select-bordered w-full"
+            value={unidadeId}
+            onChange={(e) => setUnidadeId(e.target.value)}
+          >
+            <option value="">Todas as Unidades</option>
+            {unidadesQuery.data?.items?.map((unidade) => (
+              <option key={unidade.id} value={unidade.id}>
+                {unidade.nome}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label className="label">
+            <span className="label-text">Faixa</span>
+          </label>
+          <select
+            className="select select-bordered w-full"
+            value={faixa}
+            onChange={(e) => setFaixa(e.target.value)}
+          >
+            <option value="todos">Todas as Faixas</option>
+            <option value="BRANCA">Branca</option>
+            <option value="CINZA_BRANCA">Cinza Branca</option>
+            <option value="CINZA">Cinza</option>
+            <option value="CINZA_PRETA">Cinza Preta</option>
+            <option value="AMARELA_BRANCA">Amarela Branca</option>
+            <option value="AMARELA">Amarela</option>
+            <option value="AMARELA_PRETA">Amarela Preta</option>
+            <option value="LARANJA_BRANCA">Laranja Branca</option>
+            <option value="LARANJA">Laranja</option>
+            <option value="LARANJA_PRETA">Laranja Preta</option>
+            <option value="VERDE_BRANCA">Verde Branca</option>
+            <option value="VERDE">Verde</option>
+            <option value="VERDE_PRETA">Verde Preta</option>
+            <option value="AZUL">Azul</option>
+            <option value="ROXA">Roxa</option>
+            <option value="MARROM">Marrom</option>
+            <option value="PRETA">Preta</option>
+          </select>
+        </div>
       </div>
+
+      {/* Estatísticas */}
+      {statsQuery.data && (
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-4">
+          <div className="bg-blue-100 p-3 rounded-lg">
+            <div className="text-2xl font-bold text-blue-800">
+              {statsQuery.data.total}
+            </div>
+            <div className="text-sm text-blue-600">Total</div>
+          </div>
+
+          <div className="bg-green-100 p-3 rounded-lg">
+            <div className="text-2xl font-bold text-green-800">
+              {statsQuery.data.porStatus?.ativos || 0}
+            </div>
+            <div className="text-sm text-green-600">Ativos</div>
+          </div>
+
+          <div className="bg-gray-100 p-3 rounded-lg">
+            <div className="text-2xl font-bold text-gray-800">
+              {statsQuery.data.porStatus?.inativos || 0}
+            </div>
+            <div className="text-sm text-gray-600">Inativos</div>
+          </div>
+
+          <div className="bg-yellow-100 p-3 rounded-lg">
+            <div className="text-2xl font-bold text-yellow-800">
+              {statsQuery.data.porStatus?.suspensos || 0}
+            </div>
+            <div className="text-sm text-yellow-600">Suspensos</div>
+          </div>
+
+          <div className="bg-red-100 p-3 rounded-lg">
+            <div className="text-2xl font-bold text-red-800">
+              {statsQuery.data.porStatus?.cancelados || 0}
+            </div>
+            <div className="text-sm text-red-600">Cancelados</div>
+          </div>
+
+          {Object.entries(statsQuery.data.porFaixa || {}).length > 0 && (
+            <div className="bg-purple-100 p-3 rounded-lg">
+              <div className="text-sm font-semibold text-purple-800 mb-1">
+                Por Faixa (Ativos)
+              </div>
+              <div className="text-xs text-purple-600 space-y-1">
+                {Object.entries(statsQuery.data.porFaixa || {})
+                  .slice(0, 3)
+                  .map(([faixa, count]) => (
+                    <div key={faixa} className="flex justify-between">
+                      <span>{faixa.replace(/_/g, " ")}</span>
+                      <span className="font-semibold">{count as number}</span>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Lista */}
       <div className="h-[600px] border rounded-lg">
@@ -370,9 +568,7 @@ export default function PageAlunos() {
           }}
           isEditing={!!editingAluno}
           isLoading={
-            editingAluno
-              ? updateMutation.isPending
-              : createMutation.isPending
+            editingAluno ? updateMutation.isPending : createMutation.isPending
           }
           unidades={unidadesQuery.data?.items || []}
         />

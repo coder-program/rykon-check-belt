@@ -27,13 +27,23 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     try {
       const token =
         typeof window !== "undefined" ? localStorage.getItem("token") : null;
+      console.log(
+        "🔍 AuthContext - Token no localStorage:",
+        token ? "Presente" : "Ausente"
+      );
+
       if (token) {
+        console.log("🔍 AuthContext - Validando token...");
         const userData = await authService.validateToken(token);
+        console.log("🔍 AuthContext - Dados do usuário:", userData);
         setUser(userData);
         setIsAuthenticated(true);
+      } else {
+        console.log("🔍 AuthContext - Nenhum token encontrado");
       }
     } catch (error) {
       console.error("Erro ao verificar autenticação:", error);
+      console.log("🔍 AuthContext - Removendo token inválido do localStorage");
       if (typeof window !== "undefined") localStorage.removeItem("token");
     } finally {
       setLoading(false);
@@ -53,12 +63,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       showPermissionsAlert(response.user);
 
-      return { success: true };
+      return { success: true, user: response.user };
     } catch (error: any) {
       console.error("Erro no login:", error);
       return {
         success: false,
-        error: error?.response?.data?.message || "Erro no login",
+        error:
+          error?.message || error?.response?.data?.message || "Erro no login",
       };
     } finally {
       setLoading(false);
@@ -66,7 +77,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const showPermissionsAlert = (user: any) => {
-    let alertMessage = `🎉 Bem-vindo, ${user.nome || user.name || "Usuário"}!\n\n`;
+    let alertMessage = `🎉 Bem-vindo, ${
+      user.nome || user.name || "Usuário"
+    }!\n\n`;
     alertMessage += `📧 Email: ${user.email}\n\n`;
 
     alertMessage += `🔐 SUAS PERMISSÕES DE ACESSO:\n`;

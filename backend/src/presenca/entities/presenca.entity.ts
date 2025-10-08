@@ -13,132 +13,89 @@ import { Usuario } from '../../usuarios/entities/usuario.entity';
 import { Unidade } from '../../people/entities/unidade.entity';
 
 export enum PresencaMetodo {
-  QR_CODE = 'QR_CODE',
-  CPF = 'CPF',
-  FACIAL = 'FACIAL',
-  NOME = 'NOME',
-  MANUAL = 'MANUAL',
-  RESPONSAVEL = 'RESPONSAVEL',
+  QR_CODE = 'qr_code',
+  CPF = 'cpf',
+  FACIAL = 'facial',
+  NOME = 'nome',
+  MANUAL = 'manual',
+  RESPONSAVEL = 'responsavel',
 }
 
 export enum PresencaStatus {
-  PRESENTE = 'PRESENTE',
-  AUSENTE = 'AUSENTE',
-  ATRASADO = 'ATRASADO',
-  JUSTIFICADO = 'JUSTIFICADO',
-  CANCELADO = 'CANCELADO',
+  PRESENTE = 'presente',
+  FALTA = 'falta',
+  JUSTIFICADA = 'justificada',
+  CANCELADA = 'cancelada',
 }
 
 @Entity({ name: 'presencas', schema: 'teamcruz' })
-@Index(['pessoaId', 'dataPresenca'], { unique: true })
-@Index(['unidadeId', 'dataPresenca'])
-@Index(['dataPresenca'])
-@Index(['metodoCheckin'])
+@Index(['aluno_id', 'aula_id'], { unique: true })
+@Index(['aula_id'])
+@Index(['aluno_id'])
 export class Presenca {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ name: 'pessoa_id', type: 'uuid' })
-  pessoaId: string;
+  @Column({ name: 'aluno_id', type: 'uuid' })
+  aluno_id: string;
 
-  @Column({ name: 'unidade_id', type: 'uuid', nullable: true })
-  unidadeId: string;
+  @Column({ name: 'aula_id', type: 'uuid' })
+  aula_id: string;
 
-  @Column({ name: 'aula_id', type: 'uuid', nullable: true })
-  aulaId: string;
+  @Column({
+    type: 'varchar',
+    length: 20,
+    default: 'presente',
+    enum: ['presente', 'falta', 'justificada', 'cancelada'],
+  })
+  status: string;
 
-  @Column({ name: 'data_presenca', type: 'date' })
-  dataPresenca: Date;
+  @Column({
+    name: 'modo_registro',
+    type: 'varchar',
+    length: 20,
+    default: 'manual',
+  })
+  modo_registro: string;
 
   @Column({
     name: 'hora_checkin',
-    type: 'timestamp',
+    type: 'timestamptz',
     default: () => 'CURRENT_TIMESTAMP',
   })
-  horaCheckin: Date;
-
-  @Column({ name: 'hora_checkout', type: 'timestamp', nullable: true })
-  horaCheckout: Date;
-
-  @Column({
-    name: 'metodo_checkin',
-    type: 'enum',
-    enum: PresencaMetodo,
-    default: PresencaMetodo.MANUAL,
-  })
-  metodoCheckin: PresencaMetodo;
-
-  @Column({
-    name: 'status',
-    type: 'enum',
-    enum: PresencaStatus,
-    default: PresencaStatus.PRESENTE,
-  })
-  status: PresencaStatus;
+  hora_checkin: Date;
 
   @Column({ type: 'text', nullable: true })
   observacoes: string;
 
-  @Column({ name: 'ip_checkin', type: 'varchar', length: 45, nullable: true })
-  ipCheckin: string;
+  @Column({
+    name: 'peso_presenca',
+    type: 'decimal',
+    precision: 2,
+    scale: 1,
+    default: 1.0,
+  })
+  peso_presenca: number;
 
-  @Column({ name: 'dispositivo_info', type: 'jsonb', nullable: true })
-  dispositivoInfo: any;
-
-  @Column({ name: 'localizacao_gps', type: 'jsonb', nullable: true })
-  localizacaoGps: {
-    latitude: number;
-    longitude: number;
-    precisao: number;
-  };
-
-  @Column({ name: 'foto_checkin', type: 'text', nullable: true })
-  fotoCheckin: string;
-
-  @Column({ name: 'responsavel_checkin_id', type: 'uuid', nullable: true })
-  responsavelCheckinId: string;
-
-  @Column({ name: 'validado_por', type: 'uuid', nullable: true })
-  validadoPor: string;
+  @Column({ name: 'created_by', type: 'uuid', nullable: true })
+  created_by: string;
 
   @CreateDateColumn({ name: 'created_at' })
-  createdAt: Date;
+  created_at: Date;
 
   @UpdateDateColumn({ name: 'updated_at' })
-  updatedAt: Date;
+  updated_at: Date;
 
   // Relacionamentos
-  @ManyToOne(() => Person, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'pessoa_id' })
-  pessoa: Person;
+  @ManyToOne(() => Person, { eager: false })
+  @JoinColumn({ name: 'aluno_id' })
+  aluno: Person;
 
-  @ManyToOne(() => Unidade, { onDelete: 'SET NULL' })
-  @JoinColumn({ name: 'unidade_id' })
-  unidade: Unidade;
+  @ManyToOne(() => require('./aula.entity').Aula, { eager: false })
+  @JoinColumn({ name: 'aula_id' })
+  aula: any; // Usar any para evitar circular dependency
 
-  @ManyToOne(() => Person, { onDelete: 'SET NULL' })
-  @JoinColumn({ name: 'responsavel_checkin_id' })
-  responsavelCheckin: Person;
-
-  @ManyToOne(() => Usuario, { onDelete: 'SET NULL' })
-  @JoinColumn({ name: 'validado_por' })
-  validadoPorUsuario: Usuario;
-
-  // Métodos auxiliares
-  isCheckinHoje(): boolean {
-    const hoje = new Date();
-    const dataPresenca = new Date(this.dataPresenca);
-    return dataPresenca.toDateString() === hoje.toDateString();
-  }
-
-  temCheckout(): boolean {
-    return this.horaCheckout !== null;
-  }
-
-  duracao(): number | null {
-    if (!this.horaCheckout) return null;
-    return (
-      (this.horaCheckout.getTime() - this.horaCheckin.getTime()) / (1000 * 60)
-    ); // em minutos
-  }
+  @ManyToOne(() => Usuario, { eager: false })
+  @JoinColumn({ name: 'created_by' })
+  criador: Usuario;
 }

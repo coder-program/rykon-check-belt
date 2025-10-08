@@ -1,42 +1,35 @@
-import Image from "next/image";
+"use client";
+
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/app/auth/AuthContext";
+import { Loader2 } from "lucide-react";
 
 export default function Home() {
+  const router = useRouter();
+  const { isAuthenticated, loading } = useAuth();
+
+  useEffect(() => {
+    if (!loading) {
+      if (isAuthenticated) {
+        // Se já está autenticado, vai para o dashboard
+        router.push("/dashboard");
+      } else {
+        // Se não está autenticado, vai para o login
+        router.push("/login");
+      }
+    }
+  }, [isAuthenticated, loading, router]);
+
+  // Mostra loading enquanto verifica autenticação
   return (
-    <div className="min-h-screen flex items-center justify-center">
-      <div className="space-y-4 text-center">
-        <h1 className="text-3xl font-bold">Frontend Next.js + Tailwind 4</h1>
-        <p className="text-muted-foreground">
-          Projeto migrado do CRA (react-scripts) para Next.
-        </p>
-        <div className="flex gap-4 justify-center flex-wrap">
-          <a className="btn btn-primary" href="/login">
-            Ir para Login
-          </a>
-          <a className="btn" href="/dashboard">
-            Ir para Dashboard
-          </a>
-          <a className="btn" href="/teamcruz">
-            TeamCruz
-          </a>
-          <a className="btn btn-primary" href="/alunos">
-            Cadastro de Pessoas (Alunos/Professores)
-          </a>
-          <a className="btn" href="/professores">
-            Professores
-          </a>
-          <a className="btn" href="/franqueados">
-            Franqueados
-          </a>
-          <a className="btn" href="/unidades">
-            Unidades
-          </a>
-          <a className="btn btn-outline" href="/aprovacao-alunos">
-            Aprovação de Alunos
-          </a>
-          <a className="btn btn-outline" href="/meus-alunos">
-            Meus Alunos
-          </a>
-        </div>
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="text-center">
+        <Loader2 className="mx-auto h-12 w-12 text-blue-500 animate-spin mb-4" />
+        <h2 className="text-xl font-semibold text-gray-900 mb-2">
+          TeamCruz Jiu-Jitsu
+        </h2>
+        <p className="text-gray-600">Carregando sistema...</p>
       </div>
     </div>
   );

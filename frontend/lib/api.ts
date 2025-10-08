@@ -41,34 +41,6 @@ export async function http(path: string, opts: HttpOptions = {}) {
   });
 
   if (!res.ok) {
-    // tentativa automática de refresh quando 401
-    if (res.status === 401) {
-      try {
-        // API_BASE_URL já tem /api, então a URL fica: /api/auth/refresh-cookie
-        await fetch(
-          `${API_BASE_URL.replace("/api", "")}/api/auth/refresh-cookie`,
-          {
-            method: "POST",
-            credentials: "include",
-          }
-        );
-        const retry = await fetch(url, {
-          method: opts.method || "GET",
-          headers,
-          body: opts.body ? JSON.stringify(opts.body) : undefined,
-          credentials: "include",
-        });
-        if (!retry.ok) throw new Error(`HTTP ${retry.status}`);
-        const rt = await retry.text();
-        try {
-          return JSON.parse(rt);
-        } catch {
-          return rt as unknown;
-        }
-      } catch (e) {
-        // segue para erro normal
-      }
-    }
     let message = `HTTP ${res.status}`;
     try {
       const data = await res.json();

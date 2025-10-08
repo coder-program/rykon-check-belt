@@ -23,7 +23,17 @@ import {
 } from "@/components/ui/select";
 import { TeamCruzLogo } from "@/components/ui/teamcruz-logo";
 import { JiuJitsuWatermark } from "@/components/ui/jiujitsu-watermark";
-import { Mail, Lock, User, Phone, Calendar, AlertCircle, UserPlus, User2, Shield } from "lucide-react";
+import {
+  Mail,
+  Lock,
+  User,
+  Phone,
+  Calendar,
+  AlertCircle,
+  UserPlus,
+  User2,
+  Shield,
+} from "lucide-react";
 import { toast } from "react-hot-toast";
 import { authService } from "@/lib/services/authService";
 import { getPerfis, type Perfil } from "@/lib/usuariosApi";
@@ -51,7 +61,7 @@ export default function RegisterPage() {
     const loadPerfis = async () => {
       try {
         const data = await getPerfis();
-        
+
         // Validar se data é um array
         if (!data || !Array.isArray(data)) {
           console.error("Resposta da API de perfis inválida:", data);
@@ -65,14 +75,14 @@ export default function RegisterPage() {
             p.nome.toLowerCase() === "instrutor" ||
             p.nome.toLowerCase() === "professor"
         );
-        
+
         if (perfisPublicos.length === 0) {
           console.warn("Nenhum perfil público encontrado");
           throw new Error("Nenhum perfil disponível");
         }
 
         setPerfis(perfisPublicos);
-        
+
         // Definir "aluno" como padrão
         const perfilAluno = perfisPublicos.find(
           (p) => p.nome.toLowerCase() === "aluno"
@@ -80,7 +90,9 @@ export default function RegisterPage() {
         if (perfilAluno) {
           setFormData((prev) => ({ ...prev, perfil_id: perfilAluno.id }));
         } else {
-          console.warn("Perfil 'aluno' não encontrado, usando primeiro perfil disponível");
+          console.warn(
+            "Perfil 'aluno' não encontrado, usando primeiro perfil disponível"
+          );
           setFormData((prev) => ({ ...prev, perfil_id: perfisPublicos[0].id }));
         }
       } catch (error) {
@@ -201,13 +213,14 @@ export default function RegisterPage() {
         nome: formData.nome,
         email: formData.email,
         password: formData.password,
-        cpf: formData.cpf,
-        telefone: formData.telefone,
+        cpf: formData.cpf.replace(/\D/g, ""), // Remove pontos, traços e outros caracteres, mantendo apenas números
+        telefone: formData.telefone.replace(/\D/g, ""), // Remove formatação do telefone também
         data_nascimento: formData.data_nascimento,
       };
 
       // Adicionar perfil_id apenas se tiver valor e for um UUID válido
-      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      const uuidRegex =
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
       if (formData.perfil_id && uuidRegex.test(formData.perfil_id)) {
         registerData.perfil_id = formData.perfil_id;
       } else if (formData.perfil_id) {
@@ -218,8 +231,7 @@ export default function RegisterPage() {
 
       // Verificar se o perfil escolhido requer aprovação
       const perfilEscolhido = perfis.find((p) => p.id === formData.perfil_id);
-      const requerAprovacao =
-        perfilEscolhido?.nome.toLowerCase() !== "aluno";
+      const requerAprovacao = perfilEscolhido?.nome.toLowerCase() !== "aluno";
 
       if (requerAprovacao) {
         toast.success(
@@ -228,12 +240,15 @@ export default function RegisterPage() {
         );
         router.push("/login?message=pending-approval");
       } else {
-        toast.success("Cadastro realizado com sucesso! Faça login para continuar.");
+        toast.success(
+          "Cadastro realizado com sucesso! Faça login para continuar."
+        );
         router.push("/login?message=registration-success");
       }
     } catch (error: unknown) {
       console.error("Erro no cadastro:", error);
-      const errorMessage = error instanceof Error ? error.message : "Erro ao realizar cadastro";
+      const errorMessage =
+        error instanceof Error ? error.message : "Erro ao realizar cadastro";
       setError(errorMessage);
     } finally {
       setIsLoading(false);
@@ -278,7 +293,10 @@ export default function RegisterPage() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="nome" className="flex items-center gap-2 text-gray-200">
+                    <Label
+                      htmlFor="nome"
+                      className="flex items-center gap-2 text-gray-200"
+                    >
                       <User className="h-4 w-4 text-red-400" />
                       Nome Completo
                     </Label>
@@ -295,7 +313,10 @@ export default function RegisterPage() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="email" className="flex items-center gap-2 text-gray-200">
+                    <Label
+                      htmlFor="email"
+                      className="flex items-center gap-2 text-gray-200"
+                    >
                       <Mail className="h-4 w-4 text-red-400" />
                       Email
                     </Label>
@@ -314,7 +335,10 @@ export default function RegisterPage() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="cpf" className="flex items-center gap-2 text-gray-200">
+                    <Label
+                      htmlFor="cpf"
+                      className="flex items-center gap-2 text-gray-200"
+                    >
                       <User2 className="h-4 w-4 text-red-400" />
                       CPF
                     </Label>
@@ -332,7 +356,10 @@ export default function RegisterPage() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="telefone" className="flex items-center gap-2 text-gray-200">
+                    <Label
+                      htmlFor="telefone"
+                      className="flex items-center gap-2 text-gray-200"
+                    >
                       <Phone className="h-4 w-4 text-red-400" />
                       Telefone
                     </Label>
@@ -351,7 +378,10 @@ export default function RegisterPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="data_nascimento" className="flex items-center gap-2 text-gray-200">
+                  <Label
+                    htmlFor="data_nascimento"
+                    className="flex items-center gap-2 text-gray-200"
+                  >
                     <Calendar className="h-4 w-4 text-red-400" />
                     Data de Nascimento
                   </Label>
@@ -367,7 +397,10 @@ export default function RegisterPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="perfil" className="flex items-center gap-2 text-gray-200">
+                  <Label
+                    htmlFor="perfil"
+                    className="flex items-center gap-2 text-gray-200"
+                  >
                     <Shield className="h-4 w-4 text-red-400" />
                     Perfil *
                   </Label>
@@ -383,7 +416,11 @@ export default function RegisterPage() {
                     </SelectTrigger>
                     <SelectContent className="bg-gray-800 border-gray-600">
                       {perfis.map((perfil) => (
-                        <SelectItem key={perfil.id} value={perfil.id} className="text-white hover:bg-gray-700 focus:bg-gray-700">
+                        <SelectItem
+                          key={perfil.id}
+                          value={perfil.id}
+                          className="text-white hover:bg-gray-700 focus:bg-gray-700"
+                        >
                           <div className="flex flex-col">
                             <span className="font-medium">{perfil.nome}</span>
                             {perfil.descricao && (
@@ -400,18 +437,22 @@ export default function RegisterPage() {
                     Selecione o perfil que melhor descreve você no sistema
                   </p>
                   {formData.perfil_id &&
-                    perfis.find((p) => p.id === formData.perfil_id)?.nome.toLowerCase() !==
-                      "aluno" && (
+                    perfis
+                      .find((p) => p.id === formData.perfil_id)
+                      ?.nome.toLowerCase() !== "aluno" && (
                       <div className="bg-yellow-900/30 border border-yellow-600/50 rounded-lg p-3 mt-2">
                         <div className="flex items-start gap-2">
                           <AlertCircle className="h-4 w-4 text-yellow-400 mt-0.5 flex-shrink-0" />
                           <p className="text-xs text-yellow-200">
                             <strong>Atenção:</strong> Cadastros com perfil de{" "}
                             <strong className="text-yellow-100">
-                              {perfis.find((p) => p.id === formData.perfil_id)?.nome}
+                              {
+                                perfis.find((p) => p.id === formData.perfil_id)
+                                  ?.nome
+                              }
                             </strong>{" "}
-                            requerem aprovação do administrador. Sua conta ficará
-                            inativa até a aprovação.
+                            requerem aprovação do administrador. Sua conta
+                            ficará inativa até a aprovação.
                           </p>
                         </div>
                       </div>
@@ -420,7 +461,10 @@ export default function RegisterPage() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="password" className="flex items-center gap-2 text-gray-200">
+                    <Label
+                      htmlFor="password"
+                      className="flex items-center gap-2 text-gray-200"
+                    >
                       <Lock className="h-4 w-4 text-red-400" />
                       Senha
                     </Label>
@@ -437,7 +481,10 @@ export default function RegisterPage() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="confirmPassword" className="flex items-center gap-2 text-gray-200">
+                    <Label
+                      htmlFor="confirmPassword"
+                      className="flex items-center gap-2 text-gray-200"
+                    >
                       <Lock className="h-4 w-4 text-red-400" />
                       Confirmar Senha
                     </Label>
@@ -458,11 +505,18 @@ export default function RegisterPage() {
                   <div className="flex items-start gap-2">
                     <AlertCircle className="h-5 w-5 text-blue-400 mt-0.5 flex-shrink-0" />
                     <div className="text-sm text-blue-100">
-                      <p className="font-medium mb-1">Informações importantes:</p>
+                      <p className="font-medium mb-1">
+                        Informações importantes:
+                      </p>
                       <ul className="space-y-1 text-xs text-blue-200">
-                        <li>• Selecione o perfil adequado ao seu papel no sistema</li>
+                        <li>
+                          • Selecione o perfil adequado ao seu papel no sistema
+                        </li>
                         <li>• Aguarde aprovação para acesso completo</li>
-                        <li>• Em caso de dúvidas, entre em contato com sua academia</li>
+                        <li>
+                          • Em caso de dúvidas, entre em contato com sua
+                          academia
+                        </li>
                       </ul>
                     </div>
                   </div>
