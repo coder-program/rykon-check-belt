@@ -9,6 +9,7 @@ O frontend **já estava preparado** para a nova funcionalidade! 🎉
 ### Tela de Horários (`frontend/app/horarios/page.tsx`)
 
 ✅ **Já estava chamando a API correta:**
+
 ```typescript
 const response = await fetch(
   `${process.env.NEXT_PUBLIC_API_URL}/aulas/horarios`,
@@ -38,7 +39,10 @@ const response = await fetch(
 ### 2. Log de Debug Melhorado
 
 ```typescript
-console.log('✅ Horários carregados (filtrados pela sua unidade):', data.length);
+console.log(
+  "✅ Horários carregados (filtrados pela sua unidade):",
+  data.length
+);
 ```
 
 **Por quê?** Para facilitar debug e confirmar que o filtro está funcionando.
@@ -85,6 +89,7 @@ console.log('✅ Horários carregados (filtrados pela sua unidade):', data.lengt
 ## 🖼️ INTERFACE ATUAL
 
 A tela de horários já exibe:
+
 - ✅ Nome da aula
 - ✅ Professor
 - ✅ Unidade (nome da unidade do aluno)
@@ -115,10 +120,12 @@ A tela de horários já exibe:
 ### 3. Testar com Dois Alunos de Unidades Diferentes
 
 **Aluno 1 (Unidade A):**
+
 - Login → Ver horários
 - Deve mostrar apenas aulas da Unidade A
 
 **Aluno 2 (Unidade B):**
+
 - Login → Ver horários
 - Deve mostrar apenas aulas da Unidade B
 
@@ -133,13 +140,14 @@ const { user } = useAuth();
 
 // No cabeçalho da página:
 <p className="text-sm text-gray-600">
-  Exibindo horários da unidade: {user?.aluno?.unidade?.nome || 'Sua unidade'}
-</p>
+  Exibindo horários da unidade: {user?.aluno?.unidade?.nome || "Sua unidade"}
+</p>;
 ```
 
 ### 2. Filtros Locais (Frontend)
 
 Como o backend já filtra por unidade, o frontend pode adicionar filtros locais:
+
 - ✅ Filtrar por dia da semana (já existe)
 - ✅ Filtrar por modalidade (Gi/NoGi)
 - ✅ Filtrar por nível
@@ -150,6 +158,7 @@ Como o backend já filtra por unidade, o frontend pode adicionar filtros locais:
 ### 3. Tela Admin
 
 Criar `frontend/app/admin/aulas/page.tsx` para:
+
 - ✅ Visualizar aulas de todas as unidades
 - ✅ Criar novas aulas
 - ✅ Editar aulas existentes
@@ -180,6 +189,7 @@ frontend/app/
 ## 🎉 RESULTADO FINAL
 
 ### Antes (com mocks):
+
 ```typescript
 // Dados falsos hardcoded
 const horarios = [
@@ -189,9 +199,10 @@ const horarios = [
 ```
 
 ### Agora (dados reais + filtro por unidade):
+
 ```typescript
 // Busca dados reais filtrados automaticamente
-const response = await fetch('/aulas/horarios');
+const response = await fetch("/aulas/horarios");
 // Backend retorna APENAS aulas da unidade do aluno ✅
 ```
 
@@ -202,11 +213,13 @@ const response = await fetch('/aulas/horarios');
 **Situação:** ✅ **FRONTEND JÁ ESTÁ PRONTO!**
 
 **O que foi feito:**
+
 - ✅ Verificado que já estava conectado com API correta
 - ✅ Adicionados comentários explicativos
 - ✅ Melhorados logs de debug
 
 **O que NÃO foi necessário:**
+
 - ❌ Não foi preciso mudar lógica
 - ❌ Não foi preciso adicionar filtros manuais
 - ❌ Não foi preciso enviar `unidade_id`
@@ -215,6 +228,54 @@ const response = await fetch('/aulas/horarios');
 
 ---
 
+## 🆕 ATUALIZAÇÃO: Página /unidades
+
+### Problema Identificado
+
+Na página `/unidades` (Gerenciar Unidades), quando um usuário com perfil **FRANQUEADO** fazia login, ele via **todas as unidades do sistema**, não apenas as suas.
+
+### Solução Implementada
+
+**Arquivo**: `frontend/app/unidades/page.tsx`
+
+1. ✅ Importado `getMyFranqueado` da API
+2. ✅ Adicionada query para buscar franqueado do usuário logado
+3. ✅ Adicionado filtro `franqueado_id` na query de unidades
+
+```typescript
+// Buscar franqueado do usuário logado (se for franqueado)
+const isFranqueado = user?.perfis?.some(
+  (perfil: any) => perfil.nome?.toLowerCase() === "franqueado"
+);
+
+const { data: myFranqueado } = useQuery({
+  queryKey: ["franqueado-me", user?.id],
+  queryFn: getMyFranqueado,
+  enabled: !!user?.id && isFranqueado,
+});
+
+// Query de unidades com filtro por franqueado
+const query = useInfiniteQuery({
+  queryKey: ["unidades", debounced, status, myFranqueado?.id],
+  queryFn: async ({ pageParam }) =>
+    listUnidades({
+      page: pageParam,
+      pageSize: 15,
+      search: debounced,
+      status: status === "todos" ? undefined : status,
+      franqueado_id: myFranqueado?.id, // ✅ FILTRO ADICIONADO
+    }),
+});
+```
+
+### Resultado
+
+- ✅ **FRANQUEADO**: Vê apenas suas unidades
+- ✅ **MASTER**: Continua vendo todas as unidades
+- ✅ **Segurança**: Backend valida e força filtro mesmo se frontend for hackeado
+
+---
+
 **Status:** ✅ **COMPLETO E FUNCIONANDO**
 
-**Próximo passo sugerido:** Testar end-to-end ou criar tela admin para cadastro de aulas.
+**Próximo passo sugerido:** Testar end-to-end fazendo logout/login como franqueado e verificar página /unidades.

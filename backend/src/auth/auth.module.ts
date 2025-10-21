@@ -12,13 +12,20 @@ import { PasswordReset } from './entities/password-reset.entity';
 import { GoogleStrategy } from './strategies/google.strategy';
 import { GoogleAuthController } from './google.controller';
 import { PeopleModule } from '../people/people.module';
+import { AuditModule } from '../audit/audit.module';
+import { JwtAuthGuardAllowInactive } from './guards/jwt-auth-allow-inactive.guard';
 
 const controllers: any[] = [AuthController];
 if (process.env.GOOGLE_CLIENT_ID) {
   controllers.push(GoogleAuthController);
 }
 
-const providers: any[] = [AuthService, LocalStrategy, JwtStrategy];
+const providers: any[] = [
+  AuthService,
+  LocalStrategy,
+  JwtStrategy,
+  JwtAuthGuardAllowInactive,
+];
 if (process.env.GOOGLE_CLIENT_ID) {
   providers.push(GoogleStrategy);
 }
@@ -39,6 +46,7 @@ if (process.env.GOOGLE_CLIENT_ID) {
       inject: [ConfigService],
     }),
     PeopleModule,
+    AuditModule,
   ],
   controllers,
   providers,

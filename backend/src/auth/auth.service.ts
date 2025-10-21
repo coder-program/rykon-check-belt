@@ -5,12 +5,16 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, DataSource } from 'typeorm';
 import { JwtService } from '@nestjs/jwt';
 import { UsuariosService } from '../usuarios/services/usuarios.service';
 import { PerfisService } from '../usuarios/services/perfis.service';
 import { AlunosService } from '../people/services/alunos.service';
 import { ProfessoresService } from '../people/services/professores.service';
+import { ResponsaveisService } from '../people/services/responsaveis.service';
+import { UnidadesService } from '../people/services/unidades.service';
+import { AuditService } from '../audit/audit.service';
+import { AuditAction } from '../audit/entities/audit-log.entity';
 import { Usuario } from '../usuarios/entities/usuario.entity';
 import { PasswordReset } from './entities/password-reset.entity';
 import { ChangePasswordDto } from './dto/change-password.dto';
@@ -64,6 +68,10 @@ export class AuthService {
     private perfisService: PerfisService,
     private alunosService: AlunosService,
     private professoresService: ProfessoresService,
+    private responsaveisService: ResponsaveisService,
+    private unidadesService: UnidadesService,
+    private dataSource: DataSource,
+    private auditService: AuditService,
   ) {}
 
   private ACCESS_TTL_SEC = 60 * 30; // 30 min
@@ -75,20 +83,11 @@ export class AuthService {
   ): Promise<
     { user: Usuario; error?: string } | { user: null; error: string }
   > {
-    console.log(
-      '🔍 AuthService.validateUser - Tentando validar com email:',
-      email,
-    );
-    console.log('🔍 Senha fornecida:', pass);
-    console.log('🔍 Tamanho da senha fornecida:', pass?.length);
-
     try {
       // Usa findByEmail diretamente
       const user = await this.usuariosService.findByEmail(email);
-      console.log('🔍 Usuário encontrado?', !!user);
 
       if (!user) {
-        console.log('❌ Usuário não encontrado no banco');
         return {
           user: null,
           error:
@@ -96,15 +95,15 @@ export class AuthService {
         };
       }
 
-      console.log('🔍 Usuário ativo?', user.ativo);
-      console.log('🔍 Usuário tem senha?', !!user.password);
-      console.log(
-        '🔍 Primeiros 20 chars do hash:',
-        user.password?.substring(0, 20),
-      );
-
+      // Verificar se usuário está inativo
       if (!user.ativo) {
-        console.log('❌ Usuário inativo');
+        // Se o cadastro NÃO está completo, permitir login para completar o cadastro
+        if (!user.cadastro_completo) {
+          // Permite login mas o frontend vai redirecionar para /complete-profile
+          return { user };
+        }
+
+        // Se o cadastro JÁ está completo mas usuário está inativo = aguardando aprovação
         return {
           user: null,
           error:
@@ -116,17 +115,14 @@ export class AuthService {
         pass,
         user.password,
       );
-      console.log('🔍 Senha válida?', passwordValid);
 
       if (!passwordValid) {
-        console.log('❌ Senha inválida');
         return {
           user: null,
           error: 'Senha incorreta. Verifique sua senha e tente novamente.',
         };
       }
 
-      console.log('✅ Usuário validado com sucesso!');
       // Atualizar último login
       await this.usuariosService.updateUltimoLogin(user.id);
       return { user };
@@ -139,7 +135,11 @@ export class AuthService {
     }
   }
 
-  async login(user: Usuario): Promise<LoginResponse> {
+  async login(
+    user: Usuario,
+    ipAddress?: string,
+    userAgent?: string,
+  ): Promise<LoginResponse> {
     const permissions = await this.usuariosService.getUserPermissions(user.id);
     const permissionsDetail =
       await this.usuariosService.getUserPermissionsDetail(user.id);
@@ -153,16 +153,22 @@ export class AuthService {
     };
 
     const cadastroCompleto = user.cadastro_completo || false;
-    console.log('🔍 [login] Debug cadastro_completo:');
-    console.log(
-      '🔍 [login] user.cadastro_completo raw:',
-      user.cadastro_completo,
-    );
-    console.log(
-      '🔍 [login] user.cadastro_completo typeof:',
-      typeof user.cadastro_completo,
-    );
-    console.log('🔍 [login] cadastroCompleto final:', cadastroCompleto);
+
+    // Registrar LOGIN na auditoria
+    /* try {
+      await this.auditService.log({
+        action: AuditAction.LOGIN,
+        entityName: 'auth',
+        entityId: user.id,
+        userId: user.id,
+        username: user.username,
+        ipAddress: ipAddress || 'unknown',
+        userAgent: userAgent || 'unknown',
+        description: `Usuário ${user.username} (${user.nome}) fez login no sistema`,
+      });
+    } catch (error) {
+      console.error('Erro ao registrar auditoria de login:', error);
+    } */
 
     return {
       access_token: this.jwtService.sign(payload, {
@@ -181,31 +187,46 @@ export class AuthService {
     };
   }
 
-  async validateToken(payload: JwtPayload): Promise<any | null> {
+  async validateToken(payload: JwtPayload, allowInactive = false): Promise<any | null> {
+    console.log('🔍 [validateToken] Iniciando validação...');
+    console.log('🔍 [validateToken] payload.sub:', payload.sub);
+    console.log('🔍 [validateToken] allowInactive:', allowInactive);
+    
     const user = await this.usuariosService.findOne(payload.sub);
+    
+    console.log('🔍 [validateToken] user encontrado:', user ? 'SIM' : 'NÃO');
+    console.log('🔍 [validateToken] user.ativo:', user?.ativo);
 
-    if (!user || !user.ativo) {
+    if (!user) {
+      console.error('❌ [validateToken] Usuário não encontrado');
       return null;
     }
+
+    // Se allowInactive = false (padrão), rejeita usuários inativos
+    if (!allowInactive && !user.ativo) {
+      console.error('❌ [validateToken] Usuário inativo e allowInactive = false');
+      return null;
+    }
+
+    // DEBUG: Ver se data_nascimento está vindo
+    console.log(
+      '🔍 [validateToken] user.data_nascimento:',
+      user.data_nascimento,
+    );
+    console.log(
+      '🔍 [validateToken] USER COMPLETO:',
+      JSON.stringify(user, null, 2),
+    );
 
     // Incluir dados do aluno se existir
     let aluno: any = null;
     try {
       aluno = await this.alunosService.findByUsuarioId(user.id);
-      if (aluno) {
-        console.log(
-          '✅ [validateToken] Aluno encontrado:',
-          aluno.nome_completo,
-          'Unidade:',
-          aluno.unidade_id,
-        );
-      }
-    } catch (error) {
-      console.log('⚠️ [validateToken] Usuário não é aluno ou erro ao buscar');
-    }
+    } catch (error) {}
 
-    return {
+    const userData = {
       ...user,
+      perfis: user.perfis, // Já vem como objetos com { id, nome, etc }
       aluno: aluno
         ? {
             id: aluno.id,
@@ -216,6 +237,17 @@ export class AuthService {
           }
         : null,
     };
+
+    console.log('📤 [validateToken] Retornando userData:', {
+      id: userData.id,
+      nome: userData.nome,
+      data_nascimento: userData.data_nascimento,
+      password: userData.password ? '[EXISTE]' : '[NÃO EXISTE]',
+    });
+
+    // Remover password do retorno para segurança
+    const { password, ...userDataWithoutPassword } = userData;
+    return userDataWithoutPassword;
   }
 
   async refreshToken(user: Usuario): Promise<LoginResponse> {
@@ -234,81 +266,109 @@ export class AuthService {
   }
 
   async getUserProfile(userId: string) {
+    console.log('🔍 [getUserProfile] Buscando perfil do usuário:', userId);
+
     const user = await this.usuariosService.findOne(userId);
 
     if (!user) {
       throw new NotFoundException('Usuário não encontrado');
     }
+
+    console.log('✅ [getUserProfile] User encontrado:', {
+      id: user.id,
+      nome: user.nome,
+      data_nascimento: user.data_nascimento,
+      tipo: typeof user.data_nascimento,
+    });
 
     const permissions = await this.usuariosService.getUserPermissions(userId);
     const permissionsDetail =
       await this.usuariosService.getUserPermissionsDetail(userId);
     const perfis = await this.usuariosService.getUserPerfis(userId);
 
-    console.log('🔍 [getUserProfile] Debug perfis:');
-    console.log('🔍 [getUserProfile] perfis raw:', perfis);
-    console.log('🔍 [getUserProfile] perfis typeof:', typeof perfis);
-    console.log('🔍 [getUserProfile] perfis isArray:', Array.isArray(perfis));
-    if (perfis && perfis.length > 0) {
-      console.log('🔍 [getUserProfile] perfis[0]:', perfis[0]);
-      console.log('🔍 [getUserProfile] perfis[0] typeof:', typeof perfis[0]);
-    }
+    // Buscar unidade do usuário (se for gerente ou tiver unidade vinculada)
+    let unidade: any = null;
+    try {
+      if (user.cpf) {
+        const query = `
+          SELECT id, nome, cnpj, status, responsavel_nome
+          FROM teamcruz.unidades
+          WHERE responsavel_cpf = $1
+          LIMIT 1
+        `;
+        const result = await this.usuariosService['dataSource'].query(query, [
+          user.cpf,
+        ]);
+        if (result && result.length > 0) {
+          unidade = result[0];
+        }
+      }
+    } catch (error: any) {}
 
     // Remover senha do retorno
     const { password, ...userWithoutPassword } = user;
+
+    console.log('📦 [getUserProfile] userWithoutPassword:', {
+      id: userWithoutPassword.id,
+      nome: userWithoutPassword.nome,
+      data_nascimento: userWithoutPassword.data_nascimento,
+      tipo: typeof userWithoutPassword.data_nascimento,
+    });
 
     const result = {
       ...userWithoutPassword,
       permissions,
       permissionsDetail,
       perfis,
+      unidade,
     };
 
-    console.log('🔍 [getUserProfile] Result perfis:', result.perfis);
+    console.log('📤 [getUserProfile] RESULTADO FINAL:', {
+      id: result.id,
+      nome: result.nome,
+      data_nascimento: result.data_nascimento,
+      tipo: typeof result.data_nascimento,
+    });
 
     return result;
   }
 
   async completeProfile(userId: string, profileData: any) {
-    console.log('🔄 [completeProfile] Iniciando...');
-    console.log('🔄 [completeProfile] userId:', userId);
+    console.log('🔥 [completeProfile] ============ INÍCIO ============');
+    console.log('🔥 [completeProfile] userId:', userId);
     console.log(
-      '🔄 [completeProfile] profileData recebido:',
+      '🔥 [completeProfile] profileData RECEBIDO:',
       JSON.stringify(profileData, null, 2),
     );
 
     const user = await this.usuariosService.findOne(userId);
-    console.log(
-      '🔄 [completeProfile] Usuário encontrado:',
-      user ? 'SIM' : 'NÃO',
-    );
-
     if (!user) {
       console.error('❌ [completeProfile] Usuário não encontrado');
       throw new NotFoundException('Usuário não encontrado');
     }
 
     console.log(
-      '🔄 [completeProfile] Cadastro já completo?',
-      user.cadastro_completo,
+      '👤 [completeProfile] Usuário encontrado:',
+      JSON.stringify(user, null, 2),
     );
+    console.log(
+      '📅 [completeProfile] user.data_nascimento:',
+      user.data_nascimento,
+    );
+
     if (user.cadastro_completo) {
       console.error('❌ [completeProfile] Cadastro já foi completado');
       throw new BadRequestException('Cadastro já foi completado');
     }
 
     const perfis = await this.usuariosService.getUserPerfis(userId);
-    console.log('🔄 [completeProfile] Perfis do usuário:', perfis);
     const perfilPrincipal = perfis[0]?.toLowerCase();
-    console.log('🔄 [completeProfile] Perfil principal:', perfilPrincipal);
+    console.log('🎭 [completeProfile] perfilPrincipal:', perfilPrincipal);
 
     try {
       // Completar cadastro baseado no perfil
       if (perfilPrincipal === 'aluno') {
-        console.log(
-          '👨‍🎓 [completeProfile] Iniciando criação de registro ALUNO...',
-        );
-
+        console.log('🎓 [completeProfile] Processando cadastro de ALUNO...');
         // Função para limpar campos vazios/nulos/undefined
         const cleanEmptyFields = (obj: any) => {
           const cleaned = {};
@@ -320,11 +380,20 @@ export class AuthService {
           return cleaned;
         };
 
+        console.log(
+          '🔍 [completeProfile] profileData.data_nascimento:',
+          profileData.data_nascimento,
+        );
+        console.log(
+          '🔍 [completeProfile] user.data_nascimento:',
+          user.data_nascimento,
+        );
+
         const alunoDataRaw = {
           // Dados pessoais
           nome_completo: user.nome,
           cpf: user.cpf,
-          data_nascimento: profileData.data_nascimento,
+          data_nascimento: profileData.data_nascimento || user.data_nascimento,
           genero: profileData.genero || 'OUTRO',
 
           // Contato
@@ -376,7 +445,7 @@ export class AuthService {
         const alunoData = cleanEmptyFields(alunoDataRaw);
 
         console.log(
-          '👨‍🎓 [completeProfile] Dados do aluno preparados:',
+          '📦 [completeProfile] alunoData FINAL (após limpeza):',
           JSON.stringify(alunoData, null, 2),
         );
 
@@ -385,7 +454,8 @@ export class AuthService {
             alunoData as any,
           );
           console.log(
-            `✅ [completeProfile] Registro de aluno criado com sucesso! ID: ${alunoCreated.id}`,
+            '✅ [completeProfile] Aluno criado com sucesso:',
+            alunoCreated.id,
           );
         } catch (alunoError) {
           console.error(
@@ -400,7 +470,7 @@ export class AuthService {
         perfilPrincipal === 'instrutor'
       ) {
         // Criar registro de professor
-        await this.professoresService.create({
+        const professorData = {
           tipo_cadastro: 'PROFESSOR',
           nome_completo: user.nome,
           cpf: user.cpf,
@@ -409,34 +479,58 @@ export class AuthService {
           data_nascimento: profileData.data_nascimento,
           genero: profileData.genero || 'OUTRO',
           status: 'INATIVO', // Aguarda aprovação
-          unidades_vinculadas: [profileData.unidade_id],
+          unidade_id: profileData.unidade_id, // Unidade principal
+          faixa_ministrante: profileData.faixa_atual || 'AZUL', // Mapeando faixa_atual para faixa_ministrante
           especialidades: profileData.especialidades || [],
           observacoes: profileData.observacoes,
-        } as any);
+          usuario_id: userId, // Vincular ao usuário
+        };
+
+        await this.professoresService.create(professorData as any);
       }
 
-      // Marcar cadastro como completo e desativar até aprovação do admin
+      // Se for RESPONSAVEL, criar registro na tabela responsaveis
+      if (perfilPrincipal === 'responsavel') {
+        const responsavelData = {
+          usuario_id: userId,
+          nome_completo: user.nome,
+          cpf: user.cpf,
+          email: user.email,
+          telefone: user.telefone,
+          data_nascimento: profileData.data_nascimento,
+          genero: profileData.genero || 'MASCULINO',
+          // Campos de endereço (opcionais)
+          cep: profileData.cep,
+          logradouro: profileData.logradouro,
+          numero: profileData.numero,
+          complemento: profileData.complemento,
+          bairro: profileData.bairro,
+          cidade: profileData.cidade,
+          estado: profileData.estado,
+          pais: profileData.pais || 'Brasil',
+          // Campos profissionais (opcionais)
+          profissao: profileData.profissao,
+          empresa: profileData.empresa,
+          renda_familiar: profileData.renda_familiar,
+          observacoes: profileData.observacoes,
+          ativo: false, // Aguarda aprovação do admin
+        };
+
+        await this.responsaveisService.create(responsavelData as any);
+      }
+
+      // Marcar cadastro como completo
+      // TODOS os usuários ficam INATIVOS até aprovação do admin
       await this.usuariosService.update(userId, {
         cadastro_completo: true,
-        ativo: false, // Desativar usuário até admin aprovar
+        ativo: false, // Sempre inativo - aguarda aprovação do admin
       } as any);
 
-      console.log(`✅ Cadastro de ${user.nome} completado com sucesso!`);
-      console.log(
-        `⏳ Usuário desativado. Aguardando aprovação de um administrador...`,
-      );
-
       return {
         message:
-          'Cadastro completado com sucesso! Aguardando aprovação do administrador.',
+          'Cadastro completado com sucesso! Aguarde a aprovação do administrador para acessar o sistema.',
         success: true,
         status: 'aguardando_aprovacao',
-      };
-
-      return {
-        message:
-          'Cadastro completado com sucesso! Aguardando aprovação de um administrador.',
-        cadastro_completo: true,
       };
     } catch (error) {
       console.error('Erro ao completar cadastro:', error);
@@ -450,7 +544,7 @@ export class AuthService {
     // Determinar perfil: usa perfil_id se fornecido, caso contrário usa "aluno" por padrão
     let perfilId: string = ''; // Inicializar vazio
     let perfilNome: string = 'aluno'; // Padrão aluno
-    let usuarioAtivo = true; // Por padrão ativo
+    let usuarioAtivo = false; // INATIVO até completar cadastro (tanto para aluno quanto outros perfis)
 
     // Validar se perfil_id é um UUID válido (formato: 8-4-4-4-12 caracteres hexadecimais)
     const uuidRegex =
@@ -481,9 +575,6 @@ export class AuthService {
           if (perfisQueRequeremAprovacao.includes(perfilNome)) {
             // Usuário criado como INATIVO até ser aprovado por um admin
             usuarioAtivo = false;
-            console.log(
-              `⚠️  Cadastro com perfil "${perfilNome}" requer aprovação. Usuário criado como INATIVO.`,
-            );
           }
         } else {
           console.warn(
@@ -507,9 +598,14 @@ export class AuthService {
       }
       perfilId = perfilAluno.id;
       perfilNome = 'aluno';
-      usuarioAtivo = true; // Aluno sempre ativo
-      console.log('✅ Usando perfil "aluno" como padrão.');
+      usuarioAtivo = false; // INATIVO até completar cadastro
     }
+
+    // DEBUG: Ver se data_nascimento está chegando no payload
+    console.log(
+      '🔍 [registerAluno] payload.data_nascimento:',
+      payload.data_nascimento,
+    );
 
     // Cria usuário com perfil selecionado
     const user = await this.usuariosService.create({
@@ -519,13 +615,120 @@ export class AuthService {
       password: payload.password,
       cpf: payload.cpf, // Adicionar CPF ao usuário
       telefone: payload.telefone, // Adicionar telefone ao usuário
+      data_nascimento: payload.data_nascimento, // Adicionar data de nascimento ao usuário
       ativo: usuarioAtivo, // Ativo apenas se perfil não requer aprovação
       perfil_ids: [perfilId],
+      cadastro_completo: perfilNome === 'aluno' ? false : true, // Aluno precisa completar cadastro
     } as any);
 
-    // Nota: O registro de aluno será criado posteriormente quando necessário
-    // através do módulo de gestão de alunos, com todos os dados necessários
-    // (unidade, faixa, dados médicos, responsável, etc.)
+    // DEBUG: Ver se user foi criado com data_nascimento
+    console.log(
+      '✅ [registerAluno] user criado com data_nascimento:',
+      user.data_nascimento,
+    );
+
+    // VINCULAR USUÁRIO À UNIDADE conforme perfil
+    if (payload.unidade_id) {
+      // Gerente: vincular como responsavel_cpf na unidade
+      if (perfilNome === 'gerente_unidade') {
+        try {
+          await this.unidadesService.atualizar(payload.unidade_id, {
+            responsavel_cpf: user.cpf,
+          });
+        } catch (error) {
+          console.error(
+            '❌ Erro ao vincular gerente à unidade:',
+            error.message,
+          );
+        }
+      }
+
+      // Aluno: criar registro na tabela alunos
+      if (perfilNome === 'aluno') {
+        try {
+          await this.alunosService.create({
+            usuario_id: user.id,
+            unidade_id: payload.unidade_id,
+            faixa_id: payload.faixa_id || null,
+            data_nascimento: payload.data_nascimento || null,
+            peso: payload.peso || null,
+            altura: payload.altura || null,
+            tipo_sanguineo: payload.tipo_sanguineo || null,
+            alergias: payload.alergias || null,
+            medicamentos: payload.medicamentos || null,
+            condicoes_medicas: payload.condicoes_medicas || null,
+            contato_emergencia_nome: payload.contato_emergencia_nome || null,
+            contato_emergencia_telefone:
+              payload.contato_emergencia_telefone || null,
+            contato_emergencia_parentesco:
+              payload.contato_emergencia_parentesco || null,
+          } as any);
+        } catch (error) {
+          console.error('❌ Erro ao criar registro de aluno:', error.message);
+        }
+      }
+
+      // Responsavel: criar registro na tabela responsaveis
+      if (perfilNome === 'responsavel') {
+        try {
+          await this.responsaveisService.create({
+            usuario_id: user.id,
+            nome_completo: user.nome,
+            cpf: user.cpf,
+            email: user.email,
+            telefone: user.telefone,
+            data_nascimento: payload.data_nascimento,
+            genero: payload.genero || 'MASCULINO',
+            ativo: false, // Aguarda aprovação da unidade
+          } as any);
+        } catch (error) {
+          console.error(
+            '❌ Erro ao criar registro de responsável:',
+            error.message,
+          );
+        }
+      }
+
+      // Professor: criar registro na tabela professores e professor_unidades
+      if (perfilNome === 'professor' || perfilNome === 'instrutor') {
+        try {
+          const professor = await this.professoresService.create({
+            usuario_id: user.id,
+            especialidade: payload.especialidade || null,
+            anos_experiencia: payload.anos_experiencia || null,
+            certificacoes: payload.certificacoes || null,
+          } as any);
+
+          // Vincular professor à unidade
+          await this.dataSource.query(
+            `INSERT INTO teamcruz.professor_unidades (professor_id, unidade_id, created_at, updated_at)
+             VALUES ($1, $2, NOW(), NOW())`,
+            [professor.id, payload.unidade_id],
+          );
+        } catch (error) {
+          console.error(
+            '❌ Erro ao criar registro de professor:',
+            error.message,
+          );
+        }
+      }
+
+      // Recepcionista: criar registro na tabela recepcionistas
+      if (perfilNome === 'recepcionista') {
+        try {
+          await this.dataSource.query(
+            `INSERT INTO teamcruz.recepcionistas (usuario_id, unidade_id, created_at, updated_at)
+             VALUES ($1, $2, NOW(), NOW())`,
+            [user.id, payload.unidade_id],
+          );
+        } catch (error) {
+          console.error(
+            '❌ Erro ao criar registro de recepcionista:',
+            error.message,
+          );
+        }
+      }
+    }
 
     return user;
   }

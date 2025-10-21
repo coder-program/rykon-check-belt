@@ -27,8 +27,8 @@ export default function CompleteProfilePage() {
   const [formData, setFormData] = useState({
     // Dados obrigatórios
     unidade_id: "",
-    data_nascimento: "",
-    genero: "OUTRO",
+    data_nascimento: user?.data_nascimento || "", // Pré-preencher se veio do cadastro
+    genero: "MASCULINO",
 
     // Graduação (aluno)
     faixa_atual: "BRANCA",
@@ -68,24 +68,88 @@ export default function CompleteProfilePage() {
   });
 
   useEffect(() => {
+    // DEBUG: Ver o que está chegando
+    console.log("🔍 COMPLETE PROFILE - DEBUG:", {
+      user,
+      data_nascimento: user?.data_nascimento,
+      perfis: user?.perfis,
+      cadastro_completo: user?.cadastro_completo,
+      authLoading,
+      isAuthenticated,
+    });
+    console.log(
+      "🔍 COMPLETE PROFILE - USER COMPLETO:",
+      JSON.stringify(user, null, 2)
+    );
+
     // Verificar se está autenticado
     if (!authLoading && !isAuthenticated) {
+      console.log("❌ Não autenticado, redirecionando para login");
       router.push("/login");
       return;
     }
 
     // Verificar se o cadastro já foi completo
     if (user?.cadastro_completo) {
+      console.log("✅ Cadastro completo, redirecionando para dashboard");
       router.push("/dashboard");
       return;
+    }
+
+    // Verificar perfil do usuário e redirecionar se necessário
+    if (user && user.perfis && user.perfis.length > 0) {
+      // Backend retorna array de strings, não objetos
+      const perfis = user.perfis.map((p: any) => {
+        return typeof p === "string" ? p.toUpperCase() : p.nome?.toUpperCase();
+      });
+      console.log("📝 Usuário precisa completar cadastro, perfil:", perfis[0]);
+
+      // FRANQUEADO → vai para tela específica de cadastro da própria franquia
+      if (perfis.includes("FRANQUEADO")) {
+        console.log(
+          "🏢 Perfil FRANQUEADO detectado, redirecionando para /minha-franquia"
+        );
+        router.push("/minha-franquia");
+        return;
+      }
+
+      // Demais perfis com cadastro_completo === false ficam aqui
+      // A tela mostrará os campos apropriados baseado no perfil
     }
 
     loadUnidades();
   }, [user, isAuthenticated, authLoading, router]);
 
+  // Atualizar formData quando user.data_nascimento estiver disponível
+  useEffect(() => {
+    if (user?.data_nascimento) {
+      console.log("📅 Data de nascimento do user:", user.data_nascimento);
+
+      // Converter para formato YYYY-MM-DD se necessário
+      let dataFormatada = user.data_nascimento;
+
+      // Se vier como Date object ou timestamp, converter
+      if (user.data_nascimento instanceof Date) {
+        dataFormatada = user.data_nascimento.toISOString().split("T")[0];
+      } else if (typeof user.data_nascimento === "string") {
+        // Se vier como "2000-01-15T00:00:00.000Z", pegar só a data
+        dataFormatada = user.data_nascimento.split("T")[0];
+      }
+
+      console.log("📅 Data formatada:", dataFormatada);
+
+      setFormData((prev) => ({
+        ...prev,
+        data_nascimento: dataFormatada,
+      }));
+    }
+  }, [user?.data_nascimento]);
+
   const loadUnidades = async () => {
     try {
-      const response = await fetch("http://localhost:4000/api/unidades");
+      const apiUrl =
+        process.env.NEXT_PUBLIC_API_URL || "http://200.98.72.161/api";
+      const response = await fetch(`${apiUrl}/unidades`);
       const data = await response.json();
       // Garantir que data seja um array
       if (Array.isArray(data)) {
@@ -115,6 +179,7 @@ export default function CompleteProfilePage() {
   };
 
   const isMenorDeIdade = (): boolean => {
+    if (!formData.data_nascimento) return false;
     return calcularIdade(formData.data_nascimento) < 18;
   };
 
@@ -124,15 +189,29 @@ export default function CompleteProfilePage() {
     setSuccess("");
     setLoading(true);
 
+    console.log("🚀 [handleSubmit] INICIANDO...");
+    console.log(
+      "📋 [handleSubmit] formData:",
+      JSON.stringify(formData, null, 2)
+    );
+    console.log(
+      "👤 [handleSubmit] user completo:",
+      JSON.stringify(user, null, 2)
+    );
+
     try {
       // Validar campos obrigatórios
       if (!formData.unidade_id) {
+        console.error("❌ [handleSubmit] unidade_id não informado");
         throw new Error("Selecione uma unidade");
       }
 
-      if (!formData.data_nascimento) {
-        throw new Error("Informe sua data de nascimento");
-      }
+      console.log("✅ [handleSubmit] unidade_id OK:", formData.unidade_id);
+
+      console.log(
+        "📅 [handleSubmit] data_nascimento:",
+        formData.data_nascimento
+      );
 
       // Se for menor de idade, validar responsável
       if (isMenorDeIdade()) {
@@ -164,14 +243,21 @@ export default function CompleteProfilePage() {
     } catch (err: any) {
       const errorMessage = err.message || "Erro ao completar cadastro";
 
-      // Detectar erro de token inválido
+      // Detectar erro de token inválido ou expirado
       if (
         errorMessage.includes("invalid signature") ||
-        errorMessage.includes("401")
+        errorMessage.includes("401") ||
+        errorMessage.includes("Unauthorized")
       ) {
         setError(
-          'Sua sessão expirou ou é inválida. Por favor, clique em "Sair" e faça login novamente.'
+          '🚨 Sua sessão expirou! Clique em "Sair" no topo da página e faça login novamente.'
         );
+        // Auto-logout após 3 segundos
+        setTimeout(() => {
+          localStorage.removeItem("token");
+          localStorage.removeItem("user");
+          router.push("/login?message=session-expired");
+        }, 3000);
       } else {
         setError(errorMessage);
       }
@@ -280,7 +366,7 @@ export default function CompleteProfilePage() {
             </select>
           </div>
 
-          {/* Data de Nascimento */}
+          {/* Data de Nascimento - EDITÁVEL */}
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-2">
               Data de Nascimento *
@@ -291,8 +377,18 @@ export default function CompleteProfilePage() {
               value={formData.data_nascimento}
               onChange={handleChange}
               required
+              max={(() => {
+                const hoje = new Date();
+                const dataMaxima = new Date(
+                  hoje.getFullYear() - 10,
+                  hoje.getMonth(),
+                  hoje.getDate()
+                );
+                return dataMaxima.toISOString().split("T")[0];
+              })()}
               className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-red-500"
             />
+            <p className="text-xs text-gray-400 mt-1">Idade mínima: 10 anos</p>
           </div>
 
           {/* Gênero */}
@@ -308,7 +404,6 @@ export default function CompleteProfilePage() {
             >
               <option value="MASCULINO">Masculino</option>
               <option value="FEMININO">Feminino</option>
-              <option value="OUTRO">Outro</option>
             </select>
           </div>
 

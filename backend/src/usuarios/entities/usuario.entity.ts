@@ -32,6 +32,9 @@ export class Usuario {
   @Column({ nullable: true })
   telefone: string;
 
+  @Column({ type: 'date', nullable: true })
+  data_nascimento: Date;
+
   @Column({ default: true })
   ativo: boolean;
 

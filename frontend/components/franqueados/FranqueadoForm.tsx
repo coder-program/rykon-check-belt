@@ -27,6 +27,7 @@ interface RedesSociais {
 type SituacaoFranqueado = "ATIVA" | "INATIVA" | "EM_HOMOLOGACAO";
 
 interface FranqueadoFormData {
+  id?: string;
   nome: string;
   cnpj: string;
   razao_social: string;
@@ -39,6 +40,15 @@ interface FranqueadoFormData {
   website?: string;
   redes_sociais?: RedesSociais;
   endereco_id?: string;
+  // Campos de endereço
+  cep?: string;
+  logradouro?: string;
+  numero?: string;
+  complemento?: string;
+  bairro?: string;
+  cidade?: string;
+  estado?: string;
+  pais?: string;
   responsavel_nome: string;
   responsavel_cpf: string;
   responsavel_cargo?: string;
@@ -62,6 +72,7 @@ interface FranqueadoFormProps {
   onClose: () => void;
   isEditing: boolean;
   isLoading: boolean;
+  availableFranquias?: Array<{ id: string; nome: string }>;
 }
 
 export default function FranqueadoForm({
@@ -71,6 +82,7 @@ export default function FranqueadoForm({
   onClose,
   isEditing,
   isLoading,
+  availableFranquias = [],
 }: FranqueadoFormProps) {
   const [activeTab, setActiveTab] = React.useState(0);
 
@@ -119,6 +131,57 @@ export default function FranqueadoForm({
         .slice(0, 14);
     }
     return formatPhone(value);
+  };
+
+  const formatCEP = (value: string) => {
+    return value
+      .replace(/\D/g, "")
+      .replace(/(\d{5})(\d)/, "$1-$2")
+      .slice(0, 9);
+  };
+
+  const handleCEPChange = async (cep: string) => {
+    const formattedCEP = formatCEP(cep);
+    const cleanCEP = cep.replace(/\D/g, "");
+
+    // Atualizar apenas o CEP inicialmente
+    setFormData((prev) => ({ ...prev, cep: formattedCEP }));
+
+    if (cleanCEP.length === 8) {
+      try {
+        // Usar ViaCEP diretamente (mais confiável)
+        const response = await fetch(
+          `https://viacep.com.br/ws/${cleanCEP}/json/`
+        );
+        const endereco = await response.json();
+
+        if (endereco && !endereco.erro) {
+          // Extrair dados específicos
+          const logradouro = endereco.logradouro || "";
+          const bairro = endereco.bairro || "";
+          const cidade = endereco.localidade || "";
+          const estado = endereco.uf || "";
+
+          // Aguardar um pouco antes de atualizar para evitar conflitos
+          await new Promise((resolve) => setTimeout(resolve, 100));
+
+          setFormData((prevData) => {
+            const novosDados = {
+              ...prevData,
+              cep: formattedCEP,
+              logradouro,
+              bairro,
+              cidade,
+              estado,
+            };
+
+            return novosDados;
+          });
+        }
+      } catch (error) {
+        console.error("💥 Erro ao buscar CEP:", error);
+      }
+    }
   };
 
   return (
@@ -447,11 +510,163 @@ export default function FranqueadoForm({
             {activeTab === 2 && (
               <div className="space-y-4">
                 <h3 className="text-lg font-medium text-gray-900">Endereço</h3>
-                <div className="text-center py-8 text-gray-500">
-                  <MapPin className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>Funcionalidade de endereço em desenvolvimento</p>
-                  <p className="text-sm mt-2">
-                    Você poderá vincular um endereço à franquia em breve
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      CEP *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={formData.cep || ""}
+                      onChange={(e) => handleCEPChange(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="00000-000"
+                      maxLength={9}
+                    />
+                  </div>
+
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Logradouro *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={formData.logradouro || ""}
+                      onChange={(e) =>
+                        setFormData({ ...formData, logradouro: e.target.value })
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Rua, Avenida, Praça..."
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Número *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={formData.numero || ""}
+                      onChange={(e) =>
+                        setFormData({ ...formData, numero: e.target.value })
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="123"
+                    />
+                  </div>
+
+                  <div className="md:col-span-3">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Complemento
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.complemento || ""}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          complemento: e.target.value,
+                        })
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Sala, Andar, Bloco..."
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Bairro *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={formData.bairro || ""}
+                      onChange={(e) =>
+                        setFormData({ ...formData, bairro: e.target.value })
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Centro"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Cidade *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={formData.cidade || ""}
+                      onChange={(e) =>
+                        setFormData({ ...formData, cidade: e.target.value })
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="São Paulo"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Estado *
+                    </label>
+                    <select
+                      required
+                      value={formData.estado || ""}
+                      onChange={(e) =>
+                        setFormData({ ...formData, estado: e.target.value })
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      <option value="">Selecione</option>
+                      <option value="AC">Acre</option>
+                      <option value="AL">Alagoas</option>
+                      <option value="AP">Amapá</option>
+                      <option value="AM">Amazonas</option>
+                      <option value="BA">Bahia</option>
+                      <option value="CE">Ceará</option>
+                      <option value="DF">Distrito Federal</option>
+                      <option value="ES">Espírito Santo</option>
+                      <option value="GO">Goiás</option>
+                      <option value="MA">Maranhão</option>
+                      <option value="MT">Mato Grosso</option>
+                      <option value="MS">Mato Grosso do Sul</option>
+                      <option value="MG">Minas Gerais</option>
+                      <option value="PA">Pará</option>
+                      <option value="PB">Paraíba</option>
+                      <option value="PR">Paraná</option>
+                      <option value="PE">Pernambuco</option>
+                      <option value="PI">Piauí</option>
+                      <option value="RJ">Rio de Janeiro</option>
+                      <option value="RN">Rio Grande do Norte</option>
+                      <option value="RS">Rio Grande do Sul</option>
+                      <option value="RO">Rondônia</option>
+                      <option value="RR">Roraima</option>
+                      <option value="SC">Santa Catarina</option>
+                      <option value="SP">São Paulo</option>
+                      <option value="SE">Sergipe</option>
+                      <option value="TO">Tocantins</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="bg-blue-50 p-4 rounded-lg">
+                  <div className="flex items-center gap-2 text-blue-700">
+                    <MapPin className="h-4 w-4" />
+                    <span className="text-sm font-medium">
+                      Busca Automática
+                    </span>
+                  </div>
+                  <p className="text-sm text-blue-600 mt-1">
+                    Digite o CEP para preencher automaticamente os dados do
+                    endereço
                   </p>
                 </div>
               </div>
@@ -592,26 +807,27 @@ export default function FranqueadoForm({
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Tipo de Franquia
+                      Tipo de Franquia *
                     </label>
                     <select
-                      value={formData.id_matriz || ""}
+                      value={formData.id_matriz === null ? "matriz" : "filial"}
                       onChange={(e) =>
                         setFormData({
                           ...formData,
-                          id_matriz: e.target.value || null,
+                          id_matriz:
+                            e.target.value === "matriz" ? null : "filial",
                         })
                       }
+                      required
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     >
-                      <option value="">Franquia Matriz</option>
-                      <option value="filial" disabled>
-                        Franquia Filial (em breve)
-                      </option>
+                      <option value="filial">Filial</option>
+                      <option value="matriz">Matriz</option>
                     </select>
                     <p className="text-xs text-gray-500 mt-1">
-                      Matriz = franquia principal. Filial = vinculada a uma
-                      matriz.
+                      {formData.id_matriz === null
+                        ? "Franquia independente (matriz)"
+                        : "Franquia vinculada (filial)"}
                     </p>
                   </div>
 
@@ -786,8 +1002,8 @@ export default function FranqueadoForm({
                         suspensa
                       </li>
                       <li>
-                        <strong>Em Homologação:</strong> Franquia em processo
-                        de validação
+                        <strong>Em Homologação:</strong> Franquia em processo de
+                        validação
                       </li>
                     </ul>
                   </div>

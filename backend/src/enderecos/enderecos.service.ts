@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import axios from 'axios';
+import { CreateEnderecoDto, UpdateEnderecoDto } from './dtos';
 
 export type TipoDonoEndereco =
   | 'ALUNO'
@@ -21,7 +22,7 @@ export interface CreateEnderecoDTO {
   numero: string;
   complemento?: string | null;
   bairro?: string | null;
-  cidade_nome?: string | null;
+  cidade?: string | null;
   estado?: string | null;
   codigo_pais?: string; // default 'BR'
   latitude?: number | null;
@@ -44,10 +45,10 @@ export interface VincularEnderecoDTO {
 export class EnderecosService {
   constructor(private readonly dataSource: DataSource) {}
 
-  async criarEndereco(dto: CreateEnderecoDTO) {
+  async criarEndereco(dto: CreateEnderecoDto) {
     const q = `INSERT INTO teamcruz.enderecos
-      (id, cep, logradouro, numero, complemento, bairro, cidade_nome, estado, codigo_pais, latitude, longitude, created_at, updated_at)
-      VALUES (uuid_generate_v4(), $1,$2,$3,$4,$5,$6,$7,COALESCE($8,'BR'),$9,$10, now(), now())
+      (id, cep, logradouro, numero, complemento, bairro, cidade, estado, pais, latitude, longitude, created_at, updated_at)
+      VALUES (uuid_generate_v4(), $1,$2,$3,$4,$5,$6,$7,COALESCE($8,'Brasil'),$9,$10, now(), now())
       RETURNING *`;
     const params = [
       dto.cep,
@@ -55,9 +56,9 @@ export class EnderecosService {
       dto.numero,
       dto.complemento ?? null,
       dto.bairro ?? null,
-      dto.cidade_nome ?? null,
+      dto.cidade ?? null,
       dto.estado ?? null,
-      dto.codigo_pais ?? 'BR',
+      dto.codigo_pais ?? 'Brasil',
       dto.latitude ?? null,
       dto.longitude ?? null,
     ];

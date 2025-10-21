@@ -19,8 +19,8 @@ export class UnidadesService {
     const q = `INSERT INTO teamcruz.unidades
       (franqueado_id, nome, cnpj, status, responsavel_nome, responsavel_cpf, responsavel_papel,
        responsavel_contato, qtde_tatames, capacidade_max_alunos, valor_plano_padrao,
-       horarios_funcionamento, modalidades, endereco_id, criado_em, atualizado_em)
-      VALUES ($1,$2,$3,COALESCE($4,'HOMOLOGACAO')::status_unidade_enum,$5,$6,$7::papel_responsavel_enum,$8,$9,$10,$11,$12,$13,$14,NOW(),NOW())
+       horarios_funcionamento, modalidades, endereco_id, created_at, updated_at)
+      VALUES ($1,$2,$3,COALESCE($4,'HOMOLOGACAO')::teamcruz.status_unidade_enum,$5,$6,$7::teamcruz.papel_responsavel_enum,$8,$9,$10,$11,$12,$13,$14,NOW(),NOW())
       RETURNING *`;
 
     const params = [
@@ -84,6 +84,7 @@ export class UnidadesService {
       pageSize?: string;
       search?: string;
       status?: StatusUnidade | string;
+      franqueado_id?: string;
     },
     user?: any,
   ) {
@@ -113,8 +114,35 @@ export class UnidadesService {
       paramIndex++;
     }
 
+    // Filtrar por franqueado_id se fornecido explicitamente na query
+    if (params.franqueado_id) {
+      whereConditions.push(`u.franqueado_id = $${paramIndex}`);
+      queryParams.push(params.franqueado_id);
+      paramIndex++;
+    }
+    // Se gerente de unidade, filtra pela unidade que ele gerencia
+    else if (user && this.isGerenteUnidade(user) && !this.isMaster(user)) {
+      const unidadeId = await this.getUnidadeIdByGerente(user);
+      if (unidadeId) {
+        whereConditions.push(`u.id = $${paramIndex}`);
+        queryParams.push(unidadeId);
+        paramIndex++;
+      }
+    }
+    // Se recepcionista, filtra pelas unidades que ele trabalha
+    else if (user && this.isRecepcionista(user) && !this.isMaster(user)) {
+      const unidadeIds = await this.getUnidadesIdsByRecepcionista(user);
+      if (unidadeIds && unidadeIds.length > 0) {
+        const placeholders = unidadeIds
+          .map((_, i) => `$${paramIndex + i}`)
+          .join(',');
+        whereConditions.push(`u.id IN (${placeholders})`);
+        queryParams.push(...unidadeIds);
+        paramIndex += unidadeIds.length;
+      }
+    }
     // Se franqueado (não master), filtra por sua franquia
-    if (user && this.isFranqueado(user) && !this.isMaster(user)) {
+    else if (user && this.isFranqueado(user) && !this.isMaster(user)) {
       const franqueadoId = await this.getFranqueadoIdByUser(user);
       if (franqueadoId) {
         whereConditions.push(`u.franqueado_id = $${paramIndex}`);
@@ -215,7 +243,7 @@ export class UnidadesService {
     if (!fields.length) return this.obter(id, user);
 
     values.push(id);
-    const q = `UPDATE teamcruz.unidades SET ${fields.join(', ')}, atualizado_em = NOW() WHERE id = $${idx} RETURNING *`;
+    const q = `UPDATE teamcruz.unidades SET ${fields.join(', ')}, updated_at = NOW() WHERE id = $${idx} RETURNING *`;
 
     const res = await this.dataSource.query(q, values);
     // Após atualizar, retornar também o endereço populado (quando houver)
@@ -295,13 +323,74 @@ export class UnidadesService {
     return perfis.includes('franqueado');
   }
 
+  private isGerenteUnidade(user: any): boolean {
+    const perfis = (user?.perfis || []).map((p: any) =>
+      (p.nome || '').toLowerCase(),
+    );
+    return perfis.includes('gerente_unidade') || perfis.includes('gerente');
+  }
+
+  private isRecepcionista(user: any): boolean {
+    const perfis = (user?.perfis || []).map((p: any) =>
+      (p.nome || '').toLowerCase(),
+    );
+    return perfis.includes('recepcionista');
+  }
+
   private async getFranqueadoIdByUser(user: any): Promise<string | null> {
-    if (!user?.email) return null;
+    if (!user?.id) return null;
     const res = await this.dataSource.query(
-      `SELECT id FROM teamcruz.franqueados WHERE lower(email) = lower($1) LIMIT 1`,
-      [user.email],
+      `SELECT id FROM teamcruz.franqueados WHERE usuario_id = $1 LIMIT 1`,
+      [user.id],
     );
     return res[0]?.id || null;
+  }
+
+  private async getUnidadeIdByGerente(user: any): Promise<string | null> {
+    if (!user?.id) return null;
+    // Buscar unidade onde o usuário é o responsável com papel GERENTE
+    const res = await this.dataSource.query(
+      `SELECT id FROM teamcruz.unidades
+       WHERE responsavel_cpf = (
+         SELECT cpf FROM teamcruz.usuarios WHERE id = $1
+       )
+       AND responsavel_papel = 'GERENTE'
+       LIMIT 1`,
+      [user.id],
+    );
+    return res[0]?.id || null;
+  }
+
+  private async getUnidadeIdByRecepcionista(user: any): Promise<string | null> {
+    if (!user?.id) return null;
+    // MÉTODO ANTIGO - mantido para compatibilidade
+    // Buscar unidade onde o usuário é o responsável (recepcionista)
+    const res = await this.dataSource.query(
+      `SELECT id FROM teamcruz.unidades
+       WHERE responsavel_cpf = (
+         SELECT cpf FROM teamcruz.usuarios WHERE id = $1
+       )
+       LIMIT 1`,
+      [user.id],
+    );
+    return res[0]?.id || null;
+  }
+
+  private async getUnidadesIdsByRecepcionista(user: any): Promise<string[]> {
+    if (!user?.id) return [];
+
+    // NOVO MÉTODO - busca todas as unidades vinculadas na tabela recepcionista_unidades
+    const result = await this.dataSource.query(
+      `SELECT ru.unidade_id
+       FROM teamcruz.recepcionista_unidades ru
+       WHERE ru.usuario_id = $1
+         AND ru.ativo = true
+       ORDER BY ru.created_at`,
+      [user.id],
+    );
+
+    const unidadeIds = result.map((row: any) => row.unidade_id);
+    return unidadeIds;
   }
 
   private formatarUnidade(row: any): Unidade {

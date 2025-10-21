@@ -19,6 +19,8 @@ import {
 import toast from "react-hot-toast";
 import AlunoForm from "@/components/alunos/AlunoForm";
 import { http } from "@/lib/api";
+import { useAuth } from "@/app/auth/AuthContext";
+import { getMyFranqueado } from "@/lib/peopleApi";
 
 // Tipos
 type Genero = "MASCULINO" | "FEMININO" | "OUTRO";
@@ -56,7 +58,7 @@ interface AlunoFormData {
 // API functions
 async function listAlunos(params: any) {
   const qs = new URLSearchParams(params).toString();
-  return http(`/alunos?${qs}`);
+  return http(`/alunos?${qs}`, { auth: true });
 }
 
 async function createAluno(data: AlunoFormData) {
@@ -78,7 +80,7 @@ async function listUnidades(params: any) {
     )
   );
   const qs = new URLSearchParams(filteredParams).toString();
-  return http(`/unidades?${qs}`);
+  return http(`/unidades?${qs}`, { auth: true });
 }
 
 async function getAlunosStats(params: any) {
@@ -88,15 +90,17 @@ async function getAlunosStats(params: any) {
     )
   );
   const qs = new URLSearchParams(filteredParams).toString();
-  return http(`/alunos/stats/counts?${qs}`);
+  return http(`/alunos/stats/counts?${qs}`, { auth: true });
 }
 
 export default function PageAlunos() {
+  const { user } = useAuth();
   const [search, setSearch] = useState("");
   const [debounced, setDebounced] = useState("");
   const [status, setStatus] = useState("todos");
   const [unidadeId, setUnidadeId] = useState("");
   const [faixa, setFaixa] = useState("todos");
+  const [categoria, setCategoria] = useState("todos");
   const [showModal, setShowModal] = useState(false);
   const [editingAluno, setEditingAluno] = useState<any>(null);
   const [formData, setFormData] = useState<AlunoFormData>({
@@ -114,8 +118,18 @@ export default function PageAlunos() {
     return () => clearTimeout(id);
   }, [search]);
 
+  // Buscar franqueado do usuário logado (se for franqueado)
+  const isFranqueado = user?.perfis?.some(
+    (perfil: any) => perfil.nome?.toLowerCase() === "franqueado"
+  );
+  const { data: myFranqueado } = useQuery({
+    queryKey: ["franqueado-me", user?.id],
+    queryFn: getMyFranqueado,
+    enabled: !!user?.id && isFranqueado,
+  });
+
   const query = useInfiniteQuery({
-    queryKey: ["alunos", debounced, status, unidadeId, faixa],
+    queryKey: ["alunos", debounced, status, unidadeId, faixa, categoria],
     initialPageParam: 1,
     getNextPageParam: (last: any) =>
       last.hasNextPage ? last.page + 1 : undefined,
@@ -130,6 +144,7 @@ export default function PageAlunos() {
       if (status && status !== "todos") params.status = status;
       if (unidadeId && unidadeId.trim()) params.unidade_id = unidadeId;
       if (faixa && faixa !== "todos") params.faixa = faixa;
+      if (categoria && categoria !== "todos") params.categoria = categoria;
 
       return listAlunos(params);
     },
@@ -142,9 +157,14 @@ export default function PageAlunos() {
     staleTime: Infinity, // Nunca considera os dados como "stale"
     gcTime: Infinity, // Mantém no cache para sempre
   });
+
   const unidadesQuery = useQuery({
-    queryKey: ["unidades"],
-    queryFn: () => listUnidades({ pageSize: 100 }),
+    queryKey: ["unidades", myFranqueado?.id],
+    queryFn: () =>
+      listUnidades({
+        pageSize: 100,
+        franqueado_id: myFranqueado?.id, // Filtrar por franqueado se for franqueado
+      }),
     staleTime: Infinity, // Unidades nunca ficam stale
     gcTime: Infinity,
     refetchOnWindowFocus: false,
@@ -154,11 +174,12 @@ export default function PageAlunos() {
   });
 
   const statsQuery = useQuery({
-    queryKey: ["alunos-stats", debounced, unidadeId],
+    queryKey: ["alunos-stats", debounced, unidadeId, categoria],
     queryFn: () => {
       const params: any = {};
       if (debounced && debounced.trim()) params.search = debounced;
       if (unidadeId && unidadeId.trim()) params.unidade_id = unidadeId;
+      if (categoria && categoria !== "todos") params.categoria = categoria;
       return getAlunosStats(params);
     },
     staleTime: Infinity, // Stats nunca ficam stale - só atualiza quando filtros mudam
@@ -318,7 +339,7 @@ export default function PageAlunos() {
       </div>
 
       {/* Filtros */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
         <div className="relative flex-1">
           <label className="label">
             <span className="label-text">
@@ -334,6 +355,21 @@ export default function PageAlunos() {
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
+        </div>
+
+        <div>
+          <label className="label">
+            <span className="label-text">Categoria</span>
+          </label>
+          <select
+            className="select select-bordered w-full"
+            value={categoria}
+            onChange={(e) => setCategoria(e.target.value)}
+          >
+            <option value="todos">Todos</option>
+            <option value="kids">👶 Kids</option>
+            <option value="adulto">🥋 Adulto</option>
+          </select>
         </div>
 
         <div>

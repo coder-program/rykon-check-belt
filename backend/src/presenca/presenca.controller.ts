@@ -210,4 +210,15 @@ export class PresencaController {
   async getMeusFilhos(@Request() req) {
     return this.presencaService.getMeusFilhos(req.user);
   }
+
+  @Get('ranking-unidade')
+  @ApiOperation({ summary: 'Ranking de alunos por frequência na unidade' })
+  @ApiResponse({ status: 200, description: 'Ranking de frequência' })
+  async getRankingUnidade(
+    @Request() req,
+    @Query('mes') mes?: number,
+    @Query('ano') ano?: number,
+  ) {
+    return this.presencaService.getRankingUnidade(req.user, mes, ano);
+  }
 }

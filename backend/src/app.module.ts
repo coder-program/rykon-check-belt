@@ -21,6 +21,7 @@ import { GraduacaoModule } from './graduacao/graduacao.module';
 import { PresencaModule } from './presenca/presenca.module';
 import { AulaModule } from './presenca/aula.module';
 import { DashboardModule } from './dashboard/dashboard.module';
+import { CompeticoesModule } from './competicoes/competicoes.module';
 
 @Module({
   imports: [
@@ -29,8 +30,9 @@ import { DashboardModule } from './dashboard/dashboard.module';
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => {
-        const dbHost = configService.get('DB_HOST', '34.39.173.213');
+        const dbHost = configService.get('DB_HOST', 'localhost');
         const isSocketConnection = dbHost.startsWith('/cloudsql/');
+        const isLocalhost = dbHost === 'localhost' || dbHost === '127.0.0.1';
 
         return {
           type: 'postgres',
@@ -46,13 +48,18 @@ import { DashboardModule } from './dashboard/dashboard.module';
           entities: ['dist/**/*.entity.js'],
           migrations: ['dist/src/migrations/*.js'],
           migrationsTableName: 'migrations',
-          ssl: true,
-          extra: {
-            searchPath: 'teamcruz,public',
-            ssl: {
-              rejectUnauthorized: false,
-            },
-          },
+          // SSL apenas para conexões remotas, não para localhost
+          ssl: isLocalhost ? false : true,
+          extra: isLocalhost
+            ? {
+                searchPath: 'teamcruz,public',
+              }
+            : {
+                searchPath: 'teamcruz,public',
+                ssl: {
+                  rejectUnauthorized: false,
+                },
+              },
         };
       },
     }),
@@ -67,6 +74,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
     EnderecosModule,
     GraduacaoModule,
     DashboardModule,
+    CompeticoesModule,
   ],
 })
 export class AppModule {

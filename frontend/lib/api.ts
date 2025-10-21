@@ -1,4 +1,4 @@
-import { config } from './config';
+import { config } from "./config";
 
 export const API_BASE_URL = config.apiUrl;
 
@@ -26,17 +26,45 @@ export async function http(path: string, opts: HttpOptions = {}) {
     ...(opts.headers || {}),
   };
 
-  if (opts.auth) {
+  // Sempre tenta adicionar o token se ele existir (exceto se opts.auth === false)
+  if (opts.auth !== false) {
+    console.log(
+      "🌍 Ambiente:",
+      typeof window !== "undefined" ? "BROWSER" : "SERVER (SSR)"
+    );
     if (typeof window !== "undefined") {
       const token = localStorage.getItem("token");
-      if (token) headers["Authorization"] = `Bearer ${token}`;
+      console.log(
+        "🔑 Token do localStorage:",
+        token ? token.substring(0, 50) + "..." : "NENHUM TOKEN"
+      );
+      if (!token && opts.auth === true) {
+        // Se auth foi explicitamente requerido mas não tem token, lança erro
+        throw new Error("No auth token");
+      }
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+        console.log("✅ Authorization header adicionado");
+      }
+    } else {
+      console.log("⚠️ Rodando no servidor - token não disponível");
     }
   }
+
+  console.log(
+    "📋 Headers finais sendo enviados:",
+    JSON.stringify(headers, null, 2)
+  );
 
   const res = await fetch(url, {
     method: opts.method || "GET",
     headers,
-    body: opts.body ? JSON.stringify(opts.body) : undefined,
+    body:
+      typeof opts.body === "string"
+        ? opts.body
+        : opts.body
+        ? JSON.stringify(opts.body)
+        : undefined,
     credentials: "include",
   });
 

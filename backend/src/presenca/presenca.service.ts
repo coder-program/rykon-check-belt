@@ -22,7 +22,7 @@ import {
 } from './entities/presenca.entity';
 import { Aula } from './entities/aula.entity';
 import { Person, TipoCadastro } from '../people/entities/person.entity';
-import { Aluno } from '../people/entities/aluno.entity';
+import { Aluno, StatusAluno } from '../people/entities/aluno.entity';
 import { AlunoFaixa } from '../graduacao/entities/aluno-faixa.entity';
 import { Unidade } from '../people/entities/unidade.entity';
 import { GraduacaoService } from '../graduacao/graduacao.service';
@@ -61,18 +61,9 @@ export class PresencaService {
   ) {}
 
   async getAulaAtiva(user: any): Promise<AulaAtiva | null> {
-    console.log('🔵 [getAulaAtiva] Buscando aula ativa...');
-
     const agora = new Date();
     const diaHoje = agora.getDay();
     const horaAgora = agora.toTimeString().slice(0, 5); // HH:MM
-
-    console.log(
-      '🔵 [getAulaAtiva] Dia da semana:',
-      diaHoje,
-      'Hora:',
-      horaAgora,
-    );
 
     // Buscar aulas ativas no banco
     const aulas = await this.aulaRepository.find({
@@ -83,25 +74,9 @@ export class PresencaService {
       relations: ['unidade', 'professor'],
     });
 
-    console.log('🔵 [getAulaAtiva] Aulas encontradas para hoje:', aulas.length);
-
-    if (aulas.length > 0) {
-      console.log('🔵 [getAulaAtiva] Detalhes das aulas encontradas:');
-      aulas.forEach((aula, index) => {
-        console.log(
-          `  Aula ${index + 1}: ${aula.nome} - Ativo: ${aula.ativo} - Data início: ${aula.data_hora_inicio} - Data fim: ${aula.data_hora_fim}`,
-        );
-      });
-    }
-
     // Filtrar aulas que estão acontecendo agora
     for (const aula of aulas) {
-      console.log(
-        `🔵 [getAulaAtiva] Verificando se aula "${aula.nome}" está ativa...`,
-      );
       if (aula.estaAtiva()) {
-        console.log('✅ [getAulaAtiva] Aula ativa encontrada:', aula.nome);
-
         // Gerar QR Code se ainda não tiver ou se for antigo (mais de 1 hora)
         const precisaNovoQR =
           !aula.qr_code ||
@@ -112,7 +87,6 @@ export class PresencaService {
           aula.qr_code = aula.gerarQRCode();
           aula.qr_code_gerado_em = new Date();
           await this.aulaRepository.save(aula);
-          console.log('🔵 [getAulaAtiva] QR Code gerado:', aula.qr_code);
         }
 
         return {
@@ -127,15 +101,10 @@ export class PresencaService {
       }
     }
 
-    console.log('⚠️ [getAulaAtiva] Nenhuma aula ativa no momento');
     return null;
   }
 
   async checkInQR(qrCode: string, user: any) {
-    console.log('🔵 [checkInQR] Iniciando check-in por QR Code');
-    console.log('🔵 [checkInQR] QR Code:', qrCode);
-    console.log('🔵 [checkInQR] User ID:', user.id);
-
     // Validar QR Code
     if (!qrCode || !qrCode.startsWith('QR-AULA-')) {
       throw new BadRequestException('QR Code inválido');
@@ -625,37 +594,94 @@ export class PresencaService {
   }
 
   async getAulasDisponiveis(user: any, data?: string) {
-    // Por enquanto, retornar aulas mockadas
     const hoje = data ? new Date(data) : new Date();
     const diaSemana = hoje.getDay();
 
-    const aulasPadrao = [
-      {
-        id: 'aula-manha-1',
-        nome: 'Jiu-Jitsu Gi - Adultos Manhã',
-        professor: 'Carlos Silva',
-        horarioInicio: '07:00',
-        horarioFim: '08:30',
-        vagas: 20,
-        inscritos: 15,
-      },
-      {
-        id: 'aula-noite-1',
-        nome: 'Jiu-Jitsu Gi - Adultos Noite',
-        professor: 'Ana Santos',
-        horarioInicio: '19:00',
-        horarioFim: '20:30',
-        vagas: 25,
-        inscritos: 18,
-      },
-    ];
+    console.log(
+      '🔍 [getAulasDisponiveis] Buscando aulas para o dia:',
+      diaSemana,
+    );
 
-    if (diaSemana === 0 || diaSemana === 6) {
-      // Final de semana - menos aulas
-      return aulasPadrao.slice(0, 1);
+    try {
+      // Buscar unidade do aluno
+      let unidadeId: string | null = null;
+
+      const aluno = await this.alunoRepository.findOne({
+        where: { usuario_id: user.id },
+        relations: ['unidade'],
+      });
+
+      if (aluno?.unidade_id) {
+        unidadeId = aluno.unidade_id;
+        console.log('🔍 [getAulasDisponiveis] Unidade do aluno:', unidadeId);
+      }
+
+      // Buscar aulas ativas da unidade do aluno ou todas se não tiver unidade
+      const whereConditions: any = {
+        ativo: true,
+        dia_semana: diaSemana,
+      };
+
+      if (unidadeId) {
+        whereConditions.unidade_id = unidadeId;
+      }
+
+      const aulas = await this.aulaRepository.find({
+        where: whereConditions,
+        relations: ['unidade', 'professor'],
+        order: {
+          data_hora_inicio: 'ASC',
+        },
+      });
+
+      console.log('🔍 [getAulasDisponiveis] Aulas encontradas:', aulas.length);
+
+      // Filtrar aulas que ainda não começaram ou estão em andamento
+      const agora = hoje.getTime();
+      const aulasDisponiveis = aulas.filter((aula) => {
+        if (aula.data_hora_fim) {
+          return aula.data_hora_fim.getTime() > agora;
+        }
+        return true;
+      });
+
+      // Formatar resposta
+      const aulasFormatadas = aulasDisponiveis.map((aula) => {
+        // Se tiver data_hora_inicio, usar ela, senão criar uma data de hoje com o horário
+        let dataAula = hoje;
+        if (aula.data_hora_inicio) {
+          dataAula = new Date(aula.data_hora_inicio);
+        }
+
+        // Contar quantos alunos já estão inscritos (presenças registradas)
+        // Por enquanto, deixar como 0 - pode ser implementado depois
+        const inscritos = 0;
+
+        return {
+          id: aula.id,
+          nome: aula.nome,
+          professor: aula.professor?.nome_completo || 'Professor não atribuído',
+          unidade: aula.unidade?.nome || 'Unidade',
+          horarioInicio: aula.hora_inicio,
+          horarioFim: aula.hora_fim,
+          data: dataAula.toISOString(),
+          vagas: aula.capacidade_maxima || 30,
+          inscritos: inscritos,
+          tipo: aula.tipo,
+        };
+      });
+
+      console.log(
+        '✅ [getAulasDisponiveis] Aulas formatadas:',
+        aulasFormatadas.length,
+      );
+
+      return aulasFormatadas;
+    } catch (error) {
+      console.error('❌ [getAulasDisponiveis] Erro ao buscar aulas:', error);
+      // Em caso de erro, retornar array vazio ao invés de falhar
+      return [];
     }
-
-    return aulasPadrao;
   }
 
   async checkInFacial(foto: string, aulaId: string, user: any) {
@@ -808,6 +834,131 @@ export class PresencaService {
       graduacao: 'Branca', // TODO: Buscar graduação real
       jaFezCheckin: idsComPresenca.has(aluno.id),
     }));
+  }
+
+  async getRankingUnidade(user: any, mes?: number, ano?: number) {
+    console.log(
+      '🏆 [getRankingUnidade] Buscando ranking para usuário:',
+      user.id,
+    );
+
+    try {
+      // Buscar unidade do aluno
+      const aluno = await this.alunoRepository.findOne({
+        where: { usuario_id: user.id },
+        relations: ['unidade'],
+      });
+
+      if (!aluno || !aluno.unidade_id) {
+        console.log('⚠️ [getRankingUnidade] Aluno sem unidade');
+        return {
+          posicao: null,
+          totalAlunos: 0,
+          ranking: [],
+        };
+      }
+
+      // Usar mês e ano atuais se não foram fornecidos
+      const dataRef = new Date();
+      const mesRef = mes !== undefined ? mes : dataRef.getMonth() + 1; // 1-12
+      const anoRef = ano !== undefined ? ano : dataRef.getFullYear();
+
+      console.log(`🏆 [getRankingUnidade] Período: ${mesRef}/${anoRef}`);
+      console.log(`🏆 [getRankingUnidade] Unidade: ${aluno.unidade_id}`);
+
+      // Calcular primeiro e último dia do mês
+      const primeiroDia = new Date(anoRef, mesRef - 1, 1);
+      const ultimoDia = new Date(anoRef, mesRef, 0, 23, 59, 59);
+
+      console.log(
+        `🏆 [getRankingUnidade] Período: ${primeiroDia} até ${ultimoDia}`,
+      );
+
+      // Buscar todos os alunos ativos da mesma unidade
+      const alunosDaUnidade = await this.alunoRepository.find({
+        where: {
+          unidade_id: aluno.unidade_id,
+          status: StatusAluno.ATIVO,
+        },
+      });
+
+      console.log(
+        `🏆 [getRankingUnidade] Alunos da unidade: ${alunosDaUnidade.length}`,
+      );
+
+      // Buscar presenças do mês para todos os alunos da unidade
+      const presencas = await this.presencaRepository
+        .createQueryBuilder('presenca')
+        .where('presenca.aluno_id IN (:...alunosIds)', {
+          alunosIds: alunosDaUnidade.map((a) => a.id),
+        })
+        .andWhere('presenca.created_at >= :inicio', { inicio: primeiroDia })
+        .andWhere('presenca.created_at <= :fim', { fim: ultimoDia })
+        .getMany();
+
+      console.log(
+        `🏆 [getRankingUnidade] Presenças encontradas: ${presencas.length}`,
+      );
+
+      // Contar presenças por aluno
+      const presencasPorAluno = new Map<string, number>();
+
+      for (const presenca of presencas) {
+        const count = presencasPorAluno.get(presenca.aluno_id) || 0;
+        presencasPorAluno.set(presenca.aluno_id, count + 1);
+      }
+
+      // Criar ranking com informações dos alunos
+      const rankingComDetalhes = alunosDaUnidade.map((alunoItem) => ({
+        alunoId: alunoItem.id,
+        nome: alunoItem.nome_completo,
+        faixa: alunoItem.faixa_atual,
+        graus: alunoItem.graus,
+        presencas: presencasPorAluno.get(alunoItem.id) || 0,
+      }));
+
+      // Ordenar por número de presenças (descendente)
+      rankingComDetalhes.sort((a, b) => b.presencas - a.presencas);
+
+      // Encontrar posição do aluno atual
+      const posicaoAluno = rankingComDetalhes.findIndex(
+        (item) => item.alunoId === aluno.id,
+      );
+
+      const posicao = posicaoAluno >= 0 ? posicaoAluno + 1 : null;
+      const presencasDoAluno = presencasPorAluno.get(aluno.id) || 0;
+
+      console.log(`🏆 [getRankingUnidade] Posição do aluno: ${posicao}`);
+      console.log(
+        `🏆 [getRankingUnidade] Presenças do aluno: ${presencasDoAluno}`,
+      );
+
+      // Retornar apenas o top 10 no ranking completo
+      const top10 = rankingComDetalhes.slice(0, 10).map((item, index) => ({
+        posicao: index + 1,
+        nome: item.nome,
+        faixa: item.faixa,
+        graus: item.graus,
+        presencas: item.presencas,
+        isUsuarioAtual: item.alunoId === aluno.id,
+      }));
+
+      return {
+        posicao,
+        presencas: presencasDoAluno,
+        totalAlunos: alunosDaUnidade.length,
+        mes: mesRef,
+        ano: anoRef,
+        ranking: top10,
+      };
+    } catch (error) {
+      console.error('❌ [getRankingUnidade] Erro ao buscar ranking:', error);
+      return {
+        posicao: null,
+        totalAlunos: 0,
+        ranking: [],
+      };
+    }
   }
 
   private async calcularSequenciaAtual(pessoaId: string): Promise<number> {

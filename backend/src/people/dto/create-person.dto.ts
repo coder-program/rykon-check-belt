@@ -34,8 +34,8 @@ export class CreatePersonDto {
   nome_completo: string;
 
   @IsString()
-  @Matches(/^\d{3}\.\d{3}\.\d{3}-\d{2}$/, {
-    message: 'CPF deve estar no formato 000.000.000-00',
+  @Matches(/^\d{11}$/, {
+    message: 'CPF deve conter exatamente 11 dígitos numéricos',
   })
   @IsNotEmpty()
   cpf: string;
@@ -130,8 +130,8 @@ export class CreatePersonDto {
     (o) => o.tipo_cadastro === TipoCadastro.ALUNO && isMinor(o.data_nascimento),
   )
   @IsString()
-  @Matches(/^\d{3}\.\d{3}\.\d{3}-\d{2}$/, {
-    message: 'CPF do responsável deve estar no formato 000.000.000-00',
+  @Matches(/^\d{11}$/, {
+    message: 'CPF do responsável deve conter exatamente 11 dígitos numéricos',
   })
   @IsNotEmpty()
   responsavel_cpf?: string;

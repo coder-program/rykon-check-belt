@@ -68,12 +68,11 @@ export default function RegisterPage() {
           throw new Error("Formato de resposta inválido");
         }
 
-        // Filtrar apenas perfis públicos (aluno, instrutor)
+        // Filtrar apenas perfis públicos (aluno, responsavel)
         const perfisPublicos = data.filter(
           (p) =>
             p.nome.toLowerCase() === "aluno" ||
-            p.nome.toLowerCase() === "instrutor" ||
-            p.nome.toLowerCase() === "professor"
+            p.nome.toLowerCase() === "responsavel"
         );
 
         if (perfisPublicos.length === 0) {
@@ -193,6 +192,27 @@ export default function RegisterPage() {
       setError("Data de nascimento é obrigatória");
       return false;
     }
+
+    // Validar idade mínima de 10 anos
+    const dataNascimento = new Date(formData.data_nascimento);
+    const hoje = new Date();
+    let idade = hoje.getFullYear() - dataNascimento.getFullYear();
+    const mesAtual = hoje.getMonth();
+    const mesNascimento = dataNascimento.getMonth();
+
+    // Ajustar idade se ainda não fez aniversário este ano
+    if (
+      mesAtual < mesNascimento ||
+      (mesAtual === mesNascimento && hoje.getDate() < dataNascimento.getDate())
+    ) {
+      idade--;
+    }
+
+    if (idade < 10) {
+      setError("Idade mínima para cadastro é de 10 anos");
+      return false;
+    }
+
     // perfil_id é opcional - se não selecionado, backend usa "aluno" como padrão
 
     return true;
@@ -227,7 +247,7 @@ export default function RegisterPage() {
         console.warn("perfil_id inválido, não enviando:", formData.perfil_id);
       }
 
-      const response = await authService.register(registerData);
+      await authService.register(registerData);
 
       // Verificar se o perfil escolhido requer aprovação
       const perfilEscolhido = perfis.find((p) => p.id === formData.perfil_id);
@@ -392,8 +412,18 @@ export default function RegisterPage() {
                     required
                     value={formData.data_nascimento}
                     onChange={handleChange}
+                    max={(() => {
+                      const hoje = new Date();
+                      const dataMaxima = new Date(
+                        hoje.getFullYear() - 10,
+                        hoje.getMonth(),
+                        hoje.getDate()
+                      );
+                      return dataMaxima.toISOString().split("T")[0];
+                    })()}
                     className="h-11 bg-gray-800/50 border-gray-600 text-white placeholder-gray-400 focus:border-red-500 focus:ring-red-500"
                   />
+                  <p className="text-xs text-gray-400">Idade mínima: 10 anos</p>
                 </div>
 
                 <div className="space-y-2">

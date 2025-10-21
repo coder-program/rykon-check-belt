@@ -11,8 +11,8 @@ async function bootstrap() {
   try {
     // 1. Verificar alunos existentes
     const alunos = await dataSource.query(`
-      SELECT id, nome_completo, faixa_atual, grau_atual 
-      FROM pessoas 
+      SELECT id, nome_completo, faixa_atual, grau_atual
+      FROM pessoas
       WHERE tipo_cadastro = 'ALUNO' AND status = 'ATIVO'
     `);
 
@@ -31,7 +31,7 @@ async function bootstrap() {
     // 2. Verificar e usar faixas existentes
     console.log('🥋 Verificando faixas existentes...');
     const faixasExistentes = await dataSource.query(`
-      SELECT id, codigo, nome_exibicao FROM teamcruz.faixa_def 
+      SELECT id, codigo, nome_exibicao FROM teamcruz.faixa_def
       WHERE categoria = 'ADULTO' ORDER BY ordem ASC
     `);
 
@@ -40,7 +40,7 @@ async function bootstrap() {
       // Se não houver faixas, tentar criar usando a migração existente
       await dataSource.query(`
         INSERT INTO teamcruz.faixa_def (codigo, nome_exibicao, cor_hex, ordem, categoria, graus_max, aulas_por_grau, ativo)
-        VALUES 
+        VALUES
           ('BRANCA', 'Branca', '#FFFFFF', 1, 'ADULTO', 4, 20, true),
           ('AZUL', 'Azul', '#0066CC', 2, 'ADULTO', 4, 25, true),
           ('ROXA', 'Roxa', '#663399', 3, 'ADULTO', 4, 30, true),
@@ -62,7 +62,7 @@ async function bootstrap() {
       // Verificar se já existe
       const existing = await dataSource.query(
         `
-        SELECT id FROM teamcruz.aluno_faixa 
+        SELECT id FROM teamcruz.aluno_faixa
         WHERE aluno_id = $1 AND ativa = true
       `,
         [aluno.id],
@@ -103,12 +103,12 @@ async function bootstrap() {
       await dataSource.query(
         `
         INSERT INTO teamcruz.aluno_faixa (
-          aluno_id, 
-          faixa_def_id, 
-          ativa, 
-          dt_inicio, 
-          graus_atual, 
-          presencas_no_ciclo, 
+          aluno_id,
+          faixa_def_id,
+          ativa,
+          dt_inicio,
+          graus_atual,
+          presencas_no_ciclo,
           presencas_total_fx
         ) VALUES ($1, $2, true, CURRENT_DATE - INTERVAL '6 months', $3, $4, $5)
       `,
@@ -129,7 +129,7 @@ async function bootstrap() {
     // 4. Verificar resultado
     console.log('\n📊 Verificando dados criados...\n');
     const resultado = await dataSource.query(`
-      SELECT 
+      SELECT
         p.nome_completo,
         fd.nome_exibicao as faixa,
         af.graus_atual,
@@ -143,17 +143,7 @@ async function bootstrap() {
     `);
 
     console.log('🏆 Alunos próximos a graduar:\n');
-    resultado.forEach((r: any) => {
-      console.log(`   ${r.nome_completo}`);
-      console.log(
-        `   └─ Faixa: ${r.faixa} | Graus: ${r.graus_atual} | Faltam: ${r.faltam_aulas} aulas\n`,
-      );
-    });
-
-    console.log('✅ Dados de graduação populados com sucesso!');
-    console.log(
-      '🎯 Agora você pode acessar /teamcruz no frontend para ver os dados',
-    );
+    resultado.forEach((r: any) => {});
   } catch (error) {
     console.error('❌ Erro ao popular dados:', error);
   } finally {

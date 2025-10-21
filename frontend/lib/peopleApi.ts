@@ -15,8 +15,10 @@ export async function listAlunos(params: any): Promise<PageResp<any>> {
       ([, value]) => value !== undefined && value !== null && value !== ""
     )
   );
-  const qs = new URLSearchParams(filteredParams).toString();
-  return http(`/alunos?${qs}`);
+  const qs = new URLSearchParams(
+    filteredParams as Record<string, string>
+  ).toString();
+  return http(`/alunos?${qs}`, { auth: true });
 }
 
 export async function approveAluno(id: string, professor_id: string) {
@@ -36,8 +38,16 @@ export async function createAluno(data: any) {
 }
 
 export async function listProfessores(params: any): Promise<PageResp<any>> {
-  const qs = new URLSearchParams(params).toString();
-  return http(`/professores?${qs}`);
+  // Filtrar valores undefined/null antes de criar URLSearchParams
+  const filteredParams = Object.fromEntries(
+    Object.entries(params).filter(
+      ([, value]) => value !== undefined && value !== null && value !== ""
+    )
+  );
+  const qs = new URLSearchParams(
+    filteredParams as Record<string, string>
+  ).toString();
+  return http(`/professores?${qs}`, { auth: true });
 }
 export async function createProfessor(data: any) {
   // Garantir que tipo_cadastro seja PROFESSOR
@@ -53,9 +63,22 @@ export async function createProfessor(data: any) {
 }
 
 export async function listFranqueados(params: any): Promise<PageResp<any>> {
-  const qs = new URLSearchParams(params).toString();
+  // Filtrar valores undefined/null/empty antes de criar URLSearchParams
+  const filteredParams = Object.fromEntries(
+    Object.entries(params).filter(
+      ([, value]) => value !== undefined && value !== null && value !== ""
+    )
+  );
+  const qs = new URLSearchParams(
+    filteredParams as Record<string, string>
+  ).toString();
   return http(`/franqueados?${qs}`);
 }
+
+export async function getMyFranqueado() {
+  return http("/franqueados/me", { auth: true });
+}
+
 export async function createFranqueado(data: any) {
   return http("/franqueados", { method: "POST", body: data, auth: true });
 }
@@ -80,8 +103,16 @@ export async function listInstrutores(params: any): Promise<PageResp<any>> {
 
 // Unidades
 export async function listUnidades(params: any): Promise<PageResp<any>> {
-  const qs = new URLSearchParams(params).toString();
-  return http(`/unidades?${qs}`);
+  // Filtrar valores undefined/null antes de criar URLSearchParams
+  const filteredParams = Object.fromEntries(
+    Object.entries(params).filter(
+      ([, value]) => value !== undefined && value !== null && value !== ""
+    )
+  );
+  const qs = new URLSearchParams(
+    filteredParams as Record<string, string>
+  ).toString();
+  return http(`/unidades?${qs}`, { auth: true });
 }
 
 export async function createUnidade(data: any) {
@@ -99,6 +130,10 @@ export async function deleteUnidade(id: string) {
 // Endereços
 export async function buscarViaCep(cep: string) {
   return http(`/enderecos/viacep/buscar?cep=${cep}`);
+}
+
+export async function getEndereco(id: string) {
+  return http(`/enderecos/${id}`, { auth: true });
 }
 
 export async function createEndereco(data: any) {

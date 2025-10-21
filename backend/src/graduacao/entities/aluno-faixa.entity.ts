@@ -91,8 +91,18 @@ export class AlunoFaixa {
     const tempoNaFaixa = agora.getTime() - dataInicio.getTime();
     const diasNaFaixa = tempoNaFaixa / (1000 * 60 * 60 * 24);
 
-    // Faixa branca: 1 ano (365 dias), outras faixas: 2 anos (730 dias)
-    const tempoMinimo = this.faixaDef.codigo === 'BRANCA' ? 365 : 730;
+    // Tempo mínimo por faixa:
+    // Branca: 1 ano (365 dias)
+    // Azul: 2 anos (730 dias)
+    // Roxa: 2 anos (730 dias)
+    // Marrom: 1.5 anos (548 dias)
+    let tempoMinimo = 730; // Default: 2 anos
+    if (this.faixaDef.codigo === 'BRANCA') {
+      tempoMinimo = 365;
+    } else if (this.faixaDef.codigo === 'MARROM') {
+      tempoMinimo = 548;
+    }
+
     const temTempoSuficiente = diasNaFaixa >= tempoMinimo;
 
     // Pode graduar se tem 4 graus OU tempo suficiente
@@ -132,7 +142,15 @@ export class AlunoFaixa {
         : new Date(this.dt_inicio);
     const tempoNaFaixa = agora.getTime() - dataInicio.getTime();
     const diasNaFaixa = tempoNaFaixa / (1000 * 60 * 60 * 24);
-    const tempoMinimo = this.faixaDef.codigo === 'BRANCA' ? 365 : 730;
+
+    // Tempo mínimo por faixa
+    let tempoMinimo = 730; // Default: 2 anos
+    if (this.faixaDef.codigo === 'BRANCA') {
+      tempoMinimo = 365;
+    } else if (this.faixaDef.codigo === 'MARROM') {
+      tempoMinimo = 548;
+    }
+
     const progressoTempo = Math.min(1, diasNaFaixa / tempoMinimo);
 
     return {

@@ -7,6 +7,8 @@ import MasterDashboard from "@/components/dashboard/MasterDashboard";
 import FranqueadoDashboard from "@/components/dashboard/FranqueadoDashboard";
 import AlunoDashboard from "@/components/dashboard/AlunoDashboard";
 import InstrutorDashboard from "@/components/dashboard/InstrutorDashboard";
+import GerenteDashboard from "@/components/dashboard/GerenteDashboard";
+import RecepcionistaDashboard from "@/components/dashboard/RecepcionistaDashboard";
 import {
   Card,
   CardContent,
@@ -78,6 +80,13 @@ export default function DashboardPage() {
     load();
   }, []);
 
+  // VERIFICAR SE RECEPCIONISTA PRECISA COMPLETAR CADASTRO
+  useEffect(() => {
+    if (user && hasPerfil("recepcionista") && !user.cadastro_completo) {
+      router.push("/onboarding/recepcionista");
+    }
+  }, [user, router]);
+
   // Renderizar dashboard específico por perfil
   if (hasPerfil("master")) {
     return <MasterDashboard />;
@@ -87,11 +96,30 @@ export default function DashboardPage() {
     return <FranqueadoDashboard />;
   }
 
+  if (hasPerfil("gerente_unidade")) {
+    return <GerenteDashboard />;
+  }
+
+  if (hasPerfil("recepcionista")) {
+    // Se cadastro incompleto, não renderiza (vai redirecionar)
+    if (!user?.cadastro_completo) {
+      return (
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+            <p className="mt-4 text-gray-600">Redirecionando...</p>
+          </div>
+        </div>
+      );
+    }
+    return <RecepcionistaDashboard />;
+  }
+
   if (hasPerfil("aluno")) {
     return <AlunoDashboard />;
   }
 
-  if (hasPerfil("instrutor")) {
+  if (hasPerfil("instrutor") || hasPerfil("professor")) {
     return <InstrutorDashboard />;
   }
 
@@ -113,9 +141,19 @@ export default function DashboardPage() {
               </h1>
             </div>
             <div className="flex items-center space-x-4">
-              <span className="text-sm text-slate-600 dark:text-slate-300">
-                Bem-vindo, <span className="font-medium">{user?.name}</span>!
-              </span>
+              <div className="text-right">
+                <span className="text-sm text-slate-600 dark:text-slate-300">
+                  Bem-vindo, <span className="font-medium">{user?.name}</span>!
+                </span>
+                {user?.unidade && (
+                  <div className="flex items-center gap-2 mt-1">
+                    <Building2 className="h-4 w-4 text-blue-500" />
+                    <span className="text-xs font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-3 py-1 rounded-full border border-blue-200 dark:border-blue-700">
+                      {user.unidade.nome}
+                    </span>
+                  </div>
+                )}
+              </div>
               <Button
                 onClick={logout}
                 variant="outline"
@@ -321,9 +359,11 @@ export default function DashboardPage() {
                   </span>
                   <span className="badge badge-warning text-xs">🥋 Alunos</span>
                 </CardTitle>
-                <CardDescription>
-                  Aprovar cadastros de ALUNOS de Jiu-Jitsu (estudantes)
-                </CardDescription>
+                {
+                  <CardDescription>
+                    Aprovar cadastros de ALUNOS de Jiu-Jitsu (estudantes)
+                  </CardDescription>
+                }
               </CardHeader>
             </Card>
 
@@ -429,7 +469,9 @@ export default function DashboardPage() {
                     <Calendar className="mr-2 h-5 w-5" />
                     Gerenciamento de Aulas
                   </span>
-                  <span className="badge badge-warning text-xs animate-pulse">Admin</span>
+                  <span className="badge badge-warning text-xs animate-pulse">
+                    Admin
+                  </span>
                 </CardTitle>
                 <CardDescription>
                   Cadastre, edite e gerencie as aulas das unidades

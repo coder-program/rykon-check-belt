@@ -39,8 +39,6 @@ const AppDataSource = new DataSource({
 async function seedHistoricoGraduacao() {
   try {
     await AppDataSource.initialize();
-    console.log('DataSource inicializado');
-
     const queryRunner = AppDataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
@@ -53,7 +51,6 @@ async function seedHistoricoGraduacao() {
       });
 
       if (alunos.length === 0) {
-        console.log('Nenhum aluno encontrado');
         await queryRunner.rollbackTransaction();
         return;
       }
@@ -65,14 +62,9 @@ async function seedHistoricoGraduacao() {
       });
 
       if (faixas.length < 3) {
-        console.log('Não há faixas suficientes para simular graduações');
         await queryRunner.rollbackTransaction();
         return;
       }
-
-      console.log(
-        `Criando histórico de graduação para ${alunos.length} alunos...`,
-      );
 
       for (let i = 0; i < Math.min(alunos.length, 2); i++) {
         const aluno = alunos[i];
@@ -87,9 +79,6 @@ async function seedHistoricoGraduacao() {
             created_at: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000), // 60 dias atrás
           });
           await queryRunner.manager.save(graduacao1);
-          console.log(
-            `Graduação criada: ${aluno.nome_completo} - Branca -> Amarela`,
-          );
         }
 
         // Para o primeiro aluno, simular também graduação de amarela para laranja
@@ -102,18 +91,13 @@ async function seedHistoricoGraduacao() {
             created_at: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // 30 dias atrás
           });
           await queryRunner.manager.save(graduacao2);
-          console.log(
-            `Graduação criada: ${aluno.nome_completo} - Amarela -> Laranja`,
-          );
         }
       }
 
       await queryRunner.commitTransaction();
-      console.log('Histórico de graduações criado com sucesso!');
 
       // Verificar total de graduações
       const totalGraduacoes = await AppDataSource.manager.count(AlunoGraduacao);
-      console.log(`Total de graduações no banco: ${totalGraduacoes}`);
     } catch (error) {
       await queryRunner.rollbackTransaction();
       console.error('Erro durante a transação:', error);

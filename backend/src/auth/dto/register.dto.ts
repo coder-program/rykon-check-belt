@@ -22,11 +22,11 @@ export class RegisterDto {
   @IsNotEmpty()
   email: string;
 
-  @ApiProperty({ example: '000.000.000-00' })
+  @ApiProperty({ example: '00000000000' })
   @IsString()
   @IsNotEmpty()
-  @Matches(/^\d{3}\.\d{3}\.\d{3}-\d{2}$/, {
-    message: 'CPF deve estar no formato 000.000.000-00',
+  @Matches(/^\d{11}$/, {
+    message: 'CPF deve conter exatamente 11 dígitos numéricos',
   })
   cpf: string;
 
@@ -57,4 +57,13 @@ export class RegisterDto {
   @IsOptional()
   @IsUUID()
   perfil_id?: string;
+
+  @ApiProperty({
+    example: 'uuid-da-unidade',
+    required: false,
+    description: 'ID da unidade (obrigatório para ALUNO e RESPONSAVEL)',
+  })
+  @IsOptional()
+  @IsUUID()
+  unidade_id?: string;
 }

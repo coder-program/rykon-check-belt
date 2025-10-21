@@ -18,7 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { TeamCruzLogo } from "@/components/ui/teamcruz-logo";
 import { JiuJitsuWatermark } from "@/components/ui/jiujitsu-watermark";
-import { Mail, Lock, AlertCircle, LogIn } from "lucide-react";
+import { Mail, Lock, AlertCircle, LogIn, Eye, EyeOff } from "lucide-react";
 
 function LoginContent() {
   const [formData, setFormData] = useState({ email: "", password: "" });
@@ -27,6 +27,7 @@ function LoginContent() {
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [forgotPasswordEmail, setForgotPasswordEmail] = useState("");
   const [forgotPasswordLoading, setForgotPasswordLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const { login } = useAuth();
   const router = useRouter();
@@ -301,17 +302,31 @@ function LoginContent() {
                       <Lock className="h-4 w-4 text-red-400" />
                       Senha
                     </Label>
-                    <Input
-                      type="password"
-                      id="password"
-                      name="password"
-                      value={formData.password}
-                      onChange={handleChange}
-                      placeholder="Digite sua senha"
-                      required
-                      disabled={isLoading}
-                      className="h-12 bg-gray-800/50 border-gray-600 text-white placeholder-gray-400 focus:border-red-500 focus:ring-red-500"
-                    />
+                    <div className="relative">
+                      <Input
+                        type={showPassword ? "text" : "password"}
+                        id="password"
+                        name="password"
+                        value={formData.password}
+                        onChange={handleChange}
+                        placeholder="Digite sua senha"
+                        required
+                        disabled={isLoading}
+                        className="h-12 bg-gray-800/50 border-gray-600 text-white placeholder-gray-400 focus:border-red-500 focus:ring-red-500 pr-12"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-400 transition-colors"
+                        disabled={isLoading}
+                      >
+                        {showPassword ? (
+                          <EyeOff className="h-5 w-5" />
+                        ) : (
+                          <Eye className="h-5 w-5" />
+                        )}
+                      </button>
+                    </div>
                   </div>
 
                   <Button

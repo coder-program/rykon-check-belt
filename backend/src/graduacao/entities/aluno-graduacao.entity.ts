@@ -42,6 +42,15 @@ export class AlunoGraduacao {
   @Column({ type: 'timestamp', nullable: true })
   dt_aprovacao: Date;
 
+  @Column({ type: 'uuid', nullable: true })
+  parametro_id: string;
+
+  @Column({ type: 'timestamp', nullable: true })
+  solicitado_em: Date;
+
+  @Column({ type: 'text', nullable: true })
+  observacao_aprovacao: string | null;
+
   @CreateDateColumn()
   created_at: Date;
 

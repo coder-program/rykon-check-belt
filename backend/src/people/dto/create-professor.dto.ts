@@ -11,7 +11,11 @@ import {
   Length,
   ArrayMinSize,
 } from 'class-validator';
-import { Genero, StatusCadastro, FaixaProfessor } from '../entities/person.entity';
+import {
+  Genero,
+  StatusCadastro,
+  FaixaProfessor,
+} from '../entities/person.entity';
 
 export class CreateProfessorDto {
   // ===== DADOS PESSOAIS =====
@@ -22,8 +26,8 @@ export class CreateProfessorDto {
 
   @IsString()
   @IsNotEmpty({ message: 'CPF é obrigatório' })
-  @Matches(/^\d{3}\.\d{3}\.\d{3}-\d{2}$/, {
-    message: 'CPF deve estar no formato 000.000.000-00',
+  @Matches(/^\d{11}$/, {
+    message: 'CPF deve conter exatamente 11 dígitos numéricos',
   })
   cpf: string;
 

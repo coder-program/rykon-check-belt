@@ -4,8 +4,7 @@
 
 ```typescript
 async getMeusFilhos(responsavelUser: any) {
-  console.log('🔵 [getMeusFilhos] Buscando filhos do responsável');
-  
+
   // Buscar usuário responsável
   const usuario = await this.personRepository.findOne({
     where: { id: responsavelUser.id },
@@ -23,7 +22,6 @@ async getMeusFilhos(responsavelUser: any) {
     relations: ['unidade'],
   });
 
-  console.log('🔵 [getMeusFilhos] Filhos encontrados:', filhos.length);
 
   // Verificar quais já fizeram check-in hoje
   const hoje = new Date();
@@ -53,8 +51,7 @@ async getMeusFilhos(responsavelUser: any) {
 
 ```typescript
 async getMinhaHistorico(user: any, limit: number = 10) {
-  console.log('🔵 [getMinhaHistorico] Buscando histórico');
-  
+
   // Buscar aluno
   const aluno = await this.alunoRepository.findOne({
     where: { usuario_id: user.id },
@@ -81,7 +78,7 @@ async getMinhaHistorico(user: any, limit: number = 10) {
 
   return presencas.map((p) => {
     const aula = p.aulaId ? aulasMap.get(p.aulaId) : null;
-    
+
     return {
       id: p.id,
       data: p.dataPresenca,
@@ -101,8 +98,7 @@ async getMinhaHistorico(user: any, limit: number = 10) {
 
 ```typescript
 async buscarAlunos(termo: string, user: any) {
-  console.log('🔵 [buscarAlunos] Buscando:', termo);
-  
+
   const query = this.alunoRepository
     .createQueryBuilder('aluno')
     .where(
@@ -129,8 +125,7 @@ async buscarAlunos(termo: string, user: any) {
 
 ```typescript
 async checkInCPF(cpf: string, aulaId: string, adminUser: any) {
-  console.log('🔵 [checkInCPF] Check-in por CPF:', cpf);
-  
+
   // Buscar aluno pelo CPF
   const aluno = await this.alunoRepository.findOne({
     where: {
@@ -155,8 +150,7 @@ private async realizarCheckInAdmin(
   metodo: PresencaMetodo,
   adminUser: any,
 ) {
-  console.log('🔵 [realizarCheckInAdmin] Aluno:', alunoId);
-  
+
   // Buscar aula
   const aula = await this.aulaRepository.findOne({
     where: { id: aulaId },
@@ -233,7 +227,7 @@ async checkInResponsavel(
   responsavelUser: any,
 ) {
   console.log('🔵 [checkInResponsavel] Responsável fazendo check-in do filho');
-  
+
   // Verificar se o aluno existe
   const aluno = await this.alunoRepository.findOne({
     where: { id: alunoId },
@@ -326,26 +320,27 @@ No arquivo `frontend/app/presenca/page.tsx`, corrigir linha 706-739:
 
 ```typescript
 // ANTES (linha ~706):
-metodoCheckin === "qr"
+metodoCheckin === 'qr';
 
 // DEPOIS:
-metodoCheckin === "QR_CODE"
+metodoCheckin === 'QR_CODE';
 
 // E assim por diante para todos os métodos:
 // "qr" → "QR_CODE"
 // "cpf" → "CPF"
-// "facial" → "FACIAL"  
+// "facial" → "FACIAL"
 // "responsavel" → "NOME" (para busca por nome)
 ```
 
 ## 8. Adicionar ao frontend o endpoint correto dos filhos
 
 Alterar linha 186:
+
 ```typescript
 // ANTES:
 const response = await fetch(
   `${process.env.NEXT_PUBLIC_API_URL}/pessoas/meus-filhos`,
-  
+
 // DEPOIS:
 const response = await fetch(
   `${process.env.NEXT_PUBLIC_API_URL}/presenca/meus-filhos`,
@@ -357,6 +352,7 @@ const response = await fetch(
 2. `1759657200000-AddUsuarioIdToAlunos.ts` - Adicionar usuario_id em alunos
 
 Execute as migrations:
+
 ```bash
 npm run typeorm migration:run
 ```

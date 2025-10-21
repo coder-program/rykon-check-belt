@@ -23,13 +23,18 @@ export const metadata: Metadata = {
   description:
     "Sistema de controle de presença e graduação da TeamCruz Jiu-Jitsu",
   manifest: "/manifest.json",
-  themeColor: "#dc2626",
-  viewport: "width=device-width, initial-scale=1, maximum-scale=1",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
     title: "TeamCruz",
   },
+};
+
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  themeColor: '#dc2626',
 };
 
 export default function RootLayout({

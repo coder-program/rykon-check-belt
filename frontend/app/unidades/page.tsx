@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   useInfiniteQuery,
   useMutation,
@@ -16,6 +17,10 @@ import {
   deleteUnidade,
   listFranqueados,
   listInstrutores,
+  createEndereco,
+  updateEndereco,
+  getEndereco,
+  getMyFranqueado,
 } from "@/lib/peopleApi";
 import {
   Search,
@@ -28,6 +33,7 @@ import {
   User,
   AlertCircle,
   CheckCircle2,
+  ArrowLeft,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import UnidadeForm from "@/components/unidades/UnidadeForm";
@@ -80,6 +86,15 @@ interface UnidadeFormData {
   website?: string;
   redes_sociais?: RedesSociais;
   endereco_id?: string;
+  // Campos de endereço
+  cep?: string;
+  logradouro?: string;
+  numero?: string;
+  complemento?: string;
+  bairro?: string;
+  cidade?: string;
+  estado?: string;
+  pais?: string;
   responsavel_nome: string;
   responsavel_cpf: string;
   responsavel_papel: PapelResponsavel;
@@ -110,6 +125,7 @@ export default function PageUnidades() {
       (perfil: any) => perfil.nome?.toLowerCase() === p.toLowerCase()
     );
   };
+  const router = useRouter();
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("todos");
   const [debounced, setDebounced] = useState("");
@@ -149,8 +165,18 @@ export default function PageUnidades() {
     return () => clearTimeout(id);
   }, [search]);
 
+  // Buscar franqueado do usuário logado (se for franqueado)
+  const isFranqueado = user?.perfis?.some(
+    (perfil: any) => perfil.nome?.toLowerCase() === "franqueado"
+  );
+  const { data: myFranqueado } = useQuery({
+    queryKey: ["franqueado-me", user?.id],
+    queryFn: getMyFranqueado,
+    enabled: !!user?.id && isFranqueado,
+  });
+
   const query = useInfiniteQuery({
-    queryKey: ["unidades", debounced, status],
+    queryKey: ["unidades", debounced, status, myFranqueado?.id],
     initialPageParam: 1,
     getNextPageParam: (last) => (last.hasNextPage ? last.page + 1 : undefined),
     queryFn: async ({ pageParam }) =>
@@ -159,6 +185,7 @@ export default function PageUnidades() {
         pageSize: 15, // Reduzido para melhor performance
         search: debounced,
         status: status === "todos" ? undefined : status,
+        franqueado_id: myFranqueado?.id, // Filtrar por franqueado se for franqueado
       }),
     staleTime: 5 * 60 * 1000, // Cache por 5 minutos
     gcTime: 10 * 60 * 1000, // Mantém em cache por 10 minutos
@@ -239,6 +266,16 @@ export default function PageUnidades() {
       email: "",
       website: "",
       redes_sociais: {},
+      endereco_id: undefined,
+      // Campos de endereço
+      cep: "",
+      logradouro: "",
+      numero: "",
+      complemento: "",
+      bairro: "",
+      cidade: "",
+      estado: "",
+      pais: "Brasil",
       status: "HOMOLOGACAO",
       responsavel_nome: "",
       responsavel_cpf: "",
@@ -255,32 +292,98 @@ export default function PageUnidades() {
     });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     console.log("[DEBUG] handleSubmit", formData);
 
-    // Limpar formatação antes de enviar
-    const cleanedData = {
-      ...formData,
-      cnpj: formData.cnpj?.replace(/\D/g, "") || "",
-      telefone: formData.telefone?.replace(/\D/g, "") || "",
-      cep: formData.cep?.replace(/\D/g, "") || "",
-      responsavel_cpf: formData.responsavel_cpf?.replace(/\D/g, "") || "",
-      responsavel_telefone:
-        formData.responsavel_telefone?.replace(/\D/g, "") || "",
-    };
+    try {
+      let endereco_id = formData.endereco_id;
 
-    if (editingUnidade?.id) {
-      updateMutation.mutate({ id: editingUnidade.id, data: cleanedData });
-    } else {
-      createMutation.mutate(cleanedData);
+      // Criar ou atualizar endereço se há dados de endereço preenchidos
+      const hasAddressData =
+        formData.cep ||
+        formData.logradouro ||
+        formData.numero ||
+        formData.bairro ||
+        formData.cidade;
+
+      if (hasAddressData) {
+        const enderecoData = {
+          cep: formData.cep?.replace(/\D/g, "") || "",
+          logradouro: formData.logradouro || "",
+          numero: formData.numero || "",
+          complemento: formData.complemento || "",
+          bairro: formData.bairro || "",
+          cidade: formData.cidade || "",
+          estado: formData.estado || "",
+          pais: formData.pais || "Brasil",
+        };
+
+        if (endereco_id) {
+          // Atualizar endereço existente
+          console.log("🔄 Atualizando endereço existente:", endereco_id);
+          await updateEndereco(endereco_id, enderecoData);
+        } else {
+          // Criar novo endereço
+          console.log("🏠 Criando novo endereço:", enderecoData);
+          const novoEndereco = await createEndereco(enderecoData);
+          endereco_id = novoEndereco.id;
+          console.log("✅ Endereço criado com ID:", endereco_id);
+        }
+      }
+
+      // Limpar formatação antes de enviar
+      const cleanedData = {
+        ...formData,
+        cnpj: formData.cnpj?.replace(/\D/g, "") || "",
+        telefone_celular: formData.telefone_celular?.replace(/\D/g, "") || "",
+        telefone_fixo: formData.telefone_fixo?.replace(/\D/g, "") || "",
+        responsavel_cpf: formData.responsavel_cpf?.replace(/\D/g, "") || "",
+        responsavel_contato:
+          formData.responsavel_contato?.replace(/\D/g, "") || "",
+        endereco_id,
+        // Remover campos de endereço pois são salvos separadamente
+        cep: undefined,
+        logradouro: undefined,
+        numero: undefined,
+        complemento: undefined,
+        bairro: undefined,
+        cidade: undefined,
+        estado: undefined,
+        pais: undefined,
+      };
+
+      if (editingUnidade?.id) {
+        updateMutation.mutate({ id: editingUnidade.id, data: cleanedData });
+      } else {
+        createMutation.mutate(cleanedData);
+      }
+    } catch (error) {
+      console.error("❌ Erro ao processar endereço:", error);
+      // Continuar com o salvamento mesmo se o endereço der erro
+      const cleanedData = {
+        ...formData,
+        cnpj: formData.cnpj?.replace(/\D/g, "") || "",
+        telefone_celular: formData.telefone_celular?.replace(/\D/g, "") || "",
+        telefone_fixo: formData.telefone_fixo?.replace(/\D/g, "") || "",
+        responsavel_cpf: formData.responsavel_cpf?.replace(/\D/g, "") || "",
+        responsavel_contato:
+          formData.responsavel_contato?.replace(/\D/g, "") || "",
+      };
+
+      if (editingUnidade?.id) {
+        updateMutation.mutate({ id: editingUnidade.id, data: cleanedData });
+      } else {
+        createMutation.mutate(cleanedData);
+      }
     }
   };
 
-  const handleEdit = (unidade: any) => {
+  const handleEdit = async (unidade: any) => {
     setEditingUnidade(unidade);
     setShowModal(true);
-    setFormData({
+
+    const baseFormData = {
       franqueado_id: unidade.franqueado_id || "",
       nome: unidade.nome || "",
       cnpj: unidade.cnpj || "",
@@ -295,6 +398,15 @@ export default function PageUnidades() {
       website: unidade.website || "",
       redes_sociais: unidade.redes_sociais || {},
       endereco_id: unidade.endereco_id,
+      // Campos de endereço vazios por padrão
+      cep: "",
+      logradouro: "",
+      numero: "",
+      complemento: "",
+      bairro: "",
+      cidade: "",
+      estado: "",
+      pais: "Brasil",
       status: unidade.status || "HOMOLOGACAO",
       responsavel_nome: unidade.responsavel_nome || "",
       responsavel_cpf: unidade.responsavel_cpf || "",
@@ -308,7 +420,31 @@ export default function PageUnidades() {
       horarios_funcionamento: unidade.horarios_funcionamento || {},
       modalidades: unidade.modalidades || [],
       instrutor_principal_id: unidade.instrutor_principal_id,
-    });
+    };
+
+    // Buscar dados do endereço se houver endereco_id
+    if (unidade.endereco_id) {
+      try {
+        const endereco = await getEndereco(unidade.endereco_id);
+        console.log("📍 Endereço carregado para unidade:", endereco);
+
+        // Atualizar formData com os dados do endereço
+        baseFormData.cep = endereco.cep
+          ? `${endereco.cep.slice(0, 5)}-${endereco.cep.slice(5)}`
+          : "";
+        baseFormData.logradouro = endereco.logradouro || "";
+        baseFormData.numero = endereco.numero || "";
+        baseFormData.complemento = endereco.complemento || "";
+        baseFormData.bairro = endereco.bairro || "";
+        baseFormData.cidade = endereco.cidade || "";
+        baseFormData.estado = endereco.estado || "";
+        baseFormData.pais = endereco.pais || "Brasil";
+      } catch (error) {
+        console.error("Erro ao carregar endereço da unidade:", error);
+      }
+    }
+
+    setFormData(baseFormData);
   };
 
   const getStatusColor = (status: string) => {
@@ -339,6 +475,22 @@ export default function PageUnidades() {
 
   return (
     <div className="p-6 space-y-4">
+      {/* Botão Voltar */}
+      <div className="flex items-center gap-2 mb-4">
+        <button
+          onClick={() => router.push("/dashboard")}
+          className="group flex items-center gap-2 text-sm text-gray-600 hover:text-blue-600 transition-colors duration-200"
+          title="Voltar ao Dashboard"
+        >
+          <div className="p-1 rounded-full group-hover:bg-blue-100 transition-colors duration-200">
+            <ArrowLeft className="h-4 w-4" />
+          </div>
+          <span>Dashboard</span>
+        </button>
+        <span className="text-gray-400">/</span>
+        <span className="text-gray-900 font-medium">Unidades</span>
+      </div>
+
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold flex items-center gap-2">
           <Building2 className="h-6 w-6" />

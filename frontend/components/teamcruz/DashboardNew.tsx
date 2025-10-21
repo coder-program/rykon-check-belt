@@ -1174,11 +1174,12 @@ export default function DashboardNew() {
               onChange={(e) => setSelectedUnidade(e.target.value)}
             >
               <option value="todas">📍 Todas as Unidades</option>
-              {unidadesQuery.data?.map((unidade: any) => (
-                <option key={unidade.id} value={unidade.id}>
-                  📍 {unidade.nome}
-                </option>
-              ))}
+              {Array.isArray(unidadesQuery.data) &&
+                unidadesQuery.data?.map((unidade: any) => (
+                  <option key={unidade.id} value={unidade.id}>
+                    📍 {unidade.nome}
+                  </option>
+                ))}
             </select>
           </div>
           <div className="text-right mr-4">

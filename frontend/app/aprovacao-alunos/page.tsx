@@ -30,7 +30,8 @@ interface PendingAluno {
   data_nascimento?: string;
   unidade?: { nome: string };
   faixa_atual?: string;
-  status: string;
+  status: string; // Status do aluno (ATIVO/INATIVO)
+  status_usuario?: string; // Status do usuário (para aprovação)
   created_at: string;
 }
 
@@ -57,10 +58,12 @@ function AprovacaoAlunosPage() {
       }
 
       const data = await response.json();
-      return data.items.map((aluno: { id: string; status: string }) => ({
-        id: aluno.id,
-        status: aluno.status,
-      }));
+      return data.items.map(
+        (aluno: { id: string; status_usuario?: string }) => ({
+          id: aluno.id,
+          status_usuario: aluno.status_usuario,
+        })
+      );
     },
     staleTime: Infinity,
     gcTime: Infinity,
@@ -101,6 +104,7 @@ function AprovacaoAlunosPage() {
           unidade?: { nome: string };
           faixa_atual?: string;
           status: string;
+          status_usuario?: string;
           created_at: string;
         }) => ({
           id: aluno.id,
@@ -112,18 +116,39 @@ function AprovacaoAlunosPage() {
           unidade: aluno.unidade,
           faixa_atual: aluno.faixa_atual,
           status: aluno.status,
+          status_usuario: aluno.status_usuario,
           created_at: aluno.created_at,
         })
       );
 
-      // Filtrar baseado no estado
+      // Debug: verificar status dos alunos
+      console.log(
+        "🔍 TODOS OS ALUNOS:",
+        allAlunos.map((a: any) => ({
+          nome: a.nome_completo,
+          status_usuario: a.status_usuario,
+        }))
+      );
+      console.log("🔍 FILTRO ATUAL:", filter);
+
+      // Filtrar baseado no estado do USUÁRIO (não do aluno)
       let filtered = allAlunos;
       if (filter === "pendentes") {
-        filtered = allAlunos.filter((a) => a.status === "INATIVO");
+        filtered = allAlunos.filter(
+          (a: any) => a.status_usuario === "INATIVO" || !a.status_usuario
+        );
       } else if (filter === "aprovados") {
-        filtered = allAlunos.filter((a) => a.status === "ATIVO");
+        filtered = allAlunos.filter((a: any) => a.status_usuario === "ATIVO");
       }
       // Se filter === "todos", não filtra por status
+
+      console.log(
+        "🔍 ALUNOS FILTRADOS:",
+        filtered.map((a: any) => ({
+          nome: a.nome_completo,
+          status_usuario: a.status_usuario,
+        }))
+      );
 
       // Filtrar por busca
       if (search) {
@@ -269,7 +294,8 @@ function AprovacaoAlunosPage() {
               <div className="text-2xl font-bold text-yellow-600">
                 {
                   allAlunosForStats.filter(
-                    (a: { status: string }) => a.status === "INATIVO"
+                    (a: { status_usuario?: string }) =>
+                      a.status_usuario === "INATIVO" || !a.status_usuario
                   ).length
                 }
               </div>
@@ -285,7 +311,8 @@ function AprovacaoAlunosPage() {
               <div className="text-2xl font-bold text-green-600">
                 {
                   allAlunosForStats.filter(
-                    (a: { status: string }) => a.status === "ATIVO"
+                    (a: { status_usuario?: string }) =>
+                      a.status_usuario === "ATIVO"
                   ).length
                 }
               </div>
@@ -339,14 +366,14 @@ function AprovacaoAlunosPage() {
                     <div className="flex items-center space-x-4">
                       <div
                         className={`w-12 h-12 rounded-full flex items-center justify-center ${
-                          alunoItem.status === "ATIVO"
+                          alunoItem.status_usuario === "ATIVO"
                             ? "bg-green-100"
                             : "bg-yellow-100"
                         }`}
                       >
                         <GraduationCap
                           className={`h-6 w-6 ${
-                            alunoItem.status === "ATIVO"
+                            alunoItem.status_usuario === "ATIVO"
                               ? "text-green-600"
                               : "text-yellow-600"
                           }`}
@@ -360,12 +387,12 @@ function AprovacaoAlunosPage() {
                           </h3>
                           <span
                             className={`px-2 py-1 rounded-full text-xs font-medium ${
-                              alunoItem.status === "ATIVO"
+                              alunoItem.status_usuario === "ATIVO"
                                 ? "bg-green-100 text-green-800"
                                 : "bg-yellow-100 text-yellow-800"
                             }`}
                           >
-                            {alunoItem.status === "ATIVO"
+                            {alunoItem.status_usuario === "ATIVO"
                               ? "Aprovado"
                               : "Pendente"}
                           </span>
@@ -410,7 +437,8 @@ function AprovacaoAlunosPage() {
                       </div>
                     </div>
 
-                    {alunoItem.status === "INATIVO" && (
+                    {(alunoItem.status_usuario === "INATIVO" ||
+                      !alunoItem.status_usuario) && (
                       <div className="flex gap-2">
                         <Button
                           size="sm"

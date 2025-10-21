@@ -33,17 +33,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       );
 
       if (token) {
-        console.log("🔍 AuthContext - Validando token...");
         const userData = await authService.validateToken(token);
-        console.log("🔍 AuthContext - Dados do usuário:", userData);
         setUser(userData);
         setIsAuthenticated(true);
-      } else {
-        console.log("🔍 AuthContext - Nenhum token encontrado");
       }
     } catch (error) {
       console.error("Erro ao verificar autenticação:", error);
-      console.log("🔍 AuthContext - Removendo token inválido do localStorage");
       if (typeof window !== "undefined") localStorage.removeItem("token");
     } finally {
       setLoading(false);
@@ -61,8 +56,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setUser(response.user);
       setIsAuthenticated(true);
 
-      showPermissionsAlert(response.user);
-
       return { success: true, user: response.user };
     } catch (error: any) {
       console.error("Erro no login:", error);
@@ -73,39 +66,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       };
     } finally {
       setLoading(false);
-    }
-  };
-
-  const showPermissionsAlert = (user: any) => {
-    let alertMessage = `🎉 Bem-vindo, ${
-      user.nome || user.name || "Usuário"
-    }!\n\n`;
-    alertMessage += `📧 Email: ${user.email}\n\n`;
-
-    alertMessage += `🔐 SUAS PERMISSÕES DE ACESSO:\n`;
-    alertMessage += `════════════════════════════\n\n`;
-
-    if (user.permissionsDetail && user.permissionsDetail.length > 0) {
-      user.permissionsDetail.forEach((permission: any, index: number) => {
-        alertMessage += `${index + 1}. ${permission.nome}\n`;
-        if (permission.descricao)
-          alertMessage += `   📄 ${permission.descricao}\n`;
-        if (permission.nivel)
-          alertMessage += `   🏷️  Nível: ${permission.nivel.nome} (${permission.nivel.descricao})\n`;
-        if (permission.modulo)
-          alertMessage += `   📁 Módulo: ${permission.modulo}\n\n`;
-      });
-    } else {
-      alertMessage += `❌ Nenhuma permissão específica encontrada\n\n`;
-    }
-
-    alertMessage += `════════════════════════════\n`;
-    alertMessage += `✨ Aproveite o sistema!`;
-
-    if (typeof window !== "undefined") {
-      setTimeout(() => {
-        alert(alertMessage);
-      }, 300);
     }
   };
 

@@ -30,6 +30,22 @@ interface EstatisticasPresenca {
   ultimaPresenca: string | null;
 }
 
+interface RankingData {
+  posicao: number | null;
+  presencas: number;
+  totalAlunos: number;
+  mes: number;
+  ano: number;
+  ranking: Array<{
+    posicao: number;
+    nome: string;
+    faixa: string;
+    graus: number;
+    presencas: number;
+    isUsuarioAtual: boolean;
+  }>;
+}
+
 interface AulaDisponivel {
   id: string;
   nome: string;
@@ -38,6 +54,37 @@ interface AulaDisponivel {
   horarioInicio: string;
   horarioFim: string;
   data: string;
+}
+
+interface HistoricoCompeticao {
+  id: string;
+  competicao: {
+    nome: string;
+    tipo: string;
+    data: string;
+    local: string;
+    cidade: string;
+  };
+  posicao: string;
+  categoria_peso: string;
+  categoria_faixa: string;
+  medalha_emoji: string;
+  total_lutas: number;
+  vitorias: number;
+  derrotas: number;
+  aproveitamento: number;
+}
+
+interface EstatisticasCompeticoes {
+  totalCompeticoes: number;
+  totalOuros: number;
+  totalPratas: number;
+  totalBronzes: number;
+  totalPodios: number;
+  totalLutas: number;
+  totalVitorias: number;
+  totalDerrotas: number;
+  aproveitamento: number;
 }
 
 // Interface para futura implementação
@@ -52,6 +99,34 @@ interface AulaDisponivel {
 //   };
 // }
 
+// Helper para converter dias em anos e meses
+function formatarTempoNaFaixa(dias: number): string {
+  if (dias < 30) {
+    return `${dias} dia${dias !== 1 ? "s" : ""}`;
+  }
+
+  const anos = Math.floor(dias / 365);
+  const mesesRestantes = Math.floor((dias % 365) / 30);
+  const diasRestantes = dias % 30;
+
+  const partes: string[] = [];
+
+  if (anos > 0) {
+    partes.push(`${anos} ano${anos > 1 ? "s" : ""}`);
+  }
+
+  if (mesesRestantes > 0) {
+    partes.push(`${mesesRestantes} mês${mesesRestantes > 1 ? "es" : ""}`);
+  }
+
+  // Opcional: incluir dias restantes se for menos de 1 mês desde o último mês completo
+  if (diasRestantes > 0 && anos === 0 && mesesRestantes === 0) {
+    partes.push(`${diasRestantes} dia${diasRestantes > 1 ? "s" : ""}`);
+  }
+
+  return partes.join(" e ");
+}
+
 export default function AlunoDashboard() {
   const { user } = useAuth();
   const router = useRouter();
@@ -62,6 +137,12 @@ export default function AlunoDashboard() {
   const [estatisticasPresenca, setEstatisticasPresenca] =
     useState<EstatisticasPresenca | null>(null);
   const [proximasAulas, setProximasAulas] = useState<AulaDisponivel[]>([]);
+  const [rankingData, setRankingData] = useState<RankingData | null>(null);
+  const [historicoCompeticoes, setHistoricoCompeticoes] = useState<
+    HistoricoCompeticao[]
+  >([]);
+  const [estatisticasCompeticoes, setEstatisticasCompeticoes] =
+    useState<EstatisticasCompeticoes | null>(null);
   // Histórico será implementado futuramente
   // const [historicoPresenca, setHistoricoPresenca] = useState<HistoricoPresenca[]>([]);
   const [loading, setLoading] = useState(true);
@@ -82,20 +163,28 @@ export default function AlunoDashboard() {
       setError(null);
 
       // Carregar dados em paralelo
-      const [graduacaoData, presencaData, aulasData, historicoData] =
-        await Promise.allSettled([
-          // 1. Status de Graduação
-          getStatusGraduacao(user.id),
+      const [
+        graduacaoData,
+        presencaData,
+        aulasData,
+        rankingDataResult,
+        competicoesData,
+      ] = await Promise.allSettled([
+        // 1. Status de Graduação
+        getStatusGraduacao(user.id),
 
-          // 2. Estatísticas de Presença
-          http("/presenca/minhas-estatisticas", { auth: true }),
+        // 2. Estatísticas de Presença
+        http("/presenca/minhas-estatisticas", { auth: true }),
 
-          // 3. Próximas Aulas Disponíveis
-          http("/presenca/aulas-disponiveis", { auth: true }),
+        // 3. Próximas Aulas Disponíveis
+        http("/presenca/aulas-disponiveis", { auth: true }),
 
-          // 4. Histórico de Presença (últimas 5)
-          http("/presenca/minha-historico?limit=5", { auth: true }),
-        ]);
+        // 4. Ranking da Unidade
+        http("/presenca/ranking-unidade", { auth: true }),
+
+        // 5. Histórico de Competições
+        http("/competicoes/meu-historico", { auth: true }),
+      ]);
 
       // Processar resultados
       if (graduacaoData.status === "fulfilled") {
@@ -116,6 +205,27 @@ export default function AlunoDashboard() {
         setProximasAulas(Array.isArray(aulasData.value) ? aulasData.value : []);
       }
 
+      if (rankingDataResult.status === "fulfilled") {
+        console.log("🏆 Ranking recebido:", rankingDataResult.value);
+        setRankingData(rankingDataResult.value);
+      } else {
+        console.error("❌ Erro ao carregar ranking:", rankingDataResult.reason);
+      }
+
+      if (competicoesData.status === "fulfilled") {
+        console.log("🏆 Competições recebidas:", competicoesData.value);
+        const data = competicoesData.value;
+        setHistoricoCompeticoes(
+          Array.isArray(data.participacoes) ? data.participacoes : []
+        );
+        setEstatisticasCompeticoes(data.estatisticas || null);
+      } else {
+        console.error(
+          "❌ Erro ao carregar competições:",
+          competicoesData.reason
+        );
+      }
+
       // Histórico será implementado futuramente
       // if (historicoData.status === "fulfilled") {
       //   setHistoricoPresenca(Array.isArray(historicoData.value) ? historicoData.value : []);
@@ -130,13 +240,12 @@ export default function AlunoDashboard() {
 
   // Dados calculados baseados nos dados reais
   const graduacaoAtual = statusGraduacao?.faixaAtual || "Carregando...";
-  const tempoNaGraduacao = "Calculando..."; // Propriedade não disponível na API
   const proximaGraduacao = statusGraduacao?.proximaFaixa || "A definir";
   const aulasMes = estatisticasPresenca?.aulasMes || 0;
   const presencaMensal = estatisticasPresenca?.presencaMensal || 0;
   const pontosGraduacao = statusGraduacao?.presencasNoCiclo || 0;
   const pontosNecessarios = statusGraduacao?.aulasPorGrau || 0;
-  const ranking = null; // Propriedade não disponível na API
+  const ranking = rankingData?.posicao || null;
 
   // Calcular progresso percentual
   const progressoPercentual = statusGraduacao?.progressoPercentual
@@ -277,7 +386,8 @@ export default function AlunoDashboard() {
                     {statusGraduacao?.grausMax || 4} graus
                   </p>
                   <p className="text-xs text-blue-200">
-                    {statusGraduacao?.diasNaFaixa || 0} dias na faixa
+                    {formatarTempoNaFaixa(statusGraduacao?.diasNaFaixa || 0)} na
+                    faixa
                   </p>
                 </div>
                 <div>
@@ -305,9 +415,51 @@ export default function AlunoDashboard() {
                 <div>
                   <h4 className="font-semibold">Próxima Graduação</h4>
                   <p className="text-xl font-bold">{proximaGraduacao}</p>
-                  <p className="text-sm text-blue-100">
-                    {statusGraduacao?.faltamAulas || 0} aulas restantes
-                  </p>
+                  {statusGraduacao && (
+                    <>
+                      <p className="text-sm text-blue-100 mt-1">
+                        {statusGraduacao.grausAtual < statusGraduacao.grausMax
+                          ? `${
+                              statusGraduacao.grausMax -
+                              statusGraduacao.grausAtual
+                            } grau${
+                              statusGraduacao.grausMax -
+                                statusGraduacao.grausAtual >
+                              1
+                                ? "s"
+                                : ""
+                            } restante${
+                              statusGraduacao.grausMax -
+                                statusGraduacao.grausAtual >
+                              1
+                                ? "s"
+                                : ""
+                            }`
+                          : "Graus completos ✓"}
+                      </p>
+                      <p className="text-xs text-blue-200">
+                        {statusGraduacao.diasRestantes > 0
+                          ? `Falta${
+                              Math.ceil(statusGraduacao.diasRestantes / 30) > 1
+                                ? "m"
+                                : ""
+                            } ${Math.ceil(
+                              statusGraduacao.diasRestantes / 30
+                            )} mês${
+                              Math.ceil(statusGraduacao.diasRestantes / 30) !==
+                              1
+                                ? "es"
+                                : ""
+                            } para tempo mínimo`
+                          : "Tempo mínimo atingido ✓"}
+                      </p>
+                      <p className="text-xs text-blue-200 mt-1">
+                        Mínimo: {statusGraduacao.tempoMinimoAnos} ano
+                        {statusGraduacao.tempoMinimoAnos > 1 ? "s" : ""} +{" "}
+                        {statusGraduacao.grausMax} graus
+                      </p>
+                    </>
+                  )}
                 </div>
               </div>
             </CardContent>
@@ -365,14 +517,25 @@ export default function AlunoDashboard() {
                       #{ranking}
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      Na sua turma
+                      {rankingData?.presencas || 0} aula
+                      {rankingData?.presencas === 1 ? "" : "s"} no mês
+                    </p>
+                    <p className="text-xs text-gray-400">
+                      de {rankingData?.totalAlunos || 0} alunos
+                    </p>
+                  </>
+                ) : loading ? (
+                  <>
+                    <div className="text-2xl font-bold text-gray-400">-</div>
+                    <p className="text-xs text-muted-foreground">
+                      Calculando...
                     </p>
                   </>
                 ) : (
                   <>
                     <div className="text-2xl font-bold text-gray-400">-</div>
                     <p className="text-xs text-muted-foreground">
-                      Calculando...
+                      Sem presenças
                     </p>
                   </>
                 )}
@@ -479,41 +642,172 @@ export default function AlunoDashboard() {
             </CardContent>
           </Card>
 
-          {/* Conquistas Recentes */}
+          {/* Histórico de Competições */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Award className="h-5 w-5" />
-                Conquistas Recentes
+                <Trophy className="h-5 w-5" />
+                Histórico de Competições
               </CardTitle>
+              <CardDescription>
+                {estatisticasCompeticoes &&
+                estatisticasCompeticoes.totalCompeticoes > 0
+                  ? `${estatisticasCompeticoes.totalOuros} 🥇 | ${estatisticasCompeticoes.totalPratas} 🥈 | ${estatisticasCompeticoes.totalBronzes} 🥉 - ${estatisticasCompeticoes.aproveitamento}% de aproveitamento`
+                  : "Suas participações em campeonatos"}
+              </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {conquistas.map((conquista, index) => (
-                  <div
-                    key={index}
-                    className="flex items-start gap-4 p-4 bg-gray-50 rounded-lg"
-                  >
+              <div className="space-y-3">
+                {historicoCompeticoes.length > 0 ? (
+                  historicoCompeticoes.slice(0, 5).map((comp) => (
                     <div
-                      className={`p-2 rounded-lg bg-gray-100 ${conquista.color}`}
+                      key={comp.id}
+                      className="flex items-start gap-4 p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-all"
                     >
-                      <conquista.icon className="h-5 w-5" />
-                    </div>
-                    <div className="flex-1">
-                      <div className="font-semibold">{conquista.titulo}</div>
-                      <div className="text-sm text-gray-600">
-                        {conquista.descricao}
+                      <div className="text-4xl">{comp.medalha_emoji}</div>
+                      <div className="flex-1">
+                        <div className="font-semibold">
+                          {comp.competicao.nome}
+                        </div>
+                        <div className="text-sm text-gray-600">
+                          {comp.competicao.tipo} - {comp.categoria_peso} (
+                          {comp.categoria_faixa})
+                        </div>
+                        <div className="text-xs text-gray-500 mt-1">
+                          {new Date(comp.competicao.data).toLocaleDateString(
+                            "pt-BR"
+                          )}{" "}
+                          • {comp.competicao.cidade}
+                        </div>
+                        {comp.total_lutas > 0 && (
+                          <div className="text-xs text-gray-500 mt-1">
+                            {comp.vitorias}V / {comp.derrotas}D -{" "}
+                            {comp.aproveitamento}% de aproveitamento
+                          </div>
+                        )}
                       </div>
-                      <div className="text-xs text-gray-500 mt-1">
-                        {conquista.data}
+                      <div className="text-right">
+                        <div
+                          className={`text-lg font-bold ${
+                            comp.posicao === "OURO"
+                              ? "text-yellow-600"
+                              : comp.posicao === "PRATA"
+                              ? "text-gray-500"
+                              : comp.posicao === "BRONZE"
+                              ? "text-amber-700"
+                              : "text-gray-400"
+                          }`}
+                        >
+                          {comp.posicao}
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    <Trophy className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                    <p className="font-medium">Nenhuma competição registrada</p>
+                    <p className="text-sm mt-1">
+                      Participe de campeonatos e registre seus resultados aqui
+                    </p>
+                    <button
+                      onClick={() => router.push("/competicoes")}
+                      className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+                    >
+                      Ver Competições Disponíveis
+                    </button>
+                  </div>
+                )}
+                {historicoCompeticoes.length > 5 && (
+                  <button
+                    onClick={() => router.push("/meu-historico-competicoes")}
+                    className="w-full mt-2 px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors text-sm font-medium"
+                  >
+                    Ver todas ({historicoCompeticoes.length} competições)
+                  </button>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Ranking Completo - Top 10 */}
+        {rankingData && rankingData.ranking.length > 0 && (
+          <Card className="mb-8">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Trophy className="h-5 w-5 text-yellow-600" />
+                Top 10 - Ranking de Frequência ({rankingData.mes}/
+                {rankingData.ano})
+              </CardTitle>
+              <CardDescription>
+                Os alunos mais frequentes da sua unidade este mês
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {rankingData.ranking.map((item) => (
+                  <div
+                    key={item.posicao}
+                    className={`flex items-center justify-between p-4 rounded-lg transition-all ${
+                      item.isUsuarioAtual
+                        ? "bg-yellow-50 border-2 border-yellow-300 shadow-md"
+                        : "bg-gray-50 hover:bg-gray-100"
+                    }`}
+                  >
+                    <div className="flex items-center gap-4">
+                      <div
+                        className={`flex items-center justify-center w-10 h-10 rounded-full font-bold ${
+                          item.posicao === 1
+                            ? "bg-yellow-400 text-yellow-900"
+                            : item.posicao === 2
+                            ? "bg-gray-300 text-gray-700"
+                            : item.posicao === 3
+                            ? "bg-amber-600 text-white"
+                            : item.isUsuarioAtual
+                            ? "bg-yellow-200 text-yellow-800"
+                            : "bg-gray-200 text-gray-600"
+                        }`}
+                      >
+                        {item.posicao === 1 && "🥇"}
+                        {item.posicao === 2 && "🥈"}
+                        {item.posicao === 3 && "🥉"}
+                        {item.posicao > 3 && `#${item.posicao}`}
+                      </div>
+                      <div>
+                        <div
+                          className={`font-semibold ${
+                            item.isUsuarioAtual ? "text-yellow-800" : ""
+                          }`}
+                        >
+                          {item.nome} {item.isUsuarioAtual && "(Você)"}
+                        </div>
+                        <div className="text-sm text-gray-600">
+                          {item.faixa}{" "}
+                          {item.graus > 0 &&
+                            `- ${item.graus} grau${item.graus > 1 ? "s" : ""}`}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-2xl font-bold text-blue-600">
+                        {item.presencas}
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        aula{item.presencas === 1 ? "" : "s"}
                       </div>
                     </div>
                   </div>
                 ))}
               </div>
+              {rankingData.totalAlunos > 10 && (
+                <p className="text-center text-sm text-gray-500 mt-4">
+                  Mostrando top 10 de {rankingData.totalAlunos} alunos ativos
+                </p>
+              )}
             </CardContent>
           </Card>
-        </div>
+        )}
       </div>
     </div>
   );

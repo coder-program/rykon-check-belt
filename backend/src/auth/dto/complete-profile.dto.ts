@@ -189,6 +189,14 @@ export class CompleteProfileDto {
 
   // ===== DADOS PARA PROFESSORES =====
   @ApiPropertyOptional({
+    description: 'Faixa do professor/instrutor',
+    enum: ['AZUL', 'ROXA', 'MARROM', 'PRETA', 'CORAL', 'VERMELHA'],
+  })
+  @IsOptional()
+  @IsEnum(['AZUL', 'ROXA', 'MARROM', 'PRETA', 'CORAL', 'VERMELHA'])
+  faixa_ministrante?: string;
+
+  @ApiPropertyOptional({
     description: 'Especialidades do professor (JSON array)',
   })
   @IsOptional()

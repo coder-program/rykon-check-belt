@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { HistoricoGraus } from './entities/historico-graus.entity';
 import { HistoricoFaixas } from './entities/historico-faixas.entity';
 import { AlunoFaixa } from './entities/aluno-faixa.entity';
+import { FaixaDef } from './entities/faixa-def.entity';
 import { Aluno } from '../people/entities/aluno.entity';
 import { ProgressoAlunoDto } from './progresso.controller';
 
@@ -16,6 +17,8 @@ export class ProgressoService {
     private historicoFaixasRepository: Repository<HistoricoFaixas>,
     @InjectRepository(AlunoFaixa)
     private alunoFaixaRepository: Repository<AlunoFaixa>,
+    @InjectRepository(FaixaDef)
+    private faixaDefRepository: Repository<FaixaDef>,
     @InjectRepository(Aluno)
     private alunoRepository: Repository<Aluno>,
   ) {}
@@ -24,15 +27,43 @@ export class ProgressoService {
     try {
       console.log('🔍 Buscando histórico para usuário:', usuarioId);
 
+      // Validar que usuarioId foi fornecido
+      if (!usuarioId) {
+        throw new NotFoundException('ID do usuário não fornecido');
+      }
+
       // Primeiro, encontrar o aluno pelo usuário
+      console.log(`🔎 Buscando aluno com usuario_id = '${usuarioId}'`);
+      
       const aluno = await this.alunoRepository.findOne({
         where: { usuario_id: usuarioId },
         relations: ['faixas', 'faixas.faixaDef'],
       });
+      
+      // Verificar se não está pegando o aluno errado
+      if (aluno && aluno.usuario_id !== usuarioId) {
+        console.error(`⚠️⚠️ ERRO CRÍTICO: Aluno retornado tem usuario_id diferente!`);
+        console.error(`Esperado: ${usuarioId}, Recebido: ${aluno.usuario_id}`);
+        throw new Error('Erro de segurança: Aluno incorreto retornado');
+      }
 
       if (!aluno) {
-        throw new NotFoundException('Aluno não encontrado');
+        console.log(`⚠️ Aluno não encontrado para usuario_id: ${usuarioId}`);
+        // Retornar dados vazios em vez de erro
+        return {
+          graduacaoAtual: {
+            faixa: 'Não definida',
+            grau: 0,
+            aulasNaFaixa: 0,
+            aulasParaProximoGrau: 0,
+            progressoPercentual: 0,
+          },
+          historicoGraus: [],
+          historicoFaixas: [],
+        };
       }
+
+      console.log(`✅ Aluno encontrado: ID ${aluno.id}, Usuario: ${aluno.usuario_id}`);
 
       // Buscar a faixa ativa atual
       const faixaAtiva = await this.alunoFaixaRepository.findOne({
@@ -41,7 +72,65 @@ export class ProgressoService {
       });
 
       if (!faixaAtiva) {
-        throw new NotFoundException('Faixa ativa não encontrada');
+        console.log(`⚠️ Faixa ativa não encontrada para aluno ID: ${aluno.id}`);
+        
+        // Buscar histórico de graus mesmo sem faixa ativa
+        const historicoGraus = await this.historicoGrausRepository.find({
+          where: { aluno_id: aluno.id },
+          relations: ['faixa'],
+          order: { data_concessao: 'DESC' },
+        });
+
+        // Buscar histórico de faixas
+        const historicoFaixas = await this.alunoFaixaRepository
+          .createQueryBuilder('faixa')
+          .leftJoinAndSelect('faixa.faixaDef', 'faixaDef')
+          .where('faixa.aluno_id = :aluno_id', { aluno_id: aluno.id })
+          .orderBy('CASE WHEN faixa.dt_fim IS NULL THEN 0 ELSE 1 END', 'ASC')
+          .addOrderBy('faixa.dt_inicio', 'DESC')
+          .getMany();
+
+        return {
+          graduacaoAtual: {
+            faixa: 'Não definida',
+            grau: 0,
+            aulasNaFaixa: 0,
+            aulasParaProximoGrau: 0,
+            progressoPercentual: 0,
+          },
+          historicoGraus: historicoGraus.map((h) => ({
+            id: h.id,
+            faixa: h.faixa?.nome_exibicao || 'Desconhecida',
+            grau: h.grau_numero,
+            dataConcessao:
+              h.data_concessao instanceof Date
+                ? h.data_concessao.toISOString().split('T')[0]
+                : new Date(h.data_concessao).toISOString().split('T')[0],
+            origemGrau: h.origem_grau,
+            aulasAcumuladas: h.aulas_acumuladas,
+            justificativa: h.justificativa,
+          })),
+          historicoFaixas: historicoFaixas.map((h) => ({
+            id: h.id,
+            faixaOrigem: undefined,
+            faixaDestino: h.faixaDef?.nome_exibicao || 'Desconhecida',
+            dataPromocao:
+              h.dt_inicio instanceof Date
+                ? h.dt_inicio.toISOString().split('T')[0]
+                : new Date(h.dt_inicio).toISOString().split('T')[0],
+            dt_inicio:
+              h.dt_inicio instanceof Date
+                ? h.dt_inicio.toISOString().split('T')[0]
+                : new Date(h.dt_inicio).toISOString().split('T')[0],
+            dt_fim: h.dt_fim
+              ? h.dt_fim instanceof Date
+                ? h.dt_fim.toISOString().split('T')[0]
+                : new Date(h.dt_fim).toISOString().split('T')[0]
+              : undefined,
+            evento: undefined,
+            observacoes: `Grau atual: ${h.graus_atual}/${h.faixaDef?.graus_max || 4}`,
+          })),
+        };
       }
 
       // Calcular progresso atual
@@ -62,12 +151,15 @@ export class ProgressoService {
         order: { data_concessao: 'DESC' },
       });
 
-      // Buscar histórico de faixas
-      const historicoFaixas = await this.historicoFaixasRepository.find({
-        where: { aluno_id: aluno.id },
-        relations: ['faixaOrigem', 'faixaDestino'],
-        order: { data_promocao: 'DESC' },
-      });
+      // Buscar histórico de faixas da tabela aluno_faixa
+      // Ordena primeiro por faixas atuais (dt_fim null), depois por dt_inicio DESC
+      const historicoFaixas = await this.alunoFaixaRepository
+        .createQueryBuilder('faixa')
+        .leftJoinAndSelect('faixa.faixaDef', 'faixaDef')
+        .where('faixa.aluno_id = :aluno_id', { aluno_id: aluno.id })
+        .orderBy('CASE WHEN faixa.dt_fim IS NULL THEN 0 ELSE 1 END', 'ASC')
+        .addOrderBy('faixa.dt_inicio', 'DESC')
+        .getMany();
 
       return {
         graduacaoAtual: {
@@ -81,18 +173,33 @@ export class ProgressoService {
           id: h.id,
           faixa: h.faixa.nome_exibicao,
           grau: h.grau_numero,
-          dataConcessao: h.data_concessao.toISOString().split('T')[0],
+          dataConcessao:
+            h.data_concessao instanceof Date
+              ? h.data_concessao.toISOString().split('T')[0]
+              : new Date(h.data_concessao).toISOString().split('T')[0],
           origemGrau: h.origem_grau,
           aulasAcumuladas: h.aulas_acumuladas,
           justificativa: h.justificativa,
         })),
         historicoFaixas: historicoFaixas.map((h) => ({
           id: h.id,
-          faixaOrigem: h.faixaOrigem?.nome_exibicao,
-          faixaDestino: h.faixaDestino.nome_exibicao,
-          dataPromocao: h.data_promocao.toISOString().split('T')[0],
-          evento: h.evento,
-          observacoes: h.observacoes,
+          faixaOrigem: undefined, // A faixa anterior não está diretamente disponível
+          faixaDestino: h.faixaDef.nome_exibicao,
+          dataPromocao:
+            h.dt_inicio instanceof Date
+              ? h.dt_inicio.toISOString().split('T')[0]
+              : new Date(h.dt_inicio).toISOString().split('T')[0],
+          dt_inicio:
+            h.dt_inicio instanceof Date
+              ? h.dt_inicio.toISOString().split('T')[0]
+              : new Date(h.dt_inicio).toISOString().split('T')[0],
+          dt_fim: h.dt_fim
+            ? h.dt_fim instanceof Date
+              ? h.dt_fim.toISOString().split('T')[0]
+              : new Date(h.dt_fim).toISOString().split('T')[0]
+            : undefined,
+          evento: undefined, // Campo não existe em aluno_faixa
+          observacoes: `Grau atual: ${h.graus_atual}/${h.faixaDef.graus_max}`,
         })),
       };
     } catch (error) {
@@ -139,7 +246,8 @@ export class ProgressoService {
     dadosFaixa: {
       faixaOrigemId?: string;
       faixaDestinoId: string;
-      dataPromocao: string;
+      dt_inicio: string;
+      dt_fim?: string;
       evento?: string;
       observacoes?: string;
     },
@@ -152,26 +260,72 @@ export class ProgressoService {
       throw new NotFoundException('Aluno não encontrado');
     }
 
-    const novaFaixa = this.historicoFaixasRepository.create({
+    // Criar uma faixa histórica (inativa) - não interfere com a faixa atual
+    const faixaHistorica = this.alunoFaixaRepository.create({
       aluno_id: aluno.id,
-      faixa_origem_id: dadosFaixa.faixaOrigemId,
-      faixa_destino_id: dadosFaixa.faixaDestinoId,
-      data_promocao: new Date(dadosFaixa.dataPromocao),
-      evento: dadosFaixa.evento,
-      observacoes: dadosFaixa.observacoes,
-      created_by: usuarioId,
+      faixa_def_id: dadosFaixa.faixaDestinoId,
+      ativa: false, // Sempre inativa para histórico
+      dt_inicio: new Date(dadosFaixa.dt_inicio),
+      dt_fim: dadosFaixa.dt_fim ? new Date(dadosFaixa.dt_fim) : undefined,
+      graus_atual: 4, // Assumindo que completou todos os graus da faixa
+      presencas_no_ciclo: 0,
+      presencas_total_fx: 0,
     });
 
-    return await this.historicoFaixasRepository.save(novaFaixa);
+    return await this.alunoFaixaRepository.save(faixaHistorica);
   }
 
   async listarFaixas() {
-    return await this.historicoGrausRepository
-      .createQueryBuilder('hg')
-      .innerJoin('hg.faixa', 'f')
-      .select(['f.id', 'f.nome_exibicao', 'f.ordem'])
-      .groupBy('f.id, f.nome_exibicao, f.ordem')
-      .orderBy('f.ordem', 'ASC')
-      .getRawMany();
+    const faixas = await this.faixaDefRepository.find({
+      select: ['id', 'nome_exibicao', 'ordem', 'codigo'],
+      order: { ordem: 'ASC' },
+    });
+
+    return faixas.map((faixa) => ({
+      id: faixa.id,
+      nome: faixa.nome_exibicao,
+      codigo: faixa.codigo,
+      ordem: faixa.ordem,
+    }));
+  }
+
+  async atualizarFaixa(
+    usuarioId: string,
+    faixaId: string,
+    dadosAtualizacao: {
+      dt_inicio?: string;
+      dt_fim?: string;
+    },
+  ) {
+    const aluno = await this.alunoRepository.findOne({
+      where: { usuario_id: usuarioId },
+    });
+
+    if (!aluno) {
+      throw new NotFoundException('Aluno não encontrado');
+    }
+
+    // Buscar a faixa específica do aluno
+    const faixaAluno = await this.alunoFaixaRepository.findOne({
+      where: {
+        id: faixaId,
+        aluno_id: aluno.id,
+      },
+    });
+
+    if (!faixaAluno) {
+      throw new NotFoundException('Faixa não encontrada no histórico do aluno');
+    }
+
+    // Atualizar apenas os campos fornecidos
+    if (dadosAtualizacao.dt_inicio) {
+      faixaAluno.dt_inicio = new Date(dadosAtualizacao.dt_inicio);
+    }
+
+    if (dadosAtualizacao.dt_fim) {
+      faixaAluno.dt_fim = new Date(dadosAtualizacao.dt_fim);
+    }
+
+    return await this.alunoFaixaRepository.save(faixaAluno);
   }
 }

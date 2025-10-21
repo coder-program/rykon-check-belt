@@ -320,6 +320,11 @@ export class UnidadeQueryDto {
   @IsEnum(['ATIVA', 'INATIVA', 'HOMOLOGACAO'])
   status?: StatusUnidade;
 
+  @ApiPropertyOptional({ description: 'ID do franqueado para filtrar' })
+  @IsOptional()
+  @IsString()
+  franqueado_id?: string;
+
   @ApiPropertyOptional({ example: '1', default: '1' })
   @IsOptional()
   @IsString()

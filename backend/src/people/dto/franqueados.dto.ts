@@ -19,49 +19,66 @@ import { Type } from 'class-transformer';
 export type SituacaoFranqueado = 'ATIVA' | 'INATIVA' | 'EM_HOMOLOGACAO';
 
 export class RedesSociaisDto {
-  @ApiPropertyOptional({ example: 'https://instagram.com/franquia' })
+  @ApiPropertyOptional({
+    example: '@franquia ou https://instagram.com/franquia',
+  })
   @IsOptional()
-  @IsUrl({}, { message: 'Instagram deve ser uma URL válida' })
+  @IsString()
   instagram?: string;
 
-  @ApiPropertyOptional({ example: 'https://facebook.com/franquia' })
+  @ApiPropertyOptional({
+    example: '@franquia ou https://facebook.com/franquia',
+  })
   @IsOptional()
-  @IsUrl({}, { message: 'Facebook deve ser uma URL válida' })
+  @IsString()
   facebook?: string;
 
-  @ApiPropertyOptional({ example: 'https://youtube.com/@franquia' })
+  @ApiPropertyOptional({
+    example: '@franquia ou https://youtube.com/@franquia',
+  })
   @IsOptional()
-  @IsUrl({}, { message: 'YouTube deve ser uma URL válida' })
+  @IsString()
   youtube?: string;
 
-  @ApiPropertyOptional({ example: 'https://tiktok.com/@franquia' })
+  @ApiPropertyOptional({ example: '@franquia ou https://tiktok.com/@franquia' })
   @IsOptional()
-  @IsUrl({}, { message: 'TikTok deve ser uma URL válida' })
+  @IsString()
   tiktok?: string;
 
-  @ApiPropertyOptional({ example: 'https://linkedin.com/company/franquia' })
+  @ApiPropertyOptional({
+    example: '@franquia ou https://linkedin.com/company/franquia',
+  })
   @IsOptional()
-  @IsUrl({}, { message: 'LinkedIn deve ser uma URL válida' })
+  @IsString()
   linkedin?: string;
 }
 
 export class CreateFranqueadoDto {
   // Identificação
-  @ApiProperty({ example: 'TeamCruz São Paulo', description: 'Nome da franquia' })
+  @ApiProperty({
+    example: 'TeamCruz São Paulo',
+    description: 'Nome da franquia',
+  })
   @IsString()
   @IsNotEmpty({ message: 'Nome é obrigatório' })
   @Length(1, 150, { message: 'Nome deve ter entre 1 e 150 caracteres' })
   nome!: string;
 
-  @ApiProperty({ example: '12.345.678/0001-90', description: 'CNPJ da franquia' })
+  @ApiProperty({
+    example: '12345678000190',
+    description: 'CNPJ da franquia (apenas números)',
+  })
   @IsString()
   @IsNotEmpty({ message: 'CNPJ é obrigatório' })
-  @Matches(/^\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}$/, {
-    message: 'CNPJ deve estar no formato XX.XXX.XXX/XXXX-XX',
+  @Matches(/^\d{14}$/, {
+    message: 'CNPJ deve conter exatamente 14 dígitos',
   })
   cnpj!: string;
 
-  @ApiProperty({ example: 'TeamCruz São Paulo Ltda', description: 'Razão social' })
+  @ApiProperty({
+    example: 'TeamCruz São Paulo Ltda',
+    description: 'Razão social',
+  })
   @IsString()
   @IsNotEmpty({ message: 'Razão social é obrigatória' })
   @Length(1, 200, { message: 'Razão social deve ter entre 1 e 200 caracteres' })
@@ -91,25 +108,22 @@ export class CreateFranqueadoDto {
   @IsNotEmpty({ message: 'Email institucional é obrigatório' })
   email!: string;
 
-  @ApiPropertyOptional({ example: '(11) 3456-7890' })
+  @ApiPropertyOptional({ example: '1134567890' })
   @IsOptional()
   @IsString()
-  @Matches(/^\(\d{2}\)\s\d{4,5}-\d{4}$/, {
-    message: 'Telefone fixo deve estar no formato (XX) XXXX-XXXX ou (XX) XXXXX-XXXX',
-  })
   telefone_fixo?: string;
 
-  @ApiProperty({ example: '(11) 98765-4321', description: 'Telefone celular/WhatsApp' })
+  @ApiProperty({
+    example: '11987654321',
+    description: 'Telefone celular/WhatsApp (apenas números)',
+  })
   @IsString()
   @IsNotEmpty({ message: 'Telefone celular/WhatsApp é obrigatório' })
-  @Matches(/^\(\d{2}\)\s\d{5}-\d{4}$/, {
-    message: 'Telefone celular deve estar no formato (XX) XXXXX-XXXX',
-  })
   telefone_celular!: string;
 
   @ApiPropertyOptional({ example: 'https://www.teamcruzsp.com.br' })
   @IsOptional()
-  @IsUrl({}, { message: 'Website deve ser uma URL válida' })
+  @IsString()
   website?: string;
 
   @ApiPropertyOptional()
@@ -125,18 +139,64 @@ export class CreateFranqueadoDto {
   @IsString()
   endereco_id?: string;
 
+  @ApiPropertyOptional({ example: '01310-100' })
+  @IsOptional()
+  @IsString()
+  cep?: string;
+
+  @ApiPropertyOptional({ example: 'Av. Paulista' })
+  @IsOptional()
+  @IsString()
+  logradouro?: string;
+
+  @ApiPropertyOptional({ example: '1000' })
+  @IsOptional()
+  @IsString()
+  numero?: string;
+
+  @ApiPropertyOptional({ example: 'Sala 10' })
+  @IsOptional()
+  @IsString()
+  complemento?: string;
+
+  @ApiPropertyOptional({ example: 'Bela Vista' })
+  @IsOptional()
+  @IsString()
+  bairro?: string;
+
+  @ApiPropertyOptional({ example: 'São Paulo' })
+  @IsOptional()
+  @IsString()
+  cidade?: string;
+
+  @ApiPropertyOptional({ example: 'SP' })
+  @IsOptional()
+  @IsString()
+  estado?: string;
+
+  @ApiPropertyOptional({ example: 'Brasil' })
+  @IsOptional()
+  @IsString()
+  pais?: string;
+
   // Responsável Legal
-  @ApiProperty({ example: 'João da Silva', description: 'Nome completo do responsável legal' })
+  @ApiProperty({
+    example: 'João da Silva',
+    description: 'Nome completo do responsável legal',
+  })
   @IsString()
   @IsNotEmpty({ message: 'Nome do responsável legal é obrigatório' })
   @Length(1, 150)
   responsavel_nome!: string;
 
-  @ApiProperty({ example: '123.456.789-00', description: 'CPF do responsável legal' })
+  @ApiProperty({
+    example: '12345678900',
+    description: 'CPF do responsável legal (apenas números)',
+  })
   @IsString()
   @IsNotEmpty({ message: 'CPF do responsável legal é obrigatório' })
-  @Matches(/^\d{3}\.\d{3}\.\d{3}-\d{2}$/, {
-    message: 'CPF deve estar no formato XXX.XXX.XXX-XX',
+  @Matches(/^\d{11}$/, {
+    message: 'CPF deve conter exatamente 11 dígitos',
   })
   responsavel_cpf!: string;
 
@@ -148,15 +208,12 @@ export class CreateFranqueadoDto {
 
   @ApiPropertyOptional({ example: 'joao@teamcruz.com.br' })
   @IsOptional()
-  @IsEmail({}, { message: 'Email do responsável deve ser válido' })
+  @IsString()
   responsavel_email?: string;
 
-  @ApiPropertyOptional({ example: '(11) 98765-4321' })
+  @ApiPropertyOptional({ example: '11987654321' })
   @IsOptional()
   @IsString()
-  @Matches(/^\(\d{2}\)\s\d{5}-\d{4}$/, {
-    message: 'Telefone do responsável deve estar no formato (XX) XXXXX-XXXX',
-  })
   responsavel_telefone?: string;
 
   // Informações da Franquia
@@ -169,33 +226,86 @@ export class CreateFranqueadoDto {
   })
   ano_fundacao?: number;
 
-  @ApiPropertyOptional({ example: 'Nossa missão é...', description: 'Missão da franquia' })
+  @ApiPropertyOptional({
+    example: 'Nossa missão é...',
+    description: 'Missão da franquia',
+  })
   @IsOptional()
   @IsString()
   missao?: string;
 
-  @ApiPropertyOptional({ example: 'Nossa visão é...', description: 'Visão da franquia' })
+  @ApiPropertyOptional({
+    example: 'Nossa visão é...',
+    description: 'Visão da franquia',
+  })
   @IsOptional()
   @IsString()
   visao?: string;
 
-  @ApiPropertyOptional({ example: 'Nossos valores são...', description: 'Valores da franquia' })
+  @ApiPropertyOptional({
+    example: 'Nossos valores são...',
+    description: 'Valores da franquia',
+  })
   @IsOptional()
   @IsString()
   valores?: string;
 
-  @ApiPropertyOptional({ example: 'Histórico da franquia...', description: 'Histórico/Descrição' })
+  @ApiPropertyOptional({
+    example: 'https://www.teamcruzsp.com.br',
+    description: 'Histórico/Descrição',
+  })
   @IsOptional()
   @IsString()
   historico?: string;
 
-  @ApiPropertyOptional({ example: 'https://cdn.example.com/logo.png', description: 'URL do logotipo' })
+  @ApiPropertyOptional({
+    example: 'logo.png ou https://cdn.example.com/logo.png',
+    description: 'URL ou nome do arquivo do logotipo',
+  })
   @IsOptional()
-  @IsUrl({}, { message: 'Logotipo deve ser uma URL válida' })
+  @IsString()
   logotipo_url?: string;
 
+  // Dados Financeiros
+  @ApiPropertyOptional({
+    example: '2024-01-15',
+    description: 'Data do contrato',
+  })
+  @IsOptional()
+  @IsString()
+  data_contrato?: string;
+
+  @ApiPropertyOptional({ example: 50000, description: 'Taxa de franquia' })
+  @IsOptional()
+  taxa_franquia?: number;
+
+  @ApiPropertyOptional({
+    example: {
+      banco: 'Banco do Brasil',
+      agencia: '1234-5',
+      conta: '12345-6',
+      titular: 'João da Silva',
+      documento: '12345678900',
+    },
+  })
+  @IsOptional()
+  @IsObject()
+  dados_bancarios?: {
+    banco: string;
+    agencia: string;
+    conta: string;
+    titular: string;
+    documento: string;
+  };
+
+  @ApiPropertyOptional({ description: 'Array de IDs de unidades gerenciadas' })
+  @IsOptional()
+  unidades_gerencia?: string[];
+
   // Relacionamento Hierárquico
-  @ApiPropertyOptional({ description: 'ID da franquia matriz (se for filial). Se NULL = matriz' })
+  @ApiPropertyOptional({
+    description: 'ID da franquia matriz (se for filial). Se NULL = matriz',
+  })
   @IsOptional()
   @IsString()
   id_matriz?: string;
@@ -223,7 +333,7 @@ export class UpdateFranqueadoDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
-  @Matches(/^\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}$/)
+  @Matches(/^\d{14}$/)
   cnpj?: string;
 
   @ApiPropertyOptional()
@@ -265,7 +375,7 @@ export class UpdateFranqueadoDto {
 
   @ApiPropertyOptional()
   @IsOptional()
-  @IsUrl()
+  @IsString()
   website?: string;
 
   @ApiPropertyOptional()
@@ -277,6 +387,46 @@ export class UpdateFranqueadoDto {
   @IsOptional()
   @IsString()
   endereco_id?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  cep?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  logradouro?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  numero?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  complemento?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  bairro?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  cidade?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  estado?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  pais?: string;
 
   @ApiPropertyOptional()
   @IsOptional()
@@ -295,7 +445,7 @@ export class UpdateFranqueadoDto {
 
   @ApiPropertyOptional()
   @IsOptional()
-  @IsEmail()
+  @IsString()
   responsavel_email?: string;
 
   @ApiPropertyOptional()
@@ -330,7 +480,7 @@ export class UpdateFranqueadoDto {
 
   @ApiPropertyOptional()
   @IsOptional()
-  @IsUrl()
+  @IsString()
   logotipo_url?: string;
 
   @ApiPropertyOptional({ enum: ['ATIVA', 'INATIVA', 'EM_HOMOLOGACAO'] })
@@ -342,6 +492,11 @@ export class UpdateFranqueadoDto {
   @IsOptional()
   @IsString()
   id_matriz?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  data_contrato?: string;
 
   @ApiPropertyOptional()
   @IsOptional()
@@ -365,4 +520,12 @@ export class UpdateFranqueadoDto {
   @ApiPropertyOptional()
   @IsOptional()
   ativo?: boolean;
+
+  @ApiPropertyOptional({
+    description: 'ID do usuário vinculado ao franqueado',
+    example: '7dc34c77-a6d0-4565-a0b9-4d47bd711e5a',
+  })
+  @IsOptional()
+  @IsString()
+  usuario_id?: string;
 }

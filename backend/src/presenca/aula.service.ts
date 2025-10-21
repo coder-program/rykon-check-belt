@@ -19,13 +19,10 @@ export class AulaService {
   ) {}
 
   async create(createAulaDto: CreateAulaDto): Promise<Aula> {
-    console.log('🔵 [AulaService.create] Criando aula:', createAulaDto.nome);
-
     let turma_id = createAulaDto.turma_id;
 
     // Se não foi fornecida uma turma, criar uma automaticamente
     if (!turma_id) {
-      console.log('🔵 [AulaService.create] Criando turma automaticamente');
       const turma = this.turmaRepository.create({
         nome: `Turma - ${createAulaDto.nome}`,
         tipo_turma: 'REGULAR',
@@ -37,7 +34,6 @@ export class AulaService {
 
       const savedTurma = await this.turmaRepository.save(turma);
       turma_id = savedTurma.id;
-      console.log('✅ [AulaService.create] Turma criada com ID:', turma_id);
     }
 
     const aula = this.aulaRepository.create({
@@ -52,7 +48,6 @@ export class AulaService {
     });
 
     const saved = await this.aulaRepository.save(aula);
-    console.log('✅ [AulaService.create] Aula criada com ID:', saved.id);
 
     return this.findOne(saved.id);
   }
@@ -62,8 +57,6 @@ export class AulaService {
     ativo?: boolean;
     dia_semana?: number;
   }): Promise<Aula[]> {
-    console.log('🔵 [AulaService.findAll] Buscando aulas com filtros:', params);
-
     const query = this.aulaRepository
       .createQueryBuilder('aula')
       .leftJoinAndSelect('aula.unidade', 'unidade')
@@ -90,14 +83,11 @@ export class AulaService {
       .addOrderBy('aula.data_hora_inicio', 'ASC');
 
     const aulas = await query.getMany();
-    console.log('✅ [AulaService.findAll] Encontradas', aulas.length, 'aulas');
 
     return aulas;
   }
 
   async findOne(id: string): Promise<Aula> {
-    console.log('🔵 [AulaService.findOne] Buscando aula:', id);
-
     const aula = await this.aulaRepository.findOne({
       where: { id },
       relations: ['unidade', 'professor'],
@@ -111,8 +101,6 @@ export class AulaService {
   }
 
   async update(id: string, updateAulaDto: UpdateAulaDto): Promise<Aula> {
-    console.log('🔵 [AulaService.update] Atualizando aula:', id);
-
     const aula = await this.findOne(id);
 
     Object.assign(aula, {
@@ -126,23 +114,16 @@ export class AulaService {
     });
 
     await this.aulaRepository.save(aula);
-    console.log('✅ [AulaService.update] Aula atualizada');
 
     return this.findOne(id);
   }
 
   async remove(id: string): Promise<void> {
-    console.log('🔵 [AulaService.remove] Removendo aula:', id);
-
     const aula = await this.findOne(id);
     await this.aulaRepository.remove(aula);
-
-    console.log('✅ [AulaService.remove] Aula removida');
   }
 
   async findHorariosDisponiveis(unidade_id?: string): Promise<any[]> {
-    console.log('🔵 [AulaService.findHorariosDisponiveis] Buscando horários');
-
     const aulas = await this.findAll({
       unidade_id,
       ativo: true,

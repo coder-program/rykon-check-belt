@@ -423,7 +423,7 @@ export function PersonForm({
               <input
                 type="tel"
                 name="telefone_whatsapp"
-                value={formData.telefone_whatsapp}
+                value={formData.telefone_whatsapp || ""}
                 onChange={(e) => {
                   const formatted = formatPhone(e.target.value);
                   setFormData((prev) => ({
@@ -443,7 +443,7 @@ export function PersonForm({
               <input
                 type="email"
                 name="email"
-                value={formData.email}
+                value={formData.email || ""}
                 onChange={handleChange}
                 className="input input-bordered"
               />
@@ -691,7 +691,7 @@ export function PersonForm({
                     <input
                       type="text"
                       name="responsavel_nome"
-                      value={formData.responsavel_nome}
+                      value={formData.responsavel_nome || ""}
                       onChange={handleChange}
                       className="input input-bordered"
                     />
@@ -702,7 +702,7 @@ export function PersonForm({
                       <span className="label-text">CPF do Responsável</span>
                     </label>
                     <InputCPF
-                      value={formData.responsavel_cpf}
+                      value={formData.responsavel_cpf || ""}
                       onChange={(value) =>
                         setFormData((prev) => ({
                           ...prev,
@@ -721,7 +721,7 @@ export function PersonForm({
                     <input
                       type="tel"
                       name="responsavel_telefone"
-                      value={formData.responsavel_telefone}
+                      value={formData.responsavel_telefone || ""}
                       onChange={(e) => {
                         const formatted = formatPhone(e.target.value);
                         setFormData((prev) => ({
@@ -757,7 +757,7 @@ export function PersonForm({
                 </label>
                 <select
                   name="faixa_ministrante"
-                  value={formData.faixa_ministrante}
+                  value={formData.faixa_ministrante || ""}
                   onChange={handleChange}
                   className="select select-bordered"
                   required
@@ -778,7 +778,7 @@ export function PersonForm({
                 <input
                   type="date"
                   name="data_inicio_docencia"
-                  value={formData.data_inicio_docencia}
+                  value={formData.data_inicio_docencia || ""}
                   onChange={handleChange}
                   className="input input-bordered"
                 />
@@ -791,7 +791,7 @@ export function PersonForm({
                 <input
                   type="text"
                   name="registro_profissional"
-                  value={formData.registro_profissional}
+                  value={formData.registro_profissional || ""}
                   onChange={handleChange}
                   className="input input-bordered"
                 />
@@ -915,7 +915,7 @@ export function PersonForm({
           <div className="form-control">
             <textarea
               name="observacoes"
-              value={formData.observacoes}
+              value={formData.observacoes || ""}
               onChange={handleChange}
               className="textarea textarea-bordered"
               rows={3}

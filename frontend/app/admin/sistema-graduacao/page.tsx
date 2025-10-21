@@ -12,6 +12,13 @@ import {
   getHistoricoGraduacoes,
 } from "@/lib/graduacaoApi";
 import {
+  listarParametros,
+  listarAlunosAptos,
+  aprovarGraduacao,
+  type GraduacaoParametro,
+  type AlunoAptoGraduacao,
+} from "@/lib/graduacaoParametrosApi";
+import {
   Card,
   CardContent,
   CardDescription,
@@ -269,12 +276,24 @@ export default function SistemaGraduacaoPage() {
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center gap-3 mb-2">
-            <Trophy className="h-8 w-8 text-yellow-600" />
-            <h1 className="text-3xl font-bold text-gray-900">
-              Sistema de Graduação
-            </h1>
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-3">
+              <Trophy className="h-8 w-8 text-yellow-600" />
+              <h1 className="text-3xl font-bold text-gray-900">
+                Sistema de Graduação
+              </h1>
+            </div>
+            <button
+              onClick={() => router.push("/admin/aprovacao-graduacao")}
+              className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-orange-500 to-yellow-500 text-white rounded-lg hover:from-orange-600 hover:to-yellow-600 transition-all shadow-lg hover:shadow-xl transform hover:scale-105"
+            >
+              <CheckCircle className="h-5 w-5" />
+              <span className="font-semibold">Aprovação de Graduações</span>
+              <span className="px-2 py-1 bg-white/20 rounded text-xs font-bold">
+                NOVO
+              </span>
+            </button>
           </div>
           <p className="text-gray-600">
             Gerencie graduações, graus e acompanhe o progresso dos alunos
@@ -365,6 +384,34 @@ export default function SistemaGraduacaoPage() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Card de Atalho para Aprovação */}
+        <Card className="mb-6 border-2 border-orange-200 bg-gradient-to-r from-orange-50 to-yellow-50">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-orange-500 rounded-lg">
+                  <CheckCircle className="h-6 w-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900 mb-1">
+                    Sistema de Aprovação de Graduações
+                  </h3>
+                  <p className="text-sm text-gray-600">
+                    Aprove alunos aptos para a próxima faixa baseado nos
+                    parâmetros configurados
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => router.push("/admin/aprovacao-graduacao")}
+                className="px-6 py-3 bg-gradient-to-r from-orange-500 to-yellow-500 text-white rounded-lg hover:from-orange-600 hover:to-yellow-600 transition-all shadow-md hover:shadow-lg font-semibold"
+              >
+                Acessar Aprovações →
+              </button>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Tabs */}
         <div className="mb-6">

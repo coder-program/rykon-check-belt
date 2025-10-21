@@ -18,13 +18,15 @@ async function bootstrap() {
 
   // Configuração CORS para produção
   app.enableCors({
-    origin: process.env.CORS_ORIGIN || 'https://teamcruz-frontend-m2olfa5bfa-rj.a.run.app',
+    origin:
+      process.env.CORS_ORIGIN ||
+      'https://teamcruz-frontend-m2olfa5bfa-rj.a.run.app',
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
     exposedHeaders: ['Authorization'],
     preflightContinue: false,
-    optionsSuccessStatus: 204
+    optionsSuccessStatus: 204,
   });
 
   // Adiciona prefixo global /api
@@ -41,7 +43,5 @@ async function bootstrap() {
 
   const port = process.env.PORT || 8080;
   await app.listen(port, '0.0.0.0');
-  console.log(`Backend rodando em http://localhost:${port}`);
-  console.log(`Swagger em http://localhost:${port}/docs`);
 }
 bootstrap();

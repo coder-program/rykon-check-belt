@@ -2,6 +2,7 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
   IsBoolean,
   IsEnum,
+  IsNumber,
   IsOptional,
   IsString,
   Length,
@@ -35,7 +36,7 @@ export class CreateEnderecoDto {
   @ApiPropertyOptional({ example: 'São Paulo' })
   @IsOptional()
   @IsString()
-  cidade_nome?: string | null;
+  cidade?: string | null;
 
   @ApiPropertyOptional({ example: 'SP' })
   @IsOptional()
@@ -48,6 +49,16 @@ export class CreateEnderecoDto {
   @IsString()
   @Length(2, 2)
   codigo_pais?: string;
+
+  @ApiPropertyOptional({ example: -23.5505 })
+  @IsOptional()
+  @IsNumber()
+  latitude?: number | null;
+
+  @ApiPropertyOptional({ example: -46.6333 })
+  @IsOptional()
+  @IsNumber()
+  longitude?: number | null;
 }
 
 export class UpdateEnderecoDto {
@@ -80,7 +91,7 @@ export class UpdateEnderecoDto {
   @ApiPropertyOptional({ example: 'São Paulo' })
   @IsOptional()
   @IsString()
-  cidade_nome?: string | null;
+  cidade?: string | null;
 
   @ApiPropertyOptional({ example: 'SP' })
   @IsOptional()

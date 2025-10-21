@@ -33,7 +33,7 @@ export class ProfessoresService {
     private dataSource: DataSource,
   ) {}
 
-  async list(params: ListProfessoresParams) {
+  async list(params: ListProfessoresParams, user?: any) {
     const page = Math.max(1, Number(params.page) || 1);
     const pageSize = Math.min(100, Math.max(1, Number(params.pageSize) || 20));
 
@@ -57,6 +57,16 @@ export class ProfessoresService {
       query.andWhere('person.unidade_id = :unidade', {
         unidade: params.unidade_id,
       });
+    }
+    // Se franqueado (não master), filtra apenas professores das suas unidades
+    else if (user && this.isFranqueado(user) && !this.isMaster(user)) {
+      const franqueadoId = await this.getFranqueadoIdByUser(user);
+      if (franqueadoId) {
+        query.andWhere(
+          'person.unidade_id IN (SELECT id FROM teamcruz.unidades WHERE franqueado_id = :franqueadoId)',
+          { franqueadoId },
+        );
+      }
     }
 
     // Filtro por status
@@ -117,13 +127,25 @@ export class ProfessoresService {
     };
   }
 
-  async findById(id: string): Promise<any> {
+  async findById(id: string, user?: any): Promise<any> {
     const professor = await this.personRepository.findOne({
       where: { id, tipo_cadastro: TipoCadastro.PROFESSOR },
     });
 
     if (!professor) {
       throw new NotFoundException(`Professor com ID ${id} não encontrado`);
+    }
+
+    // Se franqueado (não master), verifica se professor pertence às suas unidades
+    if (user && this.isFranqueado(user) && !this.isMaster(user)) {
+      const franqueadoId = await this.getFranqueadoIdByUser(user);
+      if (franqueadoId) {
+        const unidadesDeFranqueado =
+          await this.getUnidadesDeFranqueado(franqueadoId);
+        if (!unidadesDeFranqueado.includes(professor.unidade_id)) {
+          throw new NotFoundException('Professor não encontrado');
+        }
+      }
     }
 
     // Buscar unidades
@@ -223,7 +245,14 @@ export class ProfessoresService {
     }
   }
 
-  async update(id: string, dto: UpdateProfessorDto): Promise<Person> {
+  async update(
+    id: string,
+    dto: UpdateProfessorDto,
+    user?: any,
+  ): Promise<Person> {
+    // Validação de acesso usando findById que já tem a proteção
+    await this.findById(id, user);
+
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
@@ -368,5 +397,75 @@ export class ProfessoresService {
     }
 
     await this.personRepository.remove(professor);
+  }
+
+  /**
+   * Busca professor por ID do usuário
+   */
+  async findByUsuarioId(usuarioId: string): Promise<Person | null> {
+    const professor = await this.personRepository.findOne({
+      where: {
+        usuario_id: usuarioId,
+        tipo_cadastro: TipoCadastro.PROFESSOR,
+      },
+    });
+
+    if (!professor) {
+      return null;
+    }
+
+    // Buscar unidades do professor
+    const unidades = await this.professorUnidadeRepository.find({
+      where: { professor_id: professor.id, ativo: true },
+      relations: ['unidade'],
+    });
+
+    return {
+      ...professor,
+      unidades: unidades.map((pu) => ({
+        ...pu.unidade,
+        is_principal: pu.is_principal,
+      })),
+    } as any;
+  }
+
+  /**
+   * Obtém IDs das unidades onde o professor ministra aulas
+   */
+  async getUnidadesDoProfessor(professorId: string): Promise<string[]> {
+    const unidades = await this.professorUnidadeRepository.find({
+      where: { professor_id: professorId, ativo: true },
+      select: ['unidade_id'],
+    });
+
+    return unidades.map((u) => u.unidade_id);
+  }
+
+  // Métodos auxiliares para controle de acesso por perfil
+  private isMaster(user: any): boolean {
+    return user?.perfis?.some((p: string) => p.toLowerCase() === 'master');
+  }
+
+  private isFranqueado(user: any): boolean {
+    return user?.perfis?.some((p: string) => p.toLowerCase() === 'franqueado');
+  }
+
+  private async getFranqueadoIdByUser(user: any): Promise<string | null> {
+    if (!user?.id) return null;
+    const result = await this.dataSource.query(
+      `SELECT id FROM teamcruz.franqueados WHERE usuario_id = $1 LIMIT 1`,
+      [user.id],
+    );
+    return result[0]?.id || null;
+  }
+
+  private async getUnidadesDeFranqueado(
+    franqueadoId: string,
+  ): Promise<string[]> {
+    const result = await this.dataSource.query(
+      `SELECT id FROM teamcruz.unidades WHERE franqueado_id = $1`,
+      [franqueadoId],
+    );
+    return result.map((r: any) => r.id);
   }
 }

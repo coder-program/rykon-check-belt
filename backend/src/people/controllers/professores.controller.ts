@@ -8,6 +8,7 @@ import {
   Patch,
   Delete,
   ValidationPipe,
+  Request,
 } from '@nestjs/common';
 import { ProfessoresService } from '../services/professores.service';
 import { ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
@@ -26,8 +27,9 @@ export class ProfessoresController {
   @ApiQuery({ name: 'status', required: false })
   @ApiQuery({ name: 'page', required: false })
   @ApiQuery({ name: 'pageSize', required: false })
-  list(@Query(ValidationPipe) query: any) {
-    return this.service.list(query);
+  list(@Query(ValidationPipe) query: any, @Request() req) {
+    const user = req?.user || null;
+    return this.service.list(query, user);
   }
 
   @Post()
@@ -38,14 +40,20 @@ export class ProfessoresController {
 
   @Get(':id')
   @ApiOperation({ summary: 'Obter professor por ID' })
-  get(@Param('id') id: string) {
-    return this.service.findById(id);
+  get(@Param('id') id: string, @Request() req) {
+    const user = req?.user || null;
+    return this.service.findById(id, user);
   }
 
   @Patch(':id')
   @ApiOperation({ summary: 'Atualizar professor' })
-  update(@Param('id') id: string, @Body(ValidationPipe) dto: UpdateProfessorDto) {
-    return this.service.update(id, dto);
+  update(
+    @Param('id') id: string,
+    @Body(ValidationPipe) dto: UpdateProfessorDto,
+    @Request() req,
+  ) {
+    const user = req?.user || null;
+    return this.service.update(id, dto, user);
   }
 
   @Delete(':id')

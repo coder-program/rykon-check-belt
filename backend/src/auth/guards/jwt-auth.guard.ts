@@ -9,23 +9,24 @@ import { AuthGuard } from '@nestjs/passport';
 export class JwtAuthGuard extends AuthGuard('jwt') {
   canActivate(context: ExecutionContext) {
     const request = context.switchToHttp().getRequest();
-    console.log('🔐 JwtAuthGuard - Headers:', request.headers);
+    console.log('🛡️ [JwtAuthGuard] Verificando autenticação...');
     console.log(
-      '🔐 JwtAuthGuard - Authorization Header:',
-      request.headers.authorization,
+      '🛡️ [JwtAuthGuard] Authorization header:',
+      request.headers.authorization || 'NENHUM',
     );
     return super.canActivate(context);
   }
 
   handleRequest(err, user, info) {
-    console.log('🔐 JwtAuthGuard.handleRequest - Error:', err);
+    console.log('🛡️ [JwtAuthGuard.handleRequest] err:', err);
     console.log(
-      '🔐 JwtAuthGuard.handleRequest - User:',
-      user ? 'Present' : 'Not present',
+      '🛡️ [JwtAuthGuard.handleRequest] user:',
+      user ? user.id : 'NENHUM',
     );
-    console.log('🔐 JwtAuthGuard.handleRequest - Info:', info);
+    console.log('🛡️ [JwtAuthGuard.handleRequest] info:', info);
 
     if (err || !user) {
+      console.error('❌ [JwtAuthGuard] REJEITADO - err:', err, 'info:', info);
       throw err || new UnauthorizedException(info?.message || 'Token inválido');
     }
     return user;

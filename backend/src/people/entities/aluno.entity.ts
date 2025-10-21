@@ -27,6 +27,8 @@ export enum StatusAluno {
   CANCELADO = 'CANCELADO',
 }
 
+// NOTA: StatusAprovacao removido - usamos StatusAluno.INATIVO para pendente e ATIVO para aprovado
+
 export enum FaixaEnum {
   BRANCA = 'BRANCA',
   CINZA_BRANCA = 'CINZA_BRANCA',
@@ -147,6 +149,7 @@ export class Aluno {
   restricoes_medicas: string;
 
   // ===== RESPONSÁVEL (para menores) =====
+  // Campos legados (ainda usados se não tiver responsavel_id)
   @Column({ type: 'varchar', length: 255, nullable: true })
   responsavel_nome: string;
 
@@ -158,6 +161,16 @@ export class Aluno {
 
   @Column({ type: 'varchar', length: 50, nullable: true })
   responsavel_parentesco: string;
+
+  // Novo relacionamento com tabela responsaveis
+  @Column({ type: 'uuid', nullable: true })
+  responsavel_id: string;
+
+  @ManyToOne('Responsavel', 'dependentes', {
+    nullable: true,
+  })
+  @JoinColumn({ name: 'responsavel_id' })
+  responsavel: any;
 
   // ===== DADOS FINANCEIROS =====
   @Column({ type: 'int', nullable: true })
@@ -185,6 +198,13 @@ export class Aluno {
 
   @Column({ type: 'varchar', length: 500, nullable: true })
   foto_url: string;
+
+  // ===== APROVAÇÃO DE CADASTRO =====
+  // NOTA: O sistema usa o campo 'status' para aprovação
+  // INATIVO = pendente de aprovação
+  // ATIVO = aprovado
+  // Campos status_aprovacao, aprovado_por_id, aprovado_em, observacao_aprovacao
+  // foram removidos pois não existem no banco de dados
 
   @CreateDateColumn()
   created_at: Date;

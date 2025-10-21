@@ -6,31 +6,34 @@ import { Button } from "@/components/ui/button";
 import { LogOut, UserX, Menu } from "lucide-react";
 import { useState } from "react";
 import Image from "next/image";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 
 export default function Header() {
   const { user, logout, isAuthenticated } = useAuth();
   const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
+  const [logoutAllDialogOpen, setLogoutAllDialogOpen] = useState(false);
 
   const handleLogout = () => {
-    if (window.confirm("Tem certeza que deseja sair?")) {
-      logout();
-      router.push("/login");
-    }
+    setLogoutDialogOpen(true);
+  };
+
+  const confirmLogout = () => {
+    logout();
+    router.push("/login");
   };
 
   const handleLogoutAll = () => {
-    if (
-      window.confirm(
-        "Deseja encerrar TODAS as sessões em todos os dispositivos?\n\nVocê precisará fazer login novamente em todos os seus dispositivos."
-      )
-    ) {
-      // Limpar token local
-      logout();
-      // Aqui você pode adicionar uma chamada ao backend para invalidar todos os tokens
-      // await fetch('/auth/logout-all', { method: 'POST', ... });
-      router.push("/login");
-    }
+    setLogoutAllDialogOpen(true);
+  };
+
+  const confirmLogoutAll = () => {
+    // Limpar token local
+    logout();
+    // Aqui você pode adicionar uma chamada ao backend para invalidar todos os tokens
+    // await fetch('/auth/logout-all', { method: 'POST', ... });
+    router.push("/login");
   };
 
   // Não mostrar header nas páginas públicas
@@ -44,12 +47,13 @@ export default function Header() {
   // Determinar perfil para exibição
   const getPerfil = () => {
     if (!user?.perfis || user.perfis.length === 0) return "Usuário";
-    
+
     const perfis = Array.isArray(user.perfis) ? user.perfis : [];
-    const perfilNome = typeof perfis[0] === "string" 
-      ? perfis[0] 
-      : perfis[0]?.nome || perfis[0]?.name || "Usuário";
-    
+    const perfilNome =
+      typeof perfis[0] === "string"
+        ? perfis[0]
+        : perfis[0]?.nome || perfis[0]?.name || "Usuário";
+
     return perfilNome;
   };
 
@@ -60,7 +64,7 @@ export default function Header() {
           {/* Logos */}
           <div className="flex items-center gap-4">
             {/* Logo TeamCruz */}
-            <div 
+            <div
               className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
               onClick={() => router.push("/dashboard")}
               title="TeamCruz Jiu-Jitsu"
@@ -84,7 +88,10 @@ export default function Header() {
             <div className="hidden lg:block h-8 w-px bg-gray-300"></div>
 
             {/* Logo Rykon */}
-            <div className="hidden lg:flex items-center gap-2" title="Desenvolvido por Rykon">
+            <div
+              className="hidden lg:flex items-center gap-2"
+              title="Desenvolvido por Rykon"
+            >
               <div className="relative w-24 h-10">
                 <Image
                   src="/imgs/logorykon.png"
@@ -114,7 +121,7 @@ export default function Header() {
                 variant="outline"
                 size="sm"
                 onClick={handleLogoutAll}
-                className="flex items-center gap-2 text-orange-600 border-orange-300 hover:bg-orange-50"
+                className="flex items-center gap-2 bg-gradient-to-r from-orange-50 to-orange-100 text-orange-700 border-orange-300 hover:from-orange-100 hover:to-orange-200 hover:shadow-md transition-all duration-200 font-medium"
                 title="Encerrar todas as sessões"
               >
                 <UserX className="h-4 w-4" />
@@ -126,8 +133,8 @@ export default function Header() {
                 variant="outline"
                 size="sm"
                 onClick={handleLogout}
-                className="flex items-center gap-2 text-red-600 border-red-300 hover:bg-red-50"
-                title="Sair"
+                className="flex items-center gap-2 bg-gradient-to-r from-red-500 to-red-600 text-white border-red-600 hover:from-red-600 hover:to-red-700 hover:shadow-lg hover:scale-105 transition-all duration-200 font-medium"
+                title="Sair da conta"
               >
                 <LogOut className="h-4 w-4" />
                 <span className="hidden lg:inline">Sair</span>
@@ -163,7 +170,7 @@ export default function Header() {
               <div className="space-y-2">
                 <Button
                   variant="outline"
-                  className="w-full justify-start text-orange-600 border-orange-300 hover:bg-orange-50"
+                  className="w-full justify-start bg-gradient-to-r from-orange-50 to-orange-100 text-orange-700 border-orange-300 hover:from-orange-100 hover:to-orange-200 hover:shadow-md transition-all duration-200 font-medium"
                   onClick={() => {
                     setMobileMenuOpen(false);
                     handleLogoutAll();
@@ -175,7 +182,7 @@ export default function Header() {
 
                 <Button
                   variant="outline"
-                  className="w-full justify-start text-red-600 border-red-300 hover:bg-red-50"
+                  className="w-full justify-start bg-gradient-to-r from-red-500 to-red-600 text-white border-red-600 hover:from-red-600 hover:to-red-700 hover:shadow-lg transition-all duration-200 font-medium"
                   onClick={() => {
                     setMobileMenuOpen(false);
                     handleLogout();
@@ -189,6 +196,33 @@ export default function Header() {
           </div>
         )}
       </div>
+
+      {/* Modais de Confirmação */}
+      <ConfirmDialog
+        isOpen={logoutDialogOpen}
+        onClose={() => setLogoutDialogOpen(false)}
+        onConfirm={confirmLogout}
+        title="Tem certeza que deseja sair?"
+        message="Você será desconectado e precisará fazer login novamente para acessar o sistema."
+        confirmText="Sim, Sair"
+        cancelText="Cancelar"
+        type="danger"
+        icon="logout"
+      />
+
+      <ConfirmDialog
+        isOpen={logoutAllDialogOpen}
+        onClose={() => setLogoutAllDialogOpen(false)}
+        onConfirm={confirmLogoutAll}
+        title="Encerrar Todas as Sessões?"
+        message="Deseja encerrar TODAS as sessões em todos os dispositivos?
+
+Você precisará fazer login novamente em todos os seus dispositivos."
+        confirmText="Sim, Encerrar Todas"
+        cancelText="Cancelar"
+        type="warning"
+        icon="userX"
+      />
     </header>
   );
 }

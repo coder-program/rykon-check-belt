@@ -17,7 +17,7 @@ export enum OrigemGrau {
   EVENTO = 'evento',
 }
 
-@Entity('historico_graus')
+@Entity({ name: 'historico_graus', schema: 'teamcruz' })
 @Index(['aluno_id'])
 export class HistoricoGraus {
   @PrimaryGeneratedColumn('uuid')

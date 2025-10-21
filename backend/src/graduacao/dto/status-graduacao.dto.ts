@@ -66,7 +66,7 @@ export class StatusGraduacaoDto {
 
   @ApiProperty({
     example: 2,
-    description: 'Tempo mínimo em anos para esta faixa',
+    description: 'Tempo mínimo em anos para esta faixa (pode ser 1, 1.5 ou 2)',
   })
   tempoMinimoAnos: number;
 

@@ -51,6 +51,18 @@ export const getUsuarios = async (): Promise<Usuario[]> => {
   }
 };
 
+export const getUsuariosByPerfil = async (
+  perfil: string
+): Promise<Usuario[]> => {
+  try {
+    const response = await api(`/usuarios?perfil=${perfil}`);
+    return response;
+  } catch (error) {
+    console.error(`getUsuariosByPerfil(${perfil}): Erro na requisição:`, error);
+    throw error;
+  }
+};
+
 export const getUsuario = async (id: string): Promise<Usuario> => {
   const response = await api(`/usuarios/${id}`);
   return response;
@@ -214,4 +226,64 @@ export const getPermissoesByModulo = async (
 export const getPermissao = async (id: string): Promise<Permissao> => {
   const response = await api(`/permissoes/${id}`);
   return response;
+};
+
+// ============ UNIDADES ============
+
+export interface Unidade {
+  id: string;
+  nome: string;
+  cnpj?: string;
+  telefone?: string;
+  email?: string;
+  cep?: string;
+  logradouro?: string;
+  numero?: string;
+  complemento?: string;
+  bairro?: string;
+  cidade?: string;
+  estado?: string;
+  pais?: string;
+  status?: string; // ATIVA, INATIVA, HOMOLOGACAO
+  ativo?: boolean; // Para compatibilidade com código antigo
+  created_at: string;
+  updated_at: string;
+}
+
+export const getUnidades = async (): Promise<Unidade[]> => {
+  const response = await api("/unidades");
+  // Se a resposta é paginada, retornar apenas os items
+  if (response && response.items && Array.isArray(response.items)) {
+    return response.items;
+  }
+  // Se já é um array, retornar direto
+  if (Array.isArray(response)) {
+    return response;
+  }
+  // Caso contrário, retornar array vazio
+  return [];
+};
+
+export const getUnidadesAtivas = async (): Promise<Unidade[]> => {
+  console.log("📡 Chamando API /unidades...");
+  const response = await api("/unidades");
+  console.log("📡 Resposta da API /unidades:", response);
+
+  // Extrair o array de unidades da resposta paginada
+  let unidades: Unidade[] = [];
+  if (response && response.items && Array.isArray(response.items)) {
+    unidades = response.items;
+  } else if (Array.isArray(response)) {
+    unidades = response;
+  }
+
+  console.log("📦 Unidades extraídas:", unidades);
+
+  // Filtrar unidades ATIVAS ou em HOMOLOGACAO (disponíveis para cadastro)
+  const ativas = unidades.filter(
+    (u: Unidade) =>
+      u.status === "ATIVA" || u.status === "HOMOLOGACAO" || u.ativo === true
+  );
+  console.log("✅ Unidades disponíveis filtradas:", ativas);
+  return ativas;
 };

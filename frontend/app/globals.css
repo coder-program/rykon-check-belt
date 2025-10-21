@@ -60,13 +60,13 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
+/* Desabilitado para garantir cores consistentes para todos os usuários */
+/* @media (prefers-color-scheme: dark) {
   :root {
-    /* Modo escuro - Azul escuro */
-    --background: 217 33% 12%; /* Azul muito escuro */
-    --foreground: 0 0% 95%; /* Branco suave */
+    --background: 217 33% 12%;
+    --foreground: 0 0% 95%;
   }
-}
+} */
 
 /* Variáveis e resets do projeto original */
 @layer base {

@@ -5,6 +5,7 @@ import {
   UseGuards,
   Request,
   Body,
+  Param,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -37,6 +38,8 @@ export interface ProgressoAlunoDto {
     faixaOrigem?: string;
     faixaDestino: string;
     dataPromocao: string;
+    dt_inicio: string;
+    dt_fim?: string;
     evento?: string;
     observacoes?: string;
   }>;
@@ -59,10 +62,21 @@ export class ProgressoController {
   })
   async getMeuHistorico(@Request() req: any): Promise<ProgressoAlunoDto> {
     try {
-      const usuarioId = req.user.sub;
+      console.log('📝 Request user:', req.user);
+      
+      // Tentar pegar o ID do usuário de diferentes formas
+      const usuarioId = req.user?.sub || req.user?.id || req.user?.userId;
+      
+      console.log('🔍 Usuario ID extraído:', usuarioId);
+      
+      if (!usuarioId) {
+        console.error('❌ Usuario ID não encontrado no token. req.user:', req.user);
+        throw new Error('ID do usuário não encontrado no token');
+      }
+      
       return await this.progressoService.getHistoricoCompleto(usuarioId);
     } catch (error) {
-      console.error('Erro no controller progresso:', error);
+      console.error('❌ Erro no controller progresso:', error);
       throw error;
     }
   }
@@ -85,7 +99,10 @@ export class ProgressoController {
       justificativa?: string;
     },
   ) {
-    const usuarioId = req.user.sub;
+    const usuarioId = req.user?.sub || req.user?.id || req.user?.userId;
+    if (!usuarioId) {
+      throw new Error('ID do usuário não encontrado no token');
+    }
     return await this.progressoService.adicionarGrau(usuarioId, dadosGrau);
   }
 
@@ -101,12 +118,16 @@ export class ProgressoController {
     dadosFaixa: {
       faixaOrigemId?: string;
       faixaDestinoId: string;
-      dataPromocao: string;
+      dt_inicio: string;
+      dt_fim?: string;
       evento?: string;
       observacoes?: string;
     },
   ) {
-    const usuarioId = req.user.sub;
+    const usuarioId = req.user?.sub || req.user?.id || req.user?.userId;
+    if (!usuarioId) {
+      throw new Error('ID do usuário não encontrado no token');
+    }
     return await this.progressoService.adicionarFaixa(usuarioId, dadosFaixa);
   }
 
@@ -118,6 +139,32 @@ export class ProgressoController {
   })
   async listarFaixas() {
     return await this.progressoService.listarFaixas();
+  }
+
+  @Post('atualizar-faixa/:faixaId')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Atualizar datas de uma faixa do histórico',
+  })
+  async atualizarFaixa(
+    @Request() req: any,
+    @Param('faixaId') faixaId: string,
+    @Body()
+    dadosAtualizacao: {
+      dt_inicio?: string;
+      dt_fim?: string;
+    },
+  ) {
+    const usuarioId = req.user?.sub || req.user?.id || req.user?.userId;
+    if (!usuarioId) {
+      throw new Error('ID do usuário não encontrado no token');
+    }
+    return await this.progressoService.atualizarFaixa(
+      usuarioId,
+      faixaId,
+      dadosAtualizacao,
+    );
   }
 
   // Rota de teste simples

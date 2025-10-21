@@ -7,11 +7,15 @@ import {
   Param,
   Delete,
   UseGuards,
+  Query,
+  Request,
 } from '@nestjs/common';
 import { UsuariosService } from '../services/usuarios.service';
 import { CreateUsuarioDto } from '../dto/create-usuario.dto';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { PermissionsGuard } from '../../auth/guards/permissions.guard';
+import { Permissions } from '../../auth/decorators/permissions.decorator';
 
 @ApiTags('Usuários')
 @Controller('usuarios')
@@ -24,19 +28,30 @@ export class UsuariosController {
     return this.usuariosService.create(createUsuarioDto);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Get()
   @ApiOperation({ summary: 'Listar usuários' })
-  findAll() {
-    return this.usuariosService.findAll();
+  findAll(@Query('perfil') perfil?: string, @Request() req?) {
+    if (perfil) {
+      return this.usuariosService.findByPerfil(perfil);
+    }
+
+    // Passar usuário autenticado para aplicar filtro hierárquico
+    return this.usuariosService.findAllWithHierarchy(req.user);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions('usuarios:aprovar')
   @Get('pendentes/list')
   @ApiOperation({
     summary: 'Listar usuários com cadastro completo aguardando aprovação',
   })
-  getPendentes() {
-    return this.usuariosService.findPendingApproval();
+  async getPendentes(@Request() req) {
+    const result = await this.usuariosService.findPendingApproval(req.user);
+    console.log('=== DEBUG PENDENTES ===');
+    console.log('Total de usuários retornados:', result.length);
+    console.log('Usuários:', JSON.stringify(result, null, 2));
+    return result;
   }
 
   @Get('debug/all-status')
@@ -72,7 +87,8 @@ export class UsuariosController {
     return this.usuariosService.remove(id);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @Permissions('usuarios:aprovar')
   @Patch(':id/aprovar')
   @ApiOperation({ summary: 'Aprovar usuário e ativar sua conta' })
   aprovar(@Param('id') id: string) {

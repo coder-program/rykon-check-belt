@@ -26,8 +26,8 @@ export class CreateAlunoDto {
 
   @IsString()
   @IsNotEmpty({ message: 'CPF é obrigatório' })
-  @Matches(/^\d{3}\.\d{3}\.\d{3}-\d{2}$/, {
-    message: 'CPF deve estar no formato 000.000.000-00',
+  @Matches(/^\d{11}$/, {
+    message: 'CPF deve conter exatamente 11 dígitos numéricos',
   })
   cpf: string;
 
@@ -95,7 +95,9 @@ export class CreateAlunoDto {
   @Min(0, { message: 'Graus deve ser no mínimo 0' })
   @Max(4, { message: 'Graus deve ser no máximo 4' })
   @IsOptional()
-  @Transform(({ value }) => (value === '' || value === null ? 0 : parseInt(value)))
+  @Transform(({ value }) =>
+    value === '' || value === null ? 0 : parseInt(value),
+  )
   graus?: number;
 
   @IsDateString({}, { message: 'Data de última graduação inválida' })
@@ -123,8 +125,8 @@ export class CreateAlunoDto {
 
   @IsString()
   @IsOptional()
-  @Matches(/^\d{3}\.\d{3}\.\d{3}-\d{2}$/, {
-    message: 'CPF do responsável deve estar no formato 000.000.000-00',
+  @Matches(/^\d{11}$/, {
+    message: 'CPF do responsável deve conter exatamente 11 dígitos numéricos',
   })
   responsavel_cpf?: string;
 
@@ -145,20 +147,26 @@ export class CreateAlunoDto {
   @Min(1, { message: 'Dia de vencimento deve ser entre 1 e 31' })
   @Max(31, { message: 'Dia de vencimento deve ser entre 1 e 31' })
   @IsOptional()
-  @Transform(({ value }) => (value === '' || value === null ? undefined : parseInt(value)))
+  @Transform(({ value }) =>
+    value === '' || value === null ? undefined : parseInt(value),
+  )
   dia_vencimento?: number;
 
   @IsNumber({}, { message: 'Valor da mensalidade deve ser um número' })
   @Min(0, { message: 'Valor da mensalidade deve ser positivo' })
   @IsOptional()
-  @Transform(({ value }) => (value === '' || value === null ? undefined : parseFloat(value)))
+  @Transform(({ value }) =>
+    value === '' || value === null ? undefined : parseFloat(value),
+  )
   valor_mensalidade?: number;
 
   @IsNumber({}, { message: 'Desconto percentual deve ser um número' })
   @Min(0, { message: 'Desconto deve ser no mínimo 0' })
   @Max(100, { message: 'Desconto deve ser no máximo 100' })
   @IsOptional()
-  @Transform(({ value }) => (value === '' || value === null ? 0 : parseFloat(value)))
+  @Transform(({ value }) =>
+    value === '' || value === null ? 0 : parseFloat(value),
+  )
   desconto_percentual?: number;
 
   // ===== METADADOS =====

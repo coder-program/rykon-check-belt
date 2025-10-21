@@ -15,9 +15,13 @@ export class AuditMiddleware implements NestMiddleware {
     res.json = function (body) {
       const responseTime = Date.now() - startTime;
 
-      // Só auditar se há usuário autenticado
-      if (req.user) {
-        const method = req.method;
+      // Só auditar se há usuário autenticado E método é de modificação
+      const method = req.method;
+      const isModificationMethod = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(
+        method,
+      );
+
+      if (req.user && isModificationMethod) {
         const url = req.originalUrl;
         const statusCode = res.statusCode;
 
@@ -35,7 +39,8 @@ export class AuditMiddleware implements NestMiddleware {
             action = AuditAction.DELETE;
             break;
           default:
-            action = AuditAction.ACCESS;
+            // Não deveria chegar aqui, mas por segurança
+            return originalJson.call(this, body);
         }
 
         // Extrair nome da entidade da URL
@@ -52,8 +57,7 @@ export class AuditMiddleware implements NestMiddleware {
           username: (req.user as any).username,
           ipAddress: req.ip || req.connection.remoteAddress || 'unknown',
           userAgent: req.get('User-Agent') || 'unknown',
-          newValues:
-            method !== 'GET' && method !== 'DELETE' ? req.body : undefined,
+          newValues: method !== 'DELETE' ? req.body : undefined,
           description: `${method} ${url} - Status: ${statusCode} - Response time: ${responseTime}ms`,
         };
 

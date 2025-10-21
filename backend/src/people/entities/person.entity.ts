@@ -8,9 +8,12 @@ import {
   BeforeInsert,
   BeforeUpdate,
   OneToMany,
+  ManyToOne,
+  JoinColumn,
 } from 'typeorm';
 import { AlunoFaixa } from '../../graduacao/entities/aluno-faixa.entity';
 import { AlunoGraduacao } from '../../graduacao/entities/aluno-graduacao.entity';
+import { Endereco } from '../../enderecos/endereco.entity';
 
 export enum TipoCadastro {
   ALUNO = 'ALUNO',
@@ -50,6 +53,7 @@ export enum FaixaAluno {
 }
 
 export enum FaixaProfessor {
+  AZUL = 'AZUL',
   ROXA = 'ROXA',
   MARROM = 'MARROM',
   PRETA = 'PRETA',
@@ -57,7 +61,7 @@ export enum FaixaProfessor {
   VERMELHA = 'VERMELHA',
 }
 
-@Entity({ name: 'pessoas', schema: 'teamcruz' })
+@Entity({ name: 'professores', schema: 'teamcruz' })
 @Index(['cpf'], { unique: true })
 @Index(['tipo_cadastro'])
 @Index(['status'])
@@ -88,30 +92,20 @@ export class Person {
   @Column({ type: 'varchar', length: 255, nullable: true })
   email: string;
 
-  // Endereço (opcional)
-  @Column({ type: 'varchar', length: 10, nullable: true })
-  cep: string;
-
-  @Column({ type: 'varchar', length: 255, nullable: true })
-  logradouro: string;
-
-  @Column({ type: 'varchar', length: 20, nullable: true })
-  numero: string;
-
-  @Column({ type: 'varchar', length: 100, nullable: true })
-  complemento: string;
-
-  @Column({ type: 'varchar', length: 100, nullable: true })
-  bairro: string;
-
-  @Column({ type: 'varchar', length: 100, nullable: true })
-  cidade: string;
-
-  @Column({ type: 'varchar', length: 2, nullable: true })
-  uf: string;
+  // Referência para endereço
+  @Column({ type: 'uuid', nullable: true })
+  endereco_id: string;
 
   @Column({ type: 'uuid', nullable: true })
   unidade_id: string;
+
+  @Column({ type: 'uuid', nullable: true })
+  usuario_id: string;
+
+  // Relação com endereço
+  @ManyToOne(() => Endereco, { nullable: true })
+  @JoinColumn({ name: 'endereco_id' })
+  endereco: Endereco;
 
   @Column({ type: 'enum', enum: StatusCadastro, default: StatusCadastro.ATIVO })
   status: StatusCadastro;

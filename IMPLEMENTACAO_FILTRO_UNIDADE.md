@@ -22,11 +22,9 @@ async validateToken(payload: JwtPayload): Promise<any | null> {
   let aluno: any = null;
   try {
     aluno = await this.alunosService.findByUsuarioId(user.id);
-    if (aluno) {
-      console.log('✅ Aluno encontrado:', aluno.nome_completo, 'Unidade:', aluno.unidade_id);
-    }
+
   } catch (error) {
-    console.log('⚠️ Usuário não é aluno ou erro ao buscar');
+
   }
 
   return {
@@ -81,13 +79,12 @@ async findAll(
 ) {
   // 🔒 REGRA: Cada aluno só pode ver aulas da sua unidade
   let unidadeIdFiltro = unidade_id;
-  
+
   // Se o usuário tem aluno associado, força a usar a unidade do aluno
   if (req?.user?.aluno?.unidade_id) {
     unidadeIdFiltro = req.user.aluno.unidade_id;
-    console.log('🔒 Filtrando por unidade do aluno:', unidadeIdFiltro);
   }
-  
+
   return this.aulaService.findAll({
     unidade_id: unidadeIdFiltro,
     ativo: ativo ? ativo === 'true' : undefined,
@@ -106,17 +103,17 @@ async findHorarios(
 ) {
   // 🔒 REGRA: Cada aluno só pode ver aulas da sua unidade
   let unidadeIdFiltro = unidade_id;
-  
+
   if (req?.user?.aluno?.unidade_id) {
     unidadeIdFiltro = req.user.aluno.unidade_id;
-    console.log('🔒 Filtrando por unidade do aluno:', unidadeIdFiltro);
   }
-  
+
   return this.aulaService.findHorariosDisponiveis(unidadeIdFiltro);
 }
 ```
 
-**Resultado:** 
+**Resultado:**
+
 - ✅ Aluno **SEMPRE** vê apenas aulas da sua unidade
 - ✅ Mesmo que tente passar `?unidade_id=outra`, será **ignorado**
 - ✅ Apenas admins/professores (sem aluno vinculado) podem filtrar por qualquer unidade
@@ -170,6 +167,7 @@ if (!req.user.aluno?.unidade_id) {
 ## 📊 ESTRUTURA DE DADOS
 
 ### Tabela `alunos`
+
 ```sql
 CREATE TABLE teamcruz.alunos (
   id UUID PRIMARY KEY,
@@ -181,6 +179,7 @@ CREATE TABLE teamcruz.alunos (
 ```
 
 ### Tabela `aulas`
+
 ```sql
 CREATE TABLE teamcruz.aulas (
   id UUID PRIMARY KEY,
@@ -212,13 +211,13 @@ CREATE TABLE teamcruz.aulas (
 
 ```sql
 -- Aluno da Unidade A
-UPDATE teamcruz.alunos 
-SET unidade_id = 'UNIDADE_A_ID', usuario_id = 'USER_1_ID' 
+UPDATE teamcruz.alunos
+SET unidade_id = 'UNIDADE_A_ID', usuario_id = 'USER_1_ID'
 WHERE cpf = '111.111.111-11';
 
 -- Aluno da Unidade B
-UPDATE teamcruz.alunos 
-SET unidade_id = 'UNIDADE_B_ID', usuario_id = 'USER_2_ID' 
+UPDATE teamcruz.alunos
+SET unidade_id = 'UNIDADE_B_ID', usuario_id = 'USER_2_ID'
 WHERE cpf = '222.222.222-22';
 ```
 

@@ -6,7 +6,12 @@ import { Franqueado } from '../entities/franqueado.entity';
 export class FranqueadosService {
   constructor(private readonly dataSource: DataSource) {}
 
-  async list(params: { page?: number; pageSize?: number; search?: string }) {
+  async list(params: {
+    page?: number;
+    pageSize?: number;
+    search?: string;
+    situacao?: string;
+  }) {
     const page = Math.max(1, Number(params.page) || 1);
     const pageSize = Math.min(100, Math.max(1, Number(params.pageSize) || 20));
     const offset = (page - 1) * pageSize;
@@ -23,6 +28,12 @@ export class FranqueadosService {
       paramIndex++;
     }
 
+    if (params.situacao) {
+      whereConditions.push(`f.situacao = $${paramIndex}`);
+      queryParams.push(params.situacao);
+      paramIndex++;
+    }
+
     const whereClause =
       whereConditions.length > 0
         ? `WHERE ${whereConditions.join(' AND ')}`
@@ -34,11 +45,11 @@ export class FranqueadosService {
     const total = parseInt(countRes[0].total);
 
     // Query com dados
-    const q = `SELECT f.*, 
+    const q = `SELECT f.*,
         (SELECT COUNT(*) FROM teamcruz.unidades u WHERE u.franqueado_id = f.id) as total_unidades
-      FROM teamcruz.franqueados f 
+      FROM teamcruz.franqueados f
       ${whereClause}
-      ORDER BY f.nome ASC 
+      ORDER BY f.nome ASC
       LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
 
     queryParams.push(pageSize, offset);
@@ -53,16 +64,85 @@ export class FranqueadosService {
     };
   }
 
-  async create(body: Partial<Franqueado> & { nome: string; cnpj: string; razao_social: string }) {
-    const q = `INSERT INTO teamcruz.franqueados 
+  async create(
+    body: Partial<Franqueado> & {
+      nome: string;
+      cnpj: string;
+      razao_social: string;
+      // Campos de endereço
+      cep?: string;
+      logradouro?: string;
+      numero?: string;
+      complemento?: string;
+      bairro?: string;
+      cidade?: string;
+      estado?: string;
+      pais?: string;
+    },
+  ) {
+    // Se os dados de endereço foram fornecidos, criar endereço primeiro
+    let enderecoId = body.endereco_id || null;
+
+    // DEBUG: Ver o que está chegando
+    console.log(
+      '🔍 CREATE FRANQUEADO - body.usuario_id:',
+      (body as any).usuario_id,
+    );
+    console.log('🔍 ENDEREÇO - logradouro:', body.logradouro);
+    console.log('🔍 ENDEREÇO - cidade:', body.cidade);
+    console.log('🔍 ENDEREÇO - estado:', body.estado);
+    console.log('🔍 ENDEREÇO - cep:', body.cep);
+    console.log('🔍 ENDEREÇO - numero:', body.numero);
+
+    if (!enderecoId && body.logradouro && body.cidade && body.estado) {
+      console.log('✅ CRIANDO ENDEREÇO...');
+
+      const enderecoQ = `INSERT INTO teamcruz.enderecos
+        (cep, logradouro, numero, complemento, bairro, cidade, estado, pais)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        RETURNING id`;
+
+      const enderecoParams = [
+        body.cep || null,
+        body.logradouro,
+        body.numero || null,
+        body.complemento || null,
+        body.bairro || null,
+        body.cidade,
+        body.estado,
+        body.pais || 'Brasil',
+      ];
+
+      console.log('📦 PARAMS ENDEREÇO:', enderecoParams);
+
+      const enderecoRes = await this.dataSource.query(
+        enderecoQ,
+        enderecoParams,
+      );
+      enderecoId = enderecoRes[0].id;
+      console.log('✅ ENDEREÇO CRIADO - ID:', enderecoId);
+    } else {
+      console.log(
+        '❌ NÃO CRIOU ENDEREÇO - enderecoId:',
+        enderecoId,
+        'logradouro:',
+        body.logradouro,
+        'cidade:',
+        body.cidade,
+        'estado:',
+        body.estado,
+      );
+    }
+
+    const q = `INSERT INTO teamcruz.franqueados
       (nome, cnpj, razao_social, nome_fantasia, inscricao_estadual, inscricao_municipal,
        email, telefone, telefone_fixo, telefone_celular, website, redes_sociais,
-       endereco_id, responsavel_nome, responsavel_cpf, responsavel_cargo, 
+       endereco_id, responsavel_nome, responsavel_cpf, responsavel_cargo,
        responsavel_email, responsavel_telefone, ano_fundacao, missao, visao, valores,
-       historico, logotipo_url, situacao, id_matriz, unidades_gerencia, data_contrato, 
-       taxa_franquia, dados_bancarios, ativo)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, 
-              $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31)
+       historico, logotipo_url, situacao, id_matriz, unidades_gerencia, data_contrato,
+       taxa_franquia, dados_bancarios, ativo, usuario_id)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15,
+              $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32)
       RETURNING *`;
 
     const params = [
@@ -78,7 +158,7 @@ export class FranqueadosService {
       body.telefone_celular || null,
       body.website || null,
       body.redes_sociais ? JSON.stringify(body.redes_sociais) : null,
-      body.endereco_id || null,
+      enderecoId,
       body.responsavel_nome || null,
       body.responsavel_cpf || null,
       body.responsavel_cargo || null,
@@ -97,6 +177,7 @@ export class FranqueadosService {
       body.taxa_franquia || 0,
       body.dados_bancarios ? JSON.stringify(body.dados_bancarios) : null,
       body.ativo ?? true,
+      (body as any).usuario_id || null, // Adicionar usuario_id
     ];
 
     const res = await this.dataSource.query(q, params);
@@ -135,9 +216,18 @@ export class FranqueadosService {
   async get(id: string) {
     const q = `SELECT f.*,
         (SELECT COUNT(*) FROM teamcruz.unidades u WHERE u.franqueado_id = f.id) as total_unidades
-      FROM teamcruz.franqueados f 
+      FROM teamcruz.franqueados f
       WHERE f.id = $1`;
     const res = await this.dataSource.query(q, [id]);
+    return res[0] ? this.formatarFranqueado(res[0]) : null;
+  }
+
+  async getByUsuarioId(usuarioId: string) {
+    const q = `SELECT f.*,
+        (SELECT COUNT(*) FROM teamcruz.unidades u WHERE u.franqueado_id = f.id) as total_unidades
+      FROM teamcruz.franqueados f
+      WHERE f.usuario_id = $1`;
+    const res = await this.dataSource.query(q, [usuarioId]);
     return res[0] ? this.formatarFranqueado(res[0]) : null;
   }
 
@@ -152,6 +242,8 @@ export class FranqueadosService {
   private formatarFranqueado(row: any): Franqueado {
     return {
       id: row.id,
+      // Vínculo com usuário
+      usuario_id: row.usuario_id,
       // Identificação
       nome: row.nome,
       cnpj: row.cnpj,

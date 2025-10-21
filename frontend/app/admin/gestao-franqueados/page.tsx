@@ -9,6 +9,7 @@ import {
   listUnidades,
   updateFranqueado,
 } from "@/lib/peopleApi";
+import { getUsuariosByPerfil } from "@/lib/usuariosApi";
 import {
   Card,
   CardContent,
@@ -26,6 +27,7 @@ import {
   XCircle,
   Plus,
   ArrowRight,
+  UserCog,
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -36,6 +38,9 @@ interface Franqueado {
   cnpj: string;
   unidades_gerencia: string[];
   ativo: boolean;
+  situacao: "ATIVA" | "INATIVA" | "EM_HOMOLOGACAO";
+  total_unidades: number;
+  usuario_id?: string;
 }
 
 interface Unidade {
@@ -44,6 +49,13 @@ interface Unidade {
   franqueado_id: string;
   status: string;
   endereco?: any;
+}
+
+interface Usuario {
+  id: string;
+  nome: string;
+  email: string;
+  username: string;
 }
 
 export default function GestaoFranqueadosPage() {
@@ -56,6 +68,11 @@ export default function GestaoFranqueadosPage() {
   const [unidadesDisponiveis, setUnidadesDisponiveis] = useState<Unidade[]>([]);
   const [unidadesVinculadas, setUnidadesVinculadas] = useState<string[]>([]);
   const [showAssociacaoModal, setShowAssociacaoModal] = useState(false);
+
+  // Novo estado para vincular usuário
+  const [showVincularUsuarioModal, setShowVincularUsuarioModal] =
+    useState(false);
+  const [selectedUsuarioId, setSelectedUsuarioId] = useState<string>("");
 
   // Verificar se é master
   const hasPerfil = (p: string) =>
@@ -89,26 +106,56 @@ export default function GestaoFranqueadosPage() {
     queryFn: () => listUnidades({ pageSize: 500 }),
   });
 
+  // Query para buscar usuários com perfil FRANQUEADO
+  const usuariosFranqueadosQuery = useQuery({
+    queryKey: ["usuarios-franqueados"],
+    queryFn: () => getUsuariosByPerfil("FRANQUEADO"),
+  });
+
   const associarUnidadesMutation = useMutation({
-    mutationFn: async ({
+    mutationFn: ({
       franqueadoId,
-      unidadesIds,
+      unidadeIds,
     }: {
       franqueadoId: string;
-      unidadesIds: string[];
-    }) => {
-      return updateFranqueado(franqueadoId, { unidades_gerencia: unidadesIds });
-    },
+      unidadeIds: string[];
+    }) => updateFranqueado(franqueadoId, { unidades_gerencia: unidadeIds }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["franqueados-gestao"] });
       toast.success("Unidades associadas com sucesso!");
       setShowAssociacaoModal(false);
-      setSelectedFranqueado(null);
+      setUnidadesVinculadas([]);
     },
     onError: (error: any) => {
-      toast.error(error.message || "Erro ao associar unidades");
+      toast.error(`Erro ao associar unidades: ${error.message}`);
     },
   });
+
+  // Mutation para vincular usuário ao franqueado
+  const vincularUsuarioMutation = useMutation({
+    mutationFn: ({
+      franqueadoId,
+      usuarioId,
+    }: {
+      franqueadoId: string;
+      usuarioId: string | null;
+    }) => updateFranqueado(franqueadoId, { usuario_id: usuarioId }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["franqueados-gestao"] });
+      toast.success("Usuário vinculado com sucesso!");
+      setShowVincularUsuarioModal(false);
+      setSelectedUsuarioId("");
+    },
+    onError: (error: any) => {
+      toast.error(`Erro ao vincular usuário: ${error.message}`);
+    },
+  });
+
+  const abrirModalVincularUsuario = (franqueado: Franqueado) => {
+    setSelectedFranqueado(franqueado);
+    setSelectedUsuarioId(franqueado.usuario_id || "");
+    setShowVincularUsuarioModal(true);
+  };
 
   const abrirModalAssociacao = (franqueado: Franqueado) => {
     setSelectedFranqueado(franqueado);
@@ -140,7 +187,7 @@ export default function GestaoFranqueadosPage() {
 
     associarUnidadesMutation.mutate({
       franqueadoId: selectedFranqueado.id,
-      unidadesIds: unidadesVinculadas,
+      unidadeIds: unidadesVinculadas,
     });
   };
 
@@ -150,7 +197,12 @@ export default function GestaoFranqueadosPage() {
   // Estatísticas
   const stats = {
     totalFranqueados: franqueados.length,
-    franqueadosAtivos: franqueados.filter((f) => f.ativo).length,
+    franqueadosAtivos: franqueados.filter((f) => f.situacao === "ATIVA").length,
+    franqueadosInativos: franqueados.filter((f) => f.situacao === "INATIVA")
+      .length,
+    franqueadosHomologacao: franqueados.filter(
+      (f) => f.situacao === "EM_HOMOLOGACAO"
+    ).length,
     totalUnidades: todasUnidades.length,
     unidadesVinculadas: todasUnidades.filter((u: Unidade) => u.franqueado_id)
       .length,
@@ -181,7 +233,7 @@ export default function GestaoFranqueadosPage() {
               className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
             >
               <Plus className="h-4 w-4" />
-              Novo Franqueado
+              Visualizar Franqueados
             </button>
           </div>
         </div>
@@ -278,9 +330,39 @@ export default function GestaoFranqueadosPage() {
           <CardContent>
             <div className="space-y-4">
               {franqueados.map((franqueado: Franqueado) => {
-                const unidadesFranqueado = todasUnidades.filter((u: Unidade) =>
-                  franqueado.unidades_gerencia?.includes(u.id)
+                // Buscar unidades vinculadas pelo franqueado_id
+                const unidadesFranqueado = todasUnidades.filter(
+                  (u: Unidade) => u.franqueado_id === franqueado.id
                 );
+
+                // Badge de status
+                const getStatusBadge = () => {
+                  switch (franqueado.situacao) {
+                    case "ATIVA":
+                      return (
+                        <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium bg-green-100 text-green-700 rounded-full">
+                          <CheckCircle className="h-3 w-3" />
+                          Ativa
+                        </span>
+                      );
+                    case "INATIVA":
+                      return (
+                        <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium bg-red-100 text-red-700 rounded-full">
+                          <XCircle className="h-3 w-3" />
+                          Inativa
+                        </span>
+                      );
+                    case "EM_HOMOLOGACAO":
+                      return (
+                        <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-700 rounded-full">
+                          <Settings className="h-3 w-3" />
+                          Em Homologação
+                        </span>
+                      );
+                    default:
+                      return null;
+                  }
+                };
 
                 return (
                   <div
@@ -292,14 +374,10 @@ export default function GestaoFranqueadosPage() {
                         <Building2 className="h-6 w-6 text-blue-600" />
                       </div>
                       <div>
-                        <h3 className="font-semibold flex items-center gap-2">
-                          {franqueado.nome}
-                          {franqueado.ativo ? (
-                            <CheckCircle className="h-4 w-4 text-green-600" />
-                          ) : (
-                            <XCircle className="h-4 w-4 text-red-600" />
-                          )}
-                        </h3>
+                        <div className="flex items-center gap-2 mb-1">
+                          <h3 className="font-semibold">{franqueado.nome}</h3>
+                          {getStatusBadge()}
+                        </div>
                         <p className="text-sm text-gray-600">
                           {franqueado.email}
                         </p>
@@ -322,6 +400,15 @@ export default function GestaoFranqueadosPage() {
                           </div>
                         </div>
                       )}
+
+                      <button
+                        onClick={() => abrirModalVincularUsuario(franqueado)}
+                        className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-3 py-2 rounded-lg text-sm transition-colors"
+                        title="Vincular usuário a este franqueado"
+                      >
+                        <UserCog className="h-4 w-4" />
+                        Vincular Usuário
+                      </button>
 
                       <button
                         onClick={() => abrirModalAssociacao(franqueado)}
@@ -430,6 +517,100 @@ export default function GestaoFranqueadosPage() {
                     <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                   )}
                   Salvar Associações
+                  <ArrowRight className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal de Vincular Usuário */}
+        {showVincularUsuarioModal && selectedFranqueado && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
+              <div className="p-6 border-b border-gray-200">
+                <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
+                  <UserCog className="h-5 w-5 text-purple-600" />
+                  Vincular Usuário ao Franqueado
+                </h2>
+                <p className="text-gray-600 mt-1">{selectedFranqueado.nome}</p>
+              </div>
+
+              <div className="p-6">
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Selecione um usuário com perfil FRANQUEADO
+                    </label>
+                    <select
+                      value={selectedUsuarioId}
+                      onChange={(e) => setSelectedUsuarioId(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                    >
+                      <option value="">Nenhum usuário selecionado</option>
+                      {usuariosFranqueadosQuery.data?.map((usuario) => (
+                        <option key={usuario.id} value={usuario.id}>
+                          {usuario.nome} ({usuario.email})
+                        </option>
+                      ))}
+                    </select>
+                    {usuariosFranqueadosQuery.isLoading && (
+                      <p className="text-sm text-gray-500 mt-1">
+                        Carregando usuários...
+                      </p>
+                    )}
+                    {!usuariosFranqueadosQuery.isLoading &&
+                      usuariosFranqueadosQuery.data?.length === 0 && (
+                        <p className="text-sm text-orange-600 mt-1">
+                          Nenhum usuário com perfil FRANQUEADO encontrado. Crie
+                          um usuário primeiro.
+                        </p>
+                      )}
+                  </div>
+
+                  {selectedFranqueado.usuario_id && (
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                      <p className="text-sm text-blue-800">
+                        <strong>Atual:</strong> Este franqueado já está
+                        vinculado a um usuário. Selecionar outro usuário irá
+                        substituir o vínculo existente.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-200">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowVincularUsuarioModal(false);
+                    setSelectedFranqueado(null);
+                    setSelectedUsuarioId("");
+                  }}
+                  className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={() => {
+                    if (selectedFranqueado) {
+                      vincularUsuarioMutation.mutate({
+                        franqueadoId: selectedFranqueado.id,
+                        usuarioId: selectedUsuarioId || null,
+                      });
+                    }
+                  }}
+                  disabled={
+                    vincularUsuarioMutation.isPending ||
+                    usuariosFranqueadosQuery.isLoading
+                  }
+                  className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50"
+                >
+                  {vincularUsuarioMutation.isPending && (
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  )}
+                  Salvar Vínculo
                   <ArrowRight className="h-4 w-4" />
                 </button>
               </div>

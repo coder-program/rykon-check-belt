@@ -74,7 +74,7 @@ export default function HorariosPage() {
   const loadHorarios = async () => {
     try {
       const token = localStorage.getItem("token");
-      
+
       // 🔒 Backend automaticamente filtra pela unidade do aluno
       // Não é necessário enviar unidade_id no frontend
       const response = await fetch(
@@ -89,10 +89,9 @@ export default function HorariosPage() {
 
       if (response.ok) {
         const data = await response.json();
-        console.log('✅ Horários carregados (filtrados pela sua unidade):', data.length);
         setHorarios(data);
       } else {
-        console.error('❌ Erro ao buscar horários:', response.status);
+        console.error("❌ Erro ao buscar horários:", response.status);
         setHorarios([]);
       }
     } catch (error) {

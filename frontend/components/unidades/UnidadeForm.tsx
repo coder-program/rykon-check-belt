@@ -25,8 +25,19 @@ interface RedesSociais {
 }
 
 type StatusUnidade = "ATIVA" | "INATIVA" | "HOMOLOGACAO";
-type PapelResponsavel = "PROPRIETARIO" | "GERENTE" | "INSTRUTOR" | "ADMINISTRATIVO";
-type Modalidade = "INFANTIL" | "ADULTO" | "NO_GI" | "COMPETICAO" | "FEMININO" | "AUTODEFESA" | "CONDICIONAMENTO";
+type PapelResponsavel =
+  | "PROPRIETARIO"
+  | "GERENTE"
+  | "INSTRUTOR"
+  | "ADMINISTRATIVO";
+type Modalidade =
+  | "INFANTIL"
+  | "ADULTO"
+  | "NO_GI"
+  | "COMPETICAO"
+  | "FEMININO"
+  | "AUTODEFESA"
+  | "CONDICIONAMENTO";
 
 interface HorariosFuncionamento {
   seg?: string;
@@ -53,6 +64,15 @@ interface UnidadeFormData {
   website?: string;
   redes_sociais?: RedesSociais;
   endereco_id?: string;
+  // Campos de endereço
+  cep?: string;
+  logradouro?: string;
+  numero?: string;
+  complemento?: string;
+  bairro?: string;
+  cidade?: string;
+  estado?: string;
+  pais?: string;
   responsavel_nome: string;
   responsavel_cpf: string;
   responsavel_papel: PapelResponsavel;
@@ -148,6 +168,52 @@ export default function UnidadeForm({
         .slice(0, 14);
     }
     return formatPhone(value);
+  };
+
+  const formatCEP = (value: string) => {
+    return value
+      .replace(/\D/g, "")
+      .replace(/(\d{5})(\d)/, "$1-$2")
+      .slice(0, 9);
+  };
+
+  const handleCEPChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const cep = formatCEP(e.target.value);
+    setFormData({ ...formData, cep });
+
+    // Se CEP tem 9 caracteres (formato 00000-000), buscar endereço
+    if (cep.length === 9) {
+      try {
+        console.log("🔍 Buscando CEP:", cep);
+        const cepNumeros = cep.replace("-", "");
+        const response = await fetch(
+          `https://viacep.com.br/ws/${cepNumeros}/json/`
+        );
+
+        if (!response.ok) {
+          throw new Error("Erro na requisição ViaCEP");
+        }
+
+        const data = await response.json();
+        console.log("📍 Dados do CEP:", data);
+
+        if (!data.erro) {
+          setFormData((prev) => ({
+            ...prev,
+            logradouro: data.logradouro || prev.logradouro || "",
+            bairro: data.bairro || prev.bairro || "",
+            cidade: data.localidade || prev.cidade || "",
+            estado: data.uf || prev.estado || "",
+            pais: "Brasil",
+          }));
+          console.log("✅ Endereço preenchido automaticamente");
+        } else {
+          console.log("❌ CEP não encontrado");
+        }
+      } catch (error) {
+        console.error("❌ Erro ao buscar CEP:", error);
+      }
+    }
   };
 
   const modalidadesOptions: { value: Modalidade; label: string }[] = [
@@ -539,12 +605,131 @@ export default function UnidadeForm({
             {activeTab === 2 && (
               <div className="space-y-4">
                 <h3 className="text-lg font-medium text-gray-900">Endereço</h3>
-                <div className="text-center py-8 text-gray-500">
-                  <MapPin className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>Funcionalidade de endereço em desenvolvimento</p>
-                  <p className="text-sm mt-2">
-                    Você poderá vincular um endereço à unidade em breve
-                  </p>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      CEP *
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.cep || ""}
+                      onChange={handleCEPChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="00000-000"
+                      maxLength={9}
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Logradouro *
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.logradouro || ""}
+                      onChange={(e) =>
+                        setFormData({ ...formData, logradouro: e.target.value })
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Nome da rua, avenida, etc."
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Número *
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.numero || ""}
+                      onChange={(e) =>
+                        setFormData({ ...formData, numero: e.target.value })
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="123"
+                    />
+                  </div>
+                  <div className="md:col-span-3">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Complemento
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.complemento || ""}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          complemento: e.target.value,
+                        })
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Apartamento, sala, andar, etc."
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Bairro *
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.bairro || ""}
+                      onChange={(e) =>
+                        setFormData({ ...formData, bairro: e.target.value })
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Nome do bairro"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Cidade *
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.cidade || ""}
+                      onChange={(e) =>
+                        setFormData({ ...formData, cidade: e.target.value })
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Nome da cidade"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Estado *
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.estado || ""}
+                      onChange={(e) =>
+                        setFormData({ ...formData, estado: e.target.value })
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="UF"
+                      maxLength={2}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      País
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.pais || "Brasil"}
+                      onChange={(e) =>
+                        setFormData({ ...formData, pais: e.target.value })
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="País"
+                    />
+                  </div>
                 </div>
               </div>
             )}
@@ -604,8 +789,7 @@ export default function UnidadeForm({
                       onChange={(e) =>
                         setFormData({
                           ...formData,
-                          responsavel_papel: e.target
-                            .value as PapelResponsavel,
+                          responsavel_papel: e.target.value as PapelResponsavel,
                         })
                       }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -778,9 +962,7 @@ export default function UnidadeForm({
                         >
                           <input
                             type="checkbox"
-                            checked={formData.modalidades?.includes(
-                              mod.value
-                            )}
+                            checked={formData.modalidades?.includes(mod.value)}
                             onChange={() => toggleModalidade(mod.value)}
                             className="w-4 h-4 text-blue-600"
                           />

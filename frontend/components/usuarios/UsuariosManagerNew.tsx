@@ -177,17 +177,24 @@ const UsuariosManagerNew = () => {
       if (modalType === "user") {
         if (editingItem) {
           // Atualizar usuário
+          const updateData: any = {
+            email: formData.email,
+            nome: formData.nome,
+            cpf: formData.cpf,
+            telefone: formData.telefone,
+            ativo: formData.ativo,
+            cadastro_completo: formData.cadastro_completo,
+            perfil_ids: formData.perfil_ids,
+          };
+
+          // Só envia senha se foi preenchida
+          if (formData.password && formData.password.trim() !== "") {
+            updateData.password = formData.password;
+          }
+
           await updateUsuarioMutation.mutateAsync({
             id: editingItem.id,
-            data: {
-              email: formData.email,
-              nome: formData.nome,
-              cpf: formData.cpf,
-              telefone: formData.telefone,
-              ativo: formData.ativo,
-              cadastro_completo: formData.cadastro_completo,
-              perfil_ids: formData.perfil_ids,
-            },
+            data: updateData,
           });
         } else {
           // Criar usuário

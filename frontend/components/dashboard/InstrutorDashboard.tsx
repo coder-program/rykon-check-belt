@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { useAuth } from "@/app/auth/AuthContext";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
@@ -126,7 +126,7 @@ export default function InstrutorDashboard() {
       title: "Registrar Presença",
       description: "Fazer chamada da próxima aula",
       icon: UserCheck,
-      action: () => router.push("/presenca/registrar"),
+      action: () => router.push("/presenca"),
       color: "bg-green-500",
       urgent: true,
     },
@@ -134,22 +134,22 @@ export default function InstrutorDashboard() {
       title: "Meus Alunos",
       description: "Gerenciar e avaliar alunos",
       icon: Users,
-      action: () => router.push("/meus-alunos"),
+      action: () => router.push("/alunos"),
       color: "bg-blue-500",
     },
     {
       title: "Graduações",
       description: "5 avaliações pendentes",
       icon: GraduationCap,
-      action: () => router.push("/graduacoes"),
+      action: () => router.push("/graduacao"),
       color: "bg-yellow-500",
       urgent: true,
     },
     {
-      title: "Relatórios",
-      description: "Progresso dos alunos",
+      title: "Horários",
+      description: "Visualizar cronograma de aulas",
       icon: TrendingUp,
-      action: () => router.push("/relatorios"),
+      action: () => router.push("/horarios"),
       color: "bg-purple-500",
     },
   ];
@@ -341,7 +341,7 @@ export default function InstrutorDashboard() {
                     Carregando alunos em destaque...
                   </div>
                 ) : alunosDestaque && alunosDestaque.length > 0 ? (
-                  alunosDestaque.map((aluno, index) => (
+                  alunosDestaque.map((aluno) => (
                     <div
                       key={aluno.id}
                       className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 cursor-pointer transition-colors"
@@ -397,7 +397,7 @@ export default function InstrutorDashboard() {
                   <Users className="h-4 w-4 text-blue-600" />
                 </div>
                 <div className="text-2xl font-bold text-blue-600 mt-2">
-                  +{instrutorStats.novasInscricoes}
+                  +{stats.novasInscricoes}
                 </div>
                 <div className="text-xs text-gray-600">Este mês</div>
               </div>
@@ -408,7 +408,7 @@ export default function InstrutorDashboard() {
                   <Clock className="h-4 w-4 text-green-600" />
                 </div>
                 <div className="text-2xl font-bold text-green-600 mt-2">
-                  {instrutorStats.presencaMedia}%
+                  {stats.presencaMedia}%
                 </div>
                 <div className="text-xs text-gray-600">Média mensal</div>
               </div>
@@ -428,7 +428,7 @@ export default function InstrutorDashboard() {
                   <Star className="h-4 w-4 text-purple-600" />
                 </div>
                 <div className="text-2xl font-bold text-purple-600 mt-2">
-                  {instrutorStats.avaliacoesPendentes}
+                  {stats.avaliacoesPendentes}
                 </div>
                 <div className="text-xs text-gray-600">Pendentes</div>
               </div>

@@ -2,7 +2,7 @@
 
 ## 🎯 Problema Identificado
 
-**Questão:** *"E se o aluno quiser colocar o perfil errado?"*
+**Questão:** _"E se o aluno quiser colocar o perfil errado?"_
 
 Exatamente! Não podemos permitir que qualquer pessoa se cadastre como "Instrutor", "Professor" ou "Gerente" só porque quer. Isso seria uma falha grave de segurança.
 
@@ -13,9 +13,11 @@ Exatamente! Não podemos permitir que qualquer pessoa se cadastre como "Instruto
 ### **Sistema de Aprovação em Dois Níveis**
 
 #### **Nível 1: Perfis de Acesso Livre (Auto-Aprovação)**
+
 - ✅ **Aluno** → Aprovação automática, conta ativa imediatamente
 
 #### **Nível 2: Perfis Restritos (Requer Aprovação)**
+
 - ⏳ **Instrutor/Professor** → Conta criada como INATIVA, requer aprovação
 - ⏳ **Gerente de Unidade** → Conta criada como INATIVA, requer aprovação
 - ⏳ **Franqueado** → Conta criada como INATIVA, requer aprovação
@@ -33,8 +35,8 @@ Exatamente! Não podemos permitir que qualquer pessoa se cadastre como "Instruto
 2. Seleciona perfil "Instrutor"
    ↓
 3. ⚠️ ALERTA APARECE:
-   "Atenção: Cadastros com perfil de Instrutor 
-    requerem aprovação do administrador. 
+   "Atenção: Cadastros com perfil de Instrutor
+    requerem aprovação do administrador.
     Sua conta ficará inativa até a aprovação."
    ↓
 4. Usuário completa cadastro
@@ -44,7 +46,7 @@ Exatamente! Não podemos permitir que qualquer pessoa se cadastre como "Instruto
 6. Usuário criado com status: ativo = FALSE
    ↓
 7. Mensagem de sucesso:
-   "Cadastro realizado! Aguarde aprovação do 
+   "Cadastro realizado! Aguarde aprovação do
     administrador para acessar o sistema."
    ↓
 8. Redirecionado para login com mensagem amarela
@@ -74,7 +76,7 @@ Exatamente! Não podemos permitir que qualquer pessoa se cadastre como "Instruto
 ```typescript
 async registerAluno(payload: any) {
   let usuarioAtivo = true; // Por padrão ativo
-  
+
   // Lista de perfis que requerem aprovação
   const perfisQueRequeremAprovacao = [
     'instrutor',
@@ -86,8 +88,7 @@ async registerAluno(payload: any) {
 
   // Verificar se perfil selecionado requer aprovação
   if (perfisQueRequeremAprovacao.includes(perfilNome)) {
-    usuarioAtivo = false; // ❌ CONTA INATIVA
-    console.log(`⚠️  Cadastro com perfil "${perfilNome}" requer aprovação.`);
+    usuarioAtivo = false;
   }
 
   // Criar usuário
@@ -103,20 +104,18 @@ async registerAluno(payload: any) {
 
 ```typescript
 // Alerta visual quando seleciona perfil restrito
-{formData.perfil_id && 
- perfil.nome !== "aluno" && (
-  <div className="bg-yellow-50 border border-yellow-200">
-    ⚠️ Atenção: Cadastros com perfil de {perfil.nome} 
-    requerem aprovação do administrador. 
-    Sua conta ficará inativa até a aprovação.
-  </div>
-)}
+{
+  formData.perfil_id && perfil.nome !== "aluno" && (
+    <div className="bg-yellow-50 border border-yellow-200">
+      ⚠️ Atenção: Cadastros com perfil de {perfil.nome}
+      requerem aprovação do administrador. Sua conta ficará inativa até a aprovação.
+    </div>
+  );
+}
 
 // Mensagem diferente após cadastro
 if (requerAprovacao) {
-  toast.success(
-    "Cadastro realizado! Aguarde aprovação do administrador."
-  );
+  toast.success("Cadastro realizado! Aguarde aprovação do administrador.");
   router.push("/login?message=pending-approval");
 } else {
   toast.success("Cadastro realizado! Faça login.");
@@ -129,19 +128,23 @@ if (requerAprovacao) {
 ## 🛡️ Camadas de Segurança
 
 ### **Camada 1: Interface Visual**
+
 - ⚠️ Alerta amarelo quando seleciona perfil restrito
 - 📝 Texto explicativo sobre necessidade de aprovação
 
 ### **Camada 2: Validação Backend**
+
 - 🔒 Verificação automática do tipo de perfil
 - ❌ Conta criada como INATIVA se perfil requer aprovação
 - 📋 Log de segurança no console
 
 ### **Camada 3: Bloqueio de Login**
+
 - 🚫 Usuários inativos não conseguem fazer login
 - 💬 Mensagem clara: "Sua conta está inativa"
 
 ### **Camada 4: Controle Administrativo**
+
 - 👥 Admin vê lista de usuários pendentes
 - ✅ Aprovação manual por administrador
 - 📧 (Futuro) Notificação por email
@@ -150,14 +153,14 @@ if (requerAprovacao) {
 
 ## 📊 Matriz de Perfis e Aprovação
 
-| Perfil | Acesso Livre | Requer Aprovação | Status Inicial |
-|--------|--------------|------------------|----------------|
-| **Aluno** | ✅ Sim | ❌ Não | ATIVO |
-| **Instrutor** | ❌ Não | ✅ Sim | INATIVO |
-| **Professor** | ❌ Não | ✅ Sim | INATIVO |
-| **Gerente de Unidade** | ❌ Não | ✅ Sim | INATIVO |
-| **Franqueado** | ❌ Não | ✅ Sim | INATIVO |
-| **Master** | ❌ Não | ✅ Sim | INATIVO |
+| Perfil                 | Acesso Livre | Requer Aprovação | Status Inicial |
+| ---------------------- | ------------ | ---------------- | -------------- |
+| **Aluno**              | ✅ Sim       | ❌ Não           | ATIVO          |
+| **Instrutor**          | ❌ Não       | ✅ Sim           | INATIVO        |
+| **Professor**          | ❌ Não       | ✅ Sim           | INATIVO        |
+| **Gerente de Unidade** | ❌ Não       | ✅ Sim           | INATIVO        |
+| **Franqueado**         | ❌ Não       | ✅ Sim           | INATIVO        |
+| **Master**             | ❌ Não       | ✅ Sim           | INATIVO        |
 
 ---
 
@@ -194,11 +197,13 @@ if (requerAprovacao) {
 ### **Onde Aprovar:**
 
 #### **Opção 1: `/usuarios`**
+
 - Lista todos os usuários
 - Filtrar por status "Inativo"
 - Botão "Ativar" para aprovar
 
 #### **Opção 2: `/admin/usuarios-pendentes`** (Recomendado)
+
 - Lista APENAS usuários pendentes
 - Mostra perfil solicitado
 - Botão destacado "Aprovar"
@@ -230,16 +235,19 @@ if (requerAprovacao) {
 ## 🚀 Benefícios da Solução
 
 ### **Segurança:**
+
 ✅ Impede cadastro fraudulento com perfis elevados
 ✅ Validação em múltiplas camadas
 ✅ Controle administrativo total
 
 ### **Experiência do Usuário:**
+
 ✅ Transparente (usuário sabe que precisa de aprovação)
 ✅ Feedback claro em cada etapa
 ✅ Mensagens personalizadas por tipo de perfil
 
 ### **Auditoria:**
+
 ✅ Logs de tentativas de cadastro com perfis restritos
 ✅ Histórico de aprovações/rejeições
 ✅ Rastreabilidade completa
@@ -249,16 +257,19 @@ if (requerAprovacao) {
 ## 📝 Próximas Melhorias
 
 ### **Curto Prazo:**
+
 - [ ] Criar tela `/admin/usuarios-pendentes` dedicada
 - [ ] Adicionar campo de motivo na rejeição
 - [ ] Notificação por email quando aprovado/rejeitado
 
 ### **Médio Prazo:**
+
 - [ ] Sistema de upload de documentos comprobatórios
 - [ ] Validação de CPF em base externa
 - [ ] Aprovação em dois níveis (gerente + admin)
 
 ### **Longo Prazo:**
+
 - [ ] Integração com sistemas de verificação de identidade
 - [ ] Verificação facial/biométrica
 - [ ] Sistema de pontos de confiança
@@ -268,6 +279,7 @@ if (requerAprovacao) {
 ## ⚠️ Cenários de Segurança Tratados
 
 ### **Ataque 1: Cadastro Malicioso como Admin**
+
 ```
 ❌ Tentativa: Usuário tenta se cadastrar como "Master"
 ✅ Defesa: Conta criada como INATIVA
@@ -275,6 +287,7 @@ if (requerAprovacao) {
 ```
 
 ### **Ataque 2: Modificação de perfil_id na requisição**
+
 ```
 ❌ Tentativa: Usuário altera perfil_id no frontend
 ✅ Defesa: Backend valida perfil e marca como INATIVO se necessário
@@ -282,6 +295,7 @@ if (requerAprovacao) {
 ```
 
 ### **Ataque 3: Múltiplos Cadastros**
+
 ```
 ❌ Tentativa: Criar várias contas com perfis elevados
 ✅ Defesa: Todas ficam INATIVAS aguardando aprovação
@@ -295,14 +309,17 @@ if (requerAprovacao) {
 ### **Métricas Importantes:**
 
 1. **Taxa de Aprovação:**
+
    - Quantos % dos cadastros com perfis restritos são aprovados
    - Meta: > 80% (indica que processo é transparente)
 
 2. **Tempo Médio de Aprovação:**
+
    - Quanto tempo entre cadastro e aprovação
    - Meta: < 24 horas
 
 3. **Taxa de Rejeição:**
+
    - Quantos % são rejeitados
    - Alta taxa pode indicar tentativas maliciosas
 
@@ -326,6 +343,6 @@ O sistema implementado garante que:
 
 ---
 
-**Criado em:** 02/10/2025  
-**Versão:** 1.0  
+**Criado em:** 02/10/2025
+**Versão:** 1.0
 **Status:** ✅ Implementado e Testado

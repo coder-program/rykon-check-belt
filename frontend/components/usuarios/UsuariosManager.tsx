@@ -293,7 +293,7 @@ const UsuariosManager = () => {
                   <th>Cadastro Completo</th>
                   <th>Último Login</th>
                   <th>Data Criação</th>
-                  <th>Ações</th>
+                  {/* <th>Ações</th> */}
                 </tr>
               </thead>
               <tbody>

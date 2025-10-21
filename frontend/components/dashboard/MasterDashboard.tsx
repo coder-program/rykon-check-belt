@@ -91,7 +91,7 @@ export default function MasterDashboard() {
       badge: "Ativo",
     },
     {
-      title: "Aprovar Usuários",
+      title: "Aprovar Usuários e Alunos",
       description: `${stats.usuariosPendentes} usuários aguardando aprovação`,
       icon: UserCheck,
       action: () => router.push("/admin/usuarios-pendentes"),
@@ -100,7 +100,7 @@ export default function MasterDashboard() {
       urgent: stats.usuariosPendentes > 0,
     },
     {
-      title: "Alunos",
+      title: "Gestão de Alunos",
       description:
         "Gestão completa de alunos da TeamCruz com controle de graduações",
       icon: Users,
@@ -108,16 +108,16 @@ export default function MasterDashboard() {
       color: "bg-blue-500",
       badge: "Ativo",
     },
-    {
+    /* {
       title: "Aprovação de Alunos",
       description: "Aprovar cadastros de ALUNOS de Jiu-Jitsu (estudantes)",
       icon: UserCheck,
       action: () => router.push("/aprovacao-alunos"),
       color: "bg-yellow-500",
       badge: "🥋 Alunos",
-    },
+    }, */
     {
-      title: "Professores",
+      title: "Gestão de Professores",
       description:
         "Cadastro e gestão dos instrutores e professores da academia",
       icon: Users,
@@ -125,7 +125,7 @@ export default function MasterDashboard() {
       color: "bg-purple-500",
       badge: "Novo!",
     },
-    {
+    /* {
       title: "Meus Alunos",
       description:
         "Visualização personalizada dos alunos sob sua responsabilidade",
@@ -133,8 +133,7 @@ export default function MasterDashboard() {
       action: () => router.push("/meus-alunos"),
       color: "bg-cyan-500",
       badge: "Personalizado",
-    },
-    {
+    } */ {
       title: "TeamCruz Jiu-Jitsu",
       description: "Sistema completo de controle de presença e graduação",
       icon: Trophy,
@@ -142,14 +141,14 @@ export default function MasterDashboard() {
       color: "bg-red-500",
       badge: "Sistema",
     },
-    {
+    /* {
       title: "Franqueados",
       description: "Gestão de franquias e contratos de franqueados",
-      icon: Building2,
+      on: Building2,
       action: () => router.push("/franqueados"),
       color: "bg-indigo-500",
       badge: "Master",
-    },
+    }, */
     {
       title: "Gestão Franqueados",
       description: "Associar franqueados e unidades",
@@ -158,14 +157,14 @@ export default function MasterDashboard() {
       color: "bg-purple-500",
       badge: "Admin",
     },
-    {
+    /* {
       title: "Unidades",
       description: "Cadastro e administração de todas as unidades",
       icon: MapPin,
       action: () => router.push("/unidades"),
       color: "bg-teal-500",
       badge: "Restrito",
-    },
+    }, */
     {
       title: "Gestão Unidades",
       description: "Vincular professores às unidades",
@@ -181,6 +180,14 @@ export default function MasterDashboard() {
       action: () => router.push("/admin/sistema-graduacao"),
       color: "bg-yellow-500",
       badge: "Admin",
+    },
+    {
+      title: "Aprovação de Graduações",
+      description: "Aprovar alunos para próxima faixa",
+      icon: Trophy,
+      action: () => router.push("/admin/aprovacao-graduacao"),
+      color: "bg-orange-500",
+      badge: "Novo!",
     },
     {
       title: "Sistema Presença",
@@ -206,14 +213,14 @@ export default function MasterDashboard() {
       color: "bg-amber-500",
       badge: "Admin",
     },
-    {
+    /* {
       title: "Presença",
       description: "Registre sua presença nas aulas e acompanhe sua evolução",
       icon: Clock,
       action: () => router.push("/presenca"),
       color: "bg-emerald-500",
       badge: "Ativo",
-    },
+    }, */
   ];
 
   return (

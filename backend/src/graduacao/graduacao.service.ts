@@ -132,7 +132,23 @@ export class GraduacaoService {
         : new Date(faixaAtiva.dt_inicio);
     const tempoNaFaixa = agora.getTime() - dataInicio.getTime();
     const diasNaFaixa = Math.floor(tempoNaFaixa / (1000 * 60 * 60 * 24));
-    const tempoMinimo = faixaAtiva.faixaDef.codigo === 'BRANCA' ? 365 : 730;
+
+    // Tempo mínimo por faixa:
+    // Branca: 1 ano (365 dias)
+    // Azul: 2 anos (730 dias)
+    // Roxa: 2 anos (730 dias)
+    // Marrom: 1.5 anos (548 dias)
+    let tempoMinimo = 730; // Default: 2 anos
+    let tempoMinimoAnos = 2;
+
+    if (faixaAtiva.faixaDef.codigo === 'BRANCA') {
+      tempoMinimo = 365;
+      tempoMinimoAnos = 1;
+    } else if (faixaAtiva.faixaDef.codigo === 'MARROM') {
+      tempoMinimo = 548;
+      tempoMinimoAnos = 1.5;
+    }
+
     const diasRestantes = Math.max(0, tempoMinimo - diasNaFaixa);
 
     return {
@@ -150,7 +166,7 @@ export class GraduacaoService {
       progressoTempo: progresso.tempo,
       diasNaFaixa,
       diasRestantes,
-      tempoMinimoAnos: faixaAtiva.faixaDef.codigo === 'BRANCA' ? 1 : 2,
+      tempoMinimoAnos,
       proximaFaixa: proximaFaixa?.nome_exibicao,
       dtInicioFaixa: dataInicio,
       alunoFaixaId: faixaAtiva.id,

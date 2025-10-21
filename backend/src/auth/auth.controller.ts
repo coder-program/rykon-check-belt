@@ -12,6 +12,7 @@ import { Response, Request as ExpressRequest } from 'express';
 import { AuthService, LoginResponse } from './auth.service';
 import { LocalAuthGuard } from './guards/local-auth.guard';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { JwtAuthGuardAllowInactive } from './guards/jwt-auth-allow-inactive.guard';
 import { LoginDto } from './dto/login.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
@@ -33,9 +34,6 @@ export class AuthController {
     @Body() loginDto: LoginDto,
     @Res({ passthrough: true }) res: Response,
   ): Promise<LoginResponse> {
-    console.log('🔐 AuthController.login - Request body:', loginDto);
-    console.log('🔐 AuthController.login - Request user:', req.user);
-
     if (!req.user) {
       console.error(
         '❌ AuthController.login - Nenhum usuário no request (LocalAuthGuard falhou)',
@@ -43,7 +41,11 @@ export class AuthController {
       throw new Error('Authentication failed');
     }
 
-    const resp = await this.authService.login(req.user);
+    // Capturar IP e UserAgent para auditoria
+    const ipAddress = req.ip || req.connection?.remoteAddress || 'unknown';
+    const userAgent = req.get('User-Agent') || 'unknown';
+
+    const resp = await this.authService.login(req.user, ipAddress, userAgent);
     const rt = this.authService.issueRefreshToken(req.user.id);
     this.setRefreshCookie(res, rt);
     return resp;
@@ -59,26 +61,35 @@ export class AuthController {
 
   @UseGuards(JwtAuthGuard)
   @Get('me')
-  @ApiOperation({ summary: 'Dados completos do usuário logado incluindo status do cadastro' })
+  @ApiOperation({
+    summary: 'Dados completos do usuário logado incluindo status do cadastro',
+  })
   async getMe(@Request() req) {
     return this.authService.getUserProfile(req.user.id);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuardAllowInactive)
   @Post('complete-profile')
   @ApiOperation({ summary: 'Completar dados do perfil após primeiro login' })
   async completeProfile(
     @Request() req,
     @Body() completeProfileDto: CompleteProfileDto,
   ) {
-    console.log('📥 [AuthController.completeProfile] Requisição recebida');
-    console.log('📥 [AuthController.completeProfile] User ID:', req.user?.id);
-    console.log('📥 [AuthController.completeProfile] User:', JSON.stringify(req.user, null, 2));
-    console.log('📥 [AuthController.completeProfile] Body recebido:', JSON.stringify(completeProfileDto, null, 2));
-    
+    console.log('🔍 [AuthController.completeProfile] INICIANDO...');
+    console.log(
+      '🔍 [AuthController.completeProfile] Authorization header:',
+      req.headers.authorization || 'NENHUM',
+    );
+    console.log(
+      '🔍 [AuthController.completeProfile] req.user:',
+      req.user ? req.user.id : 'NENHUM USER',
+    );
+
     try {
-      const result = await this.authService.completeProfile(req.user.id, completeProfileDto);
-      console.log('✅ [AuthController.completeProfile] Sucesso! Resultado:', JSON.stringify(result, null, 2));
+      const result = await this.authService.completeProfile(
+        req.user.id,
+        completeProfileDto,
+      );
       return result;
     } catch (error) {
       console.error('❌ [AuthController.completeProfile] ERRO:', error.message);
@@ -118,11 +129,17 @@ export class AuthController {
   @Post('register')
   @ApiOperation({ summary: 'Auto-cadastro de aluno' })
   async register(
+    @Request() req,
     @Body() body: RegisterDto,
     @Res({ passthrough: true }) res: Response,
   ): Promise<LoginResponse> {
     const user = await this.authService.registerAluno(body);
-    const resp = await this.authService.login(user);
+
+    // Capturar IP e UserAgent para auditoria
+    const ipAddress = req.ip || req.connection?.remoteAddress || 'unknown';
+    const userAgent = req.get('User-Agent') || 'unknown';
+
+    const resp = await this.authService.login(user, ipAddress, userAgent);
     const rt = this.authService.issueRefreshToken(user.id);
     this.setRefreshCookie(res, rt);
     return resp;

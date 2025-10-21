@@ -17,8 +17,13 @@ export const authService = {
   },
 
   async validateToken(_token: string) {
+    console.log("🌐 [authService.validateToken] Chamando /auth/profile...");
     // backend valida via guard, apenas chama o profile
     const user = await http("/auth/profile", { auth: true });
+    console.log(
+      "📥 [authService.validateToken] Resposta:",
+      JSON.stringify(user, null, 2)
+    );
     return user;
   },
 
@@ -44,11 +49,22 @@ export const authService = {
   },
 
   async completeProfile(profileData: any) {
+    console.log("🌐 [authService.completeProfile] Enviando para API...");
+    console.log(
+      "📤 [authService.completeProfile] profileData:",
+      JSON.stringify(profileData, null, 2)
+    );
+
     const data = await http("/auth/complete-profile", {
       method: "POST",
       body: profileData,
       auth: true,
     });
+
+    console.log(
+      "📥 [authService.completeProfile] Resposta da API:",
+      JSON.stringify(data, null, 2)
+    );
     return data;
   },
 };

@@ -8,6 +8,7 @@ import {
   ManyToOne,
 } from 'typeorm';
 import { Endereco } from '../../enderecos/endereco.entity';
+import { Usuario } from '../../usuarios/entities/usuario.entity';
 
 export type SituacaoFranqueado = 'ATIVA' | 'INATIVA' | 'EM_HOMOLOGACAO';
 
@@ -15,6 +16,14 @@ export type SituacaoFranqueado = 'ATIVA' | 'INATIVA' | 'EM_HOMOLOGACAO';
 export class Franqueado {
   @PrimaryGeneratedColumn('uuid')
   id: string;
+
+  // Vínculo com usuário
+  @Column({ type: 'uuid', nullable: true })
+  usuario_id: string | null;
+
+  @ManyToOne(() => Usuario, { nullable: true })
+  @JoinColumn({ name: 'usuario_id' })
+  usuario: Usuario | null;
 
   // Identificação
   @Column({ length: 150 })

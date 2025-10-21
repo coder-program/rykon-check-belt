@@ -18,6 +18,7 @@ import {
   AlunoFaixaGrau,
   OrigemGrau,
 } from '../../graduacao/entities/aluno-faixa-grau.entity';
+import { UsuariosService } from '../../usuarios/services/usuarios.service';
 
 interface ListAlunosParams {
   page?: number;
@@ -40,9 +41,22 @@ export class AlunosService {
     @InjectRepository(AlunoFaixaGrau)
     private readonly alunoFaixaGrauRepository: Repository<AlunoFaixaGrau>,
     private dataSource: DataSource,
+    private readonly usuariosService: UsuariosService,
   ) {}
 
-  async list(params: ListAlunosParams) {
+  async list(params: ListAlunosParams, user?: any) {
+    console.log('🔍 [AlunosService.list] INÍCIO');
+    console.log(
+      '🔍 [AlunosService.list] params:',
+      JSON.stringify(params, null, 2),
+    );
+    console.log(
+      '🔍 [AlunosService.list] user:',
+      user
+        ? { id: user.id, perfis: user.perfis?.map((p: any) => p.nome) }
+        : 'NENHUM',
+    );
+
     const page = Math.max(1, Number(params.page) || 1);
     const pageSize = Math.min(100, Math.max(1, Number(params.pageSize) || 20));
 
@@ -64,9 +78,75 @@ export class AlunosService {
 
     // Filtro por unidade
     if (params.unidade_id) {
+      console.log('✅ Filtrando por unidade_id:', params.unidade_id);
       query.andWhere('aluno.unidade_id = :unidade', {
         unidade: params.unidade_id,
       });
+    }
+    // Se gerente de unidade, filtra apenas alunos da sua unidade
+    else if (user && this.isGerenteUnidade(user) && !this.isMaster(user)) {
+      console.log('👤 Usuário é GERENTE DE UNIDADE');
+      const unidadeId = await this.getUnidadeIdByGerente(user);
+      console.log('👤 unidadeId do gerente:', unidadeId);
+      if (unidadeId) {
+        query.andWhere('aluno.unidade_id = :unidadeId', { unidadeId });
+      } else {
+        query.andWhere('1 = 0'); // Retorna vazio se gerente não tem unidade
+      }
+    }
+    // Se recepcionista, filtra apenas alunos das suas unidades
+    else if (user && this.isRecepcionista(user) && !this.isMaster(user)) {
+      console.log('👤 Usuário é RECEPCIONISTA');
+      const unidadeIds = await this.getUnidadesIdsByRecepcionista(user);
+      console.log('👤 unidadeIds do recepcionista:', unidadeIds);
+      if (unidadeIds && unidadeIds.length > 0) {
+        query.andWhere('aluno.unidade_id IN (:...unidadeIds)', { unidadeIds });
+      } else {
+        query.andWhere('1 = 0'); // Retorna vazio se recepcionista não tem unidades
+      }
+    }
+    // Se professor/instrutor, filtra apenas alunos das suas unidades
+    else if (user && this.isProfessor(user)) {
+      console.log('👤 Usuário é PROFESSOR/INSTRUTOR');
+      const professorId = await this.getProfessorIdByUser(user);
+      console.log('👤 professorId:', professorId);
+      if (professorId) {
+        const unidadesDoProfessor =
+          await this.getUnidadesDoProfessor(professorId);
+        console.log('👤 unidades do professor:', unidadesDoProfessor);
+        if (unidadesDoProfessor.length > 0) {
+          query.andWhere('aluno.unidade_id IN (:...unidades)', {
+            unidades: unidadesDoProfessor,
+          });
+        } else {
+          query.andWhere('1 = 0'); // Retorna vazio se professor não tem unidades
+        }
+      }
+    }
+    // Se franqueado (não master), filtra apenas alunos das suas unidades
+    else if (user && this.isFranqueado(user) && !this.isMaster(user)) {
+      console.log('👤 Usuário é FRANQUEADO (não master)');
+      const franqueadoId = await this.getFranqueadoIdByUser(user);
+      console.log('👤 franqueadoId:', franqueadoId);
+      if (franqueadoId) {
+        // Buscar unidades do franqueado
+        const unidadesDeFranqueado =
+          await this.getUnidadesDeFranqueado(franqueadoId);
+        console.log('👤 unidades do franqueado:', unidadesDeFranqueado);
+
+        if (unidadesDeFranqueado.length > 0) {
+          query.andWhere('aluno.unidade_id IN (:...unidades)', {
+            unidades: unidadesDeFranqueado,
+          });
+        } else {
+          console.log('⚠️ Franqueado não tem unidades vinculadas!');
+          query.andWhere('1 = 0'); // Retorna vazio se franqueado não tem unidades
+        }
+      } else {
+        console.log('⚠️ Não encontrou franqueado_id para o usuário!');
+      }
+    } else {
+      console.log('👤 Usuário é MASTER ou sem restrições');
     }
 
     // Filtro por status
@@ -88,8 +168,43 @@ export class AlunosService {
       .take(pageSize)
       .getManyAndCount();
 
+    // Buscar status dos usuários vinculados aos alunos
+    const usuarioIds = items
+      .filter((aluno) => aluno.usuario_id)
+      .map((aluno) => aluno.usuario_id);
+
+    let usuariosStatus: { [key: string]: string } = {};
+    if (usuarioIds.length > 0) {
+      const usuarios = await this.dataSource.query(
+        `SELECT id, status FROM teamcruz.usuarios WHERE id = ANY($1)`,
+        [usuarioIds],
+      );
+      usuariosStatus = usuarios.reduce((acc, u) => {
+        acc[u.id] = u.status;
+        return acc;
+      }, {});
+    }
+
+    // Mapear os resultados para incluir o status do usuário
+    const itemsWithStatus = items.map((aluno) => ({
+      ...aluno,
+      status_usuario: aluno.usuario_id
+        ? usuariosStatus[aluno.usuario_id] || null
+        : null,
+    }));
+
+    console.log(
+      '✅ [AlunosService.list] RETORNANDO:',
+      itemsWithStatus.map((a: any) => ({
+        id: a.id,
+        nome: a.nome_completo,
+        status_aluno: a.status,
+        status_usuario: a.status_usuario,
+      })),
+    );
+
     return {
-      items,
+      items: itemsWithStatus,
       page,
       pageSize,
       total,
@@ -97,7 +212,7 @@ export class AlunosService {
     };
   }
 
-  async findById(id: string): Promise<Aluno> {
+  async findById(id: string, user?: any): Promise<Aluno> {
     const aluno = await this.alunoRepository.findOne({
       where: { id },
       relations: ['unidade'], // Removendo relações problemáticas temporariamente
@@ -105,6 +220,18 @@ export class AlunosService {
 
     if (!aluno) {
       throw new NotFoundException(`Aluno com ID ${id} não encontrado`);
+    }
+
+    // Se franqueado (não master), verifica se aluno pertence às suas unidades
+    if (user && this.isFranqueado(user) && !this.isMaster(user)) {
+      const franqueadoId = await this.getFranqueadoIdByUser(user);
+      if (franqueadoId) {
+        const unidadesDeFranqueado =
+          await this.getUnidadesDeFranqueado(franqueadoId);
+        if (!unidadesDeFranqueado.includes(aluno.unidade_id)) {
+          throw new NotFoundException('Aluno não encontrado');
+        }
+      }
     }
 
     return aluno;
@@ -120,62 +247,39 @@ export class AlunosService {
   }
 
   async create(dto: CreateAlunoDto): Promise<Aluno> {
-    console.log('🔵 [AlunosService.create] Iniciando criação de aluno...');
-    console.log(
-      '🔵 [AlunosService.create] DTO recebido:',
-      JSON.stringify(dto, null, 2),
-    );
-
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
-    console.log('🔵 [AlunosService.create] Transação iniciada');
 
     let savedAluno: any;
 
     try {
       // 1. Verificar se CPF já existe
-      console.log(
-        '🔵 [AlunosService.create] Verificando CPF existente:',
-        dto.cpf,
-      );
       const existingAluno = await this.alunoRepository.findOne({
         where: { cpf: dto.cpf },
       });
 
       if (existingAluno) {
-        console.error('❌ [AlunosService.create] CPF já cadastrado:', dto.cpf);
         throw new ConflictException('CPF já cadastrado');
       }
-      console.log('✅ [AlunosService.create] CPF OK (não existe duplicata)');
 
       // 2. Validar se é menor de idade e tem responsável
-      console.log('🔵 [AlunosService.create] Validando idade e responsável...');
       const dataNascimento = new Date(dto.data_nascimento);
       const idade = this.calcularIdade(dataNascimento);
-      console.log('🔵 [AlunosService.create] Idade calculada:', idade);
 
       if (idade < 18) {
-        console.log(
-          '🔵 [AlunosService.create] Aluno menor de idade, validando responsável...',
-        );
         if (
           !dto.responsavel_nome ||
           !dto.responsavel_cpf ||
           !dto.responsavel_telefone
         ) {
-          console.error(
-            '❌ [AlunosService.create] Dados do responsável incompletos para menor de idade',
-          );
           throw new BadRequestException(
             'Para alunos menores de 18 anos é obrigatório informar os dados do responsável',
           );
         }
-        console.log('✅ [AlunosService.create] Dados do responsável OK');
       }
 
       // 3. Preparar dados do aluno
-      console.log('🔵 [AlunosService.create] Preparando dados do aluno...');
       const alunoData: any = {
         ...dto,
         status: dto.status || StatusAluno.ATIVO,
@@ -189,25 +293,11 @@ export class AlunosService {
           ? new Date(dto.data_ultima_graduacao)
           : undefined,
       };
-      console.log(
-        '🔵 [AlunosService.create] alunoData preparado:',
-        JSON.stringify(alunoData, null, 2),
-      );
 
-      console.log('🔵 [AlunosService.create] Criando entidade aluno...');
       const aluno = queryRunner.manager.create(Aluno, alunoData);
-      console.log('🔵 [AlunosService.create] Salvando aluno no banco...');
       savedAluno = await queryRunner.manager.save(Aluno, aluno);
-      console.log(
-        '✅ [AlunosService.create] Aluno salvo com ID:',
-        savedAluno.id,
-      );
 
       // 4. Buscar a definição da faixa
-      console.log(
-        '🔵 [AlunosService.create] Buscando definição da faixa:',
-        dto.faixa_atual || FaixaEnum.BRANCA,
-      );
       let faixaDef = await this.buscarFaixaDef(
         dto.faixa_atual || FaixaEnum.BRANCA,
         idade,
@@ -215,13 +305,6 @@ export class AlunosService {
       );
 
       if (!faixaDef) {
-        console.warn(
-          '⚠️ [AlunosService.create] Faixa não encontrada para a idade, permitindo cadastro com faixa solicitada:',
-          idade,
-          'Faixa solicitada:',
-          dto.faixa_atual || FaixaEnum.BRANCA,
-        );
-
         // Para o complete-profile, vamos permitir qualquer faixa e criar uma definição temporária se necessário
         const categoria =
           idade < 16 ? CategoriaFaixa.INFANTIL : CategoriaFaixa.ADULTO;
@@ -237,10 +320,6 @@ export class AlunosService {
 
         // Se ainda não encontrou, criar uma entrada básica temporária
         if (!tempFaixaDef) {
-          console.warn(
-            '⚠️ [AlunosService.create] Criando definição de faixa temporária para:',
-            dto.faixa_atual || FaixaEnum.BRANCA,
-          );
           const novaFaixaDef = faixaDefRepository.create({
             codigo: dto.faixa_atual || FaixaEnum.BRANCA,
             nome_exibicao: (dto.faixa_atual || FaixaEnum.BRANCA).replace(
@@ -255,27 +334,14 @@ export class AlunosService {
             ativo: true,
           });
           tempFaixaDef = await faixaDefRepository.save(novaFaixaDef);
-          console.log(
-            '✅ [AlunosService.create] Faixa temporária criada com ID:',
-            tempFaixaDef.id,
-          );
         }
 
         // Assign the temporary faixa to the main variable
         const finalFaixaDef = tempFaixaDef;
         faixaDef = finalFaixaDef;
       }
-      console.log(
-        '✅ [AlunosService.create] FaixaDef encontrada - ID:',
-        faixaDef.id,
-        'Nome:',
-        faixaDef,
-      );
 
       // 5. Criar registro em aluno_faixa
-      console.log(
-        '🔵 [AlunosService.create] Criando registro em aluno_faixa...',
-      );
       const alunoFaixaData = {
         aluno_id: savedAluno.id,
         faixa_def_id: faixaDef.id,
@@ -285,29 +351,15 @@ export class AlunosService {
         presencas_no_ciclo: 0,
         presencas_total_fx: 0,
       };
-      console.log(
-        '🔵 [AlunosService.create] Dados aluno_faixa:',
-        JSON.stringify(alunoFaixaData, null, 2),
-      );
 
       const alunoFaixa = queryRunner.manager.create(AlunoFaixa, alunoFaixaData);
-      console.log('🔵 [AlunosService.create] Salvando aluno_faixa...');
       const savedAlunoFaixa = await queryRunner.manager.save(
         AlunoFaixa,
         alunoFaixa,
       );
-      console.log(
-        '✅ [AlunosService.create] aluno_faixa salvo com ID:',
-        savedAlunoFaixa.id,
-      );
 
       // 6. Criar registros de graus em aluno_faixa_grau (se houver graus)
       if (dto.graus && dto.graus > 0) {
-        console.log(
-          '🔵 [AlunosService.create] Criando',
-          dto.graus,
-          'grau(s)...',
-        );
         for (let i = 1; i <= dto.graus; i++) {
           const grau = queryRunner.manager.create(AlunoFaixaGrau, {
             aluno_faixa_id: savedAlunoFaixa.id,
@@ -318,50 +370,27 @@ export class AlunosService {
           });
 
           await queryRunner.manager.save(AlunoFaixaGrau, grau);
-          console.log('✅ [AlunosService.create] Grau', i, 'salvo');
         }
-      } else {
-        console.log('🔵 [AlunosService.create] Nenhum grau para criar');
       }
 
-      console.log('🔵 [AlunosService.create] Commitando transação...');
       await queryRunner.commitTransaction();
-      console.log('✅ [AlunosService.create] Transação commitada com sucesso!');
     } catch (error) {
-      console.error('❌ [AlunosService.create] ERRO durante criação do aluno!');
-      console.error(
-        '❌ [AlunosService.create] Tipo do erro:',
-        error.constructor.name,
-      );
-      console.error('❌ [AlunosService.create] Mensagem:', error.message);
-      console.error('❌ [AlunosService.create] Stack:', error.stack);
       await queryRunner.rollbackTransaction();
-      console.log('🔴 [AlunosService.create] Transação revertida (rollback)');
       throw error;
-    } finally {
-      await queryRunner.release();
     }
 
     // Retornar aluno com relações (fora da transação)
     try {
-      console.log(
-        '🔵 [AlunosService.create] Buscando aluno completo com relações...',
-      );
       const alunoCompleto = await this.findById(savedAluno.id);
-      console.log('✅ [AlunosService.create] ALUNO CRIADO COM SUCESSO!');
       return alunoCompleto;
     } catch (findError) {
-      console.error(
-        '❌ [AlunosService.create] ERRO ao buscar aluno criado:',
-        findError.message,
-      );
       // Se der erro no findById, retornar pelo menos o aluno básico
       return savedAluno;
     }
   }
 
-  async update(id: string, dto: UpdateAlunoDto): Promise<Aluno> {
-    const aluno = await this.findById(id);
+  async update(id: string, dto: UpdateAlunoDto, user?: any): Promise<Aluno> {
+    const aluno = await this.findById(id, user);
 
     // Verificar CPF único (se estiver sendo alterado)
     if (dto.cpf && dto.cpf !== aluno.cpf) {
@@ -415,6 +444,37 @@ export class AlunosService {
   async delete(id: string): Promise<void> {
     const aluno = await this.findById(id);
     await this.alunoRepository.softRemove(aluno);
+  }
+
+  /**
+   * Aprovar auto-cadastro de aluno
+   * Ativa o usuário vinculado ao aluno (muda status de INATIVO para ATIVO em usuarios)
+   */
+  async approveAluno(alunoId: string): Promise<Aluno> {
+    const aluno = await this.alunoRepository.findOne({
+      where: { id: alunoId },
+      relations: ['unidade'],
+    });
+
+    if (!aluno) {
+      throw new NotFoundException(`Aluno com ID ${alunoId} não encontrado`);
+    }
+
+    if (!aluno.usuario_id) {
+      throw new BadRequestException(
+        'Aluno não possui usuário vinculado para aprovação',
+      );
+    }
+
+    // Usar o UsuariosService para aprovar o usuário
+    await this.usuariosService.approveUser(aluno.usuario_id);
+
+    console.log(
+      `✅ Aluno ${aluno.nome_completo} aprovado - usuário ${aluno.usuario_id} ativado`,
+    );
+
+    // Retornar aluno atualizado
+    return this.findById(alunoId);
   }
 
   /**
@@ -525,7 +585,7 @@ export class AlunosService {
   /**
    * Obter estatísticas de alunos por filtros
    */
-  async getStats(params: { search?: string; unidade_id?: string }) {
+  async getStats(params: { search?: string; unidade_id?: string }, user?: any) {
     const baseQuery = this.alunoRepository.createQueryBuilder('aluno');
 
     // Aplicar filtros básicos se fornecidos
@@ -540,6 +600,31 @@ export class AlunosService {
       baseQuery.andWhere('aluno.unidade_id = :unidade', {
         unidade: params.unidade_id,
       });
+    }
+    // Se professor/instrutor, filtra apenas alunos das suas unidades
+    else if (user && this.isProfessor(user)) {
+      const professorId = await this.getProfessorIdByUser(user);
+      if (professorId) {
+        const unidadesDoProfessor =
+          await this.getUnidadesDoProfessor(professorId);
+        if (unidadesDoProfessor.length > 0) {
+          baseQuery.andWhere('aluno.unidade_id IN (:...unidades)', {
+            unidades: unidadesDoProfessor,
+          });
+        } else {
+          baseQuery.andWhere('1 = 0');
+        }
+      }
+    }
+    // Se franqueado (não master), filtra apenas alunos das suas unidades
+    else if (user && this.isFranqueado(user) && !this.isMaster(user)) {
+      const franqueadoId = await this.getFranqueadoIdByUser(user);
+      if (franqueadoId) {
+        baseQuery.andWhere(
+          'aluno.unidade_id IN (SELECT id FROM teamcruz.unidades WHERE franqueado_id = :franqueadoId)',
+          { franqueadoId },
+        );
+      }
     }
 
     // Contadores por status
@@ -564,11 +649,50 @@ export class AlunosService {
       .getCount();
 
     // Contadores por faixa (apenas alunos ativos)
-    const faixaStats = await this.alunoRepository
+    const faixaQuery = this.alunoRepository
       .createQueryBuilder('aluno')
       .select('aluno.faixa_atual', 'faixa')
       .addSelect('COUNT(*)', 'count')
-      .where('aluno.status = :status', { status: StatusAluno.ATIVO })
+      .where('aluno.status = :status', { status: StatusAluno.ATIVO });
+
+    // Aplicar mesmos filtros que a baseQuery
+    if (params.search) {
+      faixaQuery.andWhere(
+        '(LOWER(aluno.nome_completo) LIKE :search OR aluno.cpf LIKE :search OR aluno.numero_matricula LIKE :search)',
+        { search: `%${params.search.toLowerCase()}%` },
+      );
+    }
+
+    if (params.unidade_id) {
+      faixaQuery.andWhere('aluno.unidade_id = :unidade', {
+        unidade: params.unidade_id,
+      });
+    }
+    // Se professor/instrutor, filtra apenas alunos das suas unidades
+    else if (user && this.isProfessor(user)) {
+      const professorId = await this.getProfessorIdByUser(user);
+      if (professorId) {
+        const unidadesDoProfessor =
+          await this.getUnidadesDoProfessor(professorId);
+        if (unidadesDoProfessor.length > 0) {
+          faixaQuery.andWhere('aluno.unidade_id IN (:...unidades)', {
+            unidades: unidadesDoProfessor,
+          });
+        }
+      }
+    }
+    // Se franqueado (não master), filtra apenas alunos das suas unidades
+    else if (user && this.isFranqueado(user) && !this.isMaster(user)) {
+      const franqueadoId = await this.getFranqueadoIdByUser(user);
+      if (franqueadoId) {
+        faixaQuery.andWhere(
+          'aluno.unidade_id IN (SELECT id FROM teamcruz.unidades WHERE franqueado_id = :franqueadoId)',
+          { franqueadoId },
+        );
+      }
+    }
+
+    const faixaStats = await faixaQuery
       .groupBy('aluno.faixa_atual')
       .getRawMany();
 
@@ -590,5 +714,126 @@ export class AlunosService {
       },
       porFaixa: faixaCounts,
     };
+  }
+
+  // Métodos auxiliares para controle de acesso por perfil
+  private isMaster(user: any): boolean {
+    const perfis = (user?.perfis || []).map((p: any) =>
+      (p.nome || '').toLowerCase(),
+    );
+    return perfis.includes('master');
+  }
+
+  private isFranqueado(user: any): boolean {
+    const perfis = (user?.perfis || []).map((p: any) =>
+      (p.nome || '').toLowerCase(),
+    );
+    return perfis.includes('franqueado');
+  }
+
+  private isRecepcionista(user: any): boolean {
+    const perfis = (user?.perfis || []).map((p: any) =>
+      (p.nome || '').toLowerCase(),
+    );
+    return perfis.includes('recepcionista');
+  }
+
+  private async getUnidadeIdByRecepcionista(user: any): Promise<string | null> {
+    if (!user?.id) return null;
+    // MÉTODO ANTIGO - mantido para compatibilidade
+    // Buscar unidade onde o usuário é o responsável com papel ADMINISTRATIVO (recepcionista)
+    const result = await this.dataSource.query(
+      `SELECT id FROM teamcruz.unidades
+       WHERE responsavel_cpf = (
+         SELECT cpf FROM teamcruz.usuarios WHERE id = $1
+       )
+       LIMIT 1`,
+      [user.id],
+    );
+    return result[0]?.id || null;
+  }
+
+  private async getUnidadesIdsByRecepcionista(user: any): Promise<string[]> {
+    if (!user?.id) return [];
+
+    // NOVO MÉTODO - busca todas as unidades vinculadas na tabela recepcionista_unidades
+    const result = await this.dataSource.query(
+      `SELECT ru.unidade_id
+       FROM teamcruz.recepcionista_unidades ru
+       WHERE ru.usuario_id = $1
+         AND ru.ativo = true
+       ORDER BY ru.created_at`,
+      [user.id],
+    );
+
+    const unidadeIds = result.map((row: any) => row.unidade_id);
+    return unidadeIds;
+  }
+
+  private isGerenteUnidade(user: any): boolean {
+    const perfis = (user?.perfis || []).map((p: any) =>
+      (p.nome || '').toLowerCase(),
+    );
+    return perfis.includes('gerente_unidade') || perfis.includes('gerente');
+  }
+
+  private async getUnidadeIdByGerente(user: any): Promise<string | null> {
+    if (!user?.id) return null;
+    // Buscar unidade onde o usuário é o responsável com papel GERENTE
+    const result = await this.dataSource.query(
+      `SELECT id FROM teamcruz.unidades
+       WHERE responsavel_cpf = (
+         SELECT cpf FROM teamcruz.usuarios WHERE id = $1
+       )
+       AND responsavel_papel = 'GERENTE'
+       LIMIT 1`,
+      [user.id],
+    );
+    return result[0]?.id || null;
+  }
+
+  private isProfessor(user: any): boolean {
+    const perfis = (user?.perfis || []).map((p: any) =>
+      (p.nome || '').toLowerCase(),
+    );
+    return perfis.includes('professor') || perfis.includes('instrutor');
+  }
+
+  private async getProfessorIdByUser(user: any): Promise<string | null> {
+    if (!user?.id) return null;
+    const result = await this.dataSource.query(
+      `SELECT id FROM teamcruz.professores WHERE usuario_id = $1 LIMIT 1`,
+      [user.id],
+    );
+    return result[0]?.id || null;
+  }
+
+  private async getUnidadesDoProfessor(professorId: string): Promise<string[]> {
+    const result = await this.dataSource.query(
+      `SELECT unidade_id FROM teamcruz.professor_unidades WHERE professor_id = $1 AND ativo = true`,
+      [professorId],
+    );
+    return result.map((r: any) => r.unidade_id);
+  }
+
+  private async getFranqueadoIdByUser(user: any): Promise<string | null> {
+    if (!user?.id) {
+      return null;
+    }
+    const result = await this.dataSource.query(
+      `SELECT id FROM teamcruz.franqueados WHERE usuario_id = $1 LIMIT 1`,
+      [user.id],
+    );
+    return result[0]?.id || null;
+  }
+
+  private async getUnidadesDeFranqueado(
+    franqueadoId: string,
+  ): Promise<string[]> {
+    const result = await this.dataSource.query(
+      `SELECT id FROM teamcruz.unidades WHERE franqueado_id = $1`,
+      [franqueadoId],
+    );
+    return result.map((r: any) => r.id);
   }
 }
