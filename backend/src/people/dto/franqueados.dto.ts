@@ -15,6 +15,7 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
+import { IsValidName } from '../../common/decorators/is-valid-name.decorator';
 
 export type SituacaoFranqueado = 'ATIVA' | 'INATIVA' | 'EM_HOMOLOGACAO';
 
@@ -62,6 +63,7 @@ export class CreateFranqueadoDto {
   @IsString()
   @IsNotEmpty({ message: 'Nome é obrigatório' })
   @Length(1, 150, { message: 'Nome deve ter entre 1 e 150 caracteres' })
+  @IsValidName()
   nome!: string;
 
   @ApiProperty({
@@ -187,6 +189,7 @@ export class CreateFranqueadoDto {
   @IsString()
   @IsNotEmpty({ message: 'Nome do responsável legal é obrigatório' })
   @Length(1, 150)
+  @IsValidName()
   responsavel_nome!: string;
 
   @ApiProperty({
@@ -431,6 +434,7 @@ export class UpdateFranqueadoDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
+  @IsValidName()
   responsavel_nome?: string;
 
   @ApiPropertyOptional()

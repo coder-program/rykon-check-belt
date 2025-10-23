@@ -41,9 +41,7 @@ export interface UpdateUsuarioDto {
 
 export const getUsuarios = async (): Promise<Usuario[]> => {
   try {
-    console.log("getUsuarios: Fazendo requisição para /usuarios");
     const response = await api("/usuarios");
-    console.log("getUsuarios: Resposta recebida:", response);
     return response;
   } catch (error) {
     console.error("getUsuarios: Erro na requisição:", error);
@@ -265,10 +263,7 @@ export const getUnidades = async (): Promise<Unidade[]> => {
 };
 
 export const getUnidadesAtivas = async (): Promise<Unidade[]> => {
-  console.log("📡 Chamando API /unidades...");
   const response = await api("/unidades");
-  console.log("📡 Resposta da API /unidades:", response);
-
   // Extrair o array de unidades da resposta paginada
   let unidades: Unidade[] = [];
   if (response && response.items && Array.isArray(response.items)) {
@@ -277,13 +272,10 @@ export const getUnidadesAtivas = async (): Promise<Unidade[]> => {
     unidades = response;
   }
 
-  console.log("📦 Unidades extraídas:", unidades);
-
   // Filtrar unidades ATIVAS ou em HOMOLOGACAO (disponíveis para cadastro)
   const ativas = unidades.filter(
     (u: Unidade) =>
       u.status === "ATIVA" || u.status === "HOMOLOGACAO" || u.ativo === true
   );
-  console.log("✅ Unidades disponíveis filtradas:", ativas);
   return ativas;
 };

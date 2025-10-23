@@ -184,7 +184,6 @@ export default function UnidadeForm({
     // Se CEP tem 9 caracteres (formato 00000-000), buscar endereço
     if (cep.length === 9) {
       try {
-        console.log("🔍 Buscando CEP:", cep);
         const cepNumeros = cep.replace("-", "");
         const response = await fetch(
           `https://viacep.com.br/ws/${cepNumeros}/json/`
@@ -195,7 +194,6 @@ export default function UnidadeForm({
         }
 
         const data = await response.json();
-        console.log("📍 Dados do CEP:", data);
 
         if (!data.erro) {
           setFormData((prev) => ({
@@ -206,9 +204,6 @@ export default function UnidadeForm({
             estado: data.uf || prev.estado || "",
             pais: "Brasil",
           }));
-          console.log("✅ Endereço preenchido automaticamente");
-        } else {
-          console.log("❌ CEP não encontrado");
         }
       } catch (error) {
         console.error("❌ Erro ao buscar CEP:", error);

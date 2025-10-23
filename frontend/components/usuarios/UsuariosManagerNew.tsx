@@ -427,7 +427,7 @@ const UsuariosManagerNew = () => {
         <div className="perfis-tab">
           <div className="tab-header">
             <h2>Perfis</h2>
-            <button
+            {/* <button
               className="btn-primary"
               onClick={handleCreateProfile}
               style={{
@@ -440,7 +440,7 @@ const UsuariosManagerNew = () => {
               }}
             >
               ➕ Novo Perfil
-            </button>
+            </button> */}
           </div>
 
           <div
@@ -453,7 +453,7 @@ const UsuariosManagerNew = () => {
                   <th>Nome</th>
                   <th>Descrição</th>
                   <th>Permissões</th>
-                  <th>Ações</th>
+                  {/* <th>Ações</th> */}
                 </tr>
               </thead>
               <tbody>
@@ -469,7 +469,7 @@ const UsuariosManagerNew = () => {
                           </span>
                         ))}
                       </td>
-                      <td style={{ minWidth: "100px" }}>
+                      {/* <td style={{ minWidth: "100px" }}>
                         <button
                           className="btn-edit"
                           onClick={() => handleEditProfile(p)}
@@ -502,7 +502,7 @@ const UsuariosManagerNew = () => {
                         >
                           🗑️ Excluir
                         </button>
-                      </td>
+                      </td> */}
                     </tr>
                   ))
                 ) : (

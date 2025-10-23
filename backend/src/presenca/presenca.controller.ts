@@ -29,7 +29,6 @@ export class PresencaController {
   async getAulaAtiva(@Request() req): Promise<AulaAtiva | null> {
     try {
       const result = await this.presencaService.getAulaAtiva(req.user);
-      console.log('🔵 [Controller] Resultado da aula ativa:', result);
       return result;
     } catch (error) {
       console.error('❌ [Controller] Erro ao buscar aula ativa:', error);

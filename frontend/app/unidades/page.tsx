@@ -8,6 +8,7 @@ import {
   useQueryClient,
   useQuery,
 } from "@tanstack/react-query";
+import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { FixedSizeList as List } from "react-window";
 import { useAuth } from "@/app/auth/AuthContext";
 import {
@@ -114,10 +115,7 @@ export default function PageUnidades() {
   const { user } = useAuth();
 
   // Log temporário para debug
-  React.useEffect(() => {
-    console.log("User object:", user);
-    console.log("User perfis:", user?.perfis);
-  }, [user]);
+  React.useEffect(() => {}, [user]);
 
   const hasPerfil = (p: string) => {
     if (!user?.perfis) return false;
@@ -204,7 +202,6 @@ export default function PageUnidades() {
   const qc = useQueryClient();
   const createMutation = useMutation({
     mutationFn: async (data: UnidadeFormData) => {
-      console.log("[DEBUG] Creating unidade", data);
       return createUnidade(data);
     },
     onSuccess: () => {
@@ -226,7 +223,6 @@ export default function PageUnidades() {
       id: string;
       data: Partial<UnidadeFormData>;
     }) => {
-      console.log("[DEBUG] Updating unidade", id, data);
       return updateUnidade(id, data);
     },
     onSuccess: () => {
@@ -294,8 +290,6 @@ export default function PageUnidades() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("[DEBUG] handleSubmit", formData);
-
     try {
       let endereco_id = formData.endereco_id;
 
@@ -321,14 +315,11 @@ export default function PageUnidades() {
 
         if (endereco_id) {
           // Atualizar endereço existente
-          console.log("🔄 Atualizando endereço existente:", endereco_id);
           await updateEndereco(endereco_id, enderecoData);
         } else {
           // Criar novo endereço
-          console.log("🏠 Criando novo endereço:", enderecoData);
           const novoEndereco = await createEndereco(enderecoData);
           endereco_id = novoEndereco.id;
-          console.log("✅ Endereço criado com ID:", endereco_id);
         }
       }
 
@@ -426,8 +417,6 @@ export default function PageUnidades() {
     if (unidade.endereco_id) {
       try {
         const endereco = await getEndereco(unidade.endereco_id);
-        console.log("📍 Endereço carregado para unidade:", endereco);
-
         // Atualizar formData com os dados do endereço
         baseFormData.cep = endereco.cep
           ? `${endereco.cep.slice(0, 5)}-${endereco.cep.slice(5)}`
@@ -474,183 +463,189 @@ export default function PageUnidades() {
   };
 
   return (
-    <div className="p-6 space-y-4">
-      {/* Botão Voltar */}
-      <div className="flex items-center gap-2 mb-4">
-        <button
-          onClick={() => router.push("/dashboard")}
-          className="group flex items-center gap-2 text-sm text-gray-600 hover:text-blue-600 transition-colors duration-200"
-          title="Voltar ao Dashboard"
-        >
-          <div className="p-1 rounded-full group-hover:bg-blue-100 transition-colors duration-200">
-            <ArrowLeft className="h-4 w-4" />
-          </div>
-          <span>Dashboard</span>
-        </button>
-        <span className="text-gray-400">/</span>
-        <span className="text-gray-900 font-medium">Unidades</span>
-      </div>
-
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <Building2 className="h-6 w-6" />
-          Unidades
-        </h1>
-        {/* Temporário: mostrar para todos os usuários */}
-        <button
-          className="btn btn-primary flex items-center gap-2"
-          onClick={() => {
-            setEditingUnidade(null);
-            resetForm();
-            setShowModal(true);
-          }}
-        >
-          <Plus className="h-4 w-4" />
-          Nova Unidade
-        </button>
-      </div>
-
-      {/* Filtros */}
-      <div className="flex gap-4 items-center">
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-          <input
-            className="input input-bordered w-full pl-9"
-            placeholder="Buscar por nome, CNPJ ou responsável"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
+    <ProtectedRoute>
+      <div className="p-6 space-y-4">
+        {/* Botão Voltar */}
+        <div className="flex items-center gap-2 mb-4">
+          <button
+            onClick={() => router.push("/dashboard")}
+            className="group flex items-center gap-2 text-sm text-gray-600 hover:text-blue-600 transition-colors duration-200"
+            title="Voltar ao Dashboard"
+          >
+            <div className="p-1 rounded-full group-hover:bg-blue-100 transition-colors duration-200">
+              <ArrowLeft className="h-4 w-4" />
+            </div>
+            <span>Dashboard</span>
+          </button>
+          <span className="text-gray-400">/</span>
+          <span className="text-gray-900 font-medium">Unidades</span>
         </div>
-        <select
-          className="select select-bordered"
-          value={status}
-          onChange={(e) => setStatus(e.target.value)}
-        >
-          <option value="todos">Todos os Status</option>
-          <option value="ATIVA">Ativas</option>
-          <option value="HOMOLOGACAO">Em Homologação</option>
-          <option value="INATIVA">Inativas</option>
-        </select>
-      </div>
 
-      {/* Lista */}
-      <div className="h-[600px] border rounded-lg">
-        <List
-          height={600}
-          itemCount={items.length + (query.hasNextPage ? 1 : 0)}
-          itemSize={120}
-          width="100%"
-          onItemsRendered={({ visibleStopIndex }) => {
-            if (
-              visibleStopIndex >= items.length - 3 &&
-              query.hasNextPage &&
-              !query.isFetchingNextPage
-            )
-              query.fetchNextPage();
-          }}
-        >
-          {({ index, style }) => {
-            const unidade = items[index];
-            if (!unidade)
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-bold flex items-center gap-2">
+            <Building2 className="h-6 w-6" />
+            Unidades
+          </h1>
+          {/* Temporário: mostrar para todos os usuários */}
+          <button
+            className="btn btn-primary flex items-center gap-2"
+            onClick={() => {
+              setEditingUnidade(null);
+              resetForm();
+              setShowModal(true);
+            }}
+          >
+            <Plus className="h-4 w-4" />
+            Nova Unidade
+          </button>
+        </div>
+
+        {/* Filtros */}
+        <div className="flex gap-4 items-center">
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <input
+              className="input input-bordered w-full pl-9"
+              placeholder="Buscar por nome, CNPJ ou responsável"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+          <select
+            className="select select-bordered"
+            value={status}
+            onChange={(e) => setStatus(e.target.value)}
+          >
+            <option value="todos">Todos os Status</option>
+            <option value="ATIVA">Ativas</option>
+            <option value="HOMOLOGACAO">Em Homologação</option>
+            <option value="INATIVA">Inativas</option>
+          </select>
+        </div>
+
+        {/* Lista */}
+        <div className="h-[600px] border rounded-lg">
+          <List
+            height={600}
+            itemCount={items.length + (query.hasNextPage ? 1 : 0)}
+            itemSize={120}
+            width="100%"
+            onItemsRendered={({ visibleStopIndex }) => {
+              if (
+                visibleStopIndex >= items.length - 3 &&
+                query.hasNextPage &&
+                !query.isFetchingNextPage
+              )
+                query.fetchNextPage();
+            }}
+          >
+            {({ index, style }) => {
+              const unidade = items[index];
+              if (!unidade)
+                return (
+                  <div style={style} className="p-4">
+                    <div className="skeleton h-20 w-full rounded-lg" />
+                  </div>
+                );
+
               return (
-                <div style={style} className="p-4">
-                  <div className="skeleton h-20 w-full rounded-lg" />
-                </div>
-              );
-
-            return (
-              <div
-                style={style}
-                className="px-4 py-3 border-b hover:bg-gray-50 transition-colors"
-              >
-                <div className="flex items-start justify-between h-full">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <h3 className="font-semibold text-lg">{unidade.nome}</h3>
-                      <span
-                        className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(
-                          unidade.status
-                        )}`}
-                      >
-                        {getStatusIcon(unidade.status)}
-                        {unidade.status}
-                      </span>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4 text-sm text-gray-600">
-                      <div className="flex items-center gap-2">
-                        <Building2 className="h-4 w-4" />
-                        <span>CNPJ: {unidade.cnpj}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <User className="h-4 w-4" />
-                        <span>{unidade.responsavel_nome}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Phone className="h-4 w-4" />
-                        <span>{unidade.responsavel_contato}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <MapPin className="h-4 w-4" />
-                        <span>
-                          {unidade.capacidade_max_alunos
-                            ? `${unidade.capacidade_max_alunos} alunos`
-                            : "Cap. não definida"}
-                          {unidade.qtde_tatames &&
-                            ` • ${unidade.qtde_tatames} tatames`}
+                <div
+                  style={style}
+                  className="px-4 py-3 border-b hover:bg-gray-50 transition-colors"
+                >
+                  <div className="flex items-start justify-between h-full">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <h3 className="font-semibold text-lg">
+                          {unidade.nome}
+                        </h3>
+                        <span
+                          className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(
+                            unidade.status
+                          )}`}
+                        >
+                          {getStatusIcon(unidade.status)}
+                          {unidade.status}
                         </span>
                       </div>
+                      <div className="grid grid-cols-2 gap-4 text-sm text-gray-600">
+                        <div className="flex items-center gap-2">
+                          <Building2 className="h-4 w-4" />
+                          <span>CNPJ: {unidade.cnpj}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <User className="h-4 w-4" />
+                          <span>{unidade.responsavel_nome}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Phone className="h-4 w-4" />
+                          <span>{unidade.responsavel_contato}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <MapPin className="h-4 w-4" />
+                          <span>
+                            {unidade.capacidade_max_alunos
+                              ? `${unidade.capacidade_max_alunos} alunos`
+                              : "Cap. não definida"}
+                            {unidade.qtde_tatames &&
+                              ` • ${unidade.qtde_tatames} tatames`}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex gap-2 ml-4">
+                      <button
+                        onClick={() => handleEdit(unidade)}
+                        className="p-2 hover:bg-blue-100 rounded-lg transition-colors"
+                        title="Editar"
+                      >
+                        <Edit2 className="h-4 w-4 text-blue-600" />
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (
+                            confirm(
+                              `Tem certeza que deseja remover a unidade "${unidade.nome}"?`
+                            )
+                          ) {
+                            deleteMutation.mutate(unidade.id);
+                          }
+                        }}
+                        className="p-2 hover:bg-red-100 rounded-lg transition-colors"
+                        title="Remover"
+                      >
+                        <Trash2 className="h-4 w-4 text-red-600" />
+                      </button>
                     </div>
                   </div>
-                  <div className="flex gap-2 ml-4">
-                    <button
-                      onClick={() => handleEdit(unidade)}
-                      className="p-2 hover:bg-blue-100 rounded-lg transition-colors"
-                      title="Editar"
-                    >
-                      <Edit2 className="h-4 w-4 text-blue-600" />
-                    </button>
-                    <button
-                      onClick={() => {
-                        if (
-                          confirm(
-                            `Tem certeza que deseja remover a unidade "${unidade.nome}"?`
-                          )
-                        ) {
-                          deleteMutation.mutate(unidade.id);
-                        }
-                      }}
-                      className="p-2 hover:bg-red-100 rounded-lg transition-colors"
-                      title="Remover"
-                    >
-                      <Trash2 className="h-4 w-4 text-red-600" />
-                    </button>
-                  </div>
                 </div>
-              </div>
-            );
-          }}
-        </List>
-      </div>
+              );
+            }}
+          </List>
+        </div>
 
-      {/* Modal de Cadastro/Edição */}
-      {showModal && (
-        <UnidadeForm
-          formData={formData}
-          setFormData={setFormData}
-          onSubmit={handleSubmit}
-          onClose={() => {
-            setShowModal(false);
-            setEditingUnidade(null);
-            resetForm();
-          }}
-          isEditing={!!editingUnidade}
-          isLoading={
-            editingUnidade ? updateMutation.isPending : createMutation.isPending
-          }
-          franqueados={franqueadosQuery.data?.items || []}
-          instrutores={instrutoresQuery.data?.items || []}
-        />
-      )}
-    </div>
+        {/* Modal de Cadastro/Edição */}
+        {showModal && (
+          <UnidadeForm
+            formData={formData}
+            setFormData={setFormData}
+            onSubmit={handleSubmit}
+            onClose={() => {
+              setShowModal(false);
+              setEditingUnidade(null);
+              resetForm();
+            }}
+            isEditing={!!editingUnidade}
+            isLoading={
+              editingUnidade
+                ? updateMutation.isPending
+                : createMutation.isPending
+            }
+            franqueados={franqueadosQuery.data?.items || []}
+            instrutores={instrutoresQuery.data?.items || []}
+          />
+        )}
+      </div>
+    </ProtectedRoute>
   );
 }

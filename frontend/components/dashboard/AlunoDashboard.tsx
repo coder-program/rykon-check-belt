@@ -188,7 +188,6 @@ export default function AlunoDashboard() {
 
       // Processar resultados
       if (graduacaoData.status === "fulfilled") {
-        console.log("🎓 Status de graduação recebido:", graduacaoData.value);
         setStatusGraduacao(graduacaoData.value);
       } else {
         console.error(
@@ -206,14 +205,12 @@ export default function AlunoDashboard() {
       }
 
       if (rankingDataResult.status === "fulfilled") {
-        console.log("🏆 Ranking recebido:", rankingDataResult.value);
         setRankingData(rankingDataResult.value);
       } else {
         console.error("❌ Erro ao carregar ranking:", rankingDataResult.reason);
       }
 
       if (competicoesData.status === "fulfilled") {
-        console.log("🏆 Competições recebidas:", competicoesData.value);
         const data = competicoesData.value;
         setHistoricoCompeticoes(
           Array.isArray(data.participacoes) ? data.participacoes : []

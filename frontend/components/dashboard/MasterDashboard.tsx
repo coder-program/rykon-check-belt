@@ -92,7 +92,7 @@ export default function MasterDashboard() {
     },
     {
       title: "Aprovar Usuários e Alunos",
-      description: `${stats.usuariosPendentes} usuários aguardando aprovação`,
+      description: `usuários aguardando aprovação`,
       icon: UserCheck,
       action: () => router.push("/admin/usuarios-pendentes"),
       color: "bg-green-500",

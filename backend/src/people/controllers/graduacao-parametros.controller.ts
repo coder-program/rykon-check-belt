@@ -63,6 +63,47 @@ export class GraduacaoParametrosController {
     return await this.parametrosService.findAll(unidadeId);
   }
 
+  // ============================================
+  // Alunos Aptos para Graduação
+  // ============================================
+
+  @Get('alunos-aptos')
+  async getAlunosAptosSemParametro(@Request() req) {
+    return this.getAlunosAptosComParametro(undefined, req);
+  }
+
+  @Get('alunos-aptos/:parametro_id')
+  async getAlunosAptosComParametro(
+    @Param('parametro_id') parametroId: string | undefined,
+    @Request() req,
+  ) {
+    const perfis = req.user.perfis?.map((p: any) => p.nome) || [];
+    let unidadeIds: string[] | undefined;
+
+    // Verificar perfil e buscar unidades permitidas
+    if (perfis.includes('recepcionista')) {
+      const unidades =
+        await this.recepcionistaUnidadesService.getUnidadesByRecepcionista(
+          req.user.id,
+        );
+      unidadeIds = unidades.map((u) => u.unidade_id);
+    } else if (perfis.includes('gerente_unidade')) {
+      // Buscar unidade do gerente via responsavel_cpf
+      // TODO: implementar método para buscar unidade do gerente
+    } else if (perfis.includes('franqueado')) {
+      // Buscar unidades do franqueado
+      // TODO: implementar método para buscar unidades do franqueado
+    } else if (perfis.includes('master') || perfis.includes('admin')) {
+      // Vê todas as unidades
+      unidadeIds = undefined;
+    }
+
+    return await this.parametrosService.getAlunosAptosGraduacao(
+      parametroId !== 'undefined' && parametroId ? parametroId : undefined,
+      unidadeIds,
+    );
+  }
+
   @Get(':id')
   async findOne(@Param('id') id: string) {
     return await this.parametrosService.findOne(id);
@@ -79,58 +120,6 @@ export class GraduacaoParametrosController {
   @Delete(':id')
   async remove(@Param('id') id: string) {
     return await this.parametrosService.remove(id);
-  }
-
-  // ============================================
-  // Alunos Aptos para Graduação
-  // ============================================
-
-  @Get('alunos-aptos')
-  async getAlunosAptosSemParametro(@Request() req) {
-    return this.getAlunosAptosComParametro(undefined, req);
-  }
-
-  @Get('alunos-aptos/:parametro_id')
-  async getAlunosAptosComParametro(
-    @Param('parametro_id') parametroId: string | undefined,
-    @Request() req,
-  ) {
-    console.log(
-      '🎓 [getAlunosAptos] Usuário:',
-      req.user?.id,
-      'Perfis:',
-      req.user?.perfis?.map((p: any) => p.nome),
-    );
-
-    const perfis = req.user.perfis?.map((p: any) => p.nome) || [];
-    let unidadeIds: string[] | undefined;
-
-    // Verificar perfil e buscar unidades permitidas
-    if (perfis.includes('recepcionista')) {
-      const unidades =
-        await this.recepcionistaUnidadesService.getUnidadesByRecepcionista(
-          req.user.id,
-        );
-      unidadeIds = unidades.map((u) => u.unidade_id);
-      console.log('👤 Recepcionista - Unidades:', unidadeIds);
-    } else if (perfis.includes('gerente_unidade')) {
-      // Buscar unidade do gerente via responsavel_cpf
-      // TODO: implementar método para buscar unidade do gerente
-      console.log('👤 Gerente Unidade');
-    } else if (perfis.includes('franqueado')) {
-      // Buscar unidades do franqueado
-      // TODO: implementar método para buscar unidades do franqueado
-      console.log('👤 Franqueado');
-    } else if (perfis.includes('master') || perfis.includes('admin')) {
-      // Vê todas as unidades
-      unidadeIds = undefined;
-      console.log('👤 Admin/Master - Todas unidades');
-    }
-
-    return await this.parametrosService.getAlunosAptosGraduacao(
-      parametroId !== 'undefined' && parametroId ? parametroId : undefined,
-      unidadeIds,
-    );
   }
 
   // ============================================

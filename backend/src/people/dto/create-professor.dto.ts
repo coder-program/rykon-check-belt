@@ -16,12 +16,14 @@ import {
   StatusCadastro,
   FaixaProfessor,
 } from '../entities/person.entity';
+import { IsValidName } from '../../common/decorators/is-valid-name.decorator';
 
 export class CreateProfessorDto {
   // ===== DADOS PESSOAIS =====
   @IsString()
   @IsNotEmpty({ message: 'Nome completo é obrigatório' })
   @Length(3, 255)
+  @IsValidName()
   nome_completo: string;
 
   @IsString()

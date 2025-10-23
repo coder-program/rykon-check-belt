@@ -16,6 +16,5 @@ bcrypt.hash(password, saltRounds, (err, hash) => {
       console.error("Erro ao verificar:", err);
       return;
     }
-    console.log("Verificação:", result ? "✅ Hash válido" : "❌ Hash inválido");
   });
 });

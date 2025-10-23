@@ -52,20 +52,7 @@ export class AlunosController {
   @ApiQuery({ name: 'page', required: false })
   @ApiQuery({ name: 'pageSize', required: false })
   list(@Query(ValidationPipe) query: any, @Request() req) {
-    console.log('🚀 [AlunosController.list] INÍCIO');
-    console.log(
-      '🚀 [AlunosController.list] req.user:',
-      JSON.stringify(req?.user, null, 2),
-    );
-    console.log(
-      '🚀 [AlunosController.list] query params:',
-      JSON.stringify(query, null, 2),
-    );
     const user = req?.user || null;
-    console.log(
-      '🚀 [AlunosController.list] Passando user para service:',
-      user ? 'SIM' : 'NÃO',
-    );
     return this.service.list(query, user);
   }
 

@@ -45,18 +45,6 @@ export class AlunosService {
   ) {}
 
   async list(params: ListAlunosParams, user?: any) {
-    console.log('🔍 [AlunosService.list] INÍCIO');
-    console.log(
-      '🔍 [AlunosService.list] params:',
-      JSON.stringify(params, null, 2),
-    );
-    console.log(
-      '🔍 [AlunosService.list] user:',
-      user
-        ? { id: user.id, perfis: user.perfis?.map((p: any) => p.nome) }
-        : 'NENHUM',
-    );
-
     const page = Math.max(1, Number(params.page) || 1);
     const pageSize = Math.min(100, Math.max(1, Number(params.pageSize) || 20));
 
@@ -78,16 +66,13 @@ export class AlunosService {
 
     // Filtro por unidade
     if (params.unidade_id) {
-      console.log('✅ Filtrando por unidade_id:', params.unidade_id);
       query.andWhere('aluno.unidade_id = :unidade', {
         unidade: params.unidade_id,
       });
     }
     // Se gerente de unidade, filtra apenas alunos da sua unidade
     else if (user && this.isGerenteUnidade(user) && !this.isMaster(user)) {
-      console.log('👤 Usuário é GERENTE DE UNIDADE');
       const unidadeId = await this.getUnidadeIdByGerente(user);
-      console.log('👤 unidadeId do gerente:', unidadeId);
       if (unidadeId) {
         query.andWhere('aluno.unidade_id = :unidadeId', { unidadeId });
       } else {
@@ -96,9 +81,7 @@ export class AlunosService {
     }
     // Se recepcionista, filtra apenas alunos das suas unidades
     else if (user && this.isRecepcionista(user) && !this.isMaster(user)) {
-      console.log('👤 Usuário é RECEPCIONISTA');
       const unidadeIds = await this.getUnidadesIdsByRecepcionista(user);
-      console.log('👤 unidadeIds do recepcionista:', unidadeIds);
       if (unidadeIds && unidadeIds.length > 0) {
         query.andWhere('aluno.unidade_id IN (:...unidadeIds)', { unidadeIds });
       } else {
@@ -107,13 +90,10 @@ export class AlunosService {
     }
     // Se professor/instrutor, filtra apenas alunos das suas unidades
     else if (user && this.isProfessor(user)) {
-      console.log('👤 Usuário é PROFESSOR/INSTRUTOR');
       const professorId = await this.getProfessorIdByUser(user);
-      console.log('👤 professorId:', professorId);
       if (professorId) {
         const unidadesDoProfessor =
           await this.getUnidadesDoProfessor(professorId);
-        console.log('👤 unidades do professor:', unidadesDoProfessor);
         if (unidadesDoProfessor.length > 0) {
           query.andWhere('aluno.unidade_id IN (:...unidades)', {
             unidades: unidadesDoProfessor,
@@ -125,28 +105,19 @@ export class AlunosService {
     }
     // Se franqueado (não master), filtra apenas alunos das suas unidades
     else if (user && this.isFranqueado(user) && !this.isMaster(user)) {
-      console.log('👤 Usuário é FRANQUEADO (não master)');
       const franqueadoId = await this.getFranqueadoIdByUser(user);
-      console.log('👤 franqueadoId:', franqueadoId);
       if (franqueadoId) {
         // Buscar unidades do franqueado
         const unidadesDeFranqueado =
           await this.getUnidadesDeFranqueado(franqueadoId);
-        console.log('👤 unidades do franqueado:', unidadesDeFranqueado);
-
         if (unidadesDeFranqueado.length > 0) {
           query.andWhere('aluno.unidade_id IN (:...unidades)', {
             unidades: unidadesDeFranqueado,
           });
         } else {
-          console.log('⚠️ Franqueado não tem unidades vinculadas!');
           query.andWhere('1 = 0'); // Retorna vazio se franqueado não tem unidades
         }
-      } else {
-        console.log('⚠️ Não encontrou franqueado_id para o usuário!');
       }
-    } else {
-      console.log('👤 Usuário é MASTER ou sem restrições');
     }
 
     // Filtro por status
@@ -173,14 +144,14 @@ export class AlunosService {
       .filter((aluno) => aluno.usuario_id)
       .map((aluno) => aluno.usuario_id);
 
-    let usuariosStatus: { [key: string]: string } = {};
+    let usuariosStatus: { [key: string]: boolean } = {};
     if (usuarioIds.length > 0) {
       const usuarios = await this.dataSource.query(
-        `SELECT id, status FROM teamcruz.usuarios WHERE id = ANY($1)`,
+        `SELECT id, ativo FROM teamcruz.usuarios WHERE id = ANY($1)`,
         [usuarioIds],
       );
       usuariosStatus = usuarios.reduce((acc, u) => {
-        acc[u.id] = u.status;
+        acc[u.id] = u.ativo;
         return acc;
       }, {});
     }
@@ -189,19 +160,11 @@ export class AlunosService {
     const itemsWithStatus = items.map((aluno) => ({
       ...aluno,
       status_usuario: aluno.usuario_id
-        ? usuariosStatus[aluno.usuario_id] || null
+        ? usuariosStatus[aluno.usuario_id]
+          ? 'ATIVO'
+          : 'INATIVO'
         : null,
     }));
-
-    console.log(
-      '✅ [AlunosService.list] RETORNANDO:',
-      itemsWithStatus.map((a: any) => ({
-        id: a.id,
-        nome: a.nome_completo,
-        status_aluno: a.status,
-        status_usuario: a.status_usuario,
-      })),
-    );
 
     return {
       items: itemsWithStatus,
@@ -468,10 +431,6 @@ export class AlunosService {
 
     // Usar o UsuariosService para aprovar o usuário
     await this.usuariosService.approveUser(aluno.usuario_id);
-
-    console.log(
-      `✅ Aluno ${aluno.nome_completo} aprovado - usuário ${aluno.usuario_id} ativado`,
-    );
 
     // Retornar aluno atualizado
     return this.findById(alunoId);

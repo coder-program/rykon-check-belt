@@ -13,14 +13,6 @@ export async function http(path: string, opts: HttpOptions = {}) {
   const url = path.startsWith("http")
     ? path
     : `${API_BASE_URL}${path.startsWith("/") ? path : "/" + path}`;
-  console.log(
-    "API Call - Path:",
-    path,
-    "Full URL:",
-    url,
-    "Base URL:",
-    API_BASE_URL
-  );
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     ...(opts.headers || {}),
@@ -28,33 +20,17 @@ export async function http(path: string, opts: HttpOptions = {}) {
 
   // Sempre tenta adicionar o token se ele existir (exceto se opts.auth === false)
   if (opts.auth !== false) {
-    console.log(
-      "🌍 Ambiente:",
-      typeof window !== "undefined" ? "BROWSER" : "SERVER (SSR)"
-    );
     if (typeof window !== "undefined") {
       const token = localStorage.getItem("token");
-      console.log(
-        "🔑 Token do localStorage:",
-        token ? token.substring(0, 50) + "..." : "NENHUM TOKEN"
-      );
       if (!token && opts.auth === true) {
         // Se auth foi explicitamente requerido mas não tem token, lança erro
         throw new Error("No auth token");
       }
       if (token) {
         headers["Authorization"] = `Bearer ${token}`;
-        console.log("✅ Authorization header adicionado");
       }
-    } else {
-      console.log("⚠️ Rodando no servidor - token não disponível");
     }
   }
-
-  console.log(
-    "📋 Headers finais sendo enviados:",
-    JSON.stringify(headers, null, 2)
-  );
 
   const res = await fetch(url, {
     method: opts.method || "GET",

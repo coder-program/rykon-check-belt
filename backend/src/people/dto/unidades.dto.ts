@@ -12,6 +12,7 @@ import {
   Matches,
   Min,
 } from 'class-validator';
+import { IsValidName } from '../../common/decorators/is-valid-name.decorator';
 import {
   StatusUnidade,
   PapelResponsavel,
@@ -120,6 +121,7 @@ export class CreateUnidadeDto {
   @IsString()
   @IsNotEmpty()
   @Length(1, 150)
+  @IsValidName()
   responsavel_nome!: string;
 
   @ApiProperty({ example: '123.456.789-00' })
@@ -239,6 +241,7 @@ export class UpdateUnidadeDto {
   @IsString()
   @IsNotEmpty()
   @Length(1, 150)
+  @IsValidName()
   responsavel_nome?: string;
 
   @ApiPropertyOptional({ example: '123.456.789-00' })

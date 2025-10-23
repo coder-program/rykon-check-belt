@@ -13,6 +13,7 @@ import { GoogleStrategy } from './strategies/google.strategy';
 import { GoogleAuthController } from './google.controller';
 import { PeopleModule } from '../people/people.module';
 import { AuditModule } from '../audit/audit.module';
+import { EmailModule } from '../email/email.module';
 import { JwtAuthGuardAllowInactive } from './guards/jwt-auth-allow-inactive.guard';
 
 const controllers: any[] = [AuthController];
@@ -41,12 +42,15 @@ if (process.env.GOOGLE_CLIENT_ID) {
         secret:
           configService.get<string>('JWT_SECRET') ||
           'jwt_secret_muito_forte_para_producao_123456789',
-        signOptions: { expiresIn: '24h' },
+        signOptions: {
+          expiresIn: configService.get<string>('JWT_EXPIRES_IN') || '8h',
+        },
       }),
       inject: [ConfigService],
     }),
     PeopleModule,
     AuditModule,
+    EmailModule,
   ],
   controllers,
   providers,

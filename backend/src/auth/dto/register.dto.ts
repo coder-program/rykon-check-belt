@@ -9,12 +9,14 @@ import {
   IsUUID,
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import { IsValidName } from '../../common/decorators/is-valid-name.decorator';
 
 export class RegisterDto {
   @ApiProperty({ example: 'João da Silva' })
   @IsString()
   @IsNotEmpty()
   @MinLength(3)
+  @IsValidName()
   nome: string;
 
   @ApiProperty({ example: 'joao@email.com' })

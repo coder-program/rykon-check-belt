@@ -8,6 +8,7 @@ import {
   IsEnum,
   IsDateString,
 } from 'class-validator';
+import { IsValidName } from '../../common/decorators/is-valid-name.decorator';
 
 export enum GeneroEnum {
   MASCULINO = 'MASCULINO',
@@ -42,6 +43,7 @@ export class CreateUsuarioDto {
   password: string;
 
   @IsString()
+  @IsValidName()
   nome: string;
 
   @IsOptional()

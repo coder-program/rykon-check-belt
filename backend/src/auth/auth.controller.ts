@@ -19,6 +19,7 @@ import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { RegisterDto } from './dto/register.dto';
 import { CompleteProfileDto } from './dto/complete-profile.dto';
+import { AllowIncomplete } from './decorators/allow-incomplete.decorator';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 
 @ApiTags('Auth')
@@ -69,22 +70,13 @@ export class AuthController {
   }
 
   @UseGuards(JwtAuthGuardAllowInactive)
+  @AllowIncomplete()
   @Post('complete-profile')
   @ApiOperation({ summary: 'Completar dados do perfil após primeiro login' })
   async completeProfile(
     @Request() req,
     @Body() completeProfileDto: CompleteProfileDto,
   ) {
-    console.log('🔍 [AuthController.completeProfile] INICIANDO...');
-    console.log(
-      '🔍 [AuthController.completeProfile] Authorization header:',
-      req.headers.authorization || 'NENHUM',
-    );
-    console.log(
-      '🔍 [AuthController.completeProfile] req.user:',
-      req.user ? req.user.id : 'NENHUM USER',
-    );
-
     try {
       const result = await this.authService.completeProfile(
         req.user.id,

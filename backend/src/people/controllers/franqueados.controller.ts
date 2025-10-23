@@ -15,6 +15,7 @@ import {
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { FranqueadosService } from '../services/franqueados.service';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { ProfileCompleteGuard } from '../../auth/guards/profile-complete.guard';
 import { Roles } from '../../auth/decorators/roles.decorator';
 import { RolesGuard } from '../../auth/guards/roles.guard';
 import {
@@ -36,6 +37,7 @@ export class FranqueadosController {
     return prepared;
   }
 
+  @UseGuards(JwtAuthGuard, ProfileCompleteGuard)
   @Get()
   @ApiOperation({ summary: 'Listar franqueados' })
   @ApiResponse({ status: 200, description: 'Lista de franqueados' })
@@ -102,6 +104,14 @@ export class FranqueadosController {
   @ApiResponse({ status: 400, description: 'Dados inválidos' })
   create(@Body() body: CreateFranqueadoDto) {
     return this.service.create(this.prepareData(body));
+  }
+
+  @Get('usuario/:usuarioId')
+  @ApiOperation({ summary: 'Buscar franqueado por ID do usuário' })
+  @ApiResponse({ status: 200, description: 'Franqueado encontrado' })
+  @ApiResponse({ status: 404, description: 'Franqueado não encontrado' })
+  getByUsuarioId(@Param('usuarioId') usuarioId: string) {
+    return this.service.getByUsuarioId(usuarioId);
   }
 
   @Get(':id')

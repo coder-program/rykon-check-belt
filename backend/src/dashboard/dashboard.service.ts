@@ -23,8 +23,6 @@ export class DashboardService {
   ) {}
 
   async getStats(unidadeId?: string) {
-    console.log('📊 Carregando estatísticas reais do dashboard...');
-
     try {
       // Buscar usuários pendentes (inativos aguardando aprovação)
       const usuariosPendentes = await this.usuarioRepository.count({
@@ -62,8 +60,6 @@ export class DashboardService {
         proximosGraduaveis: 0, // TODO: implementar
         presencasHoje: 0, // TODO: implementar
       };
-
-      console.log('✅ Estatísticas carregadas:', stats);
       return stats;
     } catch (error) {
       console.error('❌ Erro ao carregar estatísticas:', error);

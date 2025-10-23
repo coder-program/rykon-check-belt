@@ -19,6 +19,7 @@ import { Usuario } from '../usuarios/entities/usuario.entity';
 import { PasswordReset } from './entities/password-reset.entity';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+import { EmailService } from '../email/email.service';
 import * as crypto from 'crypto';
 
 export interface JwtPayload {
@@ -72,9 +73,10 @@ export class AuthService {
     private unidadesService: UnidadesService,
     private dataSource: DataSource,
     private auditService: AuditService,
+    private emailService: EmailService,
   ) {}
 
-  private ACCESS_TTL_SEC = 60 * 30; // 30 min
+  private ACCESS_TTL_SEC = 60 * 60 * 8; // 8 horas (mais tempo para evitar expiração rápida)
   private REFRESH_TTL_MS = 1000 * 60 * 60 * 24 * 60; // 60 dias
 
   async validateUser(
@@ -171,9 +173,7 @@ export class AuthService {
     } */
 
     return {
-      access_token: this.jwtService.sign(payload, {
-        expiresIn: this.ACCESS_TTL_SEC,
-      }),
+      access_token: this.jwtService.sign(payload),
       user: {
         id: user.id,
         username: user.username,
@@ -187,15 +187,11 @@ export class AuthService {
     };
   }
 
-  async validateToken(payload: JwtPayload, allowInactive = false): Promise<any | null> {
-    console.log('🔍 [validateToken] Iniciando validação...');
-    console.log('🔍 [validateToken] payload.sub:', payload.sub);
-    console.log('🔍 [validateToken] allowInactive:', allowInactive);
-    
+  async validateToken(
+    payload: JwtPayload,
+    allowInactive = false,
+  ): Promise<any | null> {
     const user = await this.usuariosService.findOne(payload.sub);
-    
-    console.log('🔍 [validateToken] user encontrado:', user ? 'SIM' : 'NÃO');
-    console.log('🔍 [validateToken] user.ativo:', user?.ativo);
 
     if (!user) {
       console.error('❌ [validateToken] Usuário não encontrado');
@@ -204,19 +200,11 @@ export class AuthService {
 
     // Se allowInactive = false (padrão), rejeita usuários inativos
     if (!allowInactive && !user.ativo) {
-      console.error('❌ [validateToken] Usuário inativo e allowInactive = false');
+      console.error(
+        '❌ [validateToken] Usuário inativo e allowInactive = false',
+      );
       return null;
     }
-
-    // DEBUG: Ver se data_nascimento está vindo
-    console.log(
-      '🔍 [validateToken] user.data_nascimento:',
-      user.data_nascimento,
-    );
-    console.log(
-      '🔍 [validateToken] USER COMPLETO:',
-      JSON.stringify(user, null, 2),
-    );
 
     // Incluir dados do aluno se existir
     let aluno: any = null;
@@ -237,13 +225,6 @@ export class AuthService {
           }
         : null,
     };
-
-    console.log('📤 [validateToken] Retornando userData:', {
-      id: userData.id,
-      nome: userData.nome,
-      data_nascimento: userData.data_nascimento,
-      password: userData.password ? '[EXISTE]' : '[NÃO EXISTE]',
-    });
 
     // Remover password do retorno para segurança
     const { password, ...userDataWithoutPassword } = userData;
@@ -266,20 +247,11 @@ export class AuthService {
   }
 
   async getUserProfile(userId: string) {
-    console.log('🔍 [getUserProfile] Buscando perfil do usuário:', userId);
-
     const user = await this.usuariosService.findOne(userId);
 
     if (!user) {
       throw new NotFoundException('Usuário não encontrado');
     }
-
-    console.log('✅ [getUserProfile] User encontrado:', {
-      id: user.id,
-      nome: user.nome,
-      data_nascimento: user.data_nascimento,
-      tipo: typeof user.data_nascimento,
-    });
 
     const permissions = await this.usuariosService.getUserPermissions(userId);
     const permissionsDetail =
@@ -308,13 +280,6 @@ export class AuthService {
     // Remover senha do retorno
     const { password, ...userWithoutPassword } = user;
 
-    console.log('📦 [getUserProfile] userWithoutPassword:', {
-      id: userWithoutPassword.id,
-      nome: userWithoutPassword.nome,
-      data_nascimento: userWithoutPassword.data_nascimento,
-      tipo: typeof userWithoutPassword.data_nascimento,
-    });
-
     const result = {
       ...userWithoutPassword,
       permissions,
@@ -323,38 +288,15 @@ export class AuthService {
       unidade,
     };
 
-    console.log('📤 [getUserProfile] RESULTADO FINAL:', {
-      id: result.id,
-      nome: result.nome,
-      data_nascimento: result.data_nascimento,
-      tipo: typeof result.data_nascimento,
-    });
-
     return result;
   }
 
   async completeProfile(userId: string, profileData: any) {
-    console.log('🔥 [completeProfile] ============ INÍCIO ============');
-    console.log('🔥 [completeProfile] userId:', userId);
-    console.log(
-      '🔥 [completeProfile] profileData RECEBIDO:',
-      JSON.stringify(profileData, null, 2),
-    );
-
     const user = await this.usuariosService.findOne(userId);
     if (!user) {
       console.error('❌ [completeProfile] Usuário não encontrado');
       throw new NotFoundException('Usuário não encontrado');
     }
-
-    console.log(
-      '👤 [completeProfile] Usuário encontrado:',
-      JSON.stringify(user, null, 2),
-    );
-    console.log(
-      '📅 [completeProfile] user.data_nascimento:',
-      user.data_nascimento,
-    );
 
     if (user.cadastro_completo) {
       console.error('❌ [completeProfile] Cadastro já foi completado');
@@ -363,12 +305,10 @@ export class AuthService {
 
     const perfis = await this.usuariosService.getUserPerfis(userId);
     const perfilPrincipal = perfis[0]?.toLowerCase();
-    console.log('🎭 [completeProfile] perfilPrincipal:', perfilPrincipal);
 
     try {
       // Completar cadastro baseado no perfil
       if (perfilPrincipal === 'aluno') {
-        console.log('🎓 [completeProfile] Processando cadastro de ALUNO...');
         // Função para limpar campos vazios/nulos/undefined
         const cleanEmptyFields = (obj: any) => {
           const cleaned = {};
@@ -379,15 +319,6 @@ export class AuthService {
           }
           return cleaned;
         };
-
-        console.log(
-          '🔍 [completeProfile] profileData.data_nascimento:',
-          profileData.data_nascimento,
-        );
-        console.log(
-          '🔍 [completeProfile] user.data_nascimento:',
-          user.data_nascimento,
-        );
 
         const alunoDataRaw = {
           // Dados pessoais
@@ -443,19 +374,9 @@ export class AuthService {
 
         // Limpar campos vazios antes de enviar para o banco
         const alunoData = cleanEmptyFields(alunoDataRaw);
-
-        console.log(
-          '📦 [completeProfile] alunoData FINAL (após limpeza):',
-          JSON.stringify(alunoData, null, 2),
-        );
-
         try {
           const alunoCreated = await this.alunosService.create(
             alunoData as any,
-          );
-          console.log(
-            '✅ [completeProfile] Aluno criado com sucesso:',
-            alunoCreated.id,
           );
         } catch (alunoError) {
           console.error(
@@ -601,12 +522,6 @@ export class AuthService {
       usuarioAtivo = false; // INATIVO até completar cadastro
     }
 
-    // DEBUG: Ver se data_nascimento está chegando no payload
-    console.log(
-      '🔍 [registerAluno] payload.data_nascimento:',
-      payload.data_nascimento,
-    );
-
     // Cria usuário com perfil selecionado
     const user = await this.usuariosService.create({
       username: payload.email,
@@ -620,12 +535,6 @@ export class AuthService {
       perfil_ids: [perfilId],
       cadastro_completo: perfilNome === 'aluno' ? false : true, // Aluno precisa completar cadastro
     } as any);
-
-    // DEBUG: Ver se user foi criado com data_nascimento
-    console.log(
-      '✅ [registerAluno] user criado com data_nascimento:',
-      user.data_nascimento,
-    );
 
     // VINCULAR USUÁRIO À UNIDADE conforme perfil
     if (payload.unidade_id) {
@@ -785,14 +694,26 @@ export class AuthService {
     return { message: 'Senha alterada com sucesso' };
   }
 
-  async forgotPassword(email: string): Promise<{ message: string }> {
+  async forgotPassword(
+    email: string,
+  ): Promise<{ message: string; found?: boolean; token?: string }> {
     const user = await this.usuariosService.findByEmail(email);
 
     if (!user) {
-      // Não revelar que o usuário não existe por questões de segurança
+      // Em desenvolvimento, revelar que o email não existe para melhor UX
+      if (process.env.NODE_ENV === 'development') {
+        return {
+          message:
+            'Email não encontrado. Verifique se está cadastrado no sistema.',
+          found: false,
+        };
+      }
+
+      // Em produção, não revelar por questões de segurança
       return {
         message:
           'Se o email estiver cadastrado, você receberá as instruções de reset',
+        found: false,
       };
     }
 
@@ -810,12 +731,19 @@ export class AuthService {
 
     await this.passwordResetRepository.save(passwordReset);
 
-    // Aqui você implementaria o envio de email
-    console.log(`Token de reset para ${email}: ${token}`);
+    // Enviar email de recuperação de senha
+    try {
+      await this.emailService.sendPasswordResetEmail(email, token);
+    } catch (error) {
+      console.error(`Erro ao enviar email de recuperação: ${error.message}`);
+      // Continua mesmo se falhar o envio do email (por segurança não revelar erro)
+    }
 
     return {
-      message:
-        'Se o email estiver cadastrado, você receberá as instruções de reset',
+      message: 'Email de recuperação enviado com sucesso!',
+      found: true,
+      // Em desenvolvimento, retorna o token para facilitar testes
+      ...(process.env.NODE_ENV === 'development' && { token }),
     };
   }
 

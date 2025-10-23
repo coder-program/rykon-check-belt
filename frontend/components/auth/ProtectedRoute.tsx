@@ -25,8 +25,21 @@ export default function ProtectedRoute({
   useEffect(() => {
     if (!loading && !isAuthenticated) {
       router.push(redirectTo);
+      return;
     }
-  }, [loading, isAuthenticated, router, redirectTo]);
+
+    // Se o usuário está autenticado mas não completou o cadastro,
+    // redireciona para a tela de completar perfil antes de acessar qualquer rota protegida
+    if (
+      !loading &&
+      isAuthenticated &&
+      user &&
+      user.cadastro_completo === false
+    ) {
+      router.push("/complete-profile");
+      return;
+    }
+  }, [loading, isAuthenticated, router, redirectTo, user]);
 
   // Função para verificar se o usuário tem o perfil necessário
   const hasPerfil = (perfil: string): boolean => {
@@ -68,7 +81,9 @@ export default function ProtectedRoute({
           <CardContent className="pt-6">
             <div className="text-center">
               <Loader2 className="mx-auto h-12 w-12 text-blue-500 animate-spin mb-4" />
-              <h3 className="text-lg font-semibold mb-2">Verificando acesso...</h3>
+              <h3 className="text-lg font-semibold mb-2">
+                Verificando acesso...
+              </h3>
               <p className="text-gray-600">
                 Aguarde enquanto validamos suas credenciais
               </p>
@@ -100,7 +115,8 @@ export default function ProtectedRoute({
               </p>
               {requiredPerfis.length > 0 && (
                 <div className="text-xs text-gray-500 mb-2">
-                  <strong>Perfis necessários:</strong> {requiredPerfis.join(", ")}
+                  <strong>Perfis necessários:</strong>{" "}
+                  {requiredPerfis.join(", ")}
                 </div>
               )}
               {requiredPermissions.length > 0 && (

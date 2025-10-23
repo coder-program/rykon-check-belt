@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { NameInput } from "@/components/ui/name-input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -320,10 +321,9 @@ export default function RegisterPage() {
                       <User className="h-4 w-4 text-red-400" />
                       Nome Completo
                     </Label>
-                    <Input
+                    <NameInput
                       id="nome"
                       name="nome"
-                      type="text"
                       required
                       value={formData.nome}
                       onChange={handleChange}

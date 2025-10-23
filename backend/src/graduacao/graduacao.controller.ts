@@ -30,9 +30,7 @@ import { FaixaDef } from './entities/faixa-def.entity';
 // @UseGuards(JwtAuthGuard) // Descomentar quando auth estiver configurado
 // @ApiBearerAuth()
 export class GraduacaoController {
-  constructor(private readonly graduacaoService: GraduacaoService) {
-    console.log('🚀 GraduacaoController inicializado!');
-  }
+  constructor(private readonly graduacaoService: GraduacaoService) {}
 
   @Get('faixas')
   @ApiOperation({ summary: 'Lista todas as faixas disponíveis' })
@@ -88,10 +86,6 @@ export class GraduacaoController {
   async getStatusGraduacao(
     @Param('alunoId') alunoId: string,
   ): Promise<StatusGraduacaoDto> {
-    console.log(
-      '🎯 [Controller] getStatusGraduacao chamado para alunoId:',
-      alunoId,
-    );
     return await this.graduacaoService.getStatusGraduacao(alunoId);
   }
 

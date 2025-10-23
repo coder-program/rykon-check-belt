@@ -13,6 +13,7 @@ import {
   ValidateIf,
   IsNotEmpty,
 } from 'class-validator';
+import { IsValidName } from '../../common/decorators/is-valid-name.decorator';
 import { Transform } from 'class-transformer';
 import {
   TipoCadastro,
@@ -31,6 +32,7 @@ export class CreatePersonDto {
   @MinLength(3)
   @MaxLength(255)
   @IsNotEmpty()
+  @IsValidName({ message: 'Nome deve conter apenas letras e espaços' })
   nome_completo: string;
 
   @IsString()
@@ -124,6 +126,9 @@ export class CreatePersonDto {
   )
   @IsString()
   @IsNotEmpty()
+  @IsValidName({
+    message: 'Nome do responsável deve conter apenas letras e espaços',
+  })
   responsavel_nome?: string;
 
   @ValidateIf(

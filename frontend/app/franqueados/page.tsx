@@ -3,6 +3,7 @@
 import React from "react";
 import { useAuth } from "@/app/auth/AuthContext";
 import { useRouter } from "next/navigation";
+import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import {
   useInfiniteQuery,
   useMutation,
@@ -464,248 +465,254 @@ export default function PageFranqueados() {
   };
 
   return (
-    <>
-      <Toaster position="top-right" />
-      <div className="min-h-screen bg-gradient-to-br from-white to-blue-50 p-6">
-        {/* Header */}
-        <div className="mb-6">
-          {/* Breadcrumb/Navigation */}
-          <div className="flex items-center gap-2 mb-4">
-            <button
-              onClick={() => router.push("/dashboard")}
-              className="group flex items-center gap-2 text-sm text-gray-600 hover:text-blue-600 transition-colors duration-200"
-              title="Voltar ao Dashboard"
-            >
-              <div className="p-1 rounded-full group-hover:bg-blue-100 transition-colors duration-200">
-                <ArrowLeft className="h-4 w-4" />
-              </div>
-              <span>Dashboard</span>
-            </button>
-            <span className="text-gray-400">/</span>
-            <span className="text-gray-900 font-medium">Franqueados</span>
-          </div>
-
-          {/* Title Section */}
-          <div className="flex items-center gap-3 mb-2">
-            <Building2 className="h-8 w-8 text-blue-600" />
-            <h1 className="text-3xl font-bold text-gray-900">Franqueados</h1>
-          </div>
-          <p className="text-gray-600">
-            Gerencie os franqueados da rede TeamCruz
-          </p>
-        </div>
-
-        {/* Controls */}
-        <div className="bg-white rounded-lg shadow-sm border border-blue-200 p-4 mb-6">
-          <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
-            <div className="flex flex-col sm:flex-row gap-4 items-center flex-1">
-              <div className="relative w-full sm:w-96">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-                <input
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Buscar por nome, email ou CNPJ..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                />
-              </div>
-
-              <div className="relative w-full sm:w-48">
-                <Filter className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 pointer-events-none" />
-                <select
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white"
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                >
-                  <option value="">Todas as situações</option>
-                  <option value="ATIVA">Ativa</option>
-                  <option value="EM_HOMOLOGACAO">Em Homologação</option>
-                  <option value="INATIVA">Inativa</option>
-                </select>
-              </div>
+    <ProtectedRoute requiredPerfis={["master", "franqueado"]}>
+      <>
+        <Toaster position="top-right" />
+        <div className="min-h-screen bg-gradient-to-br from-white to-blue-50 p-6">
+          {/* Header */}
+          <div className="mb-6">
+            {/* Breadcrumb/Navigation */}
+            <div className="flex items-center gap-2 mb-4">
+              <button
+                onClick={() => router.push("/dashboard")}
+                className="group flex items-center gap-2 text-sm text-gray-600 hover:text-blue-600 transition-colors duration-200"
+                title="Voltar ao Dashboard"
+              >
+                <div className="p-1 rounded-full group-hover:bg-blue-100 transition-colors duration-200">
+                  <ArrowLeft className="h-4 w-4" />
+                </div>
+                <span>Dashboard</span>
+              </button>
+              <span className="text-gray-400">/</span>
+              <span className="text-gray-900 font-medium">Franqueados</span>
             </div>
 
-            <button
-              onClick={openCreateModal}
-              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
-            >
-              <Plus className="h-4 w-4" />
-              Novo Franqueado
-            </button>
+            {/* Title Section */}
+            <div className="flex items-center gap-3 mb-2">
+              <Building2 className="h-8 w-8 text-blue-600" />
+              <h1 className="text-3xl font-bold text-gray-900">Franqueados</h1>
+            </div>
+            <p className="text-gray-600">
+              Gerencie os franqueados da rede TeamCruz
+            </p>
           </div>
-        </div>
 
-        {/* Results */}
-        <div className="bg-white rounded-lg shadow-sm border border-blue-200">
-          <div className="p-4 border-b border-gray-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">
-                  {query.data?.pages[0]?.total || 0} franqueado(s) encontrado(s)
-                </p>
-                {(search || statusFilter) && (
-                  <div className="flex items-center gap-2 mt-2">
-                    <span className="text-xs text-gray-500">
-                      Filtros ativos:
-                    </span>
-                    {search && (
-                      <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
-                        Busca: "{search}"
+          {/* Controls */}
+          <div className="bg-white rounded-lg shadow-sm border border-blue-200 p-4 mb-6">
+            <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
+              <div className="flex flex-col sm:flex-row gap-4 items-center flex-1">
+                <div className="relative w-full sm:w-96">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                  <input
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Buscar por nome, email ou CNPJ..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                  />
+                </div>
+
+                <div className="relative w-full sm:w-48">
+                  <Filter className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 pointer-events-none" />
+                  <select
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white"
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value)}
+                  >
+                    <option value="">Todas as situações</option>
+                    <option value="ATIVA">Ativa</option>
+                    <option value="EM_HOMOLOGACAO">Em Homologação</option>
+                    <option value="INATIVA">Inativa</option>
+                  </select>
+                </div>
+              </div>
+
+              <button
+                onClick={openCreateModal}
+                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+              >
+                <Plus className="h-4 w-4" />
+                Novo Franqueado
+              </button>
+            </div>
+          </div>
+
+          {/* Results */}
+          <div className="bg-white rounded-lg shadow-sm border border-blue-200">
+            <div className="p-4 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-600">
+                    {query.data?.pages[0]?.total || 0} franqueado(s)
+                    encontrado(s)
+                  </p>
+                  {(search || statusFilter) && (
+                    <div className="flex items-center gap-2 mt-2">
+                      <span className="text-xs text-gray-500">
+                        Filtros ativos:
                       </span>
-                    )}
-                    {statusFilter && (
-                      <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
-                        Status:{" "}
-                        {statusFilter === "ATIVA"
-                          ? "Ativa"
-                          : statusFilter === "EM_HOMOLOGACAO"
-                          ? "Em Homologação"
-                          : "Inativa"}
-                      </span>
-                    )}
-                    {(search || statusFilter) && (
-                      <button
-                        onClick={() => {
-                          setSearch("");
-                          setStatusFilter("");
-                        }}
-                        className="text-xs text-red-600 hover:text-red-700 underline ml-2"
-                      >
-                        Limpar filtros
-                      </button>
-                    )}
+                      {search && (
+                        <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                          Busca: "{search}"
+                        </span>
+                      )}
+                      {statusFilter && (
+                        <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
+                          Status:{" "}
+                          {statusFilter === "ATIVA"
+                            ? "Ativa"
+                            : statusFilter === "EM_HOMOLOGACAO"
+                            ? "Em Homologação"
+                            : "Inativa"}
+                        </span>
+                      )}
+                      {(search || statusFilter) && (
+                        <button
+                          onClick={() => {
+                            setSearch("");
+                            setStatusFilter("");
+                          }}
+                          className="text-xs text-red-600 hover:text-red-700 underline ml-2"
+                        >
+                          Limpar filtros
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+                {query.isFetching && (
+                  <div className="text-xs text-gray-500 flex items-center gap-2">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                    Atualizando...
                   </div>
                 )}
               </div>
-              {query.isFetching && (
-                <div className="text-xs text-gray-500 flex items-center gap-2">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-                  Atualizando...
+            </div>
+
+            <div className="h-[600px]">
+              {items.length > 0 ? (
+                <List
+                  height={600}
+                  itemCount={items.length + (query.hasNextPage ? 1 : 0)}
+                  itemSize={120}
+                  width={"100%"}
+                  onItemsRendered={({ visibleStopIndex }) => {
+                    if (
+                      visibleStopIndex >= items.length - 5 &&
+                      query.hasNextPage &&
+                      !query.isFetchingNextPage
+                    )
+                      query.fetchNextPage();
+                  }}
+                >
+                  {({ index, style }) => {
+                    const f = items[index];
+                    if (!f)
+                      return (
+                        <div style={style} className="p-4">
+                          <div className="flex items-center justify-center">
+                            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+                            <span className="ml-2 text-gray-600">
+                              Carregando mais franqueados...
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    return (
+                      <div
+                        style={style}
+                        className="p-4 border-b border-gray-100"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full flex items-center justify-center">
+                              <User className="h-6 w-6 text-white" />
+                            </div>
+                            <div className="flex-1">
+                              <h3 className="font-semibold text-gray-900">
+                                {f.nome}
+                              </h3>
+                              <div className="flex items-center gap-4 mt-1">
+                                <span className="text-sm text-gray-600 flex items-center gap-1">
+                                  <FileText className="h-3 w-3" />
+                                  {f.cnpj}
+                                </span>
+                                {f.email && (
+                                  <span className="text-sm text-gray-600 flex items-center gap-1">
+                                    <Mail className="h-3 w-3" />
+                                    {f.email}
+                                  </span>
+                                )}
+                                {f.telefone && (
+                                  <span className="text-sm text-gray-600 flex items-center gap-1">
+                                    <Phone className="h-3 w-3" />
+                                    {f.telefone}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-4 mt-1">
+                                <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                                  {f.total_unidades || 0} unidade(s)
+                                </span>
+                                <span
+                                  className={`text-xs px-2 py-1 rounded-full ${
+                                    f.situacao === "ATIVA"
+                                      ? "bg-green-100 text-green-800"
+                                      : f.situacao === "EM_HOMOLOGACAO"
+                                      ? "bg-yellow-100 text-yellow-800"
+                                      : "bg-red-100 text-red-800"
+                                  }`}
+                                >
+                                  {f.situacao === "ATIVA"
+                                    ? "Ativa"
+                                    : f.situacao === "EM_HOMOLOGACAO"
+                                    ? "Em Homologação"
+                                    : "Inativa"}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => openEditModal(f)}
+                              className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                              title="Editar franqueado"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  }}
+                </List>
+              ) : (
+                <div className="flex items-center justify-center h-full text-gray-500">
+                  <div className="text-center">
+                    <Building2 className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p>Nenhum franqueado encontrado</p>
+                    <p className="text-sm mt-1">
+                      Clique em "Novo Franqueado" para criar o primeiro
+                    </p>
+                  </div>
                 </div>
               )}
             </div>
           </div>
-
-          <div className="h-[600px]">
-            {items.length > 0 ? (
-              <List
-                height={600}
-                itemCount={items.length + (query.hasNextPage ? 1 : 0)}
-                itemSize={120}
-                width={"100%"}
-                onItemsRendered={({ visibleStopIndex }) => {
-                  if (
-                    visibleStopIndex >= items.length - 5 &&
-                    query.hasNextPage &&
-                    !query.isFetchingNextPage
-                  )
-                    query.fetchNextPage();
-                }}
-              >
-                {({ index, style }) => {
-                  const f = items[index];
-                  if (!f)
-                    return (
-                      <div style={style} className="p-4">
-                        <div className="flex items-center justify-center">
-                          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-                          <span className="ml-2 text-gray-600">
-                            Carregando mais franqueados...
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  return (
-                    <div style={style} className="p-4 border-b border-gray-100">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                          <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full flex items-center justify-center">
-                            <User className="h-6 w-6 text-white" />
-                          </div>
-                          <div className="flex-1">
-                            <h3 className="font-semibold text-gray-900">
-                              {f.nome}
-                            </h3>
-                            <div className="flex items-center gap-4 mt-1">
-                              <span className="text-sm text-gray-600 flex items-center gap-1">
-                                <FileText className="h-3 w-3" />
-                                {f.cnpj}
-                              </span>
-                              {f.email && (
-                                <span className="text-sm text-gray-600 flex items-center gap-1">
-                                  <Mail className="h-3 w-3" />
-                                  {f.email}
-                                </span>
-                              )}
-                              {f.telefone && (
-                                <span className="text-sm text-gray-600 flex items-center gap-1">
-                                  <Phone className="h-3 w-3" />
-                                  {f.telefone}
-                                </span>
-                              )}
-                            </div>
-                            <div className="flex items-center gap-4 mt-1">
-                              <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
-                                {f.total_unidades || 0} unidade(s)
-                              </span>
-                              <span
-                                className={`text-xs px-2 py-1 rounded-full ${
-                                  f.situacao === "ATIVA"
-                                    ? "bg-green-100 text-green-800"
-                                    : f.situacao === "EM_HOMOLOGACAO"
-                                    ? "bg-yellow-100 text-yellow-800"
-                                    : "bg-red-100 text-red-800"
-                                }`}
-                              >
-                                {f.situacao === "ATIVA"
-                                  ? "Ativa"
-                                  : f.situacao === "EM_HOMOLOGACAO"
-                                  ? "Em Homologação"
-                                  : "Inativa"}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => openEditModal(f)}
-                            className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                            title="Editar franqueado"
-                          >
-                            <Edit className="h-4 w-4" />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                }}
-              </List>
-            ) : (
-              <div className="flex items-center justify-center h-full text-gray-500">
-                <div className="text-center">
-                  <Building2 className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>Nenhum franqueado encontrado</p>
-                  <p className="text-sm mt-1">
-                    Clique em "Novo Franqueado" para criar o primeiro
-                  </p>
-                </div>
-              </div>
-            )}
-          </div>
         </div>
-      </div>
 
-      {/* Modal - Novo Componente */}
-      {showModal && (
-        <FranqueadoForm
-          formData={formData}
-          setFormData={setFormData}
-          onSubmit={handleSubmit}
-          onClose={() => setShowModal(false)}
-          isEditing={!!editingFranqueado}
-          isLoading={createMutation.isPending || updateMutation.isPending}
-          availableFranquias={matrizesQuery.data || []}
-        />
-      )}
-    </>
+        {/* Modal - Novo Componente */}
+        {showModal && (
+          <FranqueadoForm
+            formData={formData}
+            setFormData={setFormData}
+            onSubmit={handleSubmit}
+            onClose={() => setShowModal(false)}
+            isEditing={!!editingFranqueado}
+            isLoading={createMutation.isPending || updateMutation.isPending}
+            availableFranquias={matrizesQuery.data || []}
+          />
+        )}
+      </>
+    </ProtectedRoute>
   );
 }

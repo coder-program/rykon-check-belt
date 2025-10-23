@@ -121,16 +121,6 @@ function AprovacaoAlunosPage() {
         })
       );
 
-      // Debug: verificar status dos alunos
-      console.log(
-        "🔍 TODOS OS ALUNOS:",
-        allAlunos.map((a: any) => ({
-          nome: a.nome_completo,
-          status_usuario: a.status_usuario,
-        }))
-      );
-      console.log("🔍 FILTRO ATUAL:", filter);
-
       // Filtrar baseado no estado do USUÁRIO (não do aluno)
       let filtered = allAlunos;
       if (filter === "pendentes") {
@@ -141,14 +131,6 @@ function AprovacaoAlunosPage() {
         filtered = allAlunos.filter((a: any) => a.status_usuario === "ATIVO");
       }
       // Se filter === "todos", não filtra por status
-
-      console.log(
-        "🔍 ALUNOS FILTRADOS:",
-        filtered.map((a: any) => ({
-          nome: a.nome_completo,
-          status_usuario: a.status_usuario,
-        }))
-      );
 
       // Filtrar por busca
       if (search) {

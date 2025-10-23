@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/app/auth/AuthContext";
 import { authService } from "@/lib/services/authService";
+import { NameInput } from "@/components/ui/name-input";
 import LoadingPage from "@/components/LoadingPage";
 
 interface Unidade {
@@ -68,30 +69,14 @@ export default function CompleteProfilePage() {
   });
 
   useEffect(() => {
-    // DEBUG: Ver o que está chegando
-    console.log("🔍 COMPLETE PROFILE - DEBUG:", {
-      user,
-      data_nascimento: user?.data_nascimento,
-      perfis: user?.perfis,
-      cadastro_completo: user?.cadastro_completo,
-      authLoading,
-      isAuthenticated,
-    });
-    console.log(
-      "🔍 COMPLETE PROFILE - USER COMPLETO:",
-      JSON.stringify(user, null, 2)
-    );
-
     // Verificar se está autenticado
     if (!authLoading && !isAuthenticated) {
-      console.log("❌ Não autenticado, redirecionando para login");
       router.push("/login");
       return;
     }
 
     // Verificar se o cadastro já foi completo
     if (user?.cadastro_completo) {
-      console.log("✅ Cadastro completo, redirecionando para dashboard");
       router.push("/dashboard");
       return;
     }
@@ -102,13 +87,8 @@ export default function CompleteProfilePage() {
       const perfis = user.perfis.map((p: any) => {
         return typeof p === "string" ? p.toUpperCase() : p.nome?.toUpperCase();
       });
-      console.log("📝 Usuário precisa completar cadastro, perfil:", perfis[0]);
-
       // FRANQUEADO → vai para tela específica de cadastro da própria franquia
       if (perfis.includes("FRANQUEADO")) {
-        console.log(
-          "🏢 Perfil FRANQUEADO detectado, redirecionando para /minha-franquia"
-        );
         router.push("/minha-franquia");
         return;
       }
@@ -123,8 +103,6 @@ export default function CompleteProfilePage() {
   // Atualizar formData quando user.data_nascimento estiver disponível
   useEffect(() => {
     if (user?.data_nascimento) {
-      console.log("📅 Data de nascimento do user:", user.data_nascimento);
-
       // Converter para formato YYYY-MM-DD se necessário
       let dataFormatada = user.data_nascimento;
 
@@ -135,8 +113,6 @@ export default function CompleteProfilePage() {
         // Se vier como "2000-01-15T00:00:00.000Z", pegar só a data
         dataFormatada = user.data_nascimento.split("T")[0];
       }
-
-      console.log("📅 Data formatada:", dataFormatada);
 
       setFormData((prev) => ({
         ...prev,
@@ -189,29 +165,12 @@ export default function CompleteProfilePage() {
     setSuccess("");
     setLoading(true);
 
-    console.log("🚀 [handleSubmit] INICIANDO...");
-    console.log(
-      "📋 [handleSubmit] formData:",
-      JSON.stringify(formData, null, 2)
-    );
-    console.log(
-      "👤 [handleSubmit] user completo:",
-      JSON.stringify(user, null, 2)
-    );
-
     try {
       // Validar campos obrigatórios
       if (!formData.unidade_id) {
         console.error("❌ [handleSubmit] unidade_id não informado");
         throw new Error("Selecione uma unidade");
       }
-
-      console.log("✅ [handleSubmit] unidade_id OK:", formData.unidade_id);
-
-      console.log(
-        "📅 [handleSubmit] data_nascimento:",
-        formData.data_nascimento
-      );
 
       // Se for menor de idade, validar responsável
       if (isMenorDeIdade()) {
@@ -231,7 +190,6 @@ export default function CompleteProfilePage() {
       // Se retornou um novo token, salvar no localStorage
       if (response.access_token) {
         localStorage.setItem("token", response.access_token);
-        console.log("✅ Novo token salvo após completar perfil");
       }
 
       // Cadastro completado com sucesso, limpar dados e redirecionar
@@ -534,8 +492,7 @@ export default function CompleteProfilePage() {
                   <label className="block text-sm font-medium text-gray-300 mb-2">
                     Nome do Contato
                   </label>
-                  <input
-                    type="text"
+                  <NameInput
                     name="nome_contato_emergencia"
                     value={formData.nome_contato_emergencia}
                     onChange={handleChange}
@@ -664,8 +621,7 @@ export default function CompleteProfilePage() {
                   </h3>
 
                   <div className="space-y-3">
-                    <input
-                      type="text"
+                    <NameInput
                       name="responsavel_nome"
                       value={formData.responsavel_nome}
                       onChange={handleChange}

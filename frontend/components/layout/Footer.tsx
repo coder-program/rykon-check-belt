@@ -4,7 +4,7 @@ import { useAuth } from "@/app/auth/AuthContext";
 import Image from "next/image";
 
 export default function Footer() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const currentYear = new Date().getFullYear();
 
   // Não mostrar footer nas páginas públicas
@@ -38,45 +38,51 @@ export default function Footer() {
           </div>
 
           {/* Links Rápidos */}
-          <div className="space-y-4">
+          {/* <div className="space-y-4">
             <h4 className="text-sm font-semibold text-gray-300 uppercase tracking-wider">
               Links Rápidos
             </h4>
-            <ul className="space-y-2 text-sm">
-              <li>
-                <a
-                  href="/dashboard"
-                  className="text-gray-400 hover:text-white transition-colors"
-                >
-                  Dashboard
-                </a>
-              </li>
-              <li>
-                <a
-                  href="/alunos"
-                  className="text-gray-400 hover:text-white transition-colors"
-                >
-                  Alunos
-                </a>
-              </li>
-              <li>
-                <a
-                  href="/presenca"
-                  className="text-gray-400 hover:text-white transition-colors"
-                >
-                  Presença
-                </a>
-              </li>
-              <li>
-                <a
-                  href="/graduacao"
-                  className="text-gray-400 hover:text-white transition-colors"
-                >
-                  Graduação
-                </a>
-              </li>
-            </ul>
-          </div>
+            {user && !user.cadastro_completo ? (
+              <div className="text-sm text-yellow-300">
+                Complete seu cadastro para acessar os links rápidos.
+              </div>
+            ) : (
+              <ul className="space-y-2 text-sm">
+                <li>
+                  <a
+                    href="/dashboard"
+                    className="text-gray-400 hover:text-white transition-colors"
+                  >
+                    Dashboard
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="/alunos"
+                    className="text-gray-400 hover:text-white transition-colors"
+                  >
+                    Alunos
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="/presenca"
+                    className="text-gray-400 hover:text-white transition-colors"
+                  >
+                    Presença
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="/graduacao"
+                    className="text-gray-400 hover:text-white transition-colors"
+                  >
+                    Graduação
+                  </a>
+                </li>
+              </ul>
+            )}
+          </div> */}
 
           {/* Desenvolvido por Rykon */}
           <div className="space-y-4">
@@ -86,7 +92,7 @@ export default function Footer() {
             <div className="space-y-3">
               <div className="relative w-32 h-12">
                 <Image
-                  src="/imgs/logorykon.png"
+                  src="/imgs/logorykonfooter.png"
                   alt="Rykon Logo"
                   fill
                   className="object-contain"

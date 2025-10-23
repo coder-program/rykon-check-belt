@@ -172,7 +172,6 @@ export class PresencaService {
     });
 
     const presencaSalva = await this.presencaRepository.save(presenca);
-    console.log('✅ [checkInQR] Presença registrada:', presencaSalva.id);
 
     // Incrementar contador de graduação - buscar aluno_faixa ativa
     try {
@@ -187,10 +186,6 @@ export class PresencaService {
         alunoFaixaAtiva.presencas_no_ciclo += 1;
         alunoFaixaAtiva.presencas_total_fx += 1;
         await this.alunoFaixaRepository.save(alunoFaixaAtiva);
-        console.log(
-          '✅ [checkInQR] Presenças incrementadas:',
-          alunoFaixaAtiva.presencas_no_ciclo,
-        );
       }
     } catch (error) {
       console.error(
@@ -207,8 +202,6 @@ export class PresencaService {
   }
 
   async checkInManual(aulaId: string, user: any) {
-    console.log('🔵 [checkInManual] Iniciando check-in manual');
-
     // Buscar aluno
     const aluno = await this.alunoRepository.findOne({
       where: { usuario_id: user.id },
@@ -256,7 +249,6 @@ export class PresencaService {
     });
 
     const presencaSalva = await this.presencaRepository.save(presenca);
-    console.log('✅ [checkInManual] Presença registrada:', presencaSalva.id);
 
     // Incrementar contador de graduação
     try {
@@ -445,9 +437,7 @@ export class PresencaService {
     // Incrementar contador de graduação
     try {
       await this.graduacaoService.incrementarPresenca(alunoId);
-    } catch (error) {
-      console.log('Erro ao incrementar graduação:', error.message);
-    }
+    } catch (error) {}
 
     return {
       success: true,
@@ -597,11 +587,6 @@ export class PresencaService {
     const hoje = data ? new Date(data) : new Date();
     const diaSemana = hoje.getDay();
 
-    console.log(
-      '🔍 [getAulasDisponiveis] Buscando aulas para o dia:',
-      diaSemana,
-    );
-
     try {
       // Buscar unidade do aluno
       let unidadeId: string | null = null;
@@ -613,7 +598,6 @@ export class PresencaService {
 
       if (aluno?.unidade_id) {
         unidadeId = aluno.unidade_id;
-        console.log('🔍 [getAulasDisponiveis] Unidade do aluno:', unidadeId);
       }
 
       // Buscar aulas ativas da unidade do aluno ou todas se não tiver unidade
@@ -633,8 +617,6 @@ export class PresencaService {
           data_hora_inicio: 'ASC',
         },
       });
-
-      console.log('🔍 [getAulasDisponiveis] Aulas encontradas:', aulas.length);
 
       // Filtrar aulas que ainda não começaram ou estão em andamento
       const agora = hoje.getTime();
@@ -670,11 +652,6 @@ export class PresencaService {
           tipo: aula.tipo,
         };
       });
-
-      console.log(
-        '✅ [getAulasDisponiveis] Aulas formatadas:',
-        aulasFormatadas.length,
-      );
 
       return aulasFormatadas;
     } catch (error) {
@@ -726,9 +703,7 @@ export class PresencaService {
     if (user.perfis?.includes('aluno')) {
       try {
         await this.graduacaoService.incrementarPresenca(user.id);
-      } catch (error) {
-        console.log('Erro ao incrementar graduação:', error.message);
-      }
+      } catch (error) {}
     }
 
     return {
@@ -789,9 +764,7 @@ export class PresencaService {
     // Incrementar contador de graduação do aluno
     try {
       await this.graduacaoService.incrementarPresenca(alunoId);
-    } catch (error) {
-      console.log('Erro ao incrementar graduação:', error.message);
-    }
+    } catch (error) {}
 
     return {
       success: true,
@@ -837,11 +810,6 @@ export class PresencaService {
   }
 
   async getRankingUnidade(user: any, mes?: number, ano?: number) {
-    console.log(
-      '🏆 [getRankingUnidade] Buscando ranking para usuário:',
-      user.id,
-    );
-
     try {
       // Buscar unidade do aluno
       const aluno = await this.alunoRepository.findOne({
@@ -850,7 +818,6 @@ export class PresencaService {
       });
 
       if (!aluno || !aluno.unidade_id) {
-        console.log('⚠️ [getRankingUnidade] Aluno sem unidade');
         return {
           posicao: null,
           totalAlunos: 0,
@@ -863,16 +830,9 @@ export class PresencaService {
       const mesRef = mes !== undefined ? mes : dataRef.getMonth() + 1; // 1-12
       const anoRef = ano !== undefined ? ano : dataRef.getFullYear();
 
-      console.log(`🏆 [getRankingUnidade] Período: ${mesRef}/${anoRef}`);
-      console.log(`🏆 [getRankingUnidade] Unidade: ${aluno.unidade_id}`);
-
       // Calcular primeiro e último dia do mês
       const primeiroDia = new Date(anoRef, mesRef - 1, 1);
       const ultimoDia = new Date(anoRef, mesRef, 0, 23, 59, 59);
-
-      console.log(
-        `🏆 [getRankingUnidade] Período: ${primeiroDia} até ${ultimoDia}`,
-      );
 
       // Buscar todos os alunos ativos da mesma unidade
       const alunosDaUnidade = await this.alunoRepository.find({
@@ -881,10 +841,6 @@ export class PresencaService {
           status: StatusAluno.ATIVO,
         },
       });
-
-      console.log(
-        `🏆 [getRankingUnidade] Alunos da unidade: ${alunosDaUnidade.length}`,
-      );
 
       // Buscar presenças do mês para todos os alunos da unidade
       const presencas = await this.presencaRepository
@@ -895,10 +851,6 @@ export class PresencaService {
         .andWhere('presenca.created_at >= :inicio', { inicio: primeiroDia })
         .andWhere('presenca.created_at <= :fim', { fim: ultimoDia })
         .getMany();
-
-      console.log(
-        `🏆 [getRankingUnidade] Presenças encontradas: ${presencas.length}`,
-      );
 
       // Contar presenças por aluno
       const presencasPorAluno = new Map<string, number>();
@@ -927,11 +879,6 @@ export class PresencaService {
 
       const posicao = posicaoAluno >= 0 ? posicaoAluno + 1 : null;
       const presencasDoAluno = presencasPorAluno.get(aluno.id) || 0;
-
-      console.log(`🏆 [getRankingUnidade] Posição do aluno: ${posicao}`);
-      console.log(
-        `🏆 [getRankingUnidade] Presenças do aluno: ${presencasDoAluno}`,
-      );
 
       // Retornar apenas o top 10 no ranking completo
       const top10 = rankingComDetalhes.slice(0, 10).map((item, index) => ({

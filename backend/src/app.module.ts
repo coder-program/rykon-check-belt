@@ -22,6 +22,7 @@ import { PresencaModule } from './presenca/presenca.module';
 import { AulaModule } from './presenca/aula.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { CompeticoesModule } from './competicoes/competicoes.module';
+import { SupportModule } from './support/support.module';
 
 @Module({
   imports: [
@@ -75,6 +76,7 @@ import { CompeticoesModule } from './competicoes/competicoes.module';
     GraduacaoModule,
     DashboardModule,
     CompeticoesModule,
+    SupportModule,
   ],
 })
 export class AppModule {

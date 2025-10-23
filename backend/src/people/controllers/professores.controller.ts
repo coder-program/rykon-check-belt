@@ -38,6 +38,12 @@ export class ProfessoresController {
     return this.service.create(dto);
   }
 
+  @Get('usuario/:usuarioId')
+  @ApiOperation({ summary: 'Obter professor por ID do usuário' })
+  async getByUsuarioId(@Param('usuarioId') usuarioId: string) {
+    return this.service.findByUsuarioId(usuarioId);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Obter professor por ID' })
   get(@Param('id') id: string, @Request() req) {

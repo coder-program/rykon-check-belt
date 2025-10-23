@@ -6,8 +6,6 @@ async function bootstrap() {
   const app = await NestFactory.createApplicationContext(AppModule);
   const dataSource = app.get(DataSource);
 
-  console.log('🎯 Iniciando população das tabelas de graduação...\n');
-
   try {
     // 1. Verificar alunos existentes
     const alunos = await dataSource.query(`
@@ -16,20 +14,12 @@ async function bootstrap() {
       WHERE tipo_cadastro = 'ALUNO' AND status = 'ATIVO'
     `);
 
-    console.log(
-      `📊 Encontrados ${alunos.length} alunos ativos na tabela pessoas\n`,
-    );
-
     if (alunos.length === 0) {
-      console.log(
-        '⚠️  Nenhum aluno encontrado. Certifique-se de ter alunos cadastrados primeiro.',
-      );
       await app.close();
       return;
     }
 
     // 2. Verificar e usar faixas existentes
-    console.log('🥋 Verificando faixas existentes...');
     const faixasExistentes = await dataSource.query(`
       SELECT id, codigo, nome_exibicao FROM teamcruz.faixa_def
       WHERE categoria = 'ADULTO' ORDER BY ordem ASC
@@ -48,16 +38,8 @@ async function bootstrap() {
           ('PRETA', 'Preta', '#000000', 5, 'ADULTO', 6, 40, true)
         ON CONFLICT (codigo) DO NOTHING
       `);
-    } else {
-      console.log(
-        `   ✅ ${faixasExistentes.length} faixas já existem no sistema`,
-      );
     }
-    console.log('');
-
     // 3. Criar registros em aluno_faixa
-    console.log('📝 Criando registros de graduação para cada aluno...');
-
     for (const aluno of alunos) {
       // Verificar se já existe
       const existing = await dataSource.query(
@@ -69,7 +51,6 @@ async function bootstrap() {
       );
 
       if (existing.length > 0) {
-        console.log(`   ⏭️  ${aluno.nome_completo} - já possui faixa ativa`);
         continue;
       }
 
@@ -142,7 +123,6 @@ async function bootstrap() {
       ORDER BY faltam_aulas ASC
     `);
 
-    console.log('🏆 Alunos próximos a graduar:\n');
     resultado.forEach((r: any) => {});
   } catch (error) {
     console.error('❌ Erro ao popular dados:', error);

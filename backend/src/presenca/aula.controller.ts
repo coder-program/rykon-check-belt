@@ -25,7 +25,6 @@ export class AulaController {
   @ApiOperation({ summary: 'Criar nova aula' })
   @ApiResponse({ status: 201, description: 'Aula criada com sucesso' })
   async create(@Body() createAulaDto: CreateAulaDto, @Request() req) {
-    console.log('📥 [AulaController.create] Usuário:', req.user.username);
     // TODO: Verificar permissão de admin/professor
     return this.aulaService.create(createAulaDto);
   }
@@ -41,15 +40,12 @@ export class AulaController {
   ) {
     // REGRA: Cada aluno só pode ver aulas da sua unidade
     let unidadeIdFiltro = unidade_id;
-    
+
     // Se o usuário tem aluno associado, força a usar a unidade do aluno
     if (req?.user?.aluno?.unidade_id) {
       unidadeIdFiltro = req.user.aluno.unidade_id;
-      console.log('🔒 [AulaController.findAll] Filtrando por unidade do aluno:', unidadeIdFiltro);
-    } else {
-      console.log('📥 [AulaController.findAll] Filtros:', { unidade_id, ativo, dia_semana });
     }
-    
+
     return this.aulaService.findAll({
       unidade_id: unidadeIdFiltro,
       ativo: ativo ? ativo === 'true' : undefined,
@@ -66,15 +62,12 @@ export class AulaController {
   ) {
     // REGRA: Cada aluno só pode ver aulas da sua unidade
     let unidadeIdFiltro = unidade_id;
-    
+
     // Se o usuário tem aluno associado, força a usar a unidade do aluno
     if (req?.user?.aluno?.unidade_id) {
       unidadeIdFiltro = req.user.aluno.unidade_id;
-      console.log('🔒 [AulaController.findHorarios] Filtrando por unidade do aluno:', unidadeIdFiltro);
-    } else {
-      console.log('📥 [AulaController.findHorarios] Unidade do query:', unidade_id);
     }
-    
+
     return this.aulaService.findHorariosDisponiveis(unidadeIdFiltro);
   }
 
@@ -83,7 +76,6 @@ export class AulaController {
   @ApiResponse({ status: 200, description: 'Aula encontrada' })
   @ApiResponse({ status: 404, description: 'Aula não encontrada' })
   async findOne(@Param('id') id: string) {
-    console.log('📥 [AulaController.findOne] ID:', id);
     return this.aulaService.findOne(id);
   }
 
@@ -95,7 +87,6 @@ export class AulaController {
     @Body() updateAulaDto: UpdateAulaDto,
     @Request() req,
   ) {
-    console.log('📥 [AulaController.update] ID:', id, 'Usuário:', req.user.username);
     // TODO: Verificar permissão de admin/professor
     return this.aulaService.update(id, updateAulaDto);
   }
@@ -104,7 +95,6 @@ export class AulaController {
   @ApiOperation({ summary: 'Remover aula' })
   @ApiResponse({ status: 200, description: 'Aula removida' })
   async remove(@Param('id') id: string, @Request() req) {
-    console.log('📥 [AulaController.remove] ID:', id, 'Usuário:', req.user.username);
     // TODO: Verificar permissão de admin
     await this.aulaService.remove(id);
     return { message: 'Aula removida com sucesso' };

@@ -62,18 +62,17 @@ export class ProgressoController {
   })
   async getMeuHistorico(@Request() req: any): Promise<ProgressoAlunoDto> {
     try {
-      console.log('📝 Request user:', req.user);
-      
       // Tentar pegar o ID do usuário de diferentes formas
       const usuarioId = req.user?.sub || req.user?.id || req.user?.userId;
-      
-      console.log('🔍 Usuario ID extraído:', usuarioId);
-      
+
       if (!usuarioId) {
-        console.error('❌ Usuario ID não encontrado no token. req.user:', req.user);
+        console.error(
+          '❌ Usuario ID não encontrado no token. req.user:',
+          req.user,
+        );
         throw new Error('ID do usuário não encontrado no token');
       }
-      
+
       return await this.progressoService.getHistoricoCompleto(usuarioId);
     } catch (error) {
       console.error('❌ Erro no controller progresso:', error);

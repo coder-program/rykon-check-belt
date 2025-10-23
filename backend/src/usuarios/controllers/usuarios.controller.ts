@@ -48,9 +48,7 @@ export class UsuariosController {
   })
   async getPendentes(@Request() req) {
     const result = await this.usuariosService.findPendingApproval(req.user);
-    console.log('=== DEBUG PENDENTES ===');
-    console.log('Total de usuários retornados:', result.length);
-    console.log('Usuários:', JSON.stringify(result, null, 2));
+
     return result;
   }
 

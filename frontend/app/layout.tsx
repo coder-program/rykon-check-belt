@@ -5,8 +5,8 @@ import { AuthProvider } from "./auth/AuthContext";
 import React from "react";
 import QueryProvider from "@/components/QueryProvider";
 import { Toaster } from "react-hot-toast";
-import Header from "@/components/layout/Header";
-import Footer from "@/components/layout/Footer";
+import { ProfileCompletionGuard } from "@/components/auth/ProfileCompletionGuard";
+import LayoutContent from "@/components/layout/LayoutContent";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -31,10 +31,10 @@ export const metadata: Metadata = {
 };
 
 export const viewport = {
-  width: 'device-width',
+  width: "device-width",
   initialScale: 1,
   maximumScale: 1,
-  themeColor: '#dc2626',
+  themeColor: "#dc2626",
 };
 
 export default function RootLayout({
@@ -57,11 +57,9 @@ export default function RootLayout({
       >
         <QueryProvider>
           <AuthProvider>
-            <Header />
-            <main className="flex-1">
-              {children}
-            </main>
-            <Footer />
+            <ProfileCompletionGuard>
+              <LayoutContent>{children}</LayoutContent>
+            </ProfileCompletionGuard>
             <Toaster
               position="top-right"
               toastOptions={{

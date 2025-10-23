@@ -396,8 +396,6 @@ export class UsuariosService {
   }
 
   async findOne(id: string): Promise<Usuario> {
-    console.log('🔍 [UsuariosService.findOne] Buscando usuário ID:', id);
-
     const usuario = await this.usuarioRepository.findOne({
       where: { id },
       relations: ['perfis', 'perfis.permissoes'],
@@ -406,13 +404,6 @@ export class UsuariosService {
     if (!usuario) {
       throw new NotFoundException('Usuário não encontrado');
     }
-
-    console.log('✅ [UsuariosService.findOne] Usuário encontrado:');
-    console.log('   - ID:', usuario.id);
-    console.log('   - Nome:', usuario.nome);
-    console.log('   - Email:', usuario.email);
-    console.log('   - data_nascimento:', usuario.data_nascimento);
-    console.log('   - data_nascimento type:', typeof usuario.data_nascimento);
 
     return usuario;
   }
@@ -621,8 +612,6 @@ export class UsuariosService {
       if (franqueadoData && franqueadoData.length > 0) {
         const franqueadoId = franqueadoData[0].id;
 
-        console.log('🔍 [findPendingApproval] Franqueado ID:', franqueadoId);
-
         // Buscar GERENTES e ALUNOS pendentes das unidades do franqueado
         const usuariosPendentes = await this.usuarioRepository.query(
           `
@@ -644,15 +633,6 @@ export class UsuariosService {
           ORDER BY u.created_at DESC
           `,
           [franqueadoId],
-        );
-
-        console.log(
-          '🔍 [findPendingApproval] Usuarios pendentes encontrados:',
-          usuariosPendentes.length,
-        );
-        console.log(
-          '🔍 [findPendingApproval] Detalhes:',
-          JSON.stringify(usuariosPendentes, null, 2),
         );
 
         // Buscar perfis para cada usuário

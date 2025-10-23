@@ -59,40 +59,16 @@ export class GraduacaoService {
    * Obtém o status de graduação do aluno
    */
   async getStatusGraduacao(alunoId: string): Promise<StatusGraduacaoDto> {
-    console.log(
-      '🥋 [getStatusGraduacao] Buscando status de graus para aluno (usuario_id):',
-      alunoId,
-    );
-
     // Buscar aluno pelo usuario_id (que é o que vem no JWT)
     const aluno = await this.alunoRepository.findOne({
       where: { usuario_id: alunoId },
     });
 
     if (!aluno) {
-      console.log(
-        '❌ [getStatusGraduacao] Aluno não encontrado com usuario_id:',
-        alunoId,
-      );
       throw new NotFoundException('Aluno não encontrado');
     }
 
-    console.log(
-      '👤 [getStatusGraduacao] Aluno encontrado:',
-      aluno.nome_completo,
-      'Faixa atual:',
-      aluno.faixa_atual,
-      'Graus:',
-      aluno.graus,
-    );
-
     const faixaAtiva = await this.getFaixaAtivaAluno(aluno.id);
-    console.log(
-      '🎯 [getStatusGraduacao] Faixa ativa encontrada:',
-      faixaAtiva
-        ? `${faixaAtiva.faixaDef?.nome_exibicao} (${faixaAtiva.graus_atual} graus)`
-        : 'Nenhuma',
-    );
 
     if (!faixaAtiva) {
       // Se não tem faixa ativa, criar uma baseada na faixa_atual do aluno
@@ -183,10 +159,6 @@ export class GraduacaoService {
     categoria?: 'adulto' | 'kids' | 'todos';
   }): Promise<ListaProximosGraduarDto> {
     // Desabilitado para evitar consultas automáticas ao banco
-    console.log(
-      'getProximosGraduar desabilitado - não executando query automática',
-    );
-
     return {
       items: [],
       total: 0,

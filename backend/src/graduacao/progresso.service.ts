@@ -25,30 +25,27 @@ export class ProgressoService {
 
   async getHistoricoCompleto(usuarioId: string): Promise<ProgressoAlunoDto> {
     try {
-      console.log('🔍 Buscando histórico para usuário:', usuarioId);
-
       // Validar que usuarioId foi fornecido
       if (!usuarioId) {
         throw new NotFoundException('ID do usuário não fornecido');
       }
 
       // Primeiro, encontrar o aluno pelo usuário
-      console.log(`🔎 Buscando aluno com usuario_id = '${usuarioId}'`);
-      
       const aluno = await this.alunoRepository.findOne({
         where: { usuario_id: usuarioId },
         relations: ['faixas', 'faixas.faixaDef'],
       });
-      
+
       // Verificar se não está pegando o aluno errado
       if (aluno && aluno.usuario_id !== usuarioId) {
-        console.error(`⚠️⚠️ ERRO CRÍTICO: Aluno retornado tem usuario_id diferente!`);
+        console.error(
+          `⚠️⚠️ ERRO CRÍTICO: Aluno retornado tem usuario_id diferente!`,
+        );
         console.error(`Esperado: ${usuarioId}, Recebido: ${aluno.usuario_id}`);
         throw new Error('Erro de segurança: Aluno incorreto retornado');
       }
 
       if (!aluno) {
-        console.log(`⚠️ Aluno não encontrado para usuario_id: ${usuarioId}`);
         // Retornar dados vazios em vez de erro
         return {
           graduacaoAtual: {
@@ -63,8 +60,6 @@ export class ProgressoService {
         };
       }
 
-      console.log(`✅ Aluno encontrado: ID ${aluno.id}, Usuario: ${aluno.usuario_id}`);
-
       // Buscar a faixa ativa atual
       const faixaAtiva = await this.alunoFaixaRepository.findOne({
         where: { aluno_id: aluno.id, ativa: true },
@@ -72,8 +67,6 @@ export class ProgressoService {
       });
 
       if (!faixaAtiva) {
-        console.log(`⚠️ Faixa ativa não encontrada para aluno ID: ${aluno.id}`);
-        
         // Buscar histórico de graus mesmo sem faixa ativa
         const historicoGraus = await this.historicoGrausRepository.find({
           where: { aluno_id: aluno.id },

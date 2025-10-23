@@ -143,15 +143,6 @@ export class Aula {
         this.data_hora_fim.getTime() + margemDepois,
       );
 
-      console.log('🔵 [estaAtiva] Aula:', this.nome);
-      console.log('🔵 [estaAtiva] Agora:', agora);
-      console.log('🔵 [estaAtiva] Início com margem:', inicioComMargem);
-      console.log('🔵 [estaAtiva] Fim com margem:', fimComMargem);
-      console.log(
-        '🔵 [estaAtiva] Está ativa?',
-        agora >= inicioComMargem && agora <= fimComMargem,
-      );
-
       return agora >= inicioComMargem && agora <= fimComMargem;
     }
 

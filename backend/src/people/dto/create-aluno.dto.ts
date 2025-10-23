@@ -16,12 +16,14 @@ import {
 } from 'class-validator';
 import { Transform } from 'class-transformer';
 import { Genero, StatusAluno, FaixaEnum } from '../entities/aluno.entity';
+import { IsValidName } from '../../common/decorators/is-valid-name.decorator';
 
 export class CreateAlunoDto {
   // ===== DADOS PESSOAIS =====
   @IsString()
   @IsNotEmpty({ message: 'Nome completo é obrigatório' })
   @Length(3, 255, { message: 'Nome deve ter entre 3 e 255 caracteres' })
+  @IsValidName()
   nome_completo: string;
 
   @IsString()
@@ -61,6 +63,7 @@ export class CreateAlunoDto {
   @IsString()
   @IsOptional()
   @Length(3, 255)
+  @IsValidName()
   nome_contato_emergencia?: string;
 
   // ===== ENDEREÇO =====
@@ -121,6 +124,7 @@ export class CreateAlunoDto {
   @IsString()
   @IsOptional()
   @Length(3, 255)
+  @IsValidName()
   responsavel_nome?: string;
 
   @IsString()

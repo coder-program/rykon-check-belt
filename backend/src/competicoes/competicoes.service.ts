@@ -107,8 +107,6 @@ export class CompeticoesService {
   // ========== PARTICIPAÇÕES ==========
 
   async buscarHistoricoAluno(alunoId: string, usuarioId?: string) {
-    console.log('🏆 [buscarHistoricoAluno] Buscando histórico para:', alunoId);
-
     // Se usuarioId for fornecido, buscar o aluno vinculado
     let alunoIdFinal = alunoId;
 
@@ -127,11 +125,6 @@ export class CompeticoesService {
       relations: ['competicao'],
       order: { created_at: 'DESC' },
     });
-
-    console.log(
-      '🏆 [buscarHistoricoAluno] Participações encontradas:',
-      participacoes.length,
-    );
 
     // Calcular estatísticas
     const totalCompeticoes = participacoes.length;

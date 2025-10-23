@@ -12,6 +12,7 @@ import {
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform, Type } from 'class-transformer';
+import { IsValidName } from '../../common/decorators/is-valid-name.decorator';
 
 export class CompleteProfileDto {
   // ===== DADOS OBRIGATÓRIOS =====
@@ -83,6 +84,7 @@ export class CompleteProfileDto {
   @ApiPropertyOptional({ description: 'Nome do contato de emergência' })
   @IsOptional()
   @IsString()
+  @IsValidName()
   nome_contato_emergencia?: string;
 
   // ===== DADOS MÉDICOS =====
@@ -125,6 +127,7 @@ export class CompleteProfileDto {
   @ApiPropertyOptional({ description: 'Nome do responsável' })
   @IsOptional()
   @IsString()
+  @IsValidName()
   responsavel_nome?: string;
 
   @ApiPropertyOptional({ description: 'CPF do responsável' })

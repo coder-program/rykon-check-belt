@@ -1,11 +1,17 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import ProtectedRoute from "@/components/auth/ProtectedRoute";
+
 const DashboardNew = dynamic(
   () => import("@/components/teamcruz/DashboardNew"),
-  { ssr: false },
+  { ssr: false }
 );
 
 export default function TeamCruzPage() {
-  return <DashboardNew />;
+  return (
+    <ProtectedRoute>
+      <DashboardNew />
+    </ProtectedRoute>
+  );
 }

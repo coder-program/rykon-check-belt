@@ -75,6 +75,39 @@ WHERE p.nome = 'RECEPCIONISTA'
   AND perm.codigo = 'usuarios:aprovar'
 ON CONFLICT (perfil_id, permissao_id) DO NOTHING;
 
+-- 7. Associar permissão ao perfil MASTER
+INSERT INTO teamcruz.perfil_permissoes (perfil_id, permissao_id)
+SELECT
+  p.id as perfil_id,
+  perm.id as permissao_id
+FROM teamcruz.perfis p
+CROSS JOIN teamcruz.permissoes perm
+WHERE UPPER(p.nome) = 'MASTER'
+  AND perm.codigo = 'usuarios:aprovar'
+ON CONFLICT (perfil_id, permissao_id) DO NOTHING;
+
+-- 8. Associar permissão ao perfil SUPER_ADMIN
+INSERT INTO teamcruz.perfil_permissoes (perfil_id, permissao_id)
+SELECT
+  p.id as perfil_id,
+  perm.id as permissao_id
+FROM teamcruz.perfis p
+CROSS JOIN teamcruz.permissoes perm
+WHERE UPPER(p.nome) = 'SUPER_ADMIN'
+  AND perm.codigo = 'usuarios:aprovar'
+ON CONFLICT (perfil_id, permissao_id) DO NOTHING;
+
+-- 9. Associar permissão ao perfil ADMIN_SISTEMA
+INSERT INTO teamcruz.perfil_permissoes (perfil_id, permissao_id)
+SELECT
+  p.id as perfil_id,
+  perm.id as permissao_id
+FROM teamcruz.perfis p
+CROSS JOIN teamcruz.permissoes perm
+WHERE UPPER(p.nome) = 'ADMIN_SISTEMA'
+  AND perm.codigo = 'usuarios:aprovar'
+ON CONFLICT (perfil_id, permissao_id) DO NOTHING;
+
 -- Verificar resultado
 SELECT
   p.nome as perfil,

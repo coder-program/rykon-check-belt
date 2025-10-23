@@ -83,20 +83,7 @@ export class FranqueadosService {
     // Se os dados de endereço foram fornecidos, criar endereço primeiro
     let enderecoId = body.endereco_id || null;
 
-    // DEBUG: Ver o que está chegando
-    console.log(
-      '🔍 CREATE FRANQUEADO - body.usuario_id:',
-      (body as any).usuario_id,
-    );
-    console.log('🔍 ENDEREÇO - logradouro:', body.logradouro);
-    console.log('🔍 ENDEREÇO - cidade:', body.cidade);
-    console.log('🔍 ENDEREÇO - estado:', body.estado);
-    console.log('🔍 ENDEREÇO - cep:', body.cep);
-    console.log('🔍 ENDEREÇO - numero:', body.numero);
-
     if (!enderecoId && body.logradouro && body.cidade && body.estado) {
-      console.log('✅ CRIANDO ENDEREÇO...');
-
       const enderecoQ = `INSERT INTO teamcruz.enderecos
         (cep, logradouro, numero, complemento, bairro, cidade, estado, pais)
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
@@ -113,25 +100,11 @@ export class FranqueadosService {
         body.pais || 'Brasil',
       ];
 
-      console.log('📦 PARAMS ENDEREÇO:', enderecoParams);
-
       const enderecoRes = await this.dataSource.query(
         enderecoQ,
         enderecoParams,
       );
       enderecoId = enderecoRes[0].id;
-      console.log('✅ ENDEREÇO CRIADO - ID:', enderecoId);
-    } else {
-      console.log(
-        '❌ NÃO CRIOU ENDEREÇO - enderecoId:',
-        enderecoId,
-        'logradouro:',
-        body.logradouro,
-        'cidade:',
-        body.cidade,
-        'estado:',
-        body.estado,
-      );
     }
 
     const q = `INSERT INTO teamcruz.franqueados

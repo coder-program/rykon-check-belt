@@ -62,7 +62,9 @@ export default function AulasPage() {
   const [aulas, setAulas] = useState<Aula[]>([]);
   const [unidades, setUnidades] = useState<Unidade[]>([]);
   const [professores, setProfessores] = useState<Professor[]>([]);
-  const [professoresFiltrados, setProfessoresFiltrados] = useState<Professor[]>([]);
+  const [professoresFiltrados, setProfessoresFiltrados] = useState<Professor[]>(
+    []
+  );
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingAula, setEditingAula] = useState<Aula | null>(null);
@@ -167,7 +169,6 @@ export default function AulasPage() {
         const data = await response.json();
         const professoresList = Array.isArray(data) ? data : data.items || [];
         setProfessoresFiltrados(professoresList);
-        console.log(`✅ Professores da unidade ${unidadeId}:`, professoresList.length);
       } else {
         console.warn("Nenhum professor encontrado para esta unidade");
         setProfessoresFiltrados([]);
@@ -245,9 +246,11 @@ export default function AulasPage() {
 
   const handleEdit = (aula: Aula) => {
     setEditingAula(aula);
-    
+
     // Extrair hora de data_hora_inicio
-    const inicio = aula.data_hora_inicio ? new Date(aula.data_hora_inicio) : null;
+    const inicio = aula.data_hora_inicio
+      ? new Date(aula.data_hora_inicio)
+      : null;
     const fim = aula.data_hora_fim ? new Date(aula.data_hora_fim) : null;
 
     setFormData({
@@ -257,8 +260,16 @@ export default function AulasPage() {
       professor_id: aula.professor_id || "",
       tipo: aula.tipo,
       dia_semana: aula.dia_semana,
-      hora_inicio: inicio ? `${String(inicio.getHours()).padStart(2, '0')}:${String(inicio.getMinutes()).padStart(2, '0')}` : "19:00",
-      hora_fim: fim ? `${String(fim.getHours()).padStart(2, '0')}:${String(fim.getMinutes()).padStart(2, '0')}` : "20:30",
+      hora_inicio: inicio
+        ? `${String(inicio.getHours()).padStart(2, "0")}:${String(
+            inicio.getMinutes()
+          ).padStart(2, "0")}`
+        : "19:00",
+      hora_fim: fim
+        ? `${String(fim.getHours()).padStart(2, "0")}:${String(
+            fim.getMinutes()
+          ).padStart(2, "0")}`
+        : "20:30",
       capacidade_maxima: aula.capacidade_maxima,
       ativo: aula.ativo,
     });
@@ -342,7 +353,7 @@ export default function AulasPage() {
               </div>
             </div>
           </div>
-          
+
           {!showForm && (
             <Button
               onClick={() => setShowForm(true)}
@@ -361,9 +372,7 @@ export default function AulasPage() {
               <CardTitle>
                 {editingAula ? "Editar Aula" : "Cadastrar Nova Aula"}
               </CardTitle>
-              <CardDescription>
-                Preencha os dados da aula
-              </CardDescription>
+              <CardDescription>Preencha os dados da aula</CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-4">
@@ -416,10 +425,10 @@ export default function AulasPage() {
                       value={formData.unidade_id}
                       onChange={(e) => {
                         const newUnidadeId = e.target.value;
-                        setFormData({ 
-                          ...formData, 
+                        setFormData({
+                          ...formData,
                           unidade_id: newUnidadeId,
-                          professor_id: "" // Limpa professor ao mudar unidade
+                          professor_id: "", // Limpa professor ao mudar unidade
                         });
                       }}
                       className="w-full px-3 py-2 border rounded-lg"
@@ -441,14 +450,17 @@ export default function AulasPage() {
                     <select
                       value={formData.professor_id}
                       onChange={(e) =>
-                        setFormData({ ...formData, professor_id: e.target.value })
+                        setFormData({
+                          ...formData,
+                          professor_id: e.target.value,
+                        })
                       }
                       className="w-full px-3 py-2 border rounded-lg"
                       disabled={!formData.unidade_id}
                     >
                       <option value="">
-                        {!formData.unidade_id 
-                          ? "Selecione uma unidade primeiro" 
+                        {!formData.unidade_id
+                          ? "Selecione uma unidade primeiro"
                           : professoresFiltrados.length === 0
                           ? "Nenhum professor nesta unidade"
                           : "A definir"}
@@ -459,11 +471,12 @@ export default function AulasPage() {
                         </option>
                       ))}
                     </select>
-                    {formData.unidade_id && professoresFiltrados.length === 0 && (
-                      <p className="text-xs text-gray-500 mt-1">
-                        Esta unidade ainda não tem professores cadastrados
-                      </p>
-                    )}
+                    {formData.unidade_id &&
+                      professoresFiltrados.length === 0 && (
+                        <p className="text-xs text-gray-500 mt-1">
+                          Esta unidade ainda não tem professores cadastrados
+                        </p>
+                      )}
                   </div>
 
                   {/* Dia da Semana */}
@@ -475,7 +488,10 @@ export default function AulasPage() {
                       required
                       value={formData.dia_semana}
                       onChange={(e) =>
-                        setFormData({ ...formData, dia_semana: parseInt(e.target.value) })
+                        setFormData({
+                          ...formData,
+                          dia_semana: parseInt(e.target.value),
+                        })
                       }
                       className="w-full px-3 py-2 border rounded-lg"
                     >
@@ -498,7 +514,10 @@ export default function AulasPage() {
                         required
                         value={formData.hora_inicio}
                         onChange={(e) =>
-                          setFormData({ ...formData, hora_inicio: e.target.value })
+                          setFormData({
+                            ...formData,
+                            hora_inicio: e.target.value,
+                          })
                         }
                         className="w-full px-3 py-2 border rounded-lg"
                       />
@@ -530,7 +549,10 @@ export default function AulasPage() {
                       min="1"
                       value={formData.capacidade_maxima}
                       onChange={(e) =>
-                        setFormData({ ...formData, capacidade_maxima: parseInt(e.target.value) })
+                        setFormData({
+                          ...formData,
+                          capacidade_maxima: parseInt(e.target.value),
+                        })
                       }
                       className="w-full px-3 py-2 border rounded-lg"
                     />
@@ -576,7 +598,10 @@ export default function AulasPage() {
                     <X className="h-4 w-4 mr-2" />
                     Cancelar
                   </Button>
-                  <Button type="submit" className="bg-blue-600 hover:bg-blue-700">
+                  <Button
+                    type="submit"
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
                     <Save className="h-4 w-4 mr-2" />
                     {editingAula ? "Atualizar" : "Cadastrar"}
                   </Button>
@@ -613,7 +638,10 @@ export default function AulasPage() {
               </Card>
             ) : (
               aulas.map((aula) => (
-                <Card key={aula.id} className="hover:shadow-lg transition-shadow">
+                <Card
+                  key={aula.id}
+                  className="hover:shadow-lg transition-shadow"
+                >
                   <CardContent className="p-6">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
@@ -645,7 +673,9 @@ export default function AulasPage() {
 
                           <div className="flex items-center gap-2">
                             <Users className="h-4 w-4 text-gray-400" />
-                            <span>{aula.professor?.nome_completo || "A definir"}</span>
+                            <span>
+                              {aula.professor?.nome_completo || "A definir"}
+                            </span>
                           </div>
 
                           <div className="flex items-center gap-2">
@@ -657,11 +687,21 @@ export default function AulasPage() {
                             <Clock className="h-4 w-4 text-gray-400" />
                             <span>
                               {aula.data_hora_inicio
-                                ? new Date(aula.data_hora_inicio).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+                                ? new Date(
+                                    aula.data_hora_inicio
+                                  ).toLocaleTimeString("pt-BR", {
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                  })
                                 : "N/A"}{" "}
                               -{" "}
                               {aula.data_hora_fim
-                                ? new Date(aula.data_hora_fim).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+                                ? new Date(
+                                    aula.data_hora_fim
+                                  ).toLocaleTimeString("pt-BR", {
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                  })
                                 : "N/A"}
                             </span>
                           </div>

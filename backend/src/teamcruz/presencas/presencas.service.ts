@@ -79,9 +79,6 @@ export class PresencasService {
       };
     } catch (error) {
       // Se não houver faixa ativa, apenas retornar a presença
-      console.log(
-        `Aluno ${pessoaId} sem faixa ativa, presença registrada sem atualizar graduação`,
-      );
       return presencaSalva;
     }
   }

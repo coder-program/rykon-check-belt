@@ -147,9 +147,6 @@ function AprovacaoUsuariosPage() {
 
       const data = await response.json();
 
-      console.log("🔍 DEBUG - Filter:", filter);
-      console.log("🔍 DEBUG - Data recebida:", data);
-
       // Transformar dados para o formato esperado
       let allUsers = data.map((user: any) => ({
         id: user.id,
@@ -163,21 +160,12 @@ function AprovacaoUsuariosPage() {
         unidade: user.unidade, // Incluir dados da unidade
       }));
 
-      console.log("🔍 DEBUG - AllUsers transformados:", allUsers);
-
       // Filtrar baseado no estado
       let filtered = allUsers;
       if (filter === "pendentes") {
-        console.log("🔍 DEBUG - Filtrando pendentes (!u.ativo)");
         filtered = allUsers.filter((u: any) => {
-          console.log(
-            `User ${u.nome}: ativo = ${
-              u.ativo
-            }, tipo = ${typeof u.ativo}, !u.ativo = ${!u.ativo}`
-          );
           return !u.ativo;
         });
-        console.log("🔍 DEBUG - Filtrados pendentes:", filtered);
       } else if (filter === "aprovados") {
         filtered = allUsers.filter((u: any) => u.ativo);
       }
@@ -321,10 +309,10 @@ function AprovacaoUsuariosPage() {
 
   const handleEditPersonalData = async (userId: string) => {
     try {
-      // Buscar dados do aluno
       let personData = null;
+      let tipoEncontrado = "";
 
-      // Tentar buscar como aluno
+      // 1. Tentar buscar como aluno
       try {
         const alunoResponse = await fetch(
           `${process.env.NEXT_PUBLIC_API_URL}/alunos/usuario/${userId}`,
@@ -337,21 +325,85 @@ function AprovacaoUsuariosPage() {
 
         if (alunoResponse.ok) {
           personData = await alunoResponse.json();
+          tipoEncontrado = "ALUNO";
         }
       } catch (error) {
-        console.log("Erro ao buscar aluno:", error);
+        console.log("Não é aluno:", error);
       }
 
-      // Se não encontrou como aluno, não há dados pessoais
-
+      // 2. Se não encontrou como aluno, tentar como professor
       if (!personData) {
-        throw new Error(
-          "Usuário não possui dados pessoais cadastrados como aluno"
-        );
+        try {
+          const professorResponse = await fetch(
+            `${process.env.NEXT_PUBLIC_API_URL}/professores/usuario/${userId}`,
+            {
+              headers: {
+                Authorization: `Bearer ${localStorage.getItem("token")}`,
+              },
+            }
+          );
+
+          if (professorResponse.ok) {
+            personData = await professorResponse.json();
+            tipoEncontrado = "PROFESSOR";
+          }
+        } catch (error) {
+          console.log("Não é professor:", error);
+        }
       }
 
-      // Adicionar o tipo como aluno
-      personData.tipo_cadastro = "ALUNO";
+      // 3. Se não encontrou como professor, tentar como franqueado
+      if (!personData) {
+        try {
+          const franqueadoResponse = await fetch(
+            `${process.env.NEXT_PUBLIC_API_URL}/franqueados/usuario/${userId}`,
+            {
+              headers: {
+                Authorization: `Bearer ${localStorage.getItem("token")}`,
+              },
+            }
+          );
+
+          if (franqueadoResponse.ok) {
+            personData = await franqueadoResponse.json();
+            tipoEncontrado = "FRANQUEADO";
+          }
+        } catch (error) {
+          console.log("Não é franqueado:", error);
+        }
+      }
+
+      // 4. Se ainda não encontrou, verificar se é apenas usuário básico
+      if (!personData) {
+        // Buscar dados básicos do usuário
+        const userResponse = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/usuarios/${userId}`,
+          {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+          }
+        );
+
+        if (userResponse.ok) {
+          const userData = await userResponse.json();
+          personData = {
+            id: userData.id,
+            nome_completo: userData.nome,
+            email: userData.email,
+            cpf: userData.cpf,
+            telefone: userData.telefone,
+            data_nascimento: userData.data_nascimento,
+            perfis: userData.perfis,
+          };
+          tipoEncontrado = "USUARIO_BASICO";
+        } else {
+          throw new Error("Usuário não encontrado no sistema");
+        }
+      }
+
+      // Adicionar o tipo encontrado
+      personData.tipo_cadastro = tipoEncontrado;
 
       // Preencher formulário de dados pessoais
       setEditPersonForm({
@@ -379,99 +431,6 @@ function AprovacaoUsuariosPage() {
     }
   };
 
-  // Mutation para salvar dados do usuário
-  const saveUserMutation = useMutation({
-    mutationFn: async () => {
-      const userId = editingUser.id;
-
-      const userUpdate = {
-        nome: editUserForm.nome,
-        email: editUserForm.email,
-        telefone: editUserForm.telefone,
-        ativo: editUserForm.status === "ATIVO",
-      };
-
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/usuarios/${userId}`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-          body: JSON.stringify(userUpdate),
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error("Erro ao atualizar dados do usuário");
-      }
-
-      return response.json();
-    },
-    onSuccess: () => {
-      toast.success("Dados do usuário atualizados com sucesso!");
-      setIsUserModalOpen(false);
-      queryClient.invalidateQueries({ queryKey: ["usuarios-pendentes"] });
-      queryClient.invalidateQueries({ queryKey: ["todos-usuarios-stats"] });
-    },
-    onError: (error: any) => {
-      toast.error(error.message || "Erro ao atualizar usuário");
-    },
-  });
-
-  // Mutation para salvar dados pessoais
-  const savePersonMutation = useMutation({
-    mutationFn: async () => {
-      const personId = editingPerson.id;
-
-      const personUpdate = {
-        cpf: editPersonForm.cpf,
-        genero: editPersonForm.genero,
-        unidade_id: editPersonForm.unidade_id || null,
-        faixa_ministrante: editPersonForm.faixa_ministrante || null,
-        data_inicio_docencia: editPersonForm.data_inicio_docencia || null,
-        registro_profissional: editPersonForm.registro_profissional || null,
-        faixa_atual: editPersonForm.faixa_atual || null,
-        grau_atual: editPersonForm.grau_atual || null,
-        data_matricula: editPersonForm.data_matricula || null,
-        responsavel_nome: editPersonForm.responsavel_nome || null,
-        responsavel_cpf: editPersonForm.responsavel_cpf || null,
-        responsavel_telefone: editPersonForm.responsavel_telefone || null,
-      };
-
-      // Determinar o endpoint correto baseado no tipo de cadastro
-      const endpoint =
-        editingPerson.tipo_cadastro === "PROFESSOR" ? "professores" : "alunos";
-
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/${endpoint}/${personId}`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-          body: JSON.stringify(personUpdate),
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error("Erro ao atualizar dados pessoais");
-      }
-
-      return response.json();
-    },
-    onSuccess: () => {
-      toast.success("Dados pessoais atualizados com sucesso!");
-      setIsPersonModalOpen(false);
-      queryClient.invalidateQueries({ queryKey: ["usuarios-pendentes"] });
-      queryClient.invalidateQueries({ queryKey: ["todos-usuarios-stats"] });
-    },
-    onError: (error: any) => {
-      toast.error(error.message || "Erro ao atualizar dados pessoais");
-    },
-  });
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto">
@@ -632,9 +591,13 @@ function AprovacaoUsuariosPage() {
                           {userItem.data_nascimento && (
                             <div className="flex items-center gap-1">
                               <Calendar className="h-4 w-4" />
-                              {new Date(
-                                userItem.data_nascimento
-                              ).toLocaleDateString("pt-BR")}
+                              {userItem.data_nascimento.includes("T")
+                                ? new Date(
+                                    userItem.data_nascimento
+                                  ).toLocaleDateString("pt-BR")
+                                : new Date(
+                                    userItem.data_nascimento + "T00:00:00"
+                                  ).toLocaleDateString("pt-BR")}
                             </div>
                           )}
                         </div>
@@ -708,7 +671,7 @@ function AprovacaoUsuariosPage() {
           <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-2xl font-bold text-gray-900">
-                Editar Dados do Usuário
+                Consultar Dados do Usuário
               </h2>
               <Button
                 variant="outline"
@@ -752,39 +715,34 @@ function AprovacaoUsuariosPage() {
 
               {/* Campo editável: Status */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-xs font-medium text-gray-500 mb-1">
                   Status do Usuário
                 </label>
-                <select
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-white"
-                  value={editUserForm.status}
-                  onChange={(e) =>
-                    setEditUserForm({ ...editUserForm, status: e.target.value })
-                  }
+                <span
+                  className={`px-2 py-1 rounded-full text-xs font-medium ${
+                    editUserForm.status === "ATIVO"
+                      ? "bg-green-100 text-green-800"
+                      : editUserForm.status === "PENDENTE"
+                      ? "bg-yellow-100 text-yellow-800"
+                      : "bg-red-100 text-red-800"
+                  }`}
                 >
-                  <option value="ATIVO">Ativo</option>
-                  <option value="INATIVO">Inativo</option>
-                  <option value="PENDENTE">Pendente</option>
-                </select>
+                  {editUserForm.status === "ATIVO"
+                    ? "Ativo"
+                    : editUserForm.status === "PENDENTE"
+                    ? "Pendente"
+                    : "Inativo"}
+                </span>
               </div>
 
-              {/* Botões de Ação */}
-              <div className="flex justify-end gap-3 pt-4 border-t">
+              {/* Botão de Ação */}
+              <div className="flex justify-end pt-4 border-t">
                 <Button
-                  variant="outline"
                   onClick={() => setIsUserModalOpen(false)}
+                  className="bg-gray-600 hover:bg-gray-700"
                 >
-                  Cancelar
-                </Button>
-                <Button
-                  onClick={() => saveUserMutation.mutate()}
-                  disabled={saveUserMutation.isPending}
-                  className="bg-blue-600 hover:bg-blue-700"
-                >
-                  <Save className="h-4 w-4 mr-2" />
-                  {saveUserMutation.isPending
-                    ? "Salvando..."
-                    : "Salvar Alterações"}
+                  <X className="h-4 w-4 mr-2" />
+                  Fechar
                 </Button>
               </div>
             </div>
@@ -798,7 +756,7 @@ function AprovacaoUsuariosPage() {
           <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-2xl font-bold text-gray-900">
-                Editar Dados Pessoais
+                Consultar Dados Pessoais
               </h2>
               <Button
                 variant="outline"
@@ -837,9 +795,13 @@ function AprovacaoUsuariosPage() {
                     </label>
                     <p className="text-sm text-gray-800">
                       {editingPerson?.data_nascimento
-                        ? new Date(
-                            editingPerson.data_nascimento
-                          ).toLocaleDateString("pt-BR")
+                        ? editingPerson.data_nascimento.includes("T")
+                          ? new Date(
+                              editingPerson.data_nascimento
+                            ).toLocaleDateString("pt-BR")
+                          : new Date(
+                              editingPerson.data_nascimento + "T00:00:00"
+                            ).toLocaleDateString("pt-BR")
                         : "Não informado"}
                     </p>
                   </div>
@@ -1041,110 +1003,171 @@ function AprovacaoUsuariosPage() {
                 </div>
               )}
 
-              {/* Campos editáveis: Faixa e Unidade */}
-              <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-lg">
-                <h3 className="text-sm font-medium text-yellow-800 mb-3">
-                  Campos Editáveis pelo Administrador
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Campo Unidade (sempre editável) */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Unidade *
-                    </label>
-                    <select
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-white"
-                      value={editPersonForm.unidade_id}
-                      onChange={(e) =>
-                        setEditPersonForm({
-                          ...editPersonForm,
-                          unidade_id: e.target.value,
-                        })
-                      }
-                    >
-                      <option value="">Selecionar Unidade</option>
-                      {Array.isArray(unidades) &&
-                        unidades.map((unidade: any) => (
-                          <option key={unidade.id} value={unidade.id}>
-                            {unidade.nome}
-                          </option>
-                        ))}
-                      <option value="1">Matriz</option>
-                      <option value="2">Filial Norte</option>
-                      <option value="3">Filial Sul</option>
-                    </select>
+              {editingPerson?.tipo_cadastro === "FRANQUEADO" && (
+                <div className="bg-purple-50 p-4 rounded-lg">
+                  <h3 className="text-sm font-medium text-purple-800 mb-3">
+                    Dados do Franqueado (somente leitura)
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-500 mb-1">
+                        Nome da Franquia
+                      </label>
+                      <p className="text-sm text-gray-800">
+                        {editingPerson?.nome || "Não informado"}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-500 mb-1">
+                        Nome Fantasia
+                      </label>
+                      <p className="text-sm text-gray-800">
+                        {editingPerson?.nome_fantasia || "Não informado"}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-500 mb-1">
+                        Situação
+                      </label>
+                      <span
+                        className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          editingPerson?.situacao === "ATIVA"
+                            ? "bg-green-100 text-green-800"
+                            : editingPerson?.situacao === "EM_HOMOLOGACAO"
+                            ? "bg-yellow-100 text-yellow-800"
+                            : "bg-red-100 text-red-800"
+                        }`}
+                      >
+                        {editingPerson?.situacao || "Não informado"}
+                      </span>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-500 mb-1">
+                        CNPJ
+                      </label>
+                      <p className="text-sm text-gray-800">
+                        {editingPerson?.cnpj || "Não informado"}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-500 mb-1">
+                        Telefone Comercial
+                      </label>
+                      <p className="text-sm text-gray-800">
+                        {editingPerson?.telefone_comercial || "Não informado"}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-500 mb-1">
+                        Data do Contrato
+                      </label>
+                      <p className="text-sm text-gray-800">
+                        {editingPerson?.data_contrato
+                          ? new Date(
+                              editingPerson.data_contrato
+                            ).toLocaleDateString("pt-BR")
+                          : "Não informado"}
+                      </p>
+                    </div>
                   </div>
-
-                  {/* Campo Faixa - condicional baseado no tipo */}
-                  {editingPerson?.tipo_cadastro === "ALUNO" && (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Faixa Atual
-                      </label>
-                      <select
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-white"
-                        value={editPersonForm.faixa_atual}
-                        onChange={(e) =>
-                          setEditPersonForm({
-                            ...editPersonForm,
-                            faixa_atual: e.target.value,
-                          })
-                        }
-                      >
-                        <option value="">Selecionar Faixa</option>
-                        <option value="BRANCA">Branca</option>
-                        <option value="AMARELA">Amarela</option>
-                        <option value="LARANJA">Laranja</option>
-                        <option value="VERDE">Verde</option>
-                        <option value="AZUL">Azul</option>
-                        <option value="ROXA">Roxa</option>
-                        <option value="MARROM">Marrom</option>
-                        <option value="PRETA">Preta</option>
-                      </select>
-                    </div>
-                  )}
-
-                  {editingPerson?.tipo_cadastro === "PROFESSOR" && (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Faixa Ministrante
-                      </label>
-                      <select
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-white"
-                        value={editPersonForm.faixa_ministrante}
-                        onChange={(e) =>
-                          setEditPersonForm({
-                            ...editPersonForm,
-                            faixa_ministrante: e.target.value,
-                          })
-                        }
-                      >
-                        <option value="">Selecionar Faixa</option>
-                        <option value="MARROM">Marrom</option>
-                        <option value="PRETA">Preta</option>
-                      </select>
-                    </div>
-                  )}
                 </div>
-              </div>
+              )}
 
-              {/* Botões de Ação */}
-              <div className="flex justify-end gap-3 pt-4 border-t">
+              {editingPerson?.tipo_cadastro === "USUARIO_BASICO" && (
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <h3 className="text-sm font-medium text-gray-800 mb-3">
+                    Usuário Básico (sem dados pessoais específicos)
+                  </h3>
+                  <div className="text-center py-4">
+                    <p className="text-gray-600">
+                      Este usuário foi cadastrado apenas com dados básicos.
+                      <br />
+                      Para adicionar mais informações, promova-o para um perfil
+                      específico (Aluno, Professor ou Franqueado).
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Informações Adicionais (somente leitura) */}
+              {(editingPerson?.tipo_cadastro === "ALUNO" ||
+                editingPerson?.tipo_cadastro === "PROFESSOR" ||
+                editingPerson?.tipo_cadastro === "USUARIO_BASICO") && (
+                <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg">
+                  <h3 className="text-sm font-medium text-blue-800 mb-3">
+                    Informações Adicionais (somente leitura)
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Campo Unidade (somente leitura para alunos e professores) */}
+                    {(editingPerson?.tipo_cadastro === "ALUNO" ||
+                      editingPerson?.tipo_cadastro === "PROFESSOR") && (
+                      <div>
+                        <label className="block text-xs font-medium text-gray-500 mb-1">
+                          Unidade
+                        </label>
+                        <p className="text-sm text-gray-800">
+                          {(() => {
+                            const unidade = Array.isArray(unidades)
+                              ? unidades.find(
+                                  (u: any) => u.id === editingPerson?.unidade_id
+                                )
+                              : null;
+                            return (
+                              unidade?.nome ||
+                              editingPerson?.unidade?.nome ||
+                              "Não informado"
+                            );
+                          })()}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Campo Faixa - condicional baseado no tipo */}
+                    {editingPerson?.tipo_cadastro === "ALUNO" && (
+                      <div>
+                        <label className="block text-xs font-medium text-gray-500 mb-1">
+                          Faixa Atual
+                        </label>
+                        <span
+                          className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            editingPerson?.faixa_atual
+                              ? "bg-blue-100 text-blue-800"
+                              : "bg-gray-100 text-gray-600"
+                          }`}
+                        >
+                          {editingPerson?.faixa_atual || "Não informado"}
+                        </span>
+                      </div>
+                    )}
+
+                    {editingPerson?.tipo_cadastro === "PROFESSOR" && (
+                      <div>
+                        <label className="block text-xs font-medium text-gray-500 mb-1">
+                          Faixa Ministrante
+                        </label>
+                        <span
+                          className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            editingPerson?.faixa_ministrante
+                              ? "bg-purple-100 text-purple-800"
+                              : "bg-gray-100 text-gray-600"
+                          }`}
+                        >
+                          {editingPerson?.faixa_ministrante || "Não informado"}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Botão de Ação */}
+              <div className="flex justify-end pt-4 border-t">
                 <Button
-                  variant="outline"
                   onClick={() => setIsPersonModalOpen(false)}
+                  className="bg-gray-600 hover:bg-gray-700"
                 >
-                  Cancelar
-                </Button>
-                <Button
-                  onClick={() => savePersonMutation.mutate()}
-                  disabled={savePersonMutation.isPending}
-                  className="bg-purple-600 hover:bg-purple-700"
-                >
-                  <Save className="h-4 w-4 mr-2" />
-                  {savePersonMutation.isPending
-                    ? "Salvando..."
-                    : "Salvar Alterações"}
+                  <X className="h-4 w-4 mr-2" />
+                  Fechar
                 </Button>
               </div>
             </div>

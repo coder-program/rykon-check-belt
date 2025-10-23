@@ -143,8 +143,6 @@ export class GraduacaoParametrosService {
 
     const alunos = await query.getMany();
 
-    console.log(`✅ Encontrados ${alunos.length} alunos aptos`);
-
     // Formatar resultado
     const resultado = await Promise.all(
       alunos.map(async (aluno) => {
@@ -280,8 +278,6 @@ export class GraduacaoParametrosService {
   // ============================================
 
   async aprovarGraduacao(dto: AprovarGraduacaoDto, userId: string) {
-    console.log('✅ [aprovarGraduacao] Aprovando graduação:', dto);
-
     // Buscar solicitação existente ou criar nova
     let graduacao = await this.graduacaoRepository.findOne({
       where: {
@@ -309,8 +305,6 @@ export class GraduacaoParametrosService {
     graduacao.observacao_aprovacao = dto.observacao_aprovacao || null;
 
     const resultado = await this.graduacaoRepository.save(graduacao);
-
-    console.log('✅ Graduação aprovada:', resultado.id);
 
     return resultado;
   }

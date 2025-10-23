@@ -38,7 +38,7 @@ PORT=3000
 
 # JWT
 JWT_SECRET=jwt_secret_muito_forte_para_producao_teamcruz_2025
-JWT_EXPIRES_IN=24h
+JWT_EXPIRES_IN=8h
 
 # CORS - Permitir acesso do frontend no servidor UOL
 CORS_ORIGIN=http://200.98.72.161

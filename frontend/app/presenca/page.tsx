@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/app/auth/AuthContext";
 import { useRouter } from "next/navigation";
+import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import {
   Card,
   CardContent,
@@ -119,10 +120,8 @@ export default function PresencaPage() {
   }, [user, meusFilhos]);
 
   const loadAulaAtiva = async () => {
-    console.log("🔵 [Frontend] Iniciando busca por aula ativa...");
     try {
       const token = localStorage.getItem("token");
-      console.log("🔵 [Frontend] Token encontrado:", token ? "Sim" : "Não");
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/presenca/aula-ativa`,
         {
@@ -132,24 +131,15 @@ export default function PresencaPage() {
           },
         }
       );
-
-      console.log("🔵 [Frontend] Status da resposta:", response.status);
-      console.log("🔵 [Frontend] Response OK:", response.ok);
-
       if (response.ok) {
         const text = await response.text();
-        console.log("Response text from aula-ativa:", text);
-
         if (text && text.trim() !== "") {
           try {
             const data = JSON.parse(text);
-            console.log("Aula ativa recebida:", data);
             // Se o servidor retorna null explicitamente, aceitar
             if (data === null) {
-              console.log("Nenhuma aula ativa no momento");
               setAulaAtiva(null);
             } else {
-              console.log("Aula ativa definida:", data);
               setAulaAtiva(data);
               // Gerar QR code visual
               if (data.qrCode) {
@@ -708,662 +698,671 @@ export default function PresencaPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-4xl mx-auto">
-        {/* Header */}
-        <div className="flex items-center gap-4 mb-8">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => router.push("/dashboard")}
-            className="p-2"
-          >
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          <div>
-            <div className="flex items-center gap-3 mb-2">
-              <Clock className="h-8 w-8 text-green-600" />
-              <h1 className="text-3xl font-bold text-gray-900">
-                Marcar Presença
-              </h1>
-            </div>
-            <p className="text-gray-600">
-              Faça seu check-in nas aulas usando QR Code ou manualmente
-            </p>
-          </div>
-        </div>
-
-        {/* Message */}
-        {message && (
-          <div
-            className={`mb-6 p-4 rounded-lg ${
-              message.type === "success"
-                ? "bg-green-50 text-green-800 border border-green-200"
-                : "bg-red-50 text-red-800 border border-red-200"
-            }`}
-          >
-            <div className="flex items-center gap-2">
-              {message.type === "success" ? (
-                <CheckCircle className="h-5 w-5" />
-              ) : (
-                <Clock className="h-5 w-5" />
-              )}
-              {message.text}
+    <ProtectedRoute>
+      <div className="min-h-screen bg-gray-50 p-6">
+        <div className="max-w-4xl mx-auto">
+          {/* Header */}
+          <div className="flex items-center gap-4 mb-8">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => router.push("/dashboard")}
+              className="p-2"
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+            <div>
+              <div className="flex items-center gap-3 mb-2">
+                <Clock className="h-8 w-8 text-green-600" />
+                <h1 className="text-3xl font-bold text-gray-900">
+                  Marcar Presença
+                </h1>
+              </div>
+              <p className="text-gray-600">
+                Faça seu check-in nas aulas usando QR Code ou manualmente
+              </p>
             </div>
           </div>
-        )}
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Presença Mensal
-              </CardTitle>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600">
-                {statsLoading ? "..." : `${stats.presencaMensal}%`}
+          {/* Message */}
+          {message && (
+            <div
+              className={`mb-6 p-4 rounded-lg ${
+                message.type === "success"
+                  ? "bg-green-50 text-green-800 border border-green-200"
+                  : "bg-red-50 text-red-800 border border-red-200"
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                {message.type === "success" ? (
+                  <CheckCircle className="h-5 w-5" />
+                ) : (
+                  <Clock className="h-5 w-5" />
+                )}
+                {message.text}
               </div>
-              <p className="text-xs text-muted-foreground">
-                {stats.presencaMensal >= 80 ? "Excelente!" : "Pode melhorar"}
-              </p>
-            </CardContent>
-          </Card>
+            </div>
+          )}
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Aulas Este Mês
-              </CardTitle>
-              <Calendar className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {statsLoading ? "..." : stats.aulasMes}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Aulas frequentadas
-              </p>
-            </CardContent>
-          </Card>
+          {/* Stats Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  Presença Mensal
+                </CardTitle>
+                <TrendingUp className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-green-600">
+                  {statsLoading ? "..." : `${stats.presencaMensal}%`}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {stats.presencaMensal >= 80 ? "Excelente!" : "Pode melhorar"}
+                </p>
+              </CardContent>
+            </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Sequência Atual
-              </CardTitle>
-              <Trophy className="h-4 w-4 text-yellow-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-yellow-600">
-                {statsLoading ? "..." : stats.sequenciaAtual}
-              </div>
-              <p className="text-xs text-muted-foreground">Dias consecutivos</p>
-            </CardContent>
-          </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  Aulas Este Mês
+                </CardTitle>
+                <Calendar className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {statsLoading ? "..." : stats.aulasMes}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Aulas frequentadas
+                </p>
+              </CardContent>
+            </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Última Presença
-              </CardTitle>
-              <History className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-sm font-bold">
-                {statsLoading
-                  ? "..."
-                  : stats.ultimaPresenca
-                  ? formatDate(stats.ultimaPresenca).split(" ")[0]
-                  : "Nenhuma"}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {stats.ultimaPresenca
-                  ? "Último check-in"
-                  : "Faça seu primeiro check-in!"}
-              </p>
-            </CardContent>
-          </Card>
-        </div>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  Sequência Atual
+                </CardTitle>
+                <Trophy className="h-4 w-4 text-yellow-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-yellow-600">
+                  {statsLoading ? "..." : stats.sequenciaAtual}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Dias consecutivos
+                </p>
+              </CardContent>
+            </Card>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Check-in Section */}
-          <div className="space-y-6">
-            {/* Aula Ativa */}
-            {aulaAtiva && (
-              <Card className="border-green-200 bg-green-50">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-green-800">
-                    <Clock className="h-5 w-5" />
-                    Aula Ativa Agora
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    <div>
-                      <h3 className="font-semibold text-lg">
-                        {aulaAtiva.nome}
-                      </h3>
-                      <p className="text-sm text-gray-600">
-                        Prof. {aulaAtiva.professor}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                      <MapPin className="h-4 w-4" />
-                      {aulaAtiva.unidade}
-                    </div>
-                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                      <Clock className="h-4 w-4" />
-                      {aulaAtiva.horarioInicio} - {aulaAtiva.horarioFim}
-                    </div>
-                    {aulaAtiva.qrCode && (
-                      <div className="mt-4 p-4 bg-white rounded-lg border text-center">
-                        <p className="text-sm font-medium mb-3">
-                          QR Code da Aula
-                        </p>
-                        {qrCodeImageUrl ? (
-                          <div className="inline-block p-3 bg-white rounded-lg border-2 border-gray-200 shadow-sm">
-                            <img
-                              src={qrCodeImageUrl}
-                              alt="QR Code da Aula"
-                              className="w-48 h-48 mx-auto"
-                            />
-                          </div>
-                        ) : (
-                          <div className="bg-gray-100 p-8 rounded border-2 border-dashed border-gray-300 inline-block">
-                            <div className="text-gray-500">
-                              Gerando QR Code...
-                            </div>
-                          </div>
-                        )}
-                        <p className="text-xs text-gray-500 mt-3">
-                          Escaneie este QR Code para fazer check-in na aula
-                        </p>
-                        <p className="text-xs text-gray-400 mt-1 font-mono break-all">
-                          {aulaAtiva.qrCode}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  Última Presença
+                </CardTitle>
+                <History className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-sm font-bold">
+                  {statsLoading
+                    ? "..."
+                    : stats.ultimaPresenca
+                    ? formatDate(stats.ultimaPresenca).split(" ")[0]
+                    : "Nenhuma"}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {stats.ultimaPresenca
+                    ? "Último check-in"
+                    : "Faça seu primeiro check-in!"}
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Check-in Section */}
+            <div className="space-y-6">
+              {/* Aula Ativa */}
+              {aulaAtiva && (
+                <Card className="border-green-200 bg-green-50">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-green-800">
+                      <Clock className="h-5 w-5" />
+                      Aula Ativa Agora
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      <div>
+                        <h3 className="font-semibold text-lg">
+                          {aulaAtiva.nome}
+                        </h3>
+                        <p className="text-sm text-gray-600">
+                          Prof. {aulaAtiva.professor}
                         </p>
                       </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Seletor de Método de Check-in */}
-            {aulaAtiva && (
-              <Card className="border-2">
-                <CardHeader>
-                  <CardTitle>Métodos de Check-in</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                    <Button
-                      variant={
-                        metodoCheckin === "QR_CODE" ? "default" : "outline"
-                      }
-                      onClick={() => setMetodoCheckin("QR_CODE")}
-                      className="flex items-center gap-2"
-                    >
-                      <QrCode className="h-4 w-4" />
-                      QR Code
-                    </Button>
-                    <Button
-                      variant={metodoCheckin === "CPF" ? "default" : "outline"}
-                      onClick={() => setMetodoCheckin("CPF")}
-                      className="flex items-center gap-2"
-                    >
-                      <CreditCard className="h-4 w-4" />
-                      CPF
-                    </Button>
-                    <Button
-                      variant={
-                        metodoCheckin === "FACIAL" ? "default" : "outline"
-                      }
-                      onClick={() => setMetodoCheckin("FACIAL")}
-                      className="flex items-center gap-2"
-                    >
-                      <Camera className="h-4 w-4" />
-                      Facial
-                    </Button>
-                    <Button
-                      variant={metodoCheckin === "NOME" ? "default" : "outline"}
-                      onClick={() => setMetodoCheckin("NOME")}
-                      className="flex items-center gap-2"
-                    >
-                      <Search className="h-4 w-4" />
-                      Nome
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Check-in por QR Code */}
-            {aulaAtiva && metodoCheckin === "QR_CODE" && (
-              <Card className="border-2">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <QrCode className="h-5 w-5" />
-                    Scanner QR Code
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {!scannerActive ? (
-                    <div className="space-y-4">
-                      <p className="text-gray-600">
-                        Posicione o QR Code da carteirinha em frente à câmera
-                        para fazer o check-in automaticamente.
-                      </p>
-                      <Button onClick={startQRScanner} className="w-full">
-                        <QrCode className="mr-2 h-4 w-4" />
-                        Iniciar Scanner
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      <div id="qr-reader" className="w-full"></div>
-                      <Button
-                        onClick={stopScanner}
-                        variant="outline"
-                        className="w-full"
-                      >
-                        Parar Scanner
-                      </Button>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Check-in por CPF */}
-            {aulaAtiva && metodoCheckin === "CPF" && (
-              <Card className="border-2">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <CreditCard className="h-5 w-5" />
-                    Check-in por CPF
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div>
-                      <Label htmlFor="cpf">Digite seu CPF</Label>
-                      <Input
-                        id="cpf"
-                        type="text"
-                        placeholder="000.000.000-00"
-                        value={cpfInput}
-                        onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                          setCpfInput(formatCPF(e.target.value))
-                        }
-                        maxLength={14}
-                      />
-                    </div>
-                    <Button
-                      onClick={checkInCPF}
-                      className="w-full"
-                      disabled={loading || !cpfInput.trim()}
-                    >
-                      <CreditCard className="mr-2 h-4 w-4" />
-                      {loading ? "Processando..." : "Fazer Check-in"}
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Check-in Facial */}
-            {aulaAtiva && metodoCheckin === "FACIAL" && (
-              <Card className="border-2">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Camera className="h-5 w-5" />
-                    Reconhecimento Facial
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {facialActive ? (
-                      <div className="space-y-4">
-                        <video
-                          ref={videoRef}
-                          autoPlay
-                          muted
-                          className="w-full max-w-md mx-auto rounded-lg border"
-                        />
-                        <div className="text-center">
-                          <p className="text-sm text-gray-600">
-                            Posicione seu rosto na câmera...
+                      <div className="flex items-center gap-2 text-sm text-gray-600">
+                        <MapPin className="h-4 w-4" />
+                        {aulaAtiva.unidade}
+                      </div>
+                      <div className="flex items-center gap-2 text-sm text-gray-600">
+                        <Clock className="h-4 w-4" />
+                        {aulaAtiva.horarioInicio} - {aulaAtiva.horarioFim}
+                      </div>
+                      {aulaAtiva.qrCode && (
+                        <div className="mt-4 p-4 bg-white rounded-lg border text-center">
+                          <p className="text-sm font-medium mb-3">
+                            QR Code da Aula
+                          </p>
+                          {qrCodeImageUrl ? (
+                            <div className="inline-block p-3 bg-white rounded-lg border-2 border-gray-200 shadow-sm">
+                              <img
+                                src={qrCodeImageUrl}
+                                alt="QR Code da Aula"
+                                className="w-48 h-48 mx-auto"
+                              />
+                            </div>
+                          ) : (
+                            <div className="bg-gray-100 p-8 rounded border-2 border-dashed border-gray-300 inline-block">
+                              <div className="text-gray-500">
+                                Gerando QR Code...
+                              </div>
+                            </div>
+                          )}
+                          <p className="text-xs text-gray-500 mt-3">
+                            Escaneie este QR Code para fazer check-in na aula
+                          </p>
+                          <p className="text-xs text-gray-400 mt-1 font-mono break-all">
+                            {aulaAtiva.qrCode}
                           </p>
                         </div>
-                        <Button
-                          onClick={stopFacialRecognition}
-                          variant="outline"
-                          className="w-full"
-                        >
-                          Cancelar
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Seletor de Método de Check-in */}
+              {aulaAtiva && (
+                <Card className="border-2">
+                  <CardHeader>
+                    <CardTitle>Métodos de Check-in</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                      <Button
+                        variant={
+                          metodoCheckin === "QR_CODE" ? "default" : "outline"
+                        }
+                        onClick={() => setMetodoCheckin("QR_CODE")}
+                        className="flex items-center gap-2"
+                      >
+                        <QrCode className="h-4 w-4" />
+                        QR Code
+                      </Button>
+                      <Button
+                        variant={
+                          metodoCheckin === "CPF" ? "default" : "outline"
+                        }
+                        onClick={() => setMetodoCheckin("CPF")}
+                        className="flex items-center gap-2"
+                      >
+                        <CreditCard className="h-4 w-4" />
+                        CPF
+                      </Button>
+                      <Button
+                        variant={
+                          metodoCheckin === "FACIAL" ? "default" : "outline"
+                        }
+                        onClick={() => setMetodoCheckin("FACIAL")}
+                        className="flex items-center gap-2"
+                      >
+                        <Camera className="h-4 w-4" />
+                        Facial
+                      </Button>
+                      <Button
+                        variant={
+                          metodoCheckin === "NOME" ? "default" : "outline"
+                        }
+                        onClick={() => setMetodoCheckin("NOME")}
+                        className="flex items-center gap-2"
+                      >
+                        <Search className="h-4 w-4" />
+                        Nome
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Check-in por QR Code */}
+              {aulaAtiva && metodoCheckin === "QR_CODE" && (
+                <Card className="border-2">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <QrCode className="h-5 w-5" />
+                      Scanner QR Code
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {!scannerActive ? (
+                      <div className="space-y-4">
+                        <p className="text-gray-600">
+                          Posicione o QR Code da carteirinha em frente à câmera
+                          para fazer o check-in automaticamente.
+                        </p>
+                        <Button onClick={startQRScanner} className="w-full">
+                          <QrCode className="mr-2 h-4 w-4" />
+                          Iniciar Scanner
                         </Button>
                       </div>
                     ) : (
                       <div className="space-y-4">
-                        <p className="text-gray-600">
-                          Use o reconhecimento facial para fazer check-in de
-                          forma rápida e segura.
-                        </p>
+                        <div id="qr-reader" className="w-full"></div>
                         <Button
-                          onClick={startFacialRecognition}
+                          onClick={stopScanner}
+                          variant="outline"
                           className="w-full"
-                          disabled={loading}
                         >
-                          <Camera className="mr-2 h-4 w-4" />
-                          {loading
-                            ? "Processando..."
-                            : "Iniciar Reconhecimento"}
+                          Parar Scanner
                         </Button>
                       </div>
                     )}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+                  </CardContent>
+                </Card>
+              )}
 
-            {/* Check-in por Nome */}
-            {aulaAtiva && metodoCheckin === "NOME" && (
-              <Card className="border-2">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Search className="h-5 w-5" />
-                    Buscar por Nome
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="relative">
-                      <Label htmlFor="nome">Digite o nome do aluno</Label>
-                      <div className="flex gap-2">
-                        <div className="relative flex-1">
-                          <Input
-                            id="nome"
-                            type="text"
-                            placeholder="Nome do aluno..."
-                            value={nomeInput}
-                            onChange={(
-                              e: React.ChangeEvent<HTMLInputElement>
-                            ) => {
-                              const valor = e.target.value;
-                              setNomeInput(valor);
-                              buscarSugestoesNome(valor);
-                            }}
-                            onFocus={() => {
-                              if (
-                                nomeInput.length >= 2 &&
-                                sugestoesNomes.length > 0
-                              ) {
-                                setMostrandoSugestoes(true);
-                              }
-                            }}
-                          />
-
-                          {/* Dropdown de Sugestões */}
-                          {mostrandoSugestoes && sugestoesNomes.length > 0 && (
-                            <div className="absolute top-full left-0 right-0 bg-white border border-gray-300 rounded-md shadow-lg z-50 max-h-60 overflow-y-auto">
-                              {sugestoesNomes.map((pessoa) => (
-                                <div
-                                  key={pessoa.id}
-                                  className="p-3 hover:bg-gray-100 cursor-pointer border-b border-gray-100 last:border-b-0"
-                                  onClick={() => checkInPorSugestao(pessoa)}
-                                >
-                                  <div className="font-medium text-sm">
-                                    {pessoa.nome}
-                                  </div>
-                                  {pessoa.cpf && (
-                                    <div className="text-xs text-gray-500 mt-1">
-                                      CPF: {pessoa.cpf}
-                                    </div>
-                                  )}
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                        <Button
-                          onClick={buscarPorNome}
-                          disabled={loading || !nomeInput.trim()}
-                        >
-                          <Search className="h-4 w-4" />
-                        </Button>
-                      </div>
-
-                      {/* Clique fora para fechar sugestões */}
-                      {mostrandoSugestoes && (
-                        <div
-                          className="fixed inset-0 z-40"
-                          onClick={() => setMostrandoSugestoes(false)}
+              {/* Check-in por CPF */}
+              {aulaAtiva && metodoCheckin === "CPF" && (
+                <Card className="border-2">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <CreditCard className="h-5 w-5" />
+                      Check-in por CPF
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <div>
+                        <Label htmlFor="cpf">Digite seu CPF</Label>
+                        <Input
+                          id="cpf"
+                          type="text"
+                          placeholder="000.000.000-00"
+                          value={cpfInput}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                            setCpfInput(formatCPF(e.target.value))
+                          }
+                          maxLength={14}
                         />
+                      </div>
+                      <Button
+                        onClick={checkInCPF}
+                        className="w-full"
+                        disabled={loading || !cpfInput.trim()}
+                      >
+                        <CreditCard className="mr-2 h-4 w-4" />
+                        {loading ? "Processando..." : "Fazer Check-in"}
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Check-in Facial */}
+              {aulaAtiva && metodoCheckin === "FACIAL" && (
+                <Card className="border-2">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Camera className="h-5 w-5" />
+                      Reconhecimento Facial
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {facialActive ? (
+                        <div className="space-y-4">
+                          <video
+                            ref={videoRef}
+                            autoPlay
+                            muted
+                            className="w-full max-w-md mx-auto rounded-lg border"
+                          />
+                          <div className="text-center">
+                            <p className="text-sm text-gray-600">
+                              Posicione seu rosto na câmera...
+                            </p>
+                          </div>
+                          <Button
+                            onClick={stopFacialRecognition}
+                            variant="outline"
+                            className="w-full"
+                          >
+                            Cancelar
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="space-y-4">
+                          <p className="text-gray-600">
+                            Use o reconhecimento facial para fazer check-in de
+                            forma rápida e segura.
+                          </p>
+                          <Button
+                            onClick={startFacialRecognition}
+                            className="w-full"
+                            disabled={loading}
+                          >
+                            <Camera className="mr-2 h-4 w-4" />
+                            {loading
+                              ? "Processando..."
+                              : "Iniciar Reconhecimento"}
+                          </Button>
+                        </div>
                       )}
                     </div>
+                  </CardContent>
+                </Card>
+              )}
 
-                    {alunosEncontrados.length > 0 && (
-                      <div className="space-y-2">
-                        <Label>Alunos encontrados:</Label>
-                        {alunosEncontrados.map((aluno) => (
-                          <div
-                            key={aluno.id}
-                            className="flex justify-between items-center p-2 border rounded"
-                          >
-                            <span>{aluno.nome}</span>
-                            <Button
-                              size="sm"
-                              onClick={() => checkInAluno(aluno.id)}
-                              disabled={loading}
-                            >
-                              Check-in
-                            </Button>
+              {/* Check-in por Nome */}
+              {aulaAtiva && metodoCheckin === "NOME" && (
+                <Card className="border-2">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Search className="h-5 w-5" />
+                      Buscar por Nome
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <div className="relative">
+                        <Label htmlFor="nome">Digite o nome do aluno</Label>
+                        <div className="flex gap-2">
+                          <div className="relative flex-1">
+                            <Input
+                              id="nome"
+                              type="text"
+                              placeholder="Nome do aluno..."
+                              value={nomeInput}
+                              onChange={(
+                                e: React.ChangeEvent<HTMLInputElement>
+                              ) => {
+                                const valor = e.target.value;
+                                setNomeInput(valor);
+                                buscarSugestoesNome(valor);
+                              }}
+                              onFocus={() => {
+                                if (
+                                  nomeInput.length >= 2 &&
+                                  sugestoesNomes.length > 0
+                                ) {
+                                  setMostrandoSugestoes(true);
+                                }
+                              }}
+                            />
+
+                            {/* Dropdown de Sugestões */}
+                            {mostrandoSugestoes &&
+                              sugestoesNomes.length > 0 && (
+                                <div className="absolute top-full left-0 right-0 bg-white border border-gray-300 rounded-md shadow-lg z-50 max-h-60 overflow-y-auto">
+                                  {sugestoesNomes.map((pessoa) => (
+                                    <div
+                                      key={pessoa.id}
+                                      className="p-3 hover:bg-gray-100 cursor-pointer border-b border-gray-100 last:border-b-0"
+                                      onClick={() => checkInPorSugestao(pessoa)}
+                                    >
+                                      <div className="font-medium text-sm">
+                                        {pessoa.nome}
+                                      </div>
+                                      {pessoa.cpf && (
+                                        <div className="text-xs text-gray-500 mt-1">
+                                          CPF: {pessoa.cpf}
+                                        </div>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
                           </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Check-in para Responsáveis */}
-            {aulaAtiva && showResponsavelMode && meusFilhos.length > 0 && (
-              <Card className="border-2 border-blue-200">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Users className="h-5 w-5" />
-                    Check-in dos seus filhos
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    {meusFilhos.map((filho) => (
-                      <div
-                        key={filho.id}
-                        className="flex justify-between items-center p-2 border rounded"
-                      >
-                        <div>
-                          <span className="font-medium">{filho.nome}</span>
-                          <p className="text-sm text-gray-500">
-                            {filho.graduacao}
-                          </p>
+                          <Button
+                            onClick={buscarPorNome}
+                            disabled={loading || !nomeInput.trim()}
+                          >
+                            <Search className="h-4 w-4" />
+                          </Button>
                         </div>
-                        <Button
-                          size="sm"
-                          onClick={() => checkInAluno(filho.id)}
-                          disabled={loading || filho.jaFezCheckin}
-                          variant={filho.jaFezCheckin ? "outline" : "default"}
-                        >
-                          {filho.jaFezCheckin ? (
-                            <span className="flex items-center gap-1">
-                              <UserCheck className="h-4 w-4" />
-                              Presente
-                            </span>
-                          ) : (
-                            "Check-in"
-                          )}
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
 
-            {/* Check-in Manual (mantido como fallback) */}
-            {aulaAtiva && (
-              <Card className="border-2 border-gray-200">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <User className="h-5 w-5" />
-                    Check-in Manual
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <p className="text-gray-600 text-sm">
-                      Use apenas quando outros métodos não funcionarem.
+                        {/* Clique fora para fechar sugestões */}
+                        {mostrandoSugestoes && (
+                          <div
+                            className="fixed inset-0 z-40"
+                            onClick={() => setMostrandoSugestoes(false)}
+                          />
+                        )}
+                      </div>
+
+                      {alunosEncontrados.length > 0 && (
+                        <div className="space-y-2">
+                          <Label>Alunos encontrados:</Label>
+                          {alunosEncontrados.map((aluno) => (
+                            <div
+                              key={aluno.id}
+                              className="flex justify-between items-center p-2 border rounded"
+                            >
+                              <span>{aluno.nome}</span>
+                              <Button
+                                size="sm"
+                                onClick={() => checkInAluno(aluno.id)}
+                                disabled={loading}
+                              >
+                                Check-in
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Check-in para Responsáveis */}
+              {aulaAtiva && showResponsavelMode && meusFilhos.length > 0 && (
+                <Card className="border-2 border-blue-200">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Users className="h-5 w-5" />
+                      Check-in dos seus filhos
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      {meusFilhos.map((filho) => (
+                        <div
+                          key={filho.id}
+                          className="flex justify-between items-center p-2 border rounded"
+                        >
+                          <div>
+                            <span className="font-medium">{filho.nome}</span>
+                            <p className="text-sm text-gray-500">
+                              {filho.graduacao}
+                            </p>
+                          </div>
+                          <Button
+                            size="sm"
+                            onClick={() => checkInAluno(filho.id)}
+                            disabled={loading || filho.jaFezCheckin}
+                            variant={filho.jaFezCheckin ? "outline" : "default"}
+                          >
+                            {filho.jaFezCheckin ? (
+                              <span className="flex items-center gap-1">
+                                <UserCheck className="h-4 w-4" />
+                                Presente
+                              </span>
+                            ) : (
+                              "Check-in"
+                            )}
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Check-in Manual (mantido como fallback) */}
+              {aulaAtiva && (
+                <Card className="border-2 border-gray-200">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <User className="h-5 w-5" />
+                      Check-in Manual
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <p className="text-gray-600 text-sm">
+                        Use apenas quando outros métodos não funcionarem.
+                      </p>
+                      <Button
+                        onClick={checkInManual}
+                        variant="outline"
+                        className="w-full"
+                        disabled={loading}
+                      >
+                        <User className="mr-2 h-4 w-4" />
+                        {loading ? "Processando..." : "Check-in Manual"}
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* QR Scanner */}
+              {scannerActive && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center justify-between">
+                      <span>Scanner QR Code</span>
+                      <Button onClick={stopScanner} variant="outline" size="sm">
+                        Cancelar
+                      </Button>
+                    </CardTitle>
+                    <CardDescription>
+                      Aponte a câmera para o QR Code da aula
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div id="qr-reader" className="w-full"></div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* No Active Class */}
+              {!aulaAtiva && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Clock className="h-5 w-5" />
+                      Nenhuma Aula Ativa
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-gray-600 mb-4">
+                      Não há aulas acontecendo agora. Verifique os horários ou
+                      entre em contato com sua unidade.
                     </p>
                     <Button
-                      onClick={checkInManual}
+                      onClick={() => router.push("/horarios")}
                       variant="outline"
-                      className="w-full"
-                      disabled={loading}
                     >
-                      <User className="mr-2 h-4 w-4" />
-                      {loading ? "Processando..." : "Check-in Manual"}
+                      Ver Horários
                     </Button>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+
+            {/* Histórico */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <History className="h-5 w-5" />
+                  Histórico Recente
+                </CardTitle>
+                <CardDescription>
+                  Suas últimas presenças registradas
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {presencas.length === 0 ? (
+                  <div className="text-center text-gray-500 py-8">
+                    <Clock className="h-12 w-12 mx-auto mb-3 text-gray-300" />
+                    <p>Nenhuma presença registrada ainda.</p>
+                    <p className="text-sm">Faça seu primeiro check-in!</p>
                   </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* QR Scanner */}
-            {scannerActive && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center justify-between">
-                    <span>Scanner QR Code</span>
-                    <Button onClick={stopScanner} variant="outline" size="sm">
-                      Cancelar
-                    </Button>
-                  </CardTitle>
-                  <CardDescription>
-                    Aponte a câmera para o QR Code da aula
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div id="qr-reader" className="w-full"></div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* No Active Class */}
-            {!aulaAtiva && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Clock className="h-5 w-5" />
-                    Nenhuma Aula Ativa
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-gray-600 mb-4">
-                    Não há aulas acontecendo agora. Verifique os horários ou
-                    entre em contato com sua unidade.
-                  </p>
-                  <Button
-                    onClick={() => router.push("/horarios")}
-                    variant="outline"
-                  >
-                    Ver Horários
-                  </Button>
-                </CardContent>
-              </Card>
-            )}
-          </div>
-
-          {/* Histórico */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <History className="h-5 w-5" />
-                Histórico Recente
-              </CardTitle>
-              <CardDescription>
-                Suas últimas presenças registradas
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {presencas.length === 0 ? (
-                <div className="text-center text-gray-500 py-8">
-                  <Clock className="h-12 w-12 mx-auto mb-3 text-gray-300" />
-                  <p>Nenhuma presença registrada ainda.</p>
-                  <p className="text-sm">Faça seu primeiro check-in!</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {presencas.map((presenca) => (
-                    <div
-                      key={presenca.id}
-                      className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 bg-green-100 rounded-lg">
-                          <CheckCircle className="h-4 w-4 text-green-600" />
+                ) : (
+                  <div className="space-y-3">
+                    {presencas.map((presenca) => (
+                      <div
+                        key={presenca.id}
+                        className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 bg-green-100 rounded-lg">
+                            <CheckCircle className="h-4 w-4 text-green-600" />
+                          </div>
+                          <div>
+                            <div className="font-medium text-sm">
+                              {presenca.aula.nome}
+                            </div>
+                            <div className="text-xs text-gray-600">
+                              Prof. {presenca.aula.professor}
+                            </div>
+                            <div className="text-xs text-gray-500">
+                              {presenca.aula.unidade}
+                            </div>
+                          </div>
                         </div>
-                        <div>
-                          <div className="font-medium text-sm">
-                            {presenca.aula.nome}
+                        <div className="text-right">
+                          <div className="text-sm font-medium">
+                            {formatDate(presenca.data).split(" ")[0]}
                           </div>
                           <div className="text-xs text-gray-600">
-                            Prof. {presenca.aula.professor}
+                            {presenca.horario}
                           </div>
-                          <div className="text-xs text-gray-500">
-                            {presenca.aula.unidade}
-                          </div>
+                          <Badge
+                            variant={
+                              presenca.tipo === "entrada"
+                                ? "default"
+                                : "secondary"
+                            }
+                            className="text-xs mt-1"
+                          >
+                            {presenca.tipo === "entrada" ? "Entrada" : "Saída"}
+                          </Badge>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <div className="text-sm font-medium">
-                          {formatDate(presenca.data).split(" ")[0]}
-                        </div>
-                        <div className="text-xs text-gray-600">
-                          {presenca.horario}
-                        </div>
-                        <Badge
-                          variant={
-                            presenca.tipo === "entrada"
-                              ? "default"
-                              : "secondary"
-                          }
-                          className="text-xs mt-1"
-                        >
-                          {presenca.tipo === "entrada" ? "Entrada" : "Saída"}
-                        </Badge>
-                      </div>
-                    </div>
-                  ))}
+                    ))}
 
-                  <div className="pt-3 border-t">
-                    <Button
-                      onClick={() => router.push("/historico-presenca")}
-                      variant="ghost"
-                      className="w-full"
-                    >
-                      Ver Histórico Completo
-                    </Button>
+                    <div className="pt-3 border-t">
+                      <Button
+                        onClick={() => router.push("/historico-presenca")}
+                        variant="ghost"
+                        className="w-full"
+                      >
+                        Ver Histórico Completo
+                      </Button>
+                    </div>
                   </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </div>
-    </div>
+    </ProtectedRoute>
   );
 }
