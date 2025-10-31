@@ -239,7 +239,23 @@ export default function CadastrarUsuarioPage() {
     createUserMutation.mutate(payload);
   };
 
+  // Função para formatar campos de texto (apenas letras)
+  const formatTextOnly = (value: string, maxLength: number = 150) => {
+    return value
+      .replace(/[^a-zA-ZÀ-ÿ\s\-']+/g, "") // Remove números e caracteres não permitidos
+      .slice(0, maxLength); // Limita ao comprimento máximo
+  };
+
   const handleChange = (field: string, value: string) => {
+    // Aplicar formatação específica para campo nome
+    if (field === "nome") {
+      setFormData((prev) => ({
+        ...prev,
+        [field]: formatTextOnly(value, 150),
+      }));
+      return;
+    }
+
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 

@@ -34,10 +34,17 @@ import {
   UserPlus,
   User2,
   Shield,
+  CheckCircle,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { authService } from "@/lib/services/authService";
 import { getPerfis, type Perfil } from "@/lib/usuariosApi";
+import {
+  formatCPF,
+  isValidCPF,
+  getCPFValidationMessage,
+  cleanCPF,
+} from "@/lib/utils/cpf-validator";
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState({
@@ -54,6 +61,7 @@ export default function RegisterPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [perfis, setPerfis] = useState<Perfil[]>([]);
   const [loadingPerfis, setLoadingPerfis] = useState(true);
+  const [cpfError, setCpfError] = useState("");
 
   const router = useRouter();
 
@@ -137,11 +145,6 @@ export default function RegisterPage() {
     }
   };
 
-  const formatCPF = (value: string) => {
-    const numbers = value.replace(/\D/g, "");
-    return numbers.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
-  };
-
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const formatted = formatPhone(e.target.value);
     setFormData({
@@ -157,6 +160,16 @@ export default function RegisterPage() {
       ...formData,
       cpf: formatted,
     });
+
+    // Validação em tempo real do CPF
+    if (formatted.length >= 14) {
+      // CPF completo formatado
+      const validationMessage = getCPFValidationMessage(formatted);
+      setCpfError(validationMessage || "");
+    } else {
+      setCpfError("");
+    }
+
     if (error) setError("");
   };
 
@@ -169,8 +182,10 @@ export default function RegisterPage() {
       setError("Email é obrigatório");
       return false;
     }
-    if (!formData.cpf.trim()) {
-      setError("CPF é obrigatório");
+    // Validação completa do CPF
+    const cpfValidationMessage = getCPFValidationMessage(formData.cpf);
+    if (cpfValidationMessage) {
+      setError(cpfValidationMessage);
       return false;
     }
     if (!formData.password) {
@@ -230,11 +245,19 @@ export default function RegisterPage() {
     setError("");
 
     try {
-      const registerData: any = {
+      const registerData: {
+        nome: string;
+        email: string;
+        password: string;
+        cpf: string;
+        telefone: string;
+        data_nascimento: string;
+        perfil_id?: string;
+      } = {
         nome: formData.nome,
         email: formData.email,
         password: formData.password,
-        cpf: formData.cpf.replace(/\D/g, ""), // Remove pontos, traços e outros caracteres, mantendo apenas números
+        cpf: cleanCPF(formData.cpf), // Remove pontos, traços e outros caracteres, mantendo apenas números
         telefone: formData.telefone.replace(/\D/g, ""), // Remove formatação do telefone também
         data_nascimento: formData.data_nascimento,
       };
@@ -255,15 +278,8 @@ export default function RegisterPage() {
       const requerAprovacao = perfilEscolhido?.nome.toLowerCase() !== "aluno";
 
       if (requerAprovacao) {
-        toast.success(
-          "Cadastro realizado! Aguarde aprovação do administrador para acessar o sistema.",
-          { duration: 6000 }
-        );
         router.push("/login?message=pending-approval");
       } else {
-        toast.success(
-          "Cadastro realizado com sucesso! Faça login para continuar."
-        );
         router.push("/login?message=registration-success");
       }
     } catch (error: unknown) {
@@ -369,10 +385,32 @@ export default function RegisterPage() {
                       required
                       value={formData.cpf}
                       onChange={handleCPFChange}
-                      className="h-11 bg-gray-800/50 border-gray-600 text-white placeholder-gray-400 focus:border-red-500 focus:ring-red-500"
+                      className={`h-11 bg-gray-800/50 text-white placeholder-gray-400 focus:ring-red-500 ${
+                        cpfError
+                          ? "border-red-500 focus:border-red-600"
+                          : formData.cpf.length >= 14 &&
+                            !cpfError &&
+                            isValidCPF(formData.cpf)
+                          ? "border-green-500 focus:border-green-600"
+                          : "border-gray-600 focus:border-red-500"
+                      }`}
                       placeholder="000.000.000-00"
                       maxLength={14}
                     />
+                    {cpfError && (
+                      <div className="flex items-center gap-2 text-red-400 text-sm">
+                        <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                        <span>{cpfError}</span>
+                      </div>
+                    )}
+                    {!cpfError &&
+                      formData.cpf.length >= 14 &&
+                      isValidCPF(formData.cpf) && (
+                        <div className="flex items-center gap-2 text-green-400 text-sm">
+                          <CheckCircle className="h-4 w-4 flex-shrink-0" />
+                          <span>CPF válido</span>
+                        </div>
+                      )}
                   </div>
 
                   <div className="space-y-2">

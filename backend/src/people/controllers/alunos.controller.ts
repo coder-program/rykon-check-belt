@@ -13,30 +13,55 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { AlunosService } from '../services/alunos.service';
-import { ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
+import {
+  ApiOperation,
+  ApiQuery,
+  ApiTags,
+  ApiBearerAuth,
+  ApiResponse,
+} from '@nestjs/swagger';
 import { CreateAlunoDto } from '../dto/create-aluno.dto';
 import { UpdateAlunoDto } from '../dto/update-aluno.dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../../auth/guards/permissions.guard';
 import { Permissions } from '../../auth/decorators/permissions.decorator';
 
-@ApiTags('Alunos')
+@ApiTags('🎓 Alunos')
+@ApiBearerAuth('JWT-auth')
 @Controller('alunos')
 export class AlunosController {
   constructor(private readonly service: AlunosService) {}
 
   @Get('buscar-por-nome')
-  @ApiOperation({ summary: 'Buscar alunos por nome (autocomplete)' })
-  @ApiQuery({ name: 'nome', required: true })
+  @ApiOperation({
+    summary: '🔍 Buscar alunos por nome (autocomplete)',
+    description:
+      'Busca alunos que contenham o nome fornecido (útil para autocomplete)',
+  })
+  @ApiQuery({
+    name: 'nome',
+    required: true,
+    description: 'Nome ou parte do nome do aluno',
+  })
+  @ApiResponse({ status: 200, description: '✅ Lista de alunos encontrados' })
   async buscarPorNome(@Query('nome') nome: string) {
     return this.service.buscarPorNome(nome);
   }
 
   @Get('stats/counts')
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Obter contadores de alunos por filtros' })
-  @ApiQuery({ name: 'search', required: false })
-  @ApiQuery({ name: 'unidade_id', required: false })
+  @ApiOperation({
+    summary: '📊 Estatísticas e contadores de alunos',
+    description: 'Retorna contadores de alunos por diferentes filtros e status',
+  })
+  @ApiQuery({ name: 'search', required: false, description: 'Termo de busca' })
+  @ApiQuery({
+    name: 'unidade_id',
+    required: false,
+    description: 'ID da unidade para filtrar',
+  })
+  @ApiResponse({ status: 200, description: '✅ Estatísticas retornadas' })
+  @ApiResponse({ status: 401, description: '❌ Token inválido ou expirado' })
   async getStats(@Query(ValidationPipe) query: any, @Request() req) {
     const user = req?.user || null;
     return this.service.getStats(query, user);

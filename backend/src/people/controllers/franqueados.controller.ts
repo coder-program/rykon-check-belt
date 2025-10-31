@@ -12,6 +12,7 @@ import {
   UsePipes,
   Request,
 } from '@nestjs/common';
+import { CustomValidationPipe } from '../../common/pipes/validation.pipe';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { FranqueadosService } from '../services/franqueados.service';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
@@ -57,7 +58,7 @@ export class FranqueadosController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('franqueado')
   @Post('minha-franquia')
-  @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
+  @UsePipes(new CustomValidationPipe())
   @ApiOperation({ summary: 'Franqueado cadastra sua própria franquia' })
   @ApiResponse({ status: 201, description: 'Franquia cadastrada com sucesso' })
   @ApiResponse({ status: 400, description: 'Dados inválidos' })
@@ -75,7 +76,7 @@ export class FranqueadosController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('franqueado')
   @Patch('minha-franquia/:id')
-  @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
+  @UsePipes(new CustomValidationPipe())
   @ApiOperation({ summary: 'Franqueado atualiza sua própria franquia' })
   @ApiResponse({ status: 200, description: 'Franquia atualizada com sucesso' })
   @ApiResponse({ status: 403, description: 'Não autorizado' })
@@ -98,7 +99,7 @@ export class FranqueadosController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('master')
   @Post()
-  @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
+  @UsePipes(new CustomValidationPipe())
   @ApiOperation({ summary: 'Criar novo franqueado' })
   @ApiResponse({ status: 201, description: 'Franqueado criado com sucesso' })
   @ApiResponse({ status: 400, description: 'Dados inválidos' })
@@ -125,12 +126,26 @@ export class FranqueadosController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('master')
   @Patch(':id')
-  @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
+  @UsePipes(new CustomValidationPipe())
   @ApiOperation({ summary: 'Atualizar franqueado' })
   @ApiResponse({ status: 200, description: 'Franqueado atualizado' })
   @ApiResponse({ status: 404, description: 'Franqueado não encontrado' })
   update(@Param('id') id: string, @Body() body: UpdateFranqueadoDto) {
-    return this.service.update(id, this.prepareData(body));
+    console.log('🔍 [Controller] DTO recebido:', {
+      ativo: body.ativo,
+      ativoType: typeof body.ativo,
+      fullDto: body,
+    });
+
+    const preparedData = this.prepareData(body);
+
+    console.log('🔍 [Controller] Dados preparados:', {
+      ativo: preparedData.ativo,
+      ativoType: typeof preparedData.ativo,
+      fullData: preparedData,
+    });
+
+    return this.service.update(id, preparedData);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)

@@ -13,6 +13,7 @@ interface ConfirmDialogProps {
   cancelText?: string;
   type?: "danger" | "warning" | "info";
   icon?: "logout" | "userX" | "warning";
+  autoCloseOnConfirm?: boolean;
 }
 
 export default function ConfirmDialog({
@@ -25,6 +26,7 @@ export default function ConfirmDialog({
   cancelText = "Cancelar",
   type = "warning",
   icon = "warning",
+  autoCloseOnConfirm = true,
 }: ConfirmDialogProps) {
   if (!isOpen) return null;
 
@@ -111,7 +113,9 @@ export default function ConfirmDialog({
           <button
             onClick={() => {
               onConfirm();
-              onClose();
+              if (autoCloseOnConfirm) {
+                onClose();
+              }
             }}
             className={`flex-1 px-4 py-3 ${colors.buttonBg} ${colors.buttonText} font-medium rounded-lg transition-all duration-200 hover:shadow-lg hover:scale-105`}
           >

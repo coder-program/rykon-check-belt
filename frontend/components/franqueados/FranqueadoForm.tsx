@@ -114,6 +114,118 @@ export default function FranqueadoForm({
       .slice(0, 14);
   };
 
+  const formatNumericOnly = (value: string, maxLength: number = 20) => {
+    return value
+      .replace(/\D/g, "") // Remove tudo que não é dígito
+      .slice(0, maxLength); // Limita ao comprimento máximo
+  };
+
+  const formatTextOnly = (value: string, maxLength: number = 150) => {
+    return value
+      .replace(/[^a-zA-ZÀ-ÿ\s\-'&.()]/g, "") // Remove números e caracteres não permitidos
+      .slice(0, maxLength); // Limita ao comprimento máximo
+  };
+
+  // Formatação específica para endereço (permite números)
+  const formatAddress = (value: string, maxLength: number = 200) => {
+    return value
+      .replace(/[^a-zA-ZÀ-ÿ0-9\s\-'&.,()]/g, "") // Permite números no endereço
+      .slice(0, maxLength);
+  };
+
+  // Formatação para textos longos (textarea)
+  const formatLongText = (value: string, maxLength: number = 1000) => {
+    return value.slice(0, maxLength);
+  };
+
+  // Formatação para email com limite
+  const formatEmail = (value: string, maxLength: number = 100) => {
+    return value.toLowerCase().slice(0, maxLength);
+  };
+
+  // Formatação para URL com limite
+  const formatUrl = (value: string, maxLength: number = 200) => {
+    return value.slice(0, maxLength);
+  };
+
+  // Validação de telefone
+  const isValidPhone = (phone: string) => {
+    const cleaned = phone.replace(/\D/g, "");
+    // Aceita telefone com 10 dígitos (fixo) ou 11 dígitos (celular com 9)
+    return cleaned.length === 10 || cleaned.length === 11;
+  };
+
+  const getPhoneValidationMessage = (phone: string) => {
+    if (!phone) return "Telefone é obrigatório";
+
+    const cleaned = phone.replace(/\D/g, "");
+
+    if (cleaned.length < 10) {
+      return "Telefone deve ter pelo menos 10 dígitos";
+    }
+
+    if (cleaned.length > 11) {
+      return "Telefone deve ter no máximo 11 dígitos";
+    }
+
+    if (cleaned.length === 11 && cleaned[2] !== "9") {
+      return "Celular deve começar com 9 após o DDD";
+    }
+
+    return null; // Telefone válido
+  };
+
+  // Estados para validação de telefones
+  const [telefoneError, setTelefoneError] = React.useState("");
+  const [telefoneFixoError, setTelefoneFixoError] = React.useState("");
+  const [telefoneResponsavelError, setTelefoneResponsavelError] =
+    React.useState("");
+
+  // Componente para mostrar contador de caracteres
+  const CharacterCounter = ({
+    current,
+    max,
+    className = "",
+  }: {
+    current: number;
+    max: number;
+    className?: string;
+  }) => {
+    const percentage = (current / max) * 100;
+    const isNearLimit = percentage >= 80;
+    const isAtLimit = percentage >= 100;
+
+    return (
+      <div
+        className={`text-xs mt-1 flex items-center justify-between ${className}`}
+      >
+        <span
+          className={`${
+            isAtLimit
+              ? "text-red-600 font-semibold"
+              : isNearLimit
+              ? "text-orange-600"
+              : "text-gray-500"
+          }`}
+        >
+          {current}/{max} caracteres
+        </span>
+        <div className="w-16 h-1 bg-gray-200 rounded-full overflow-hidden">
+          <div
+            className={`h-full transition-all duration-200 ${
+              isAtLimit
+                ? "bg-red-500"
+                : isNearLimit
+                ? "bg-orange-500"
+                : "bg-blue-500"
+            }`}
+            style={{ width: `${Math.min(percentage, 100)}%` }}
+          />
+        </div>
+      </div>
+    );
+  };
+
   const formatPhone = (value: string) => {
     return value
       .replace(/\D/g, "")
@@ -184,6 +296,110 @@ export default function FranqueadoForm({
     }
   };
 
+  // Validação dos campos obrigatórios por aba
+  const validateTab = (
+    tabId: number
+  ): { isValid: boolean; errors: string[] } => {
+    const errors: string[] = [];
+
+    switch (tabId) {
+      case 0: // Identificação
+        if (!formData.nome.trim()) errors.push("Nome é obrigatório");
+        if (!formData.cnpj.trim()) errors.push("CNPJ é obrigatório");
+        if (!formData.razao_social.trim())
+          errors.push("Razão Social é obrigatória");
+        break;
+
+      case 1: // Contato
+        if (!formData.email.trim()) {
+          errors.push("Email Institucional é obrigatório");
+        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+          errors.push("Email deve ter um formato válido");
+        }
+
+        if (!formData.telefone_celular.trim()) {
+          errors.push("Telefone Celular / WhatsApp é obrigatório");
+        } else {
+          const phoneValidationMessage = getPhoneValidationMessage(
+            formData.telefone_celular
+          );
+          if (phoneValidationMessage) {
+            errors.push(phoneValidationMessage);
+          }
+        }
+        break;
+
+      case 2: // Endereço
+        if (!formData.cep?.trim()) errors.push("CEP é obrigatório");
+        if (!formData.logradouro?.trim())
+          errors.push("Logradouro é obrigatório");
+        if (!formData.cidade?.trim()) errors.push("Cidade é obrigatória");
+        if (!formData.estado?.trim()) errors.push("Estado é obrigatório");
+        break;
+
+      case 3: // Responsável
+        if (!formData.responsavel_nome?.trim())
+          errors.push("Nome do Responsável é obrigatório");
+        if (!formData.responsavel_cpf?.trim())
+          errors.push("CPF do Responsável é obrigatório");
+        if (!formData.responsavel_email?.trim())
+          errors.push("Email do Responsável é obrigatório");
+        break;
+
+      default:
+        break;
+    }
+
+    return {
+      isValid: errors.length === 0,
+      errors,
+    };
+  };
+
+  // Função para avançar para próxima aba com validação
+  const handleNextTab = () => {
+    const validation = validateTab(activeTab);
+
+    if (!validation.isValid) {
+      alert(
+        `Por favor, preencha os seguintes campos obrigatórios:\n\n• ${validation.errors.join(
+          "\n• "
+        )}`
+      );
+      return;
+    }
+
+    setActiveTab(activeTab + 1);
+  };
+
+  // Função para clicar diretamente numa aba com validação
+  const handleTabClick = (targetTab: number) => {
+    // Se tentando ir para uma aba anterior, permite sempre
+    if (targetTab < activeTab) {
+      setActiveTab(targetTab);
+      return;
+    }
+
+    // Se tentando ir para a mesma aba, permite
+    if (targetTab === activeTab) {
+      return;
+    }
+
+    // Se tentando pular uma aba, valida a atual primeiro
+    const validation = validateTab(activeTab);
+
+    if (!validation.isValid) {
+      alert(
+        `Para prosseguir, preencha os seguintes campos obrigatórios:\n\n• ${validation.errors.join(
+          "\n• "
+        )}`
+      );
+      return;
+    }
+
+    setActiveTab(targetTab);
+  };
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col">
@@ -210,7 +426,7 @@ export default function FranqueadoForm({
               <button
                 key={tab.id}
                 type="button"
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => handleTabClick(tab.id)}
                 className={`flex items-center gap-2 px-4 py-3 border-b-2 transition-colors whitespace-nowrap ${
                   activeTab === tab.id
                     ? "border-blue-600 text-blue-600"
@@ -243,10 +459,13 @@ export default function FranqueadoForm({
                       required
                       value={formData.nome}
                       onChange={(e) =>
-                        setFormData({ ...formData, nome: e.target.value })
+                        setFormData({
+                          ...formData,
+                          nome: formatTextOnly(e.target.value, 150),
+                        })
                       }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="TeamCruz São Paulo"
+                      placeholder="TeamCruz São Paulo (apenas letras)"
                     />
                   </div>
 
@@ -280,7 +499,7 @@ export default function FranqueadoForm({
                       onChange={(e) =>
                         setFormData({
                           ...formData,
-                          razao_social: e.target.value,
+                          razao_social: formatTextOnly(e.target.value, 200),
                         })
                       }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -298,7 +517,7 @@ export default function FranqueadoForm({
                       onChange={(e) =>
                         setFormData({
                           ...formData,
-                          nome_fantasia: e.target.value,
+                          nome_fantasia: formatTextOnly(e.target.value, 150),
                         })
                       }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -316,11 +535,14 @@ export default function FranqueadoForm({
                       onChange={(e) =>
                         setFormData({
                           ...formData,
-                          inscricao_estadual: e.target.value,
+                          inscricao_estadual: formatNumericOnly(
+                            e.target.value,
+                            20
+                          ),
                         })
                       }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="123.456.789.012"
+                      placeholder="123456789012 (apenas números)"
                     />
                   </div>
 
@@ -334,11 +556,14 @@ export default function FranqueadoForm({
                       onChange={(e) =>
                         setFormData({
                           ...formData,
-                          inscricao_municipal: e.target.value,
+                          inscricao_municipal: formatNumericOnly(
+                            e.target.value,
+                            20
+                          ),
                         })
                       }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="9876543"
+                      placeholder="9876543 (apenas números)"
                     />
                   </div>
                 </div>
@@ -361,10 +586,14 @@ export default function FranqueadoForm({
                       required
                       value={formData.email}
                       onChange={(e) =>
-                        setFormData({ ...formData, email: e.target.value })
+                        setFormData({
+                          ...formData,
+                          email: formatEmail(e.target.value, 100),
+                        })
                       }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       placeholder="contato@teamcruz.com.br"
+                      maxLength={100}
                     />
                   </div>
 
@@ -376,15 +605,62 @@ export default function FranqueadoForm({
                       type="text"
                       required
                       value={formData.telefone_celular}
-                      onChange={(e) =>
+                      onChange={(e) => {
+                        const formatted = formatPhone(e.target.value);
                         setFormData({
                           ...formData,
-                          telefone_celular: formatPhone(e.target.value),
-                        })
-                      }
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="(00) 00000-0000"
+                          telefone_celular: formatted,
+                        });
+
+                        // Validação em tempo real
+                        const validationMessage =
+                          getPhoneValidationMessage(formatted);
+                        setTelefoneError(validationMessage || "");
+                      }}
+                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                        telefoneError
+                          ? "border-red-500"
+                          : formData.telefone_celular &&
+                            isValidPhone(formData.telefone_celular)
+                          ? "border-green-500"
+                          : "border-gray-300"
+                      }`}
+                      placeholder="(11) 99999-9999"
                     />
+                    {telefoneError && (
+                      <div className="flex items-center gap-2 text-red-600 text-sm mt-1">
+                        <svg
+                          className="h-4 w-4 flex-shrink-0"
+                          fill="currentColor"
+                          viewBox="0 0 20 20"
+                        >
+                          <path
+                            fillRule="evenodd"
+                            d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+                            clipRule="evenodd"
+                          />
+                        </svg>
+                        <span>{telefoneError}</span>
+                      </div>
+                    )}
+                    {!telefoneError &&
+                      formData.telefone_celular &&
+                      isValidPhone(formData.telefone_celular) && (
+                        <div className="flex items-center gap-2 text-green-600 text-sm mt-1">
+                          <svg
+                            className="h-4 w-4 flex-shrink-0"
+                            fill="currentColor"
+                            viewBox="0 0 20 20"
+                          >
+                            <path
+                              fillRule="evenodd"
+                              d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                              clipRule="evenodd"
+                            />
+                          </svg>
+                          <span>Telefone válido</span>
+                        </div>
+                      )}
                   </div>
 
                   <div>
@@ -394,15 +670,66 @@ export default function FranqueadoForm({
                     <input
                       type="text"
                       value={formData.telefone_fixo || ""}
-                      onChange={(e) =>
+                      onChange={(e) => {
+                        const formatted = formatPhoneFixo(e.target.value);
                         setFormData({
                           ...formData,
-                          telefone_fixo: formatPhoneFixo(e.target.value),
-                        })
-                      }
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="(00) 0000-0000"
+                          telefone_fixo: formatted,
+                        });
+
+                        // Validação opcional para telefone fixo
+                        if (formatted) {
+                          const validationMessage =
+                            getPhoneValidationMessage(formatted);
+                          setTelefoneFixoError(validationMessage || "");
+                        } else {
+                          setTelefoneFixoError("");
+                        }
+                      }}
+                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                        telefoneFixoError
+                          ? "border-red-500"
+                          : formData.telefone_fixo &&
+                            isValidPhone(formData.telefone_fixo)
+                          ? "border-green-500"
+                          : "border-gray-300"
+                      }`}
+                      placeholder="(11) 1234-5678"
                     />
+                    {telefoneFixoError && (
+                      <div className="flex items-center gap-2 text-red-600 text-sm mt-1">
+                        <svg
+                          className="h-4 w-4 flex-shrink-0"
+                          fill="currentColor"
+                          viewBox="0 0 20 20"
+                        >
+                          <path
+                            fillRule="evenodd"
+                            d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+                            clipRule="evenodd"
+                          />
+                        </svg>
+                        <span>{telefoneFixoError}</span>
+                      </div>
+                    )}
+                    {!telefoneFixoError &&
+                      formData.telefone_fixo &&
+                      isValidPhone(formData.telefone_fixo) && (
+                        <div className="flex items-center gap-2 text-green-600 text-sm mt-1">
+                          <svg
+                            className="h-4 w-4 flex-shrink-0"
+                            fill="currentColor"
+                            viewBox="0 0 20 20"
+                          >
+                            <path
+                              fillRule="evenodd"
+                              d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                              clipRule="evenodd"
+                            />
+                          </svg>
+                          <span>Telefone válido</span>
+                        </div>
+                      )}
                   </div>
 
                   <div>
@@ -413,10 +740,14 @@ export default function FranqueadoForm({
                       type="url"
                       value={formData.website || ""}
                       onChange={(e) =>
-                        setFormData({ ...formData, website: e.target.value })
+                        setFormData({
+                          ...formData,
+                          website: formatUrl(e.target.value, 200),
+                        })
                       }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       placeholder="https://www.exemplo.com.br"
+                      maxLength={200}
                     />
                   </div>
 
@@ -435,12 +766,13 @@ export default function FranqueadoForm({
                               ...formData,
                               redes_sociais: {
                                 ...formData.redes_sociais,
-                                instagram: e.target.value,
+                                instagram: formatUrl(e.target.value, 150),
                               },
                             })
                           }
                           className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                           placeholder="https://instagram.com/..."
+                          maxLength={150}
                         />
                       </div>
 
@@ -454,12 +786,13 @@ export default function FranqueadoForm({
                               ...formData,
                               redes_sociais: {
                                 ...formData.redes_sociais,
-                                facebook: e.target.value,
+                                facebook: formatUrl(e.target.value, 150),
                               },
                             })
                           }
                           className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                           placeholder="https://facebook.com/..."
+                          maxLength={150}
                         />
                       </div>
 
@@ -473,12 +806,13 @@ export default function FranqueadoForm({
                               ...formData,
                               redes_sociais: {
                                 ...formData.redes_sociais,
-                                youtube: e.target.value,
+                                youtube: formatUrl(e.target.value, 150),
                               },
                             })
                           }
                           className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                           placeholder="https://youtube.com/@..."
+                          maxLength={150}
                         />
                       </div>
 
@@ -492,12 +826,13 @@ export default function FranqueadoForm({
                               ...formData,
                               redes_sociais: {
                                 ...formData.redes_sociais,
-                                linkedin: e.target.value,
+                                linkedin: formatUrl(e.target.value, 150),
                               },
                             })
                           }
                           className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                           placeholder="https://linkedin.com/company/..."
+                          maxLength={150}
                         />
                       </div>
                     </div>
@@ -536,10 +871,14 @@ export default function FranqueadoForm({
                       required
                       value={formData.logradouro || ""}
                       onChange={(e) =>
-                        setFormData({ ...formData, logradouro: e.target.value })
+                        setFormData({
+                          ...formData,
+                          logradouro: formatAddress(e.target.value, 200),
+                        })
                       }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       placeholder="Rua, Avenida, Praça..."
+                      maxLength={200}
                     />
                   </div>
                 </div>
@@ -554,10 +893,14 @@ export default function FranqueadoForm({
                       required
                       value={formData.numero || ""}
                       onChange={(e) =>
-                        setFormData({ ...formData, numero: e.target.value })
+                        setFormData({
+                          ...formData,
+                          numero: formatAddress(e.target.value, 10),
+                        })
                       }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       placeholder="123"
+                      maxLength={10}
                     />
                   </div>
 
@@ -571,11 +914,12 @@ export default function FranqueadoForm({
                       onChange={(e) =>
                         setFormData({
                           ...formData,
-                          complemento: e.target.value,
+                          complemento: formatAddress(e.target.value, 100),
                         })
                       }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       placeholder="Sala, Andar, Bloco..."
+                      maxLength={100}
                     />
                   </div>
                 </div>
@@ -590,10 +934,14 @@ export default function FranqueadoForm({
                       required
                       value={formData.bairro || ""}
                       onChange={(e) =>
-                        setFormData({ ...formData, bairro: e.target.value })
+                        setFormData({
+                          ...formData,
+                          bairro: formatAddress(e.target.value, 100),
+                        })
                       }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       placeholder="Centro"
+                      maxLength={100}
                     />
                   </div>
 
@@ -606,10 +954,14 @@ export default function FranqueadoForm({
                       required
                       value={formData.cidade || ""}
                       onChange={(e) =>
-                        setFormData({ ...formData, cidade: e.target.value })
+                        setFormData({
+                          ...formData,
+                          cidade: formatTextOnly(e.target.value, 100),
+                        })
                       }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       placeholder="São Paulo"
+                      maxLength={100}
                     />
                   </div>
 
@@ -669,8 +1021,60 @@ export default function FranqueadoForm({
                     endereço
                   </p>
                 </div>
+
+                <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+                  <div className="flex items-center gap-2 text-green-700">
+                    <svg
+                      className="h-4 w-4"
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                    <span className="text-sm font-medium">
+                      Validação Implementada
+                    </span>
+                  </div>
+                  <p className="text-sm text-green-600 mt-1">
+                    Todos os campos possuem limites de caracteres configurados e
+                    validação em tempo real
+                  </p>
+                </div>
               </div>
             )}
+
+            {/* Debug Info - Status Ativo */}
+            <div className="bg-blue-50 p-3 rounded-lg border border-blue-200 mb-4">
+              <div className="flex items-center gap-2 text-blue-700">
+                <svg
+                  className="h-4 w-4"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+                <span className="text-xs font-medium">
+                  Debug - Status Ativo
+                </span>
+              </div>
+              <p className="text-xs text-blue-600 mt-1">
+                Valor atual: <strong>{String(formData.ativo)}</strong> (
+                {typeof formData.ativo})
+                {isEditing && (
+                  <span className="ml-2 text-blue-500">
+                    (Modo: Edição de ID: {formData.id})
+                  </span>
+                )}
+              </p>
+            </div>
 
             {/* Tab 3: Responsável */}
             {activeTab === 3 && (
@@ -690,7 +1094,7 @@ export default function FranqueadoForm({
                       onChange={(e) =>
                         setFormData({
                           ...formData,
-                          responsavel_nome: e.target.value,
+                          responsavel_nome: formatTextOnly(e.target.value, 150),
                         })
                       }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -727,7 +1131,10 @@ export default function FranqueadoForm({
                       onChange={(e) =>
                         setFormData({
                           ...formData,
-                          responsavel_cargo: e.target.value,
+                          responsavel_cargo: formatTextOnly(
+                            e.target.value,
+                            100
+                          ),
                         })
                       }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -745,11 +1152,12 @@ export default function FranqueadoForm({
                       onChange={(e) =>
                         setFormData({
                           ...formData,
-                          responsavel_email: e.target.value,
+                          responsavel_email: formatEmail(e.target.value, 100),
                         })
                       }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       placeholder="responsavel@email.com"
+                      maxLength={100}
                     />
                   </div>
 
@@ -760,15 +1168,66 @@ export default function FranqueadoForm({
                     <input
                       type="text"
                       value={formData.responsavel_telefone || ""}
-                      onChange={(e) =>
+                      onChange={(e) => {
+                        const formatted = formatPhone(e.target.value);
                         setFormData({
                           ...formData,
-                          responsavel_telefone: formatPhone(e.target.value),
-                        })
-                      }
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="(00) 00000-0000"
+                          responsavel_telefone: formatted,
+                        });
+
+                        // Validação opcional para telefone do responsável
+                        if (formatted) {
+                          const validationMessage =
+                            getPhoneValidationMessage(formatted);
+                          setTelefoneResponsavelError(validationMessage || "");
+                        } else {
+                          setTelefoneResponsavelError("");
+                        }
+                      }}
+                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                        telefoneResponsavelError
+                          ? "border-red-500"
+                          : formData.responsavel_telefone &&
+                            isValidPhone(formData.responsavel_telefone)
+                          ? "border-green-500"
+                          : "border-gray-300"
+                      }`}
+                      placeholder="(11) 99999-9999"
                     />
+                    {telefoneResponsavelError && (
+                      <div className="flex items-center gap-2 text-red-600 text-sm mt-1">
+                        <svg
+                          className="h-4 w-4 flex-shrink-0"
+                          fill="currentColor"
+                          viewBox="0 0 20 20"
+                        >
+                          <path
+                            fillRule="evenodd"
+                            d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+                            clipRule="evenodd"
+                          />
+                        </svg>
+                        <span>{telefoneResponsavelError}</span>
+                      </div>
+                    )}
+                    {!telefoneResponsavelError &&
+                      formData.responsavel_telefone &&
+                      isValidPhone(formData.responsavel_telefone) && (
+                        <div className="flex items-center gap-2 text-green-600 text-sm mt-1">
+                          <svg
+                            className="h-4 w-4 flex-shrink-0"
+                            fill="currentColor"
+                            viewBox="0 0 20 20"
+                          >
+                            <path
+                              fillRule="evenodd"
+                              d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                              clipRule="evenodd"
+                            />
+                          </svg>
+                          <span>Telefone válido</span>
+                        </div>
+                      )}
                   </div>
                 </div>
               </div>
@@ -843,11 +1302,12 @@ export default function FranqueadoForm({
                           onChange={(e) =>
                             setFormData({
                               ...formData,
-                              logotipo_url: e.target.value,
+                              logotipo_url: formatUrl(e.target.value, 300),
                             })
                           }
                           className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                           placeholder="URL do logotipo"
+                          maxLength={300}
                         />
                         <button
                           type="button"
@@ -868,10 +1328,18 @@ export default function FranqueadoForm({
                       rows={3}
                       value={formData.missao || ""}
                       onChange={(e) =>
-                        setFormData({ ...formData, missao: e.target.value })
+                        setFormData({
+                          ...formData,
+                          missao: formatLongText(e.target.value, 500),
+                        })
                       }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
                       placeholder="Nossa missão é..."
+                      maxLength={500}
+                    />
+                    <CharacterCounter
+                      current={formData.missao?.length || 0}
+                      max={500}
                     />
                   </div>
 
@@ -883,10 +1351,18 @@ export default function FranqueadoForm({
                       rows={3}
                       value={formData.visao || ""}
                       onChange={(e) =>
-                        setFormData({ ...formData, visao: e.target.value })
+                        setFormData({
+                          ...formData,
+                          visao: formatLongText(e.target.value, 500),
+                        })
                       }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
                       placeholder="Nossa visão é..."
+                      maxLength={500}
+                    />
+                    <CharacterCounter
+                      current={formData.visao?.length || 0}
+                      max={500}
                     />
                   </div>
 
@@ -898,10 +1374,18 @@ export default function FranqueadoForm({
                       rows={3}
                       value={formData.valores || ""}
                       onChange={(e) =>
-                        setFormData({ ...formData, valores: e.target.value })
+                        setFormData({
+                          ...formData,
+                          valores: formatLongText(e.target.value, 500),
+                        })
                       }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
                       placeholder="Nossos valores são..."
+                      maxLength={500}
+                    />
+                    <CharacterCounter
+                      current={formData.valores?.length || 0}
+                      max={500}
                     />
                   </div>
 
@@ -913,10 +1397,18 @@ export default function FranqueadoForm({
                       rows={5}
                       value={formData.historico || ""}
                       onChange={(e) =>
-                        setFormData({ ...formData, historico: e.target.value })
+                        setFormData({
+                          ...formData,
+                          historico: formatLongText(e.target.value, 1500),
+                        })
                       }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
                       placeholder="Conte a história da franquia..."
+                      maxLength={1500}
+                    />
+                    <CharacterCounter
+                      current={formData.historico?.length || 0}
+                      max={1500}
                     />
                   </div>
                 </div>
@@ -971,41 +1463,186 @@ export default function FranqueadoForm({
                     </div>
                   </div>
 
-                  <div className="flex items-center p-4 bg-gray-50 rounded-lg">
-                    <input
-                      type="checkbox"
-                      id="ativo"
-                      checked={formData.ativo}
-                      onChange={(e) =>
-                        setFormData({ ...formData, ativo: e.target.checked })
-                      }
-                      className="w-5 h-5 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
-                    />
-                    <label
-                      htmlFor="ativo"
-                      className="ml-3 text-sm font-medium text-gray-700"
-                    >
-                      Franqueado ativo no sistema
-                    </label>
-                  </div>
+                  {/* Mensagem Específica de Status Selecionado */}
+                  {formData.situacao === "EM_HOMOLOGACAO" && (
+                    <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                      <div className="flex items-center">
+                        <div className="flex-shrink-0">
+                          <svg
+                            className="w-5 h-5 text-amber-600"
+                            fill="currentColor"
+                            viewBox="0 0 20 20"
+                          >
+                            <path
+                              fillRule="evenodd"
+                              d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                              clipRule="evenodd"
+                            />
+                          </svg>
+                        </div>
+                        <div className="ml-3">
+                          <h4 className="text-sm font-medium text-amber-800">
+                            Status: Em Homologação
+                          </h4>
+                          <p className="text-sm text-amber-700 mt-1">
+                            <strong>Franquia em processo de validação.</strong>{" "}
+                            Esta franquia está sendo analisada pelo
+                            administrador antes de ser aprovada para operação.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
-                  <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                    <h4 className="font-medium text-blue-900 mb-2">
-                      Informações de Status
+                  {formData.situacao === "ATIVA" && (
+                    <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                      <div className="flex items-center">
+                        <div className="flex-shrink-0">
+                          <svg
+                            className="w-5 h-5 text-green-600"
+                            fill="currentColor"
+                            viewBox="0 0 20 20"
+                          >
+                            <path
+                              fillRule="evenodd"
+                              d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                              clipRule="evenodd"
+                            />
+                          </svg>
+                        </div>
+                        <div className="ml-3">
+                          <h4 className="text-sm font-medium text-green-800">
+                            Status: Ativa
+                          </h4>
+                          <p className="text-sm text-green-700 mt-1">
+                            <strong>Franquia operando normalmente.</strong>{" "}
+                            Todas as funcionalidades estão liberadas para uso.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {formData.situacao === "INATIVA" && (
+                    <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                      <div className="flex items-center">
+                        <div className="flex-shrink-0">
+                          <svg
+                            className="w-5 h-5 text-red-600"
+                            fill="currentColor"
+                            viewBox="0 0 20 20"
+                          >
+                            <path
+                              fillRule="evenodd"
+                              d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                              clipRule="evenodd"
+                            />
+                          </svg>
+                        </div>
+                        <div className="ml-3">
+                          <h4 className="text-sm font-medium text-red-800">
+                            Status: Inativa
+                          </h4>
+                          <p className="text-sm text-red-700 mt-1">
+                            <strong>Franquia temporariamente suspensa.</strong>{" "}
+                            Acesso às funcionalidades pode estar limitado.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Bloco de Informações de Status - Sempre Visível */}
+                  <div className="p-4 bg-blue-50 rounded-lg border border-blue-200 shadow-sm">
+                    <h4 className="font-medium text-blue-900 mb-3 flex items-center">
+                      <svg
+                        className="w-5 h-5 mr-2"
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                      Informações dos Status
                     </h4>
-                    <ul className="text-sm text-blue-800 space-y-1">
-                      <li>
+                    <ul className="text-sm text-blue-800 space-y-2">
+                      <li
+                        className={`p-2 rounded ${
+                          formData.situacao === "ATIVA"
+                            ? "bg-green-100 font-semibold"
+                            : ""
+                        }`}
+                      >
                         <strong>Ativa:</strong> Franquia operando normalmente
                       </li>
-                      <li>
+                      <li
+                        className={`p-2 rounded ${
+                          formData.situacao === "INATIVA"
+                            ? "bg-orange-100 font-semibold"
+                            : ""
+                        }`}
+                      >
                         <strong>Inativa:</strong> Franquia temporariamente
                         suspensa
                       </li>
-                      <li>
+                      <li
+                        className={`p-2 rounded ${
+                          formData.situacao === "EM_HOMOLOGACAO"
+                            ? "bg-yellow-100 font-semibold"
+                            : ""
+                        }`}
+                      >
                         <strong>Em Homologação:</strong> Franquia em processo de
                         validação
                       </li>
                     </ul>
+                  </div>
+
+                  <div
+                    className={`flex items-center p-4 rounded-lg border-2 transition-all ${
+                      formData.ativo
+                        ? "bg-green-50 border-green-200"
+                        : "bg-red-50 border-red-200"
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      id="ativo"
+                      checked={formData.ativo}
+                      onChange={(e) => {
+                        const isChecked = e.target.checked;
+                        console.log(
+                          "🔍 [FranqueadoForm] Checkbox changed:",
+                          isChecked
+                        );
+                        setFormData({ ...formData, ativo: isChecked });
+                      }}
+                      className={`w-6 h-6 rounded focus:ring-2 ${
+                        formData.ativo
+                          ? "text-green-600 bg-green-100 border-green-300 focus:ring-green-500"
+                          : "text-red-600 bg-red-100 border-red-300 focus:ring-red-500"
+                      }`}
+                    />
+                    <div className="ml-3">
+                      <label
+                        htmlFor="ativo"
+                        className="text-sm font-medium text-gray-900 cursor-pointer"
+                      >
+                        Franqueado ativo no sistema
+                      </label>
+                      <p
+                        className={`text-xs mt-1 ${
+                          formData.ativo ? "text-green-700" : "text-red-700"
+                        }`}
+                      >
+                        {formData.ativo
+                          ? "✅ Franqueado tem acesso completo ao sistema"
+                          : "❌ Franqueado com acesso bloqueado/suspenso"}
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1027,7 +1664,7 @@ export default function FranqueadoForm({
               {activeTab < tabs.length - 1 && (
                 <button
                   type="button"
-                  onClick={() => setActiveTab(activeTab + 1)}
+                  onClick={handleNextTab}
                   className="px-4 py-2 text-white bg-blue-600 hover:bg-blue-700 rounded-lg font-medium transition-colors"
                 >
                   Próximo

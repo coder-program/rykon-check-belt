@@ -16,39 +16,32 @@ import {
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { IsValidName } from '../../common/decorators/is-valid-name.decorator';
+import { IsValidPhone } from '../../common/decorators/is-valid-phone.decorator';
 
 export type SituacaoFranqueado = 'ATIVA' | 'INATIVA' | 'EM_HOMOLOGACAO';
 
 export class RedesSociaisDto {
-  @ApiPropertyOptional({
-    example: '@franquia ou https://instagram.com/franquia',
-  })
+  @ApiPropertyOptional({})
   @IsOptional()
   @IsString()
   instagram?: string;
 
-  @ApiPropertyOptional({
-    example: '@franquia ou https://facebook.com/franquia',
-  })
+  @ApiPropertyOptional({})
   @IsOptional()
   @IsString()
   facebook?: string;
 
-  @ApiPropertyOptional({
-    example: '@franquia ou https://youtube.com/@franquia',
-  })
+  @ApiPropertyOptional({})
   @IsOptional()
   @IsString()
   youtube?: string;
 
-  @ApiPropertyOptional({ example: '@franquia ou https://tiktok.com/@franquia' })
+  @ApiPropertyOptional({})
   @IsOptional()
   @IsString()
   tiktok?: string;
 
-  @ApiPropertyOptional({
-    example: '@franquia ou https://linkedin.com/company/franquia',
-  })
+  @ApiPropertyOptional({})
   @IsOptional()
   @IsString()
   linkedin?: string;
@@ -57,17 +50,20 @@ export class RedesSociaisDto {
 export class CreateFranqueadoDto {
   // Identificação
   @ApiProperty({
-    example: 'TeamCruz São Paulo',
-    description: 'Nome da franquia',
+    description:
+      'Nome da franquia (apenas letras, espaços e caracteres especiais)',
   })
   @IsString()
   @IsNotEmpty({ message: 'Nome é obrigatório' })
   @Length(1, 150, { message: 'Nome deve ter entre 1 e 150 caracteres' })
+  @Matches(/^[a-zA-ZÀ-ÿ\s\-'&.()]+$/, {
+    message:
+      'Nome deve conter apenas letras, espaços e caracteres especiais permitidos',
+  })
   @IsValidName()
   nome!: string;
 
   @ApiProperty({
-    example: '12345678000190',
     description: 'CNPJ da franquia (apenas números)',
   })
   @IsString()
@@ -78,52 +74,84 @@ export class CreateFranqueadoDto {
   cnpj!: string;
 
   @ApiProperty({
-    example: 'TeamCruz São Paulo Ltda',
-    description: 'Razão social',
+    description: 'Razão social (apenas letras, espaços e caracteres especiais)',
   })
   @IsString()
   @IsNotEmpty({ message: 'Razão social é obrigatória' })
   @Length(1, 200, { message: 'Razão social deve ter entre 1 e 200 caracteres' })
+  @Matches(/^[a-zA-ZÀ-ÿ\s\-'&.()]+$/, {
+    message:
+      'Razão social deve conter apenas letras, espaços e caracteres especiais permitidos',
+  })
   razao_social!: string;
 
-  @ApiPropertyOptional({ example: 'TeamCruz SP', description: 'Nome fantasia' })
+  @ApiPropertyOptional({
+    description:
+      'Nome fantasia (apenas letras, espaços e caracteres especiais)',
+  })
   @IsOptional()
-  @IsString()
-  @Length(1, 150)
+  @IsString({ message: 'Nome fantasia deve ser uma string' })
+  @Length(1, 150, {
+    message: 'Nome fantasia deve ter entre 1 e 150 caracteres',
+  })
+  @Matches(/^[a-zA-ZÀ-ÿ\s\-'&.()]+$/, {
+    message:
+      'Nome fantasia deve conter apenas letras, espaços e caracteres especiais permitidos',
+  })
   nome_fantasia?: string;
 
-  @ApiPropertyOptional({ example: '123.456.789.012' })
+  @ApiPropertyOptional({
+    description: 'Inscrição estadual (apenas números)',
+  })
   @IsOptional()
   @IsString()
-  @Length(1, 20)
+  @Length(1, 20, {
+    message: 'Inscrição estadual deve ter entre 1 e 20 caracteres',
+  })
+  @Matches(/^\d+$/, {
+    message: 'Inscrição estadual deve conter apenas números',
+  })
   inscricao_estadual?: string;
 
-  @ApiPropertyOptional({ example: '9876543' })
+  @ApiPropertyOptional({
+    description: 'Inscrição municipal (apenas números)',
+  })
   @IsOptional()
   @IsString()
-  @Length(1, 20)
+  @Length(1, 20, {
+    message: 'Inscrição municipal deve ter entre 1 e 20 caracteres',
+  })
+  @Matches(/^\d+$/, {
+    message: 'Inscrição municipal deve conter apenas números',
+  })
   inscricao_municipal?: string;
 
   // Contato
-  @ApiProperty({ example: 'contato@teamcruz.com.br' })
+  @ApiProperty({})
   @IsEmail({}, { message: 'Email institucional deve ser válido' })
   @IsNotEmpty({ message: 'Email institucional é obrigatório' })
   email!: string;
 
-  @ApiPropertyOptional({ example: '1134567890' })
+  @ApiPropertyOptional({
+    description: 'Telefone fixo (10 dígitos com DDD)',
+    example: '1134567890',
+  })
   @IsOptional()
   @IsString()
+  @IsValidPhone({ message: 'Telefone fixo inválido' })
   telefone_fixo?: string;
 
   @ApiProperty({
-    example: '11987654321',
-    description: 'Telefone celular/WhatsApp (apenas números)',
+    description:
+      'Telefone celular/WhatsApp (11 dígitos com DDD, começando com 9)',
+    example: '11999887766',
   })
   @IsString()
   @IsNotEmpty({ message: 'Telefone celular/WhatsApp é obrigatório' })
+  @IsValidPhone({ message: 'Telefone celular inválido' })
   telefone_celular!: string;
 
-  @ApiPropertyOptional({ example: 'https://www.teamcruzsp.com.br' })
+  @ApiPropertyOptional({})
   @IsOptional()
   @IsString()
   website?: string;
@@ -141,86 +169,101 @@ export class CreateFranqueadoDto {
   @IsString()
   endereco_id?: string;
 
-  @ApiPropertyOptional({ example: '01310-100' })
+  @ApiPropertyOptional({})
   @IsOptional()
   @IsString()
   cep?: string;
 
-  @ApiPropertyOptional({ example: 'Av. Paulista' })
+  @ApiPropertyOptional({})
   @IsOptional()
   @IsString()
   logradouro?: string;
 
-  @ApiPropertyOptional({ example: '1000' })
+  @ApiPropertyOptional({})
   @IsOptional()
   @IsString()
   numero?: string;
 
-  @ApiPropertyOptional({ example: 'Sala 10' })
+  @ApiPropertyOptional({})
   @IsOptional()
   @IsString()
   complemento?: string;
 
-  @ApiPropertyOptional({ example: 'Bela Vista' })
+  @ApiPropertyOptional({})
   @IsOptional()
   @IsString()
   bairro?: string;
 
-  @ApiPropertyOptional({ example: 'São Paulo' })
+  @ApiPropertyOptional({})
   @IsOptional()
   @IsString()
   cidade?: string;
 
-  @ApiPropertyOptional({ example: 'SP' })
+  @ApiPropertyOptional({})
   @IsOptional()
   @IsString()
   estado?: string;
 
-  @ApiPropertyOptional({ example: 'Brasil' })
+  @ApiPropertyOptional({})
   @IsOptional()
   @IsString()
   pais?: string;
 
   // Responsável Legal
   @ApiProperty({
-    example: 'João da Silva',
-    description: 'Nome completo do responsável legal',
+    description:
+      'Nome completo do responsável legal (apenas letras, espaços e caracteres especiais)',
   })
-  @IsString()
+  @IsString({ message: 'Nome do responsável deve ser uma string' })
   @IsNotEmpty({ message: 'Nome do responsável legal é obrigatório' })
-  @Length(1, 150)
+  @Length(1, 150, {
+    message: 'Nome do responsável deve ter entre 1 e 150 caracteres',
+  })
+  @Matches(/^[a-zA-ZÀ-ÿ\s\-']+$/, {
+    message:
+      'Nome do responsável deve conter apenas letras, espaços e caracteres especiais permitidos',
+  })
   @IsValidName()
   responsavel_nome!: string;
 
   @ApiProperty({
-    example: '12345678900',
     description: 'CPF do responsável legal (apenas números)',
   })
-  @IsString()
+  @IsString({ message: 'CPF deve ser uma string' })
   @IsNotEmpty({ message: 'CPF do responsável legal é obrigatório' })
   @Matches(/^\d{11}$/, {
     message: 'CPF deve conter exatamente 11 dígitos',
   })
   responsavel_cpf!: string;
 
-  @ApiPropertyOptional({ example: 'Diretor', description: 'Cargo/Função' })
+  @ApiPropertyOptional({
+    description: 'Cargo/Função (apenas letras, espaços e caracteres especiais)',
+  })
   @IsOptional()
-  @IsString()
-  @Length(1, 100)
+  @IsString({ message: 'Cargo deve ser uma string' })
+  @Length(1, 100, { message: 'Cargo deve ter entre 1 e 100 caracteres' })
+  @Matches(/^[a-zA-ZÀ-ÿ\s\-'\/&.()]+$/, {
+    message:
+      'Cargo deve conter apenas letras, espaços e caracteres especiais permitidos',
+  })
   responsavel_cargo?: string;
 
-  @ApiPropertyOptional({ example: 'joao@teamcruz.com.br' })
+  @ApiPropertyOptional({})
   @IsOptional()
   @IsString()
   responsavel_email?: string;
 
-  @ApiPropertyOptional({ example: '11987654321' })
+  @ApiPropertyOptional({
+    description: 'Telefone do responsável (10 ou 11 dígitos com DDD)',
+    example: '11999887766',
+  })
   @IsOptional()
   @IsString()
+  @IsValidPhone({ message: 'Telefone do responsável inválido' })
   responsavel_telefone?: string;
 
   // Informações da Franquia
-  @ApiPropertyOptional({ example: 2020, description: 'Ano de fundação' })
+  @ApiPropertyOptional({})
   @IsOptional()
   @IsInt({ message: 'Ano de fundação deve ser um número inteiro' })
   @Min(1900, { message: 'Ano de fundação deve ser maior que 1900' })
@@ -230,7 +273,6 @@ export class CreateFranqueadoDto {
   ano_fundacao?: number;
 
   @ApiPropertyOptional({
-    example: 'Nossa missão é...',
     description: 'Missão da franquia',
   })
   @IsOptional()
@@ -238,7 +280,6 @@ export class CreateFranqueadoDto {
   missao?: string;
 
   @ApiPropertyOptional({
-    example: 'Nossa visão é...',
     description: 'Visão da franquia',
   })
   @IsOptional()
@@ -246,7 +287,6 @@ export class CreateFranqueadoDto {
   visao?: string;
 
   @ApiPropertyOptional({
-    example: 'Nossos valores são...',
     description: 'Valores da franquia',
   })
   @IsOptional()
@@ -254,7 +294,6 @@ export class CreateFranqueadoDto {
   valores?: string;
 
   @ApiPropertyOptional({
-    example: 'https://www.teamcruzsp.com.br',
     description: 'Histórico/Descrição',
   })
   @IsOptional()
@@ -262,7 +301,6 @@ export class CreateFranqueadoDto {
   historico?: string;
 
   @ApiPropertyOptional({
-    example: 'logo.png ou https://cdn.example.com/logo.png',
     description: 'URL ou nome do arquivo do logotipo',
   })
   @IsOptional()
@@ -271,26 +309,17 @@ export class CreateFranqueadoDto {
 
   // Dados Financeiros
   @ApiPropertyOptional({
-    example: '2024-01-15',
     description: 'Data do contrato',
   })
   @IsOptional()
   @IsString()
   data_contrato?: string;
 
-  @ApiPropertyOptional({ example: 50000, description: 'Taxa de franquia' })
+  @ApiPropertyOptional({})
   @IsOptional()
   taxa_franquia?: number;
 
-  @ApiPropertyOptional({
-    example: {
-      banco: 'Banco do Brasil',
-      agencia: '1234-5',
-      conta: '12345-6',
-      titular: 'João da Silva',
-      documento: '12345678900',
-    },
-  })
+  @ApiPropertyOptional({})
   @IsOptional()
   @IsObject()
   dados_bancarios?: {
@@ -331,6 +360,10 @@ export class UpdateFranqueadoDto {
   @IsOptional()
   @IsString()
   @Length(1, 150)
+  @Matches(/^[a-zA-ZÀ-ÿ\s\-'&.()]+$/, {
+    message:
+      'Nome deve conter apenas letras, espaços e caracteres especiais permitidos',
+  })
   nome?: string;
 
   @ApiPropertyOptional()
@@ -343,22 +376,46 @@ export class UpdateFranqueadoDto {
   @IsOptional()
   @IsString()
   @Length(1, 200)
+  @Matches(/^[a-zA-ZÀ-ÿ\s\-'&.()]+$/, {
+    message:
+      'Razão social deve conter apenas letras, espaços e caracteres especiais permitidos',
+  })
   razao_social?: string;
 
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
   @Length(1, 150)
+  @Matches(/^[a-zA-ZÀ-ÿ\s\-'&.()]+$/, {
+    message:
+      'Nome fantasia deve conter apenas letras, espaços e caracteres especiais permitidos',
+  })
   nome_fantasia?: string;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({
+    description: 'Inscrição estadual (apenas números)',
+  })
   @IsOptional()
   @IsString()
+  @Length(1, 20, {
+    message: 'Inscrição estadual deve ter entre 1 e 20 caracteres',
+  })
+  @Matches(/^\d+$/, {
+    message: 'Inscrição estadual deve conter apenas números',
+  })
   inscricao_estadual?: string;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({
+    description: 'Inscrição municipal (apenas números)',
+  })
   @IsOptional()
   @IsString()
+  @Length(1, 20, {
+    message: 'Inscrição municipal deve ter entre 1 e 20 caracteres',
+  })
+  @Matches(/^\d+$/, {
+    message: 'Inscrição municipal deve conter apenas números',
+  })
   inscricao_municipal?: string;
 
   @ApiPropertyOptional()
@@ -366,14 +423,23 @@ export class UpdateFranqueadoDto {
   @IsEmail()
   email?: string;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({
+    description: 'Telefone fixo (10 dígitos com DDD)',
+    example: '1134567890',
+  })
   @IsOptional()
   @IsString()
+  @IsValidPhone({ message: 'Telefone fixo inválido' })
   telefone_fixo?: string;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({
+    description:
+      'Telefone celular/WhatsApp (11 dígitos com DDD, começando com 9)',
+    example: '11999887766',
+  })
   @IsOptional()
   @IsString()
+  @IsValidPhone({ message: 'Telefone celular inválido' })
   telefone_celular?: string;
 
   @ApiPropertyOptional()
@@ -434,6 +500,10 @@ export class UpdateFranqueadoDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
+  @Matches(/^[a-zA-ZÀ-ÿ\s\-']+$/, {
+    message:
+      'Nome do responsável deve conter apenas letras, espaços e caracteres especiais permitidos',
+  })
   @IsValidName()
   responsavel_nome?: string;
 
@@ -445,6 +515,10 @@ export class UpdateFranqueadoDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
+  @Matches(/^[a-zA-ZÀ-ÿ\s\-'\/&.()]+$/, {
+    message:
+      'Cargo deve conter apenas letras, espaços e caracteres especiais permitidos',
+  })
   responsavel_cargo?: string;
 
   @ApiPropertyOptional()
@@ -452,9 +526,13 @@ export class UpdateFranqueadoDto {
   @IsString()
   responsavel_email?: string;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({
+    description: 'Telefone do responsável (10 ou 11 dígitos com DDD)',
+    example: '11999887766',
+  })
   @IsOptional()
   @IsString()
+  @IsValidPhone({ message: 'Telefone do responsável inválido' })
   responsavel_telefone?: string;
 
   @ApiPropertyOptional()
@@ -527,7 +605,6 @@ export class UpdateFranqueadoDto {
 
   @ApiPropertyOptional({
     description: 'ID do usuário vinculado ao franqueado',
-    example: '7dc34c77-a6d0-4565-a0b9-4d47bd711e5a',
   })
   @IsOptional()
   @IsString()

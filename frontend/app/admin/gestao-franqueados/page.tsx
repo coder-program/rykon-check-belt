@@ -116,18 +116,32 @@ export default function GestaoFranqueadosPage() {
     mutationFn: ({
       franqueadoId,
       unidadeIds,
+      isAssociacao,
+      isDesassociacao,
     }: {
       franqueadoId: string;
       unidadeIds: string[];
+      isAssociacao?: boolean;
+      isDesassociacao?: boolean;
     }) => updateFranqueado(franqueadoId, { unidades_gerencia: unidadeIds }),
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["franqueados-gestao"] });
-      toast.success("Unidades associadas com sucesso!");
+      queryClient.invalidateQueries({ queryKey: ["unidades-todas"] });
+
+      // Mostrar mensagem apropriada baseada na ação
+      if (variables.isAssociacao) {
+        toast.success("Unidades associadas com sucesso!");
+      } else if (variables.isDesassociacao) {
+        toast.success("Unidades desassociadas com sucesso!");
+      } else {
+        toast.success("Associações atualizadas com sucesso!");
+      }
+
       setShowAssociacaoModal(false);
       setUnidadesVinculadas([]);
     },
     onError: (error: any) => {
-      toast.error(`Erro ao associar unidades: ${error.message}`);
+      toast.error(`Erro ao atualizar unidades: ${error.message}`);
     },
   });
 
@@ -159,18 +173,18 @@ export default function GestaoFranqueadosPage() {
 
   const abrirModalAssociacao = (franqueado: Franqueado) => {
     setSelectedFranqueado(franqueado);
-    setUnidadesVinculadas(franqueado.unidades_gerencia || []);
 
-    // Filtrar unidades disponíveis (que não pertencem a outros franqueados ou sem dono)
+    // Buscar unidades já vinculadas pelo franqueado_id na base de dados
     const todasUnidades = unidadesQuery.data?.items || [];
-    const unidadesLivres = todasUnidades.filter(
-      (unidade: Unidade) =>
-        !unidade.franqueado_id ||
-        unidade.franqueado_id === franqueado.id ||
-        franqueado.unidades_gerencia?.includes(unidade.id)
-    );
+    const unidadesDoFranqueado = todasUnidades
+      .filter((unidade: Unidade) => unidade.franqueado_id === franqueado.id)
+      .map((unidade: Unidade) => unidade.id);
 
-    setUnidadesDisponiveis(unidadesLivres);
+    setUnidadesVinculadas(unidadesDoFranqueado);
+
+    // Mostrar TODAS as unidades para seleção - incluir as que já pertencem a outros franqueados
+    // mas marcar visualmente quais estão disponíveis
+    setUnidadesDisponiveis(todasUnidades);
     setShowAssociacaoModal(true);
   };
 
@@ -185,9 +199,22 @@ export default function GestaoFranqueadosPage() {
   const salvarAssociacoes = () => {
     if (!selectedFranqueado) return;
 
+    // Determinar se é associação ou desassociação baseado na quantidade
+    const todasUnidades = unidadesQuery.data?.items || [];
+    const unidadesAtuais = todasUnidades
+      .filter(
+        (unidade: Unidade) => unidade.franqueado_id === selectedFranqueado.id
+      )
+      .map((unidade: Unidade) => unidade.id);
+
+    const foiAssociacao = unidadesVinculadas.length > unidadesAtuais.length;
+    const foiDesassociacao = unidadesVinculadas.length < unidadesAtuais.length;
+
     associarUnidadesMutation.mutate({
       franqueadoId: selectedFranqueado.id,
       unidadeIds: unidadesVinculadas,
+      isAssociacao: foiAssociacao,
+      isDesassociacao: foiDesassociacao,
     });
   };
 

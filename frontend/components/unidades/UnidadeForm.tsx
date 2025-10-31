@@ -151,6 +151,12 @@ export default function UnidadeForm({
       .slice(0, 14);
   };
 
+  const formatNumericOnly = (value: string, maxLength: number = 20) => {
+    return value
+      .replace(/\D/g, "") // Remove tudo que não é dígito
+      .slice(0, maxLength); // Limita ao comprimento máximo
+  };
+
   const formatPhone = (value: string) => {
     return value
       .replace(/\D/g, "")
@@ -406,11 +412,14 @@ export default function UnidadeForm({
                       onChange={(e) =>
                         setFormData({
                           ...formData,
-                          inscricao_estadual: e.target.value,
+                          inscricao_estadual: formatNumericOnly(
+                            e.target.value,
+                            20
+                          ),
                         })
                       }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="123.456.789.012"
+                      placeholder="123456789012 (apenas números)"
                     />
                   </div>
 
@@ -424,11 +433,14 @@ export default function UnidadeForm({
                       onChange={(e) =>
                         setFormData({
                           ...formData,
-                          inscricao_municipal: e.target.value,
+                          inscricao_municipal: formatNumericOnly(
+                            e.target.value,
+                            20
+                          ),
                         })
                       }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="9876543"
+                      placeholder="9876543 (apenas números)"
                     />
                   </div>
                 </div>

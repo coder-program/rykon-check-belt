@@ -10,6 +10,7 @@ import {
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { IsValidName } from '../../common/decorators/is-valid-name.decorator';
+import { IsValidCPF } from '../../common/decorators/is-valid-cpf.decorator';
 
 export class RegisterDto {
   @ApiProperty({ example: 'João da Silva' })
@@ -24,11 +25,17 @@ export class RegisterDto {
   @IsNotEmpty()
   email: string;
 
-  @ApiProperty({ example: '00000000000' })
+  @ApiProperty({
+    example: '12345678909',
+    description: 'CPF com 11 dígitos (sem formatação)',
+  })
   @IsString()
   @IsNotEmpty()
   @Matches(/^\d{11}$/, {
     message: 'CPF deve conter exatamente 11 dígitos numéricos',
+  })
+  @IsValidCPF({
+    message: 'CPF inválido - verifique os dígitos verificadores',
   })
   cpf: string;
 
@@ -38,11 +45,14 @@ export class RegisterDto {
   @MinLength(6)
   password: string;
 
-  @ApiProperty({ example: '(11) 99999-9999' })
+  @ApiProperty({
+    example: '11999999999',
+    description: 'Telefone com DDD (apenas números, 10 ou 11 dígitos)',
+  })
   @IsString()
   @IsNotEmpty()
-  @Matches(/^\(\d{2}\) \d{4,5}-\d{4}$/, {
-    message: 'Telefone deve estar no formato (99) 99999-9999',
+  @Matches(/^\d{10,11}$/, {
+    message: 'Telefone deve conter 10 ou 11 dígitos numéricos (com DDD)',
   })
   telefone: string;
 

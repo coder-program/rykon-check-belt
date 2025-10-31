@@ -7,6 +7,8 @@ import {
   IsUUID,
   IsEnum,
   IsDateString,
+  Length,
+  Matches,
 } from 'class-validator';
 import { IsValidName } from '../../common/decorators/is-valid-name.decorator';
 
@@ -43,6 +45,11 @@ export class CreateUsuarioDto {
   password: string;
 
   @IsString()
+  @Length(3, 150, { message: 'Nome deve ter entre 3 e 150 caracteres' })
+  @Matches(/^[a-zA-ZÀ-ÿ\s\-']+$/, {
+    message:
+      'Nome deve conter apenas letras, espaços e caracteres especiais permitidos',
+  })
   @IsValidName()
   nome: string;
 

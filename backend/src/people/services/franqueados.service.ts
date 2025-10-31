@@ -158,6 +158,15 @@ export class FranqueadosService {
   }
 
   async update(id: string, body: Partial<Franqueado>) {
+    // Debug: verificar dados recebidos
+    console.log('🔍 [FranqueadosService.update] ID:', id);
+    console.log('🔍 [FranqueadosService.update] Body recebido:', body);
+    console.log(
+      '🔍 [FranqueadosService.update] Campo ativo:',
+      body.ativo,
+      typeof body.ativo,
+    );
+
     const fields: string[] = [];
     const values: any[] = [];
     let idx = 1;
@@ -170,9 +179,26 @@ export class FranqueadosService {
         } else if (key === 'unidades_gerencia') {
           fields.push(`${key} = $${idx++}`);
           values.push(Array.isArray(value) ? value : []);
+        } else if (
+          key === 'endereco_id' ||
+          key === 'id_matriz' ||
+          key === 'usuario_id'
+        ) {
+          // Tratar campos UUID - strings vazias devem ser null
+          fields.push(`${key} = $${idx++}`);
+          values.push(value === '' ? null : value);
         } else {
           fields.push(`${key} = $${idx++}`);
           values.push(value);
+
+          // Log específico para o campo ativo
+          if (key === 'ativo') {
+            console.log(
+              '🔍 [FranqueadosService.update] Atualizando campo ativo:',
+              value,
+              typeof value,
+            );
+          }
         }
       }
     }

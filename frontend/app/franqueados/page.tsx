@@ -169,7 +169,7 @@ export default function PageFranqueados() {
     telefone_celular: "",
     website: "",
     redes_sociais: {},
-    endereco_id: "",
+    endereco_id: undefined,
     cep: "",
     logradouro: "",
     numero: "",
@@ -248,9 +248,38 @@ export default function PageFranqueados() {
       id: string;
       data: Partial<FranqueadoFormData>;
     }) => updateFranqueado(id, data),
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       qc.invalidateQueries({ queryKey: ["franqueados"] });
-      toast.success("Franqueado atualizado com sucesso!");
+
+      // Mostrar mensagem específica baseada no status
+      if (variables.data.situacao === "EM_HOMOLOGACAO") {
+        toast.success(
+          "Franqueado atualizado! Status: Em Homologação - Franquia em processo de validação.",
+          {
+            duration: 5000,
+            icon: "⚠️",
+          }
+        );
+      } else if (variables.data.situacao === "ATIVA") {
+        toast.success(
+          "Franqueado atualizado! Status: Ativa - Franquia aprovada para operação.",
+          {
+            duration: 4000,
+            icon: "✅",
+          }
+        );
+      } else if (variables.data.situacao === "INATIVA") {
+        toast.success(
+          "Franqueado atualizado! Status: Inativa - Franquia temporariamente suspensa.",
+          {
+            duration: 4000,
+            icon: "❌",
+          }
+        );
+      } else {
+        toast.success("Franqueado atualizado com sucesso!");
+      }
+
       setShowModal(false);
       resetForm();
     },
@@ -394,7 +423,7 @@ export default function PageFranqueados() {
     }
 
     // Primeiro criar/atualizar endereço se houver dados
-    let enderecoId = formData.endereco_id;
+    let enderecoId = formData.endereco_id || null;
 
     if (
       formData.cep &&
@@ -443,9 +472,11 @@ export default function PageFranqueados() {
       responsavel_cpf: formData.responsavel_cpf?.replace(/\D/g, "") || "",
       responsavel_telefone:
         formData.responsavel_telefone?.replace(/\D/g, "") || "",
-      endereco_id: enderecoId, // ID do endereço criado/atualizado
+      endereco_id: enderecoId || null, // ID do endereço criado/atualizado - null se vazio
       // Converter tipo selecionado para valor do banco: "matriz" = null, "filial" = null (por enquanto)
       id_matriz: formData.id_matriz === "matriz" ? null : null, // Ambos são null por enquanto
+      // Garantir que ativo seja sempre um boolean
+      ativo: Boolean(formData.ativo),
       // Remover campos de endereço dos dados do franqueado
       cep: undefined,
       logradouro: undefined,
@@ -456,6 +487,14 @@ export default function PageFranqueados() {
       estado: undefined,
       pais: undefined,
     };
+
+    // Debug: verificar valor do campo ativo
+    console.log("🔍 FormData ativo:", formData.ativo, typeof formData.ativo);
+    console.log(
+      "🔍 CleanedData ativo:",
+      cleanedData.ativo,
+      typeof cleanedData.ativo
+    );
 
     if (editingFranqueado) {
       updateMutation.mutate({ id: editingFranqueado.id, data: cleanedData });

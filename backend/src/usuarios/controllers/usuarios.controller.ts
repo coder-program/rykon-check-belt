@@ -12,25 +12,51 @@ import {
 } from '@nestjs/common';
 import { UsuariosService } from '../services/usuarios.service';
 import { CreateUsuarioDto } from '../dto/create-usuario.dto';
-import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  ApiOperation,
+  ApiTags,
+  ApiBearerAuth,
+  ApiResponse,
+  ApiQuery,
+} from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../../auth/guards/permissions.guard';
 import { Permissions } from '../../auth/decorators/permissions.decorator';
 
-@ApiTags('Usuários')
+@ApiTags('👥 Usuários')
+@ApiBearerAuth('JWT-auth')
 @Controller('usuarios')
 export class UsuariosController {
   constructor(private readonly usuariosService: UsuariosService) {}
 
   @Post()
-  @ApiOperation({ summary: 'Criar usuário' })
+  @ApiOperation({
+    summary: '➕ Criar novo usuário',
+    description: 'Cria um novo usuário no sistema com perfil e permissões',
+  })
+  @ApiResponse({ status: 201, description: '✅ Usuário criado com sucesso' })
+  @ApiResponse({
+    status: 400,
+    description: '❌ Dados inválidos ou email já existe',
+  })
   create(@Body() createUsuarioDto: CreateUsuarioDto) {
     return this.usuariosService.create(createUsuarioDto);
   }
 
   @UseGuards(JwtAuthGuard)
   @Get()
-  @ApiOperation({ summary: 'Listar usuários' })
+  @ApiOperation({
+    summary: '📋 Listar usuários',
+    description:
+      'Lista todos os usuários com filtro hierárquico baseado no perfil do usuário autenticado',
+  })
+  @ApiQuery({
+    name: 'perfil',
+    required: false,
+    description: 'Filtrar por tipo de perfil específico',
+  })
+  @ApiResponse({ status: 200, description: '✅ Lista de usuários retornada' })
+  @ApiResponse({ status: 401, description: '❌ Token inválido ou expirado' })
   findAll(@Query('perfil') perfil?: string, @Request() req?) {
     if (perfil) {
       return this.usuariosService.findByPerfil(perfil);

@@ -58,9 +58,18 @@ export class CreateUnidadeDto {
   @IsString()
   inscricao_estadual?: string;
 
-  @ApiPropertyOptional({ example: '9876543' })
+  @ApiPropertyOptional({
+    example: '9876543',
+    description: 'Inscrição municipal (apenas números)',
+  })
   @IsOptional()
   @IsString()
+  @Length(1, 20, {
+    message: 'Inscrição municipal deve ter entre 1 e 20 caracteres',
+  })
+  @Matches(/^\d+$/, {
+    message: 'Inscrição municipal deve conter apenas números',
+  })
   inscricao_municipal?: string;
 
   @ApiPropertyOptional({
@@ -230,6 +239,38 @@ export class UpdateUnidadeDto {
   @IsNotEmpty()
   @Length(14, 18)
   cnpj?: string;
+
+  @ApiPropertyOptional({ example: 'TeamCruz Barueri Ltda' })
+  @IsOptional()
+  @IsString()
+  @Length(1, 200)
+  razao_social?: string;
+
+  @ApiPropertyOptional({ example: 'TeamCruz Barueri' })
+  @IsOptional()
+  @IsString()
+  @Length(1, 150)
+  nome_fantasia?: string;
+
+  @ApiPropertyOptional({ example: '123.456.789.012' })
+  @IsOptional()
+  @IsString()
+  @Length(1, 20)
+  inscricao_estadual?: string;
+
+  @ApiPropertyOptional({
+    example: '9876543',
+    description: 'Inscrição municipal (apenas números)',
+  })
+  @IsOptional()
+  @IsString()
+  @Length(1, 20, {
+    message: 'Inscrição municipal deve ter entre 1 e 20 caracteres',
+  })
+  @Matches(/^\d+$/, {
+    message: 'Inscrição municipal deve conter apenas números',
+  })
+  inscricao_municipal?: string;
 
   @ApiPropertyOptional({ enum: ['ATIVA', 'INATIVA', 'HOMOLOGACAO'] })
   @IsOptional()

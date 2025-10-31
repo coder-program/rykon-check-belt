@@ -20,16 +20,66 @@ import { ResetPasswordDto } from './dto/reset-password.dto';
 import { RegisterDto } from './dto/register.dto';
 import { CompleteProfileDto } from './dto/complete-profile.dto';
 import { AllowIncomplete } from './decorators/allow-incomplete.decorator';
-import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  ApiOperation,
+  ApiTags,
+  ApiBearerAuth,
+  ApiResponse,
+  ApiBody,
+  ApiHeader,
+} from '@nestjs/swagger';
 
-@ApiTags('Auth')
+@ApiTags('🔐 Auth')
 @Controller('auth')
 export class AuthController {
   constructor(private authService: AuthService) {}
 
   @UseGuards(LocalAuthGuard)
   @Post('login')
-  @ApiOperation({ summary: 'Login com usuário e senha' })
+  @ApiOperation({
+    summary: '🔑 Login no sistema',
+    description:
+      'Autentica usuário com email/senha e retorna access_token JWT + refresh_token via cookie',
+  })
+  @ApiBody({
+    type: LoginDto,
+    description: 'Credenciais de login',
+    examples: {
+      admin: {
+        summary: 'Admin Master',
+        value: { email: 'admin@teamcruz.com', password: '123456' },
+      },
+      franqueado: {
+        summary: 'Franqueado Teste',
+        value: { email: 'franqueado@test.com', password: '123456' },
+      },
+    },
+  })
+  @ApiResponse({
+    status: 200,
+    description: '✅ Login realizado com sucesso',
+    schema: {
+      type: 'object',
+      properties: {
+        access_token: {
+          type: 'string',
+          description: 'Token JWT para autorização',
+        },
+        user: {
+          type: 'object',
+          description: 'Dados do usuário autenticado',
+          properties: {
+            id: { type: 'number' },
+            email: { type: 'string' },
+            nome: { type: 'string' },
+            perfil: { type: 'string' },
+            situacao: { type: 'string' },
+          },
+        },
+      },
+    },
+  })
+  @ApiResponse({ status: 401, description: '❌ Credenciais inválidas' })
   async login(
     @Request() req,
     @Body() loginDto: LoginDto,
@@ -54,7 +104,13 @@ export class AuthController {
 
   @UseGuards(JwtAuthGuard)
   @Get('profile')
-  @ApiOperation({ summary: 'Perfil do usuário autenticado' })
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({
+    summary: '👤 Perfil do usuário autenticado',
+    description: 'Retorna dados completos do perfil do usuário logado',
+  })
+  @ApiResponse({ status: 200, description: '✅ Perfil retornado com sucesso' })
+  @ApiResponse({ status: 401, description: '❌ Token inválido ou expirado' })
   async getProfile(@Request() req) {
     // Retornar getUserProfile para incluir perfis formatados corretamente
     return this.authService.getUserProfile(req.user.id);
@@ -62,9 +118,14 @@ export class AuthController {
 
   @UseGuards(JwtAuthGuard)
   @Get('me')
+  @ApiBearerAuth('JWT-auth')
   @ApiOperation({
-    summary: 'Dados completos do usuário logado incluindo status do cadastro',
+    summary: '🆔 Dados completos do usuário autenticado',
+    description:
+      'Retorna informações detalhadas incluindo status do cadastro e permissões',
   })
+  @ApiResponse({ status: 200, description: '✅ Dados do usuário retornados' })
+  @ApiResponse({ status: 401, description: '❌ Token inválido ou expirado' })
   async getMe(@Request() req) {
     return this.authService.getUserProfile(req.user.id);
   }
@@ -92,7 +153,13 @@ export class AuthController {
 
   @UseGuards(JwtAuthGuard)
   @Post('refresh')
-  @ApiOperation({ summary: 'Renovar access token com JWT guard' })
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({
+    summary: '🔄 Renovar access token',
+    description: 'Gera um novo access token usando o JWT atual ainda válido',
+  })
+  @ApiResponse({ status: 200, description: '✅ Token renovado com sucesso' })
+  @ApiResponse({ status: 401, description: '❌ Token inválido para renovação' })
   async refreshToken(@Request() req): Promise<LoginResponse> {
     return this.authService.refreshToken(req.user);
   }

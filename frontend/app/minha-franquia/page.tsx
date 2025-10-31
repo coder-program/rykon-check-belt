@@ -162,10 +162,55 @@ export default function MinhaFranquiaPage() {
     }
   };
 
+  // Função para formatar campos que aceitem apenas números
+  const formatNumericOnly = (value: string, maxLength: number = 20) => {
+    return value
+      .replace(/\D/g, "") // Remove tudo que não é dígito
+      .slice(0, maxLength); // Limita ao comprimento máximo
+  };
+
+  // Função para formatar campos de texto que aceitem apenas letras
+  const formatTextOnly = (value: string, maxLength: number = 150) => {
+    return value
+      .replace(/[^a-zA-ZÀ-ÿ\s\-'&.()]/g, "") // Remove números e caracteres não permitidos
+      .slice(0, maxLength); // Limita ao comprimento máximo
+  };
+
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
     const { name, value } = e.target;
+
+    // Aplicar formatação específica para campos de inscrições fiscais (apenas números)
+    if (name === "inscricao_municipal" || name === "inscricao_estadual") {
+      setFormData((prev) => ({
+        ...prev,
+        [name]: formatNumericOnly(value, 20),
+      }));
+      return;
+    }
+
+    // Aplicar formatação específica para campos de texto (apenas letras)
+    if (
+      name === "nome" ||
+      name === "razao_social" ||
+      name === "nome_fantasia" ||
+      name === "responsavel_nome" ||
+      name === "responsavel_cargo"
+    ) {
+      const maxLength =
+        name === "razao_social"
+          ? 200
+          : name === "responsavel_cargo"
+          ? 100
+          : 150;
+      setFormData((prev) => ({
+        ...prev,
+        [name]: formatTextOnly(value, maxLength),
+      }));
+      return;
+    }
+
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
@@ -580,7 +625,7 @@ export default function MinhaFranquiaPage() {
                     value={formData.inscricao_estadual}
                     onChange={handleChange}
                     className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-yellow-500"
-                    placeholder="123.456.789.012"
+                    placeholder="123456789012 (apenas números)"
                   />
                 </div>
 
@@ -594,7 +639,7 @@ export default function MinhaFranquiaPage() {
                     value={formData.inscricao_municipal}
                     onChange={handleChange}
                     className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-yellow-500"
-                    placeholder="9876543"
+                    placeholder="9876543 (apenas números)"
                   />
                 </div>
               </div>

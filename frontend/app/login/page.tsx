@@ -84,6 +84,8 @@ function LoginContent() {
           position: "top-center",
         }
       );
+      // Limpar a query string da URL para evitar reexibição
+      window.history.replaceState({}, document.title, "/login");
     } else if (message === "pending-approval") {
       toast(
         "⚠️ Cadastro realizado! Sua conta está aguardando aprovação do administrador. Você receberá um email quando for aprovado.",
@@ -98,6 +100,8 @@ function LoginContent() {
           },
         }
       );
+      // Limpar a query string da URL para evitar reexibição
+      window.history.replaceState({}, document.title, "/login");
     }
   }, [searchParams]);
 
