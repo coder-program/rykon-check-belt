@@ -13,6 +13,7 @@ import {
 import { Unidade } from './unidade.entity';
 import { AlunoFaixa } from '../../graduacao/entities/aluno-faixa.entity';
 import { AlunoGraduacao } from '../../graduacao/entities/aluno-graduacao.entity';
+import { AlunoUnidade } from './aluno-unidade.entity';
 
 export enum Genero {
   MASCULINO = 'MASCULINO',
@@ -225,6 +226,9 @@ export class Aluno {
 
   @OneToMany(() => AlunoGraduacao, (graduacao) => graduacao.aluno)
   graduacoes: AlunoGraduacao[];
+
+  @OneToMany(() => AlunoUnidade, (alunoUnidade) => alunoUnidade.aluno)
+  alunoUnidades: AlunoUnidade[];
 
   // ===== MÉTODOS HELPER =====
   calcularIdade(): number {

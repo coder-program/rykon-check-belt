@@ -13,10 +13,51 @@ import {
   Length,
   ValidateIf,
   IsInt,
+  IsArray,
+  ValidateNested,
+  IsBoolean,
 } from 'class-validator';
-import { Transform } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Genero, StatusAluno, FaixaEnum } from '../entities/aluno.entity';
 import { IsValidName } from '../../common/decorators/is-valid-name.decorator';
+
+// DTO para unidades do aluno
+export class AlunoUnidadeDto {
+  @ApiProperty({
+    description: 'ID da unidade onde o aluno será matriculado',
+    example: '123e4567-e89b-12d3-a456-426614174000',
+  })
+  @IsUUID('4', { message: 'ID de unidade inválido' })
+  @IsNotEmpty({ message: 'ID da unidade é obrigatório' })
+  unidade_id: string;
+
+  @ApiPropertyOptional({
+    description: 'Data de matrícula do aluno nesta unidade',
+    example: '2024-01-15',
+  })
+  @IsDateString({}, { message: 'Data de matrícula inválida' })
+  @IsOptional()
+  data_matricula?: string;
+
+  @ApiPropertyOptional({
+    description:
+      'Define se esta é a unidade principal do aluno (apenas uma pode ser principal)',
+    example: true,
+    default: false,
+  })
+  @IsBoolean({ message: 'Is principal deve ser um booleano' })
+  @IsOptional()
+  is_principal?: boolean;
+
+  @ApiPropertyOptional({
+    description: 'Observações sobre a matrícula nesta unidade',
+    example: 'Aluno transferido da unidade X',
+  })
+  @IsString()
+  @IsOptional()
+  observacoes?: string;
+}
 
 export class CreateAlunoDto {
   // ===== DADOS PESSOAIS =====
@@ -81,9 +122,44 @@ export class CreateAlunoDto {
   @IsOptional()
   data_matricula?: string;
 
+  // ===== UNIDADES (NOVO SISTEMA) =====
+  @ApiPropertyOptional({
+    description:
+      'Lista de unidades onde o aluno será matriculado. Se não especificado, usar unidade_id',
+    type: [AlunoUnidadeDto],
+    example: [
+      {
+        unidade_id: '123e4567-e89b-12d3-a456-426614174000',
+        data_matricula: '2024-01-15',
+        is_principal: true,
+        observacoes: 'Unidade principal',
+      },
+      {
+        unidade_id: '456e7890-e89b-12d3-a456-426614174111',
+        data_matricula: '2024-02-01',
+        is_principal: false,
+        observacoes: 'Unidade secundária para treinos especiais',
+      },
+    ],
+  })
+  @IsArray({ message: 'Unidades deve ser um array' })
+  @ValidateNested({ each: true })
+  @Type(() => AlunoUnidadeDto)
+  @IsOptional()
+  unidades?: AlunoUnidadeDto[];
+
+  // ===== COMPATIBILIDADE (SISTEMA ANTIGO) =====
+  @ApiPropertyOptional({
+    description:
+      'ID da unidade (sistema legado). Use apenas se não especificar o array "unidades"',
+    example: '123e4567-e89b-12d3-a456-426614174000',
+  })
   @IsUUID('4', { message: 'ID de unidade inválido' })
-  @IsNotEmpty({ message: 'Unidade é obrigatória' })
-  unidade_id: string;
+  @ValidateIf((obj) => !obj.unidades || obj.unidades.length === 0)
+  @IsNotEmpty({
+    message: 'Unidade é obrigatória se não especificar array de unidades',
+  })
+  unidade_id?: string;
 
   @IsEnum(StatusAluno, { message: 'Status inválido' })
   @IsOptional()

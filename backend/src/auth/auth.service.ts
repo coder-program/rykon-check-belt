@@ -533,7 +533,7 @@ export class AuthService {
       data_nascimento: payload.data_nascimento, // Adicionar data de nascimento ao usuário
       ativo: usuarioAtivo, // Ativo apenas se perfil não requer aprovação
       perfil_ids: [perfilId],
-      cadastro_completo: perfilNome === 'aluno' ? false : true, // Aluno precisa completar cadastro
+      cadastro_completo: perfilNome === 'aluno' ? false : true, // Apenas aluno precisa completar cadastro, franqueado vai direto para minha-franquia
     } as any);
 
     // VINCULAR USUÁRIO À UNIDADE conforme perfil

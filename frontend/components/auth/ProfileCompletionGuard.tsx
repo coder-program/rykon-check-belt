@@ -11,6 +11,7 @@ const ALLOWED_INCOMPLETE_PAGES = [
   "/complete-profile",
   "/reset-password",
   "/onboarding/recepcionista",
+  "/minha-franquia", // Franqueados podem acessar mesmo com cadastro incompleto
   "/",
 ];
 
@@ -41,10 +42,30 @@ export function ProfileCompletionGuard({
 
     // Se o usuário está autenticado mas não completou o cadastro, redireciona
     if (user.cadastro_completo === false) {
-      console.log(
-        "🔄 [ProfileGuard] Usuário com cadastro incompleto, redirecionando para /complete-profile"
+      // Verificar se é franqueado
+      const isFranqueado = user?.perfis?.some(
+        (perfil: string | { nome?: string; name?: string }) => {
+          if (typeof perfil === "string")
+            return perfil.toLowerCase() === "franqueado";
+          if (typeof perfil === "object" && perfil?.nome)
+            return perfil.nome.toLowerCase() === "franqueado";
+          if (typeof perfil === "object" && perfil?.name)
+            return perfil.name.toLowerCase() === "franqueado";
+          return String(perfil).toLowerCase() === "franqueado";
+        }
       );
-      router.push("/complete-profile");
+
+      if (isFranqueado && pathname !== "/minha-franquia") {
+        console.log(
+          "🔄 [ProfileGuard] Franqueado com cadastro incompleto, redirecionando para /minha-franquia"
+        );
+        router.push("/minha-franquia");
+      } else if (!isFranqueado && pathname !== "/complete-profile") {
+        console.log(
+          "🔄 [ProfileGuard] Usuário com cadastro incompleto, redirecionando para /complete-profile"
+        );
+        router.push("/complete-profile");
+      }
     }
   }, [user, loading, isAuthenticated, pathname, router]);
 

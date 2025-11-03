@@ -35,10 +35,16 @@ import {
   User2,
   Shield,
   CheckCircle,
+  Building2,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { authService } from "@/lib/services/authService";
-import { getPerfis, type Perfil } from "@/lib/usuariosApi";
+import {
+  getPerfis,
+  type Perfil,
+  getUnidadesAtivas,
+  type Unidade,
+} from "@/lib/usuariosApi";
 import {
   formatCPF,
   isValidCPF,
@@ -56,14 +62,47 @@ export default function RegisterPage() {
     telefone: "",
     data_nascimento: "",
     perfil_id: "", // Adicionar perfil selecionado
+    unidade_id: "", // Adicionar unidade selecionada
   });
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [perfis, setPerfis] = useState<Perfil[]>([]);
   const [loadingPerfis, setLoadingPerfis] = useState(true);
+  const [unidades, setUnidades] = useState<Unidade[]>([]);
+  const [loadingUnidades, setLoadingUnidades] = useState(true);
   const [cpfError, setCpfError] = useState("");
 
   const router = useRouter();
+
+  // Carregar unidades ativas disponíveis
+  useEffect(() => {
+    const loadUnidades = async () => {
+      try {
+        const data = await getUnidadesAtivas();
+        console.log("Unidades carregadas:", data);
+
+        if (!data || !Array.isArray(data)) {
+          console.error("Resposta da API de unidades inválida:", data);
+          throw new Error("Formato de resposta inválido");
+        }
+
+        if (data.length === 0) {
+          console.warn("Nenhuma unidade ativa encontrada");
+          throw new Error("Nenhuma unidade disponível para cadastro");
+        }
+
+        setUnidades(data);
+      } catch (error) {
+        console.error("Erro ao carregar unidades:", error);
+        toast.error("Não foi possível carregar as unidades disponíveis", {
+          duration: 5000,
+        });
+      } finally {
+        setLoadingUnidades(false);
+      }
+    };
+    loadUnidades();
+  }, []);
 
   // Carregar perfis disponíveis
   useEffect(() => {
@@ -208,6 +247,10 @@ export default function RegisterPage() {
       setError("Data de nascimento é obrigatória");
       return false;
     }
+    if (!formData.unidade_id) {
+      setError("Seleção da unidade é obrigatória");
+      return false;
+    }
 
     // Validar idade mínima de 10 anos
     const dataNascimento = new Date(formData.data_nascimento);
@@ -253,6 +296,7 @@ export default function RegisterPage() {
         telefone: string;
         data_nascimento: string;
         perfil_id?: string;
+        unidade_id?: string;
       } = {
         nome: formData.nome,
         email: formData.email,
@@ -260,6 +304,7 @@ export default function RegisterPage() {
         cpf: cleanCPF(formData.cpf), // Remove pontos, traços e outros caracteres, mantendo apenas números
         telefone: formData.telefone.replace(/\D/g, ""), // Remove formatação do telefone também
         data_nascimento: formData.data_nascimento,
+        unidade_id: formData.unidade_id,
       };
 
       // Adicionar perfil_id apenas se tiver valor e for um UUID válido
@@ -466,10 +511,72 @@ export default function RegisterPage() {
 
                 <div className="space-y-2">
                   <Label
+                    htmlFor="unidade"
+                    className="flex items-center gap-2 text-gray-200"
+                  >
+                    <Building2 className="h-4 w-4 text-red-400" />
+                    Unidade *
+                  </Label>
+                  <Select
+                    value={formData.unidade_id}
+                    onValueChange={(value) =>
+                      setFormData({ ...formData, unidade_id: value })
+                    }
+                    disabled={loadingUnidades}
+                  >
+                    <SelectTrigger className="h-11 bg-gray-800/50 border-gray-600 text-white focus:border-red-500 focus:ring-red-500">
+                      <SelectValue
+                        placeholder={
+                          loadingUnidades
+                            ? "Carregando unidades..."
+                            : "Selecione a unidade"
+                        }
+                      />
+                    </SelectTrigger>
+                    <SelectContent className="bg-gray-800 border-gray-600">
+                      {unidades.map((unidade) => (
+                        <SelectItem
+                          key={unidade.id}
+                          value={unidade.id}
+                          className="text-white hover:bg-gray-700 focus:bg-gray-700"
+                        >
+                          <div className="flex flex-col">
+                            <span className="font-medium">{unidade.nome}</span>
+                            {(unidade.cidade || unidade.bairro) && (
+                              <span className="text-xs text-gray-400">
+                                {unidade.cidade}
+                                {unidade.cidade && unidade.bairro ? " - " : ""}
+                                {unidade.bairro}
+                              </span>
+                            )}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-gray-400">
+                    Selecione a unidade onde deseja se cadastrar
+                  </p>
+                  {formData.unidade_id && (
+                    <div className="bg-blue-900/30 border border-blue-600/50 rounded-lg p-3 mt-2">
+                      <div className="flex items-start gap-2">
+                        <CheckCircle className="h-4 w-4 text-blue-400 mt-0.5 flex-shrink-0" />
+                        <p className="text-xs text-blue-200">
+                          <strong>Unidade selecionada:</strong> Seu cadastro
+                          será direcionado para aprovação pelos responsáveis
+                          desta unidade.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label
                     htmlFor="perfil"
                     className="flex items-center gap-2 text-gray-200"
                   >
-                    <Shield className="h-4 w-4 text-red-400" />
+                    <User2 className="h-4 w-4 text-red-400" />
                     Perfil *
                   </Label>
                   <Select
@@ -577,10 +684,14 @@ export default function RegisterPage() {
                         Informações importantes:
                       </p>
                       <ul className="space-y-1 text-xs text-blue-200">
+                        <li>• Selecione a unidade onde deseja se cadastrar</li>
                         <li>
                           • Selecione o perfil adequado ao seu papel no sistema
                         </li>
-                        <li>• Aguarde aprovação para acesso completo</li>
+                        <li>
+                          • Seu cadastro será enviado para aprovação da unidade
+                          selecionada
+                        </li>
                         <li>
                           • Em caso de dúvidas, entre em contato com sua
                           academia

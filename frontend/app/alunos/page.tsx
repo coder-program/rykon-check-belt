@@ -16,9 +16,11 @@ import {
   Trash2,
   Users,
   GraduationCap,
+  ArrowLeft,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import AlunoForm from "@/components/alunos/AlunoForm";
+import { useRouter } from "next/navigation";
 import { http } from "@/lib/api";
 import { useAuth } from "@/app/auth/AuthContext";
 import { getMyFranqueado } from "@/lib/peopleApi";
@@ -95,6 +97,7 @@ async function getAlunosStats(params: any) {
 }
 
 export default function PageAlunos() {
+  const router = useRouter();
   const { user } = useAuth();
   const [search, setSearch] = useState("");
   const [debounced, setDebounced] = useState("");
@@ -319,10 +322,20 @@ export default function PageAlunos() {
     <ProtectedRoute>
       <div className="p-6 space-y-4">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Users className="h-6 w-6" />
-            Alunos
-          </h1>
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => router.push("/dashboard")}
+              className="flex items-center gap-2 px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
+              title="Voltar ao Dashboard"
+            >
+              <ArrowLeft className="h-5 w-5" />
+              Voltar
+            </button>
+            <h1 className="text-2xl font-bold flex items-center gap-2">
+              <Users className="h-6 w-6" />
+              Alunos
+            </h1>
+          </div>
           {/* <button
           className="btn btn-primary flex items-center gap-2"
           onClick={() => {

@@ -7,33 +7,37 @@ import { Building2, Save, ArrowLeft } from "lucide-react";
 import toast, { Toaster } from "react-hot-toast";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 
+interface FranqueadoData {
+  id?: string;
+  nome: string;
+  cpf: string;
+  email: string;
+  telefone: string;
+  cep: string;
+  logradouro: string;
+  numero: string;
+  complemento: string;
+  bairro: string;
+  cidade: string;
+  estado: string;
+  nome_franquia: string;
+  descricao: string;
+  observacoes: string;
+  ativo: boolean;
+}
+
 export default function MinhaFranquiaPage() {
   const { user } = useAuth();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [franquiaExistente, setFranquiaExistente] = useState<any>(null);
+  const [franquiaExistente, setFranquiaExistente] =
+    useState<FranqueadoData | null>(null);
 
-  const [formData, setFormData] = useState({
-    // Identificação
-    nome: "",
-    cnpj: "",
-    razao_social: "",
-    nome_fantasia: "",
-    inscricao_estadual: "",
-    inscricao_municipal: "",
-    // Contato
-    email: "",
-    telefone_fixo: "",
-    telefone_celular: "",
-    website: "",
-    redes_sociais: {
-      instagram: "",
-      facebook: "",
-      youtube: "",
-      linkedin: "",
-      tiktok: "",
-    },
-    // Endereço
+  const [formData, setFormData] = useState<FranqueadoData>({
+    nome: user?.nome || "",
+    cpf: user?.cpf || "",
+    email: user?.email || "",
+    telefone: user?.telefone || "",
     cep: "",
     logradouro: "",
     numero: "",
@@ -41,42 +45,15 @@ export default function MinhaFranquiaPage() {
     bairro: "",
     cidade: "",
     estado: "",
-    pais: "Brasil",
-    // Responsável Legal
-    responsavel_nome: user?.nome || "",
-    responsavel_cpf: user?.cpf || "",
-    responsavel_cargo: "",
-    responsavel_email: user?.email || "",
-    responsavel_telefone: user?.telefone || "",
-    // Informações
-    ano_fundacao: undefined as number | undefined,
-    missao: "",
-    visao: "",
-    valores: "",
-    historico: "",
-    logotipo_url: "",
-    // Financeiro
-    data_contrato: "",
-    taxa_franquia: undefined as number | undefined,
-    dados_bancarios: {
-      banco: "",
-      agencia: "",
-      conta: "",
-      titular: "",
-      documento: "",
-    },
-    // Gestão
-    unidades_gerencia: [] as string[],
-    // Tipo
-    id_matriz: null as string | null,
-    // Status
-    situacao: "EM_HOMOLOGACAO" as "ATIVA" | "INATIVA" | "EM_HOMOLOGACAO",
+    nome_franquia: "",
+    descricao: "",
+    observacoes: "",
     ativo: true,
   });
 
   useEffect(() => {
-    // Verificar se já existe franqueado cadastrado para este usuário
     verificarFranquiaExistente();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   const verificarFranquiaExistente = async () => {
@@ -99,61 +76,24 @@ export default function MinhaFranquiaPage() {
       if (response.ok) {
         const data = await response.json();
         if (data.items && data.items.length > 0) {
-          // Já existe franquia cadastrada
-          setFranquiaExistente(data.items[0]);
-          // Preencher formulário com dados existentes
           const franquia = data.items[0];
+          setFranquiaExistente(franquia);
           setFormData({
-            nome: franquia.nome || "",
-            cnpj: franquia.cnpj || "",
-            razao_social: franquia.razao_social || "",
-            nome_fantasia: franquia.nome_fantasia || "",
-            inscricao_estadual: franquia.inscricao_estadual || "",
-            inscricao_municipal: franquia.inscricao_municipal || "",
-            email: franquia.email || "",
-            telefone_fixo: franquia.telefone_fixo || "",
-            telefone_celular: franquia.telefone_celular || "",
-            website: franquia.website || "",
-            redes_sociais: franquia.redes_sociais || {
-              instagram: "",
-              facebook: "",
-              youtube: "",
-              linkedin: "",
-              tiktok: "",
-            },
-            cep: franquia.endereco?.cep || "",
-            logradouro: franquia.endereco?.logradouro || "",
-            numero: franquia.endereco?.numero || "",
-            complemento: franquia.endereco?.complemento || "",
-            bairro: franquia.endereco?.bairro || "",
-            cidade: franquia.endereco?.cidade || "",
-            estado: franquia.endereco?.estado || "",
-            pais: franquia.endereco?.pais || "Brasil",
-            responsavel_nome: franquia.responsavel_nome || user?.nome || "",
-            responsavel_cpf: franquia.responsavel_cpf || user?.cpf || "",
-            responsavel_cargo: franquia.responsavel_cargo || "",
-            responsavel_email: franquia.responsavel_email || user?.email || "",
-            responsavel_telefone:
-              franquia.responsavel_telefone || user?.telefone || "",
-            ano_fundacao: franquia.ano_fundacao,
-            missao: franquia.missao || "",
-            visao: franquia.visao || "",
-            valores: franquia.valores || "",
-            historico: franquia.historico || "",
-            logotipo_url: franquia.logotipo_url || "",
-            data_contrato: franquia.data_contrato || "",
-            taxa_franquia: franquia.taxa_franquia,
-            dados_bancarios: franquia.dados_bancarios || {
-              banco: "",
-              agencia: "",
-              conta: "",
-              titular: "",
-              documento: "",
-            },
-            unidades_gerencia: franquia.unidades_gerencia || [],
-            id_matriz: franquia.id_matriz,
-            situacao: franquia.situacao || "EM_HOMOLOGACAO",
-            ativo: franquia.ativo !== false,
+            nome: franquia.nome || user?.nome || "",
+            cpf: franquia.cpf || user?.cpf || "",
+            email: franquia.email || user?.email || "",
+            telefone: franquia.telefone || user?.telefone || "",
+            cep: franquia.cep || "",
+            logradouro: franquia.logradouro || "",
+            numero: franquia.numero || "",
+            complemento: franquia.complemento || "",
+            bairro: franquia.bairro || "",
+            cidade: franquia.cidade || "",
+            estado: franquia.estado || "",
+            nome_franquia: franquia.nome_franquia || "",
+            descricao: franquia.descricao || "",
+            observacoes: franquia.observacoes || "",
+            ativo: franquia.ativo !== undefined ? franquia.ativo : true,
           });
         }
       }
@@ -162,55 +102,10 @@ export default function MinhaFranquiaPage() {
     }
   };
 
-  // Função para formatar campos que aceitem apenas números
-  const formatNumericOnly = (value: string, maxLength: number = 20) => {
-    return value
-      .replace(/\D/g, "") // Remove tudo que não é dígito
-      .slice(0, maxLength); // Limita ao comprimento máximo
-  };
-
-  // Função para formatar campos de texto que aceitem apenas letras
-  const formatTextOnly = (value: string, maxLength: number = 150) => {
-    return value
-      .replace(/[^a-zA-ZÀ-ÿ\s\-'&.()]/g, "") // Remove números e caracteres não permitidos
-      .slice(0, maxLength); // Limita ao comprimento máximo
-  };
-
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
     const { name, value } = e.target;
-
-    // Aplicar formatação específica para campos de inscrições fiscais (apenas números)
-    if (name === "inscricao_municipal" || name === "inscricao_estadual") {
-      setFormData((prev) => ({
-        ...prev,
-        [name]: formatNumericOnly(value, 20),
-      }));
-      return;
-    }
-
-    // Aplicar formatação específica para campos de texto (apenas letras)
-    if (
-      name === "nome" ||
-      name === "razao_social" ||
-      name === "nome_fantasia" ||
-      name === "responsavel_nome" ||
-      name === "responsavel_cargo"
-    ) {
-      const maxLength =
-        name === "razao_social"
-          ? 200
-          : name === "responsavel_cargo"
-          ? 100
-          : 150;
-      setFormData((prev) => ({
-        ...prev,
-        [name]: formatTextOnly(value, maxLength),
-      }));
-      return;
-    }
-
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
@@ -223,44 +118,11 @@ export default function MinhaFranquiaPage() {
         process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api";
       const token = localStorage.getItem("token");
 
-      // Limpar dados antes de enviar (remover formatação)
-      const dadosLimpos = {
-        ...formData,
-        // Remover formatação de CNPJ, CPF e telefones
-        cnpj: formData.cnpj.replace(/\D/g, ""),
-        responsavel_cpf: formData.responsavel_cpf.replace(/\D/g, ""),
-        telefone_celular: formData.telefone_celular.replace(/\D/g, ""),
-        telefone_fixo: formData.telefone_fixo
-          ? formData.telefone_fixo.replace(/\D/g, "")
-          : undefined,
-        responsavel_telefone: formData.responsavel_telefone
-          ? formData.responsavel_telefone.replace(/\D/g, "")
-          : undefined,
-        cep: formData.cep ? formData.cep.replace(/\D/g, "") : undefined,
-        // Remover campos vazios (string vazia para undefined)
-        inscricao_estadual: formData.inscricao_estadual || undefined,
-        inscricao_municipal: formData.inscricao_municipal || undefined,
-        nome_fantasia: formData.nome_fantasia || undefined,
-        website: formData.website || undefined,
-        complemento: formData.complemento || undefined,
-        responsavel_cargo: formData.responsavel_cargo || undefined,
-        responsavel_email: formData.responsavel_email || undefined,
-        ano_fundacao: formData.ano_fundacao || undefined,
-        missao: formData.missao || undefined,
-        visao: formData.visao || undefined,
-        valores: formData.valores || undefined,
-        historico: formData.historico || undefined,
-        logotipo_url: formData.logotipo_url || undefined,
-        usuario_id: user?.id,
-        situacao: "EM_HOMOLOGACAO",
-        ativo: true,
-      };
-
       const url = franquiaExistente
-        ? `${apiUrl}/franqueados/minha-franquia/${franquiaExistente.id}`
-        : `${apiUrl}/franqueados/minha-franquia`;
+        ? `${apiUrl}/franqueados/${franquiaExistente.id}`
+        : `${apiUrl}/franqueados`;
 
-      const method = franquiaExistente ? "PATCH" : "POST";
+      const method = franquiaExistente ? "PUT" : "POST";
 
       const response = await fetch(url, {
         method,
@@ -268,69 +130,29 @@ export default function MinhaFranquiaPage() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(dadosLimpos),
+        body: JSON.stringify({
+          ...formData,
+          usuario_id: user?.id,
+        }),
       });
 
-      if (!response.ok) {
-        throw new Error("Erro ao salvar franquia");
+      if (response.ok) {
+        toast.success(
+          franquiaExistente
+            ? "Franquia atualizada com sucesso!"
+            : "Franquia cadastrada com sucesso!"
+        );
+        // Recarregar os dados
+        await verificarFranquiaExistente();
+      } else {
+        const errorData = await response.json();
+        toast.error(errorData.message || "Erro ao salvar franquia");
       }
-
-      toast.success(
-        franquiaExistente
-          ? "Franquia atualizada com sucesso!"
-          : "Franquia cadastrada com sucesso! Aguarde aprovação do administrador."
-      );
-
-      // Atualizar cadastro_completo do usuário
-      await fetch(`${apiUrl}/usuarios/${user?.id}`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ cadastro_completo: true }),
-      });
-
-      // Atualizar localStorage
-      const userData = JSON.parse(localStorage.getItem("user") || "{}");
-      userData.cadastro_completo = true;
-      localStorage.setItem("user", JSON.stringify(userData));
-
-      // Redirecionar para dashboard e recarregar página para atualizar cache
-      setTimeout(() => {
-        router.push("/dashboard");
-        // Forçar reload após navegação para atualizar cache do React Query
-        setTimeout(() => {
-          window.location.reload();
-        }, 100);
-      }, 2000);
     } catch (error) {
-      console.error("Erro ao salvar:", error);
-      toast.error("Erro ao salvar franquia. Tente novamente.");
+      console.error("Erro:", error);
+      toast.error("Erro ao conectar com o servidor");
     } finally {
       setLoading(false);
-    }
-  };
-
-  const buscarCEP = async () => {
-    if (!formData.cep || formData.cep.replace(/\D/g, "").length !== 8) return;
-
-    try {
-      const cep = formData.cep.replace(/\D/g, "");
-      const response = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
-      const data = await response.json();
-
-      if (!data.erro) {
-        setFormData((prev) => ({
-          ...prev,
-          logradouro: data.logradouro,
-          bairro: data.bairro,
-          cidade: data.localidade,
-          estado: data.uf,
-        }));
-      }
-    } catch (error) {
-      console.error("Erro ao buscar CEP:", error);
     }
   };
 
@@ -365,17 +187,17 @@ export default function MinhaFranquiaPage() {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Identificação */}
+            {/* Dados Pessoais */}
             <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 border border-gray-700">
               <h2 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
                 <Building2 className="w-5 h-5" />
-                Identificação da Franquia
+                Dados do Responsável
               </h2>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="md:col-span-2">
+                <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Nome da Franquia <span className="text-red-500">*</span>
+                    Nome Completo <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
@@ -384,61 +206,25 @@ export default function MinhaFranquiaPage() {
                     onChange={handleChange}
                     required
                     className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-yellow-500"
-                    placeholder="Ex: Team Cruz São Paulo"
+                    placeholder="Digite seu nome completo"
                   />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">
-                    CNPJ <span className="text-red-500">*</span>
+                    CPF <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
-                    name="cnpj"
-                    value={formData.cnpj}
+                    name="cpf"
+                    value={formData.cpf}
                     onChange={handleChange}
                     required
                     className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-yellow-500"
-                    placeholder="00.000.000/0000-00"
+                    placeholder="000.000.000-00"
                   />
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Razão Social <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    name="razao_social"
-                    value={formData.razao_social}
-                    onChange={handleChange}
-                    required
-                    className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-yellow-500"
-                    placeholder="Razão Social da Empresa"
-                  />
-                </div>
-
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Nome Fantasia
-                  </label>
-                  <input
-                    type="text"
-                    name="nome_fantasia"
-                    value={formData.nome_fantasia}
-                    onChange={handleChange}
-                    className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-yellow-500"
-                    placeholder="Nome comercial (opcional)"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Contato */}
-            <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 border border-gray-700">
-              <h2 className="text-xl font-semibold text-white mb-4">Contato</h2>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">
                     Email <span className="text-red-500">*</span>
@@ -450,50 +236,22 @@ export default function MinhaFranquiaPage() {
                     onChange={handleChange}
                     required
                     className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-yellow-500"
-                    placeholder="contato@franquia.com.br"
+                    placeholder="seu@email.com"
                   />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Telefone Celular <span className="text-red-500">*</span>
+                    Telefone <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="tel"
-                    name="telefone_celular"
-                    value={formData.telefone_celular}
+                    name="telefone"
+                    value={formData.telefone}
                     onChange={handleChange}
                     required
                     className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-yellow-500"
-                    placeholder="(11) 98765-4321"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Telefone Fixo
-                  </label>
-                  <input
-                    type="tel"
-                    name="telefone_fixo"
-                    value={formData.telefone_fixo}
-                    onChange={handleChange}
-                    className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-yellow-500"
-                    placeholder="(11) 1234-5678"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Website
-                  </label>
-                  <input
-                    type="url"
-                    name="website"
-                    value={formData.website}
-                    onChange={handleChange}
-                    className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-yellow-500"
-                    placeholder="https://www.suafranquia.com.br"
+                    placeholder="(11) 99999-9999"
                   />
                 </div>
               </div>
@@ -508,14 +266,14 @@ export default function MinhaFranquiaPage() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">
-                    CEP
+                    CEP <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
                     name="cep"
                     value={formData.cep}
                     onChange={handleChange}
-                    onBlur={buscarCEP}
+                    required
                     className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-yellow-500"
                     placeholder="00000-000"
                   />
@@ -523,13 +281,14 @@ export default function MinhaFranquiaPage() {
 
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Logradouro
+                    Logradouro <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
                     name="logradouro"
                     value={formData.logradouro}
                     onChange={handleChange}
+                    required
                     className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-yellow-500"
                     placeholder="Rua, Avenida, etc."
                   />
@@ -537,13 +296,14 @@ export default function MinhaFranquiaPage() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Número
+                    Número <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
                     name="numero"
                     value={formData.numero}
                     onChange={handleChange}
+                    required
                     className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-yellow-500"
                     placeholder="123"
                   />
@@ -559,206 +319,52 @@ export default function MinhaFranquiaPage() {
                     value={formData.complemento}
                     onChange={handleChange}
                     className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-yellow-500"
-                    placeholder="Sala, Andar, etc."
+                    placeholder="Apto, Bloco, etc."
                   />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Bairro
+                    Bairro <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
                     name="bairro"
                     value={formData.bairro}
                     onChange={handleChange}
+                    required
                     className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-yellow-500"
-                    placeholder="Bairro"
+                    placeholder="Nome do bairro"
                   />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Cidade
+                    Cidade <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
                     name="cidade"
                     value={formData.cidade}
                     onChange={handleChange}
+                    required
                     className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-yellow-500"
-                    placeholder="Cidade"
+                    placeholder="Nome da cidade"
                   />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Estado
+                    Estado <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
                     name="estado"
                     value={formData.estado}
                     onChange={handleChange}
-                    maxLength={2}
+                    required
                     className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-yellow-500"
-                    placeholder="SP"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Inscrições */}
-            <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 border border-gray-700">
-              <h2 className="text-xl font-semibold text-white mb-4">
-                Inscrições Fiscais
-              </h2>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Inscrição Estadual
-                  </label>
-                  <input
-                    type="text"
-                    name="inscricao_estadual"
-                    value={formData.inscricao_estadual}
-                    onChange={handleChange}
-                    className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-yellow-500"
-                    placeholder="123456789012 (apenas números)"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Inscrição Municipal
-                  </label>
-                  <input
-                    type="text"
-                    name="inscricao_municipal"
-                    value={formData.inscricao_municipal}
-                    onChange={handleChange}
-                    className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-yellow-500"
-                    placeholder="9876543 (apenas números)"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Redes Sociais */}
-            <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 border border-gray-700">
-              <h2 className="text-xl font-semibold text-white mb-4">
-                Redes Sociais
-              </h2>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Instagram
-                  </label>
-                  <input
-                    type="text"
-                    name="redes_sociais.instagram"
-                    value={formData.redes_sociais.instagram}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        redes_sociais: {
-                          ...formData.redes_sociais,
-                          instagram: e.target.value,
-                        },
-                      })
-                    }
-                    className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-yellow-500"
-                    placeholder="@suafranquia"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Facebook
-                  </label>
-                  <input
-                    type="text"
-                    name="redes_sociais.facebook"
-                    value={formData.redes_sociais.facebook}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        redes_sociais: {
-                          ...formData.redes_sociais,
-                          facebook: e.target.value,
-                        },
-                      })
-                    }
-                    className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-yellow-500"
-                    placeholder="@suafranquia"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    YouTube
-                  </label>
-                  <input
-                    type="text"
-                    name="redes_sociais.youtube"
-                    value={formData.redes_sociais.youtube}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        redes_sociais: {
-                          ...formData.redes_sociais,
-                          youtube: e.target.value,
-                        },
-                      })
-                    }
-                    className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-yellow-500"
-                    placeholder="@suafranquia"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    LinkedIn
-                  </label>
-                  <input
-                    type="text"
-                    name="redes_sociais.linkedin"
-                    value={formData.redes_sociais.linkedin}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        redes_sociais: {
-                          ...formData.redes_sociais,
-                          linkedin: e.target.value,
-                        },
-                      })
-                    }
-                    className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-yellow-500"
-                    placeholder="company/suafranquia"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    TikTok
-                  </label>
-                  <input
-                    type="text"
-                    name="redes_sociais.tiktok"
-                    value={formData.redes_sociais.tiktok}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        redes_sociais: {
-                          ...formData.redes_sociais,
-                          tiktok: e.target.value,
-                        },
-                      })
-                    }
-                    className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-yellow-500"
-                    placeholder="@suafranquia"
+                    placeholder="SP, RJ, MG, etc."
                   />
                 </div>
               </div>
@@ -770,373 +376,58 @@ export default function MinhaFranquiaPage() {
                 Informações da Franquia
               </h2>
 
-              <div className="grid grid-cols-1 gap-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
-                      Ano de Fundação
-                    </label>
-                    <input
-                      type="number"
-                      name="ano_fundacao"
-                      value={formData.ano_fundacao || ""}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          ano_fundacao: e.target.value
-                            ? parseInt(e.target.value)
-                            : undefined,
-                        })
-                      }
-                      min="1900"
-                      max={new Date().getFullYear()}
-                      className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-yellow-500"
-                      placeholder="2020"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
-                      Logotipo (URL)
-                    </label>
-                    <input
-                      type="url"
-                      name="logotipo_url"
-                      value={formData.logotipo_url}
-                      onChange={handleChange}
-                      className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-yellow-500"
-                      placeholder="https://exemplo.com/logo.png"
-                    />
-                  </div>
-                </div>
-
+              <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Missão
-                  </label>
-                  <textarea
-                    name="missao"
-                    value={formData.missao}
-                    onChange={(e) =>
-                      setFormData({ ...formData, missao: e.target.value })
-                    }
-                    rows={3}
-                    className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-yellow-500"
-                    placeholder="Descreva a missão da franquia..."
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Visão
-                  </label>
-                  <textarea
-                    name="visao"
-                    value={formData.visao}
-                    onChange={(e) =>
-                      setFormData({ ...formData, visao: e.target.value })
-                    }
-                    rows={3}
-                    className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-yellow-500"
-                    placeholder="Descreva a visão da franquia..."
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Valores
-                  </label>
-                  <textarea
-                    name="valores"
-                    value={formData.valores}
-                    onChange={(e) =>
-                      setFormData({ ...formData, valores: e.target.value })
-                    }
-                    rows={3}
-                    className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-yellow-500"
-                    placeholder="Descreva os valores da franquia..."
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Histórico / Sobre
-                  </label>
-                  <textarea
-                    name="historico"
-                    value={formData.historico}
-                    onChange={(e) =>
-                      setFormData({ ...formData, historico: e.target.value })
-                    }
-                    rows={4}
-                    className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-yellow-500"
-                    placeholder="Conte a história da franquia..."
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Dados Financeiros */}
-            <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 border border-gray-700">
-              <h2 className="text-xl font-semibold text-white mb-4">
-                Dados Financeiros
-              </h2>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Data do Contrato
-                  </label>
-                  <input
-                    type="date"
-                    name="data_contrato"
-                    value={formData.data_contrato}
-                    onChange={handleChange}
-                    className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-yellow-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Taxa de Franquia (R$)
-                  </label>
-                  <input
-                    type="number"
-                    name="taxa_franquia"
-                    value={formData.taxa_franquia || ""}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        taxa_franquia: e.target.value
-                          ? parseFloat(e.target.value)
-                          : undefined,
-                      })
-                    }
-                    step="0.01"
-                    min="0"
-                    className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-yellow-500"
-                    placeholder="0.00"
-                  />
-                </div>
-              </div>
-
-              <div className="border-t border-gray-700 pt-4">
-                <h3 className="text-lg font-medium text-white mb-3">
-                  Dados Bancários
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
-                      Banco
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.dados_bancarios.banco}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          dados_bancarios: {
-                            ...formData.dados_bancarios,
-                            banco: e.target.value,
-                          },
-                        })
-                      }
-                      className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-yellow-500"
-                      placeholder="Ex: Banco do Brasil"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
-                      Agência
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.dados_bancarios.agencia}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          dados_bancarios: {
-                            ...formData.dados_bancarios,
-                            agencia: e.target.value,
-                          },
-                        })
-                      }
-                      className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-yellow-500"
-                      placeholder="1234-5"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
-                      Conta
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.dados_bancarios.conta}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          dados_bancarios: {
-                            ...formData.dados_bancarios,
-                            conta: e.target.value,
-                          },
-                        })
-                      }
-                      className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-yellow-500"
-                      placeholder="12345-6"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
-                      Titular
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.dados_bancarios.titular}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          dados_bancarios: {
-                            ...formData.dados_bancarios,
-                            titular: e.target.value,
-                          },
-                        })
-                      }
-                      className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-yellow-500"
-                      placeholder="Nome do titular"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
-                      CPF/CNPJ do Titular
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.dados_bancarios.documento}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          dados_bancarios: {
-                            ...formData.dados_bancarios,
-                            documento: e.target.value,
-                          },
-                        })
-                      }
-                      className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-yellow-500"
-                      placeholder="000.000.000-00"
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Responsável Legal */}
-            <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 border border-gray-700">
-              <h2 className="text-xl font-semibold text-white mb-4">
-                Responsável Legal
-              </h2>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Nome <span className="text-red-500">*</span>
+                    Nome da Franquia <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
-                    name="responsavel_nome"
-                    value={formData.responsavel_nome}
+                    name="nome_franquia"
+                    value={formData.nome_franquia}
                     onChange={handleChange}
                     required
                     className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-yellow-500"
-                    placeholder="Nome completo"
+                    placeholder="Ex: Team Cruz São Paulo"
                   />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">
-                    CPF <span className="text-red-500">*</span>
+                    Descrição
                   </label>
-                  <input
-                    type="text"
-                    name="responsavel_cpf"
-                    value={formData.responsavel_cpf}
+                  <textarea
+                    name="descricao"
+                    value={formData.descricao}
                     onChange={handleChange}
-                    required
+                    rows={3}
                     className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-yellow-500"
-                    placeholder="000.000.000-00"
+                    placeholder="Breve descrição da franquia..."
                   />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Cargo/Função
+                    Observações
                   </label>
-                  <input
-                    type="text"
-                    name="responsavel_cargo"
-                    value={formData.responsavel_cargo}
+                  <textarea
+                    name="observacoes"
+                    value={formData.observacoes}
                     onChange={handleChange}
+                    rows={3}
                     className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-yellow-500"
-                    placeholder="Ex: Diretor, Gerente, Proprietário"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Email
-                  </label>
-                  <input
-                    type="email"
-                    name="responsavel_email"
-                    value={formData.responsavel_email}
-                    onChange={handleChange}
-                    className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-yellow-500"
-                    placeholder="responsavel@email.com"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Telefone
-                  </label>
-                  <input
-                    type="tel"
-                    name="responsavel_telefone"
-                    value={formData.responsavel_telefone}
-                    onChange={handleChange}
-                    className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-yellow-500"
-                    placeholder="(11) 98765-4321"
+                    placeholder="Observações adicionais..."
                   />
                 </div>
               </div>
             </div>
 
-            {/* Aviso */}
-            <div className="bg-blue-900/20 border border-blue-600 rounded-lg p-4">
-              <p className="text-sm text-blue-300">
-                ℹ️ <strong>Importante:</strong> Após o cadastro, seu perfil de
-                franqueado ficará em status "EM HOMOLOGAÇÃO" até a aprovação do
-                administrador. Você será notificado quando suas unidades forem
-                vinculadas ao seu perfil.
-              </p>
-            </div>
-
-            {/* Botões */}
-            <div className="flex gap-4">
-              <button
-                type="button"
-                onClick={() => router.push("/dashboard")}
-                className="flex-1 px-6 py-3 bg-gray-700 hover:bg-gray-600 text-white rounded-lg font-semibold transition-colors"
-              >
-                Cancelar
-              </button>
+            {/* Botão Submit */}
+            <div className="flex justify-end">
               <button
                 type="submit"
                 disabled={loading}
-                className="flex-1 px-6 py-3 bg-gradient-to-r from-yellow-600 to-yellow-700 hover:from-yellow-700 hover:to-yellow-800 text-white rounded-lg font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="px-6 py-3 bg-yellow-500 hover:bg-yellow-600 disabled:opacity-50 text-black font-medium rounded-lg transition-colors flex items-center gap-2"
               >
                 <Save className="w-5 h-5" />
                 {loading

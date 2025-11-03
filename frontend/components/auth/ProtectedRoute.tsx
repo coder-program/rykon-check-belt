@@ -30,14 +30,37 @@ export default function ProtectedRoute({
 
     // Se o usuário está autenticado mas não completou o cadastro,
     // redireciona para a tela de completar perfil antes de acessar qualquer rota protegida
+    // EXCETO se for franqueado, que vai direto para minha-franquia
     if (
       !loading &&
       isAuthenticated &&
       user &&
       user.cadastro_completo === false
     ) {
-      router.push("/complete-profile");
-      return;
+      // Verificar se é franqueado
+      const isFranqueado = user?.perfis?.some(
+        (perfil: string | { nome?: string; name?: string }) => {
+          if (typeof perfil === "string")
+            return perfil.toLowerCase() === "franqueado";
+          if (typeof perfil === "object" && perfil?.nome)
+            return perfil.nome.toLowerCase() === "franqueado";
+          if (typeof perfil === "object" && perfil?.name)
+            return perfil.name.toLowerCase() === "franqueado";
+          return String(perfil).toLowerCase() === "franqueado";
+        }
+      );
+
+      // Verificar a URL atual para evitar loops
+      const currentPath =
+        typeof window !== "undefined" ? window.location.pathname : "";
+
+      if (isFranqueado && currentPath !== "/minha-franquia") {
+        router.push("/minha-franquia");
+        return;
+      } else if (!isFranqueado && currentPath !== "/complete-profile") {
+        router.push("/complete-profile");
+        return;
+      }
     }
   }, [loading, isAuthenticated, router, redirectTo, user]);
 

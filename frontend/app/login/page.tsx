@@ -120,14 +120,21 @@ function LoginContent() {
 
     const result = await login(formData.email, formData.password);
     if (result.success) {
-      // Verificar se o cadastro está completo
-      if (result.user?.cadastro_completo === false) {
+      // Verificar se é franqueado primeiro
+      const isFranqueado = result.user?.perfis?.includes("franqueado");
+
+      if (isFranqueado) {
+        // Franqueado sempre vai para minha-franquia, independente do cadastro_completo
+        router.push("/minha-franquia");
+      } else if (result.user?.cadastro_completo === false) {
+        // Outros perfis com cadastro incompleto vão para complete-profile
         toast("Complete seu cadastro para acessar o sistema", {
           icon: "\uD83D\uDCCB",
           duration: 3000,
         });
         router.push("/complete-profile");
       } else {
+        // Outros perfis com cadastro completo vão para dashboard
         router.push("/dashboard");
       }
     } else {

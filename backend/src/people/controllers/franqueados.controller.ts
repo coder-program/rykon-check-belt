@@ -20,23 +20,14 @@ import { ProfileCompleteGuard } from '../../auth/guards/profile-complete.guard';
 import { Roles } from '../../auth/decorators/roles.decorator';
 import { RolesGuard } from '../../auth/guards/roles.guard';
 import {
-  CreateFranqueadoDto,
-  UpdateFranqueadoDto,
-} from '../dto/franqueados.dto';
+  CreateFranqueadoSimplifiedDto,
+  UpdateFranqueadoSimplifiedDto,
+} from '../dto/franqueado-simplified.dto';
 
 @ApiTags('franqueados')
 @Controller('franqueados')
 export class FranqueadosController {
   constructor(private readonly service: FranqueadosService) {}
-
-  // Helper para converter data_contrato de string para Date
-  private prepareData(data: any): any {
-    const prepared = { ...data };
-    if (prepared.data_contrato && typeof prepared.data_contrato === 'string') {
-      prepared.data_contrato = new Date(prepared.data_contrato);
-    }
-    return prepared;
-  }
 
   @UseGuards(JwtAuthGuard, ProfileCompleteGuard)
   @Get()
@@ -62,14 +53,17 @@ export class FranqueadosController {
   @ApiOperation({ summary: 'Franqueado cadastra sua própria franquia' })
   @ApiResponse({ status: 201, description: 'Franquia cadastrada com sucesso' })
   @ApiResponse({ status: 400, description: 'Dados inválidos' })
-  createMyFranquia(@Request() req: any, @Body() body: CreateFranqueadoDto) {
+  createMyFranquia(
+    @Request() req: any,
+    @Body() body: CreateFranqueadoSimplifiedDto,
+  ) {
     // Garantir que o usuario_id seja o do usuário logado
-    const dadosFranquia = this.prepareData({
+    const dadosFranquia = {
       ...body,
       usuario_id: req.user.id,
       situacao: 'EM_HOMOLOGACAO' as any, // Sempre começa em homologação
       ativo: true,
-    });
+    };
     return this.service.create(dadosFranquia);
   }
 
@@ -83,7 +77,7 @@ export class FranqueadosController {
   async updateMyFranquia(
     @Request() req: any,
     @Param('id') id: string,
-    @Body() body: UpdateFranqueadoDto,
+    @Body() body: UpdateFranqueadoSimplifiedDto,
   ) {
     // Verificar se a franquia pertence ao usuário logado
     const franquia = await this.service.get(id);
@@ -93,7 +87,7 @@ export class FranqueadosController {
     if (franquia.usuario_id !== req.user.id) {
       throw new Error('Você só pode atualizar sua própria franquia');
     }
-    return this.service.update(id, this.prepareData(body));
+    return this.service.update(id, body);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -103,8 +97,8 @@ export class FranqueadosController {
   @ApiOperation({ summary: 'Criar novo franqueado' })
   @ApiResponse({ status: 201, description: 'Franqueado criado com sucesso' })
   @ApiResponse({ status: 400, description: 'Dados inválidos' })
-  create(@Body() body: CreateFranqueadoDto) {
-    return this.service.create(this.prepareData(body));
+  create(@Body() body: CreateFranqueadoSimplifiedDto) {
+    return this.service.create(body);
   }
 
   @Get('usuario/:usuarioId')
@@ -130,22 +124,14 @@ export class FranqueadosController {
   @ApiOperation({ summary: 'Atualizar franqueado' })
   @ApiResponse({ status: 200, description: 'Franqueado atualizado' })
   @ApiResponse({ status: 404, description: 'Franqueado não encontrado' })
-  update(@Param('id') id: string, @Body() body: UpdateFranqueadoDto) {
+  update(@Param('id') id: string, @Body() body: UpdateFranqueadoSimplifiedDto) {
     console.log('🔍 [Controller] DTO recebido:', {
       ativo: body.ativo,
       ativoType: typeof body.ativo,
       fullDto: body,
     });
 
-    const preparedData = this.prepareData(body);
-
-    console.log('🔍 [Controller] Dados preparados:', {
-      ativo: preparedData.ativo,
-      ativoType: typeof preparedData.ativo,
-      fullData: preparedData,
-    });
-
-    return this.service.update(id, preparedData);
+    return this.service.update(id, body);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)

@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import {
   User,
@@ -17,6 +18,7 @@ import {
   Filter,
   Edit,
   Save,
+  ArrowLeft,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -35,6 +37,7 @@ interface PendingUser {
 }
 
 function AprovacaoUsuariosPage() {
+  const router = useRouter();
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("pendentes"); // pendentes, todos, aprovados
   const [editingUser, setEditingUser] = useState<any>(null);
@@ -436,6 +439,15 @@ function AprovacaoUsuariosPage() {
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
+          <div className="flex items-center gap-4 mb-4">
+            <button
+              onClick={() => router.push("/dashboard")}
+              className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
+            >
+              <ArrowLeft className="h-5 w-5" />
+              Voltar
+            </button>
+          </div>
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
             Aprovação de Usuários
           </h1>

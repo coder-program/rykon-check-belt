@@ -1,16 +1,22 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState } from "react";
+import { useAuth } from "@/app/auth/AuthContext";
 import { useRouter } from "next/navigation";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import {
   listFranqueados,
   createFranqueado,
   updateFranqueado,
   deleteFranqueado,
 } from "@/lib/peopleApi";
-import { getUsuariosByPerfil, getUsuario, Usuario } from "@/lib/usuariosApi";
+import { getUsuariosByPerfil } from "@/lib/usuariosApi";
 import {
   Search,
   Plus,
@@ -35,17 +41,6 @@ import toast, { Toaster } from "react-hot-toast";
 // ==============================================
 
 type SituacaoFranqueado = "ATIVA" | "INATIVA" | "EM_HOMOLOGACAO";
-
-interface ValidationError {
-  property: string;
-  value: unknown;
-  constraints?: Record<string, string>;
-  message?: string;
-}
-
-interface APIError extends Error {
-  errors?: ValidationError[];
-}
 
 interface FranqueadoSimplificado {
   id: string;
@@ -82,22 +77,20 @@ interface FranqueadoFormData {
 // ==============================================
 
 const formatCPF = (cpf: string): string => {
-  if (!cpf) return "";
-  const cleaned = cpf.replace(/\D/g, "");
+  const cleaned = cpf.replace(/\\D/g, "");
   return cleaned
-    .replace(/(\d{3})(\d)/, "$1.$2")
-    .replace(/(\d{3})(\d)/, "$1.$2")
-    .replace(/(\d{3})(\d{1,2})/, "$1-$2")
+    .replace(/(\\d{3})(\\d)/, "$1.$2")
+    .replace(/(\\d{3})(\\d)/, "$1.$2")
+    .replace(/(\\d{3})(\\d{1,2})/, "$1-$2")
     .slice(0, 14);
 };
 
 const formatPhone = (phone: string): string => {
-  if (!phone) return "";
-  const cleaned = phone.replace(/\D/g, "");
+  const cleaned = phone.replace(/\\D/g, "");
   if (cleaned.length === 11) {
-    return cleaned.replace(/(\d{2})(\d{5})(\d{4})/, "($1) $2-$3");
+    return cleaned.replace(/(\\d{2})(\\d{5})(\\d{4})/, "($1) $2-$3");
   } else if (cleaned.length === 10) {
-    return cleaned.replace(/(\d{2})(\d{4})(\d{4})/, "($1) $2-$3");
+    return cleaned.replace(/(\\d{2})(\\d{4})(\\d{4})/, "($1) $2-$3");
   }
   return phone;
 };
@@ -132,18 +125,12 @@ const getSituacaoBadge = (situacao: SituacaoFranqueado) => {
 // COMPONENTE FORMULÁRIO SIMPLIFICADO
 // ==============================================
 
-interface UsuarioSimples {
-  id: string;
-  nome: string;
-  email: string;
-}
-
 interface FormularioFranqueadoProps {
   franqueado?: FranqueadoSimplificado;
   onClose: () => void;
   onSubmit: (data: FranqueadoFormData) => void;
   isLoading?: boolean;
-  usuarios?: UsuarioSimples[];
+  usuarios?: any[];
 }
 
 const FormularioFranqueado: React.FC<FormularioFranqueadoProps> = ({
@@ -164,130 +151,6 @@ const FormularioFranqueado: React.FC<FormularioFranqueadoProps> = ({
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [dadosPreenchidosAutomaticamente, setDadosPreenchidosAutomaticamente] =
-    useState(false);
-  const [searchUsuario, setSearchUsuario] = useState("");
-  const [showUsuarioDropdown, setShowUsuarioDropdown] = useState(false);
-  const [usuarioSelecionado, setUsuarioSelecionado] =
-    useState<UsuarioSimples | null>(null);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-
-  // Fechar dropdown ao clicar fora
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        dropdownRef.current &&
-        !dropdownRef.current.contains(event.target as Node)
-      ) {
-        setShowUsuarioDropdown(false);
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, []);
-
-  // Inicializar campo de pesquisa se já tem um usuário selecionado
-  useEffect(() => {
-    if (franqueado?.usuario_id && usuarios.length > 0) {
-      const usuarioEncontrado = usuarios.find(
-        (u) => u.id === franqueado.usuario_id
-      );
-      if (usuarioEncontrado) {
-        setUsuarioSelecionado(usuarioEncontrado);
-        setSearchUsuario(
-          `${usuarioEncontrado.nome} (${usuarioEncontrado.email})`
-        );
-      }
-    }
-  }, [franqueado?.usuario_id, usuarios]);
-
-  // Função auxiliar para classe CSS dos campos preenchidos automaticamente
-  const getFieldClassName = (baseClass: string, hasError: boolean = false) => {
-    if (hasError) {
-      return `${baseClass} border-red-500`;
-    }
-    if (dadosPreenchidosAutomaticamente && formData.usuario_id) {
-      return `${baseClass} border-green-300 bg-green-50`;
-    }
-    return `${baseClass} border-gray-300`;
-  };
-
-  // Função para filtrar usuários baseado na pesquisa
-  const usuariosFiltrados = usuarios.filter(
-    (usuario) =>
-      usuario.nome.toLowerCase().includes(searchUsuario.toLowerCase()) ||
-      usuario.email.toLowerCase().includes(searchUsuario.toLowerCase())
-  );
-
-  // Função para selecionar um usuário da lista
-  const handleSelectUsuario = (usuario: UsuarioSimples) => {
-    setUsuarioSelecionado(usuario);
-    setSearchUsuario(`${usuario.nome} (${usuario.email})`);
-    setShowUsuarioDropdown(false);
-    handleUsuarioSelect(usuario.id);
-  };
-
-  // Função para limpar seleção de usuário
-  const handleClearUsuario = () => {
-    setUsuarioSelecionado(null);
-    setSearchUsuario("");
-    setShowUsuarioDropdown(false);
-    handleUsuarioSelect("");
-  };
-
-  // Função para buscar e preencher dados do usuário
-  const handleUsuarioSelect = async (usuarioId: string) => {
-    if (!usuarioId) {
-      setFormData({
-        ...formData,
-        usuario_id: undefined,
-      });
-      setDadosPreenchidosAutomaticamente(false);
-      return;
-    }
-
-    try {
-      // Buscar dados completos do usuário selecionado usando a API existente
-      const usuario: Usuario = await getUsuario(usuarioId);
-
-      // Verificar se existem dados para preencher
-      const temDados =
-        usuario.nome || usuario.email || usuario.cpf || usuario.telefone;
-
-      // Preencher os campos com os dados do usuário
-      setFormData((prev) => ({
-        ...prev,
-        usuario_id: usuarioId,
-        nome: usuario.nome || prev.nome,
-        email: usuario.email || prev.email,
-        cpf: usuario.cpf ? formatCPF(usuario.cpf) : prev.cpf,
-        telefone: usuario.telefone
-          ? formatPhone(usuario.telefone)
-          : prev.telefone,
-      }));
-
-      if (temDados) {
-        setDadosPreenchidosAutomaticamente(true);
-        toast.success("Dados do usuário carregados automaticamente!");
-      } else {
-        setDadosPreenchidosAutomaticamente(false);
-        toast("Usuário selecionado, mas sem dados adicionais para preencher.");
-      }
-    } catch (error) {
-      console.error("Erro ao buscar dados do usuário:", error);
-      toast.error("Erro ao carregar dados do usuário");
-
-      // Manter apenas o ID selecionado
-      setFormData({
-        ...formData,
-        usuario_id: usuarioId,
-      });
-      setDadosPreenchidosAutomaticamente(false);
-    }
-  };
 
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
@@ -298,19 +161,19 @@ const FormularioFranqueado: React.FC<FormularioFranqueadoProps> = ({
 
     if (!formData.cpf.trim()) {
       newErrors.cpf = "CPF é obrigatório";
-    } else if (formData.cpf.replace(/\D/g, "").length !== 11) {
+    } else if (formData.cpf.replace(/\\D/g, "").length !== 11) {
       newErrors.cpf = "CPF deve ter 11 dígitos";
     }
 
     if (!formData.email.trim()) {
       newErrors.email = "Email é obrigatório";
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+    } else if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(formData.email)) {
       newErrors.email = "Email inválido";
     }
 
     if (!formData.telefone.trim()) {
       newErrors.telefone = "Telefone é obrigatório";
-    } else if (formData.telefone.replace(/\D/g, "").length < 10) {
+    } else if (formData.telefone.replace(/\\D/g, "").length < 10) {
       newErrors.telefone = "Telefone deve ter pelo menos 10 dígitos";
     }
 
@@ -321,18 +184,11 @@ const FormularioFranqueado: React.FC<FormularioFranqueadoProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (validateForm()) {
-      const dataToSubmit = {
+      onSubmit({
         ...formData,
-        cpf: formData.cpf.replace(/\D/g, ""),
-        telefone: formData.telefone.replace(/\D/g, ""),
-      };
-
-      // Debug: log dos dados que serão enviados
-      console.log("Dados sendo enviados para o backend:", dataToSubmit);
-      console.log("CPF length:", dataToSubmit.cpf.length);
-      console.log("Telefone length:", dataToSubmit.telefone.length);
-
-      onSubmit(dataToSubmit);
+        cpf: formData.cpf.replace(/\\D/g, ""),
+        telefone: formData.telefone.replace(/\\D/g, ""),
+      });
     }
   };
 
@@ -357,11 +213,6 @@ const FormularioFranqueado: React.FC<FormularioFranqueadoProps> = ({
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Nome Completo do Responsável *
-              {dadosPreenchidosAutomaticamente && formData.usuario_id && (
-                <span className="ml-2 text-green-600 text-xs">
-                  (Preenchido automaticamente)
-                </span>
-              )}
             </label>
             <input
               type="text"
@@ -370,10 +221,9 @@ const FormularioFranqueado: React.FC<FormularioFranqueadoProps> = ({
               onChange={(e) =>
                 setFormData({ ...formData, nome: e.target.value })
               }
-              className={getFieldClassName(
-                "w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent",
-                !!errors.nome
-              )}
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                errors.nome ? "border-red-500" : "border-gray-300"
+              }`}
               placeholder="Digite o nome completo"
             />
             {errors.nome && (
@@ -393,10 +243,9 @@ const FormularioFranqueado: React.FC<FormularioFranqueadoProps> = ({
               onChange={(e) =>
                 setFormData({ ...formData, cpf: formatCPF(e.target.value) })
               }
-              className={getFieldClassName(
-                "w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent",
-                !!errors.cpf
-              )}
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                errors.cpf ? "border-red-500" : "border-gray-300"
+              }`}
               placeholder="000.000.000-00"
               maxLength={14}
             />
@@ -409,11 +258,6 @@ const FormularioFranqueado: React.FC<FormularioFranqueadoProps> = ({
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Email *
-              {dadosPreenchidosAutomaticamente && formData.usuario_id && (
-                <span className="ml-2 text-green-600 text-xs">
-                  (Preenchido automaticamente)
-                </span>
-              )}
             </label>
             <input
               type="email"
@@ -422,10 +266,9 @@ const FormularioFranqueado: React.FC<FormularioFranqueadoProps> = ({
               onChange={(e) =>
                 setFormData({ ...formData, email: e.target.value })
               }
-              className={getFieldClassName(
-                "w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent",
-                !!errors.email
-              )}
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                errors.email ? "border-red-500" : "border-gray-300"
+              }`}
               placeholder="email@exemplo.com"
             />
             {errors.email && (
@@ -448,10 +291,9 @@ const FormularioFranqueado: React.FC<FormularioFranqueadoProps> = ({
                   telefone: formatPhone(e.target.value),
                 })
               }
-              className={getFieldClassName(
-                "w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent",
-                !!errors.telefone
-              )}
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                errors.telefone ? "border-red-500" : "border-gray-300"
+              }`}
               placeholder="(11) 99999-9999"
             />
             {errors.telefone && (
@@ -464,83 +306,23 @@ const FormularioFranqueado: React.FC<FormularioFranqueadoProps> = ({
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Usuário do Sistema (Opcional)
             </label>
-            <div className="space-y-2 relative" ref={dropdownRef}>
-              <div className="relative">
-                <input
-                  type="text"
-                  value={searchUsuario}
-                  onChange={(e) => {
-                    setSearchUsuario(e.target.value);
-                    setShowUsuarioDropdown(true);
-                    if (!e.target.value) {
-                      handleClearUsuario();
-                    }
-                  }}
-                  onFocus={() => setShowUsuarioDropdown(true)}
-                  className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Digite para pesquisar usuário..."
-                />
-
-                {/* Ícone de pesquisa ou limpar */}
-                <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                  {usuarioSelecionado ? (
-                    <button
-                      type="button"
-                      onClick={handleClearUsuario}
-                      className="text-gray-400 hover:text-gray-600"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  ) : (
-                    <Search className="h-4 w-4 text-gray-400" />
-                  )}
-                </div>
-
-                {/* Dropdown de usuários */}
-                {showUsuarioDropdown &&
-                  searchUsuario &&
-                  usuariosFiltrados.length > 0 && (
-                    <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                      {usuariosFiltrados.slice(0, 10).map((usuario) => (
-                        <button
-                          key={usuario.id}
-                          type="button"
-                          onClick={() => handleSelectUsuario(usuario)}
-                          className="w-full px-3 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none border-b border-gray-100 last:border-b-0"
-                        >
-                          <div className="font-medium text-gray-900">
-                            {usuario.nome}
-                          </div>
-                          <div className="text-sm text-gray-600">
-                            {usuario.email}
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-
-                {/* Mensagem quando não encontra usuários */}
-                {showUsuarioDropdown &&
-                  searchUsuario &&
-                  usuariosFiltrados.length === 0 && (
-                    <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg p-3">
-                      <p className="text-sm text-gray-500 text-center">
-                        Nenhum usuário encontrado para &quot;{searchUsuario}
-                        &quot;
-                      </p>
-                    </div>
-                  )}
-              </div>
-
-              {formData.usuario_id && (
-                <p className="text-sm text-blue-600 flex items-center gap-1">
-                  <UserCheck className="h-3 w-3" />
-                  {dadosPreenchidosAutomaticamente
-                    ? "Dados do usuário preenchidos automaticamente!"
-                    : "Usuário selecionado"}
-                </p>
-              )}
-            </div>
+            <select
+              value={formData.usuario_id || ""}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,
+                  usuario_id: e.target.value || undefined,
+                })
+              }
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="">Nenhum usuário selecionado</option>
+              {usuarios.map((usuario) => (
+                <option key={usuario.id} value={usuario.id}>
+                  {usuario.nome} ({usuario.email})
+                </option>
+              ))}
+            </select>
           </div>
 
           {/* Situação e Status */}
@@ -610,7 +392,7 @@ const FormularioFranqueado: React.FC<FormularioFranqueadoProps> = ({
 // ==============================================
 
 export default function FranqueadosPageSimplificada() {
-  // const { user } = useAuth();
+  const { user } = useAuth();
   const router = useRouter();
   const queryClient = useQueryClient();
 
@@ -639,39 +421,21 @@ export default function FranqueadosPageSimplificada() {
       toast.success("Franqueado criado com sucesso!");
       handleCloseModal();
     },
-    onError: (error: unknown) => {
-      console.error("Erro detalhado:", error);
-      const apiError = error as APIError;
-
-      // Se há erros de validação específicos, mostrar detalhes
-      if (apiError?.errors && Array.isArray(apiError.errors)) {
-        const validationErrors = apiError.errors
-          .map((err: ValidationError) => {
-            const constraintMessages = err.constraints
-              ? Object.values(err.constraints).join(", ")
-              : "";
-            return `${err.property}: ${
-              constraintMessages || err.message || "Erro de validação"
-            }`;
-          })
-          .join("\n");
-        toast.error(`Erro de validação:\n${validationErrors}`);
-      } else {
-        toast.error(apiError?.message || "Erro ao criar franqueado");
-      }
+    onError: (error: any) => {
+      toast.error(error?.message || "Erro ao criar franqueado");
     },
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: FranqueadoFormData }) =>
+    mutationFn: ({ id, data }: { id: string; data: any }) =>
       updateFranqueado(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["franqueados"] });
       toast.success("Franqueado atualizado com sucesso!");
       handleCloseModal();
     },
-    onError: (error: unknown) => {
-      toast.error((error as Error)?.message || "Erro ao atualizar franqueado");
+    onError: (error: any) => {
+      toast.error(error?.message || "Erro ao atualizar franqueado");
     },
   });
 
@@ -681,8 +445,8 @@ export default function FranqueadosPageSimplificada() {
       queryClient.invalidateQueries({ queryKey: ["franqueados"] });
       toast.success("Franqueado excluído com sucesso!");
     },
-    onError: (error: unknown) => {
-      toast.error((error as Error)?.message || "Erro ao excluir franqueado");
+    onError: (error: any) => {
+      toast.error(error?.message || "Erro ao excluir franqueado");
     },
   });
 

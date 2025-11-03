@@ -37,6 +37,7 @@ import {
   TrendingUp,
   Filter,
   Search,
+  ArrowLeft,
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -277,6 +278,16 @@ export default function SistemaGraduacaoPage() {
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <button
+              type="button"
+              onClick={() => router.back()}
+              className="px-3 py-2 text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 rounded-lg font-medium"
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </button>
+          </div>
+
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-3">
               <Trophy className="h-8 w-8 text-yellow-600" />

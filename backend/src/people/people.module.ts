@@ -14,6 +14,7 @@ import { ResponsaveisService } from './services/responsaveis.service';
 import { UsuariosModule } from '../usuarios/usuarios.module';
 import { EnderecosModule } from '../enderecos/enderecos.module';
 import { Franqueado } from './entities/franqueado.entity';
+import { Franqueado as FranqueadoSimplified } from './entities/franqueado-simplified.entity';
 import { Unidade } from './entities/unidade.entity';
 import { Person } from './entities/person.entity';
 import { Aluno } from './entities/aluno.entity';
@@ -23,6 +24,8 @@ import { AlunoFaixa } from '../graduacao/entities/aluno-faixa.entity';
 import { AlunoFaixaGrau } from '../graduacao/entities/aluno-faixa-grau.entity';
 import { ProfessorUnidade } from './entities/professor-unidade.entity';
 import { RecepcionistaUnidade } from './entities/recepcionista-unidade.entity';
+import { AlunoUnidade } from './entities/aluno-unidade.entity';
+import { AlunoUnidadeService } from './services/aluno-unidade.service';
 
 @Module({
   imports: [
@@ -32,12 +35,14 @@ import { RecepcionistaUnidade } from './entities/recepcionista-unidade.entity';
       Aluno,
       Responsavel,
       Franqueado,
+      FranqueadoSimplified,
       Unidade,
       FaixaDef,
       AlunoFaixa,
       AlunoFaixaGrau,
       ProfessorUnidade,
       RecepcionistaUnidade,
+      AlunoUnidade,
     ]),
     EnderecosModule,
   ],
@@ -55,6 +60,7 @@ import { RecepcionistaUnidade } from './entities/recepcionista-unidade.entity';
     UnidadesService,
     RecepcionistaUnidadesService,
     ResponsaveisService,
+    AlunoUnidadeService,
   ],
   exports: [
     AlunosService,

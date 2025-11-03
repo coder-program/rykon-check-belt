@@ -28,6 +28,9 @@ import {
   Plus,
   ArrowRight,
   GraduationCap,
+  Search,
+  Filter,
+  ArrowLeft,
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -65,6 +68,14 @@ export default function GestaoUnidadesPage() {
   const { user } = useAuth();
   const router = useRouter();
   const queryClient = useQueryClient();
+
+  // Estados dos filtros
+  const [filtros, setFiltros] = useState({
+    busca: "",
+    status: "",
+    franqueado: "",
+    professores: "", // "com", "sem", ""
+  });
 
   const [selectedUnidade, setSelectedUnidade] = useState<Unidade | null>(null);
   const [professoresDisponiveis, setProfessoresDisponiveis] = useState<
@@ -183,6 +194,20 @@ export default function GestaoUnidadesPage() {
   const franqueados = franqueadosQuery.data?.items || [];
   const professores = professoresQuery.data?.items || [];
 
+  // Funções auxiliares para filtros
+  const handleFiltroChange = (key: string, value: string) => {
+    setFiltros((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const limparFiltros = () => {
+    setFiltros({
+      busca: "",
+      status: "",
+      franqueado: "",
+      professores: "",
+    });
+  };
+
   // Mapear dados para exibição
   const unidadesComDados = unidades.map((unidade: Unidade) => {
     const franqueado = franqueados.find(
@@ -197,6 +222,44 @@ export default function GestaoUnidadesPage() {
       franqueado: franqueado || null,
       professores: professoresDaUnidade,
     };
+  });
+
+  // Aplicar filtros
+  const unidadesFiltradas = unidadesComDados.filter((unidade) => {
+    // Filtro de busca por nome
+    if (
+      filtros.busca &&
+      !unidade.nome.toLowerCase().includes(filtros.busca.toLowerCase())
+    ) {
+      return false;
+    }
+
+    // Filtro por status
+    if (filtros.status && unidade.status !== filtros.status) {
+      return false;
+    }
+
+    // Filtro por franqueado
+    if (filtros.franqueado) {
+      if (filtros.franqueado === "com" && !unidade.franqueado_id) return false;
+      if (filtros.franqueado === "sem" && unidade.franqueado_id) return false;
+      if (
+        filtros.franqueado !== "com" &&
+        filtros.franqueado !== "sem" &&
+        unidade.franqueado_id !== filtros.franqueado
+      )
+        return false;
+    }
+
+    // Filtro por professores
+    if (filtros.professores) {
+      if (filtros.professores === "com" && unidade.professores.length === 0)
+        return false;
+      if (filtros.professores === "sem" && unidade.professores.length > 0)
+        return false;
+    }
+
+    return true;
   });
 
   // Estatísticas
@@ -221,6 +284,13 @@ export default function GestaoUnidadesPage() {
           <div className="flex items-center justify-between">
             <div>
               <div className="flex items-center gap-3 mb-2">
+                <button
+                  onClick={() => router.back()}
+                  className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
+                >
+                  <ArrowLeft className="h-5 w-5" />
+                  Voltar
+                </button>
                 <Building2 className="h-8 w-8 text-blue-600" />
                 <h1 className="text-3xl font-bold text-gray-900">
                   Gestão de Unidades
@@ -329,6 +399,107 @@ export default function GestaoUnidadesPage() {
           </Card>
         </div>
 
+        {/* Filtros */}
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Filter className="h-5 w-5" />
+              Filtros
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Buscar por nome
+                </label>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                  <input
+                    type="text"
+                    value={filtros.busca}
+                    onChange={(e) =>
+                      handleFiltroChange("busca", e.target.value)
+                    }
+                    placeholder="Nome da unidade..."
+                    className="w-full pl-10 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Status
+                </label>
+                <select
+                  value={filtros.status}
+                  onChange={(e) => handleFiltroChange("status", e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                >
+                  <option value="">Todos os status</option>
+                  <option value="ATIVA">Ativa</option>
+                  <option value="INATIVA">Inativa</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Franqueado
+                </label>
+                <select
+                  value={filtros.franqueado}
+                  onChange={(e) =>
+                    handleFiltroChange("franqueado", e.target.value)
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                >
+                  <option value="">Todas</option>
+                  <option value="com">Com franqueado</option>
+                  <option value="sem">Sem franqueado</option>
+                  {franqueados.map((franqueado: Franqueado) => (
+                    <option key={franqueado.id} value={franqueado.id}>
+                      {franqueado.nome}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Professores
+                </label>
+                <select
+                  value={filtros.professores}
+                  onChange={(e) =>
+                    handleFiltroChange("professores", e.target.value)
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                >
+                  <option value="">Todas</option>
+                  <option value="com">Com professores</option>
+                  <option value="sem">Sem professores</option>
+                </select>
+              </div>
+
+              <div className="flex items-end">
+                <button
+                  onClick={limparFiltros}
+                  className="w-full px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors text-sm"
+                >
+                  Limpar Filtros
+                </button>
+              </div>
+            </div>
+
+            <div className="mt-4 flex items-center justify-between">
+              <p className="text-sm text-gray-600">
+                Mostrando {unidadesFiltradas.length} de{" "}
+                {unidadesComDados.length} unidades
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Lista de Unidades */}
         <Card>
           <CardHeader>
@@ -343,78 +514,90 @@ export default function GestaoUnidadesPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {unidadesComDados.map(
-                (
-                  unidade: Unidade & {
-                    franqueado: Franqueado | null;
-                    professores: Professor[];
-                  }
-                ) => {
-                  return (
-                    <div
-                      key={unidade.id}
-                      className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-                    >
-                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                          <Building2 className="h-6 w-6 text-blue-600" />
-                        </div>
-                        <div>
-                          <h3 className="font-semibold flex items-center gap-2">
-                            {unidade.nome}
-                            {unidade.status === "ATIVA" ? (
-                              <CheckCircle className="h-4 w-4 text-green-600" />
-                            ) : (
-                              <XCircle className="h-4 w-4 text-yellow-600" />
-                            )}
-                          </h3>
-                          <p className="text-sm text-gray-600">
-                            Franqueado:{" "}
-                            {unidade.franqueado?.nome || "Sem franqueado"}
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            {unidade.professores.length} professor(es)
-                            vinculado(s)
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-3">
-                        {unidade.professores.length > 0 && (
-                          <div className="text-right max-w-xs">
-                            <div className="text-sm font-medium">
-                              {unidade.professores
-                                .slice(0, 2)
-                                .map((p: Professor, i: number) => (
-                                  <span key={p.id} className="text-gray-600">
-                                    {p.nome_completo}
-                                    {i <
-                                    Math.min(unidade.professores.length - 1, 1)
-                                      ? ", "
-                                      : ""}
-                                  </span>
-                                ))}
-                              {unidade.professores.length > 2 && (
-                                <span className="text-gray-500">
-                                  {" "}
-                                  e mais {unidade.professores.length - 2}
-                                </span>
-                              )}
-                            </div>
+              {unidadesFiltradas.length === 0 ? (
+                <div className="text-center py-8">
+                  <Building2 className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-600">
+                    Nenhuma unidade encontrada com os filtros aplicados
+                  </p>
+                </div>
+              ) : (
+                unidadesFiltradas.map(
+                  (
+                    unidade: Unidade & {
+                      franqueado: Franqueado | null;
+                      professores: Professor[];
+                    }
+                  ) => {
+                    return (
+                      <div
+                        key={unidade.id}
+                        className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                      >
+                        <div className="flex items-center gap-4">
+                          <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                            <Building2 className="h-6 w-6 text-blue-600" />
                           </div>
-                        )}
+                          <div>
+                            <h3 className="font-semibold flex items-center gap-2">
+                              {unidade.nome}
+                              {unidade.status === "ATIVA" ? (
+                                <CheckCircle className="h-4 w-4 text-green-600" />
+                              ) : (
+                                <XCircle className="h-4 w-4 text-yellow-600" />
+                              )}
+                            </h3>
+                            <p className="text-sm text-gray-600">
+                              Franqueado:{" "}
+                              {unidade.franqueado?.nome || "Sem franqueado"}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {unidade.professores.length} professor(es)
+                              vinculado(s)
+                            </p>
+                          </div>
+                        </div>
 
-                        <button
-                          onClick={() => abrirModalProfessores(unidade)}
-                          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm transition-colors"
-                        >
-                          <Settings className="h-4 w-4" />
-                          Gerenciar Professores
-                        </button>
+                        <div className="flex items-center gap-3">
+                          {unidade.professores.length > 0 && (
+                            <div className="text-right max-w-xs">
+                              <div className="text-sm font-medium">
+                                {unidade.professores
+                                  .slice(0, 2)
+                                  .map((p: Professor, i: number) => (
+                                    <span key={p.id} className="text-gray-600">
+                                      {p.nome_completo}
+                                      {i <
+                                      Math.min(
+                                        unidade.professores.length - 1,
+                                        1
+                                      )
+                                        ? ", "
+                                        : ""}
+                                    </span>
+                                  ))}
+                                {unidade.professores.length > 2 && (
+                                  <span className="text-gray-500">
+                                    {" "}
+                                    e mais {unidade.professores.length - 2}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          )}
+
+                          <button
+                            onClick={() => abrirModalProfessores(unidade)}
+                            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm transition-colors"
+                          >
+                            <Settings className="h-4 w-4" />
+                            Gerenciar Professores
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                  );
-                }
+                    );
+                  }
+                )
               )}
             </div>
           </CardContent>

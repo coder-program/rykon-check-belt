@@ -1,10 +1,20 @@
 "use client";
 
 import React, { useState } from "react";
-import { useInfiniteQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { listProfessores } from "@/lib/peopleApi";
-import { Search, Plus, Edit, BookOpen, Users, Award } from "lucide-react";
+import {
+  Search,
+  Plus,
+  Edit,
+  BookOpen,
+  Users,
+  Award,
+  ArrowLeft,
+} from "lucide-react";
+import { useRouter } from "next/navigation";
+import { http } from "@/lib/api";
 import { PersonForm } from "@/components/people/PersonForm";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -33,10 +43,35 @@ interface PageData {
   page: number;
 }
 
+// Funções auxiliares
+async function listUnidades(params: Record<string, string>) {
+  const filteredParams = Object.fromEntries(
+    Object.entries(params).filter(
+      ([, value]) => value !== undefined && value !== null && value !== ""
+    )
+  ) as Record<string, string>;
+  const qs = new URLSearchParams(filteredParams).toString();
+  return http(`/unidades?${qs}`, { auth: true });
+}
+
+async function getProfessoresStats(params: Record<string, string>) {
+  const filteredParams = Object.fromEntries(
+    Object.entries(params).filter(
+      ([, value]) => value !== undefined && value !== null && value !== ""
+    )
+  ) as Record<string, string>;
+  const qs = new URLSearchParams(filteredParams).toString();
+  return http(`/professores/stats/counts?${qs}`, { auth: true });
+}
+
 export default function PageProfessores() {
+  const router = useRouter();
   const [search, setSearch] = useState("");
   const [debounced, setDebounced] = useState("");
-  const [unidade] = useState("");
+  const [unidadeId, setUnidadeId] = useState("");
+  const [status, setStatus] = useState("todos");
+  const [faixa, setFaixa] = useState("todos");
+  const [especialidade, setEspecialidade] = useState("todos");
   const [showForm, setShowForm] = useState(false);
   const [editingPerson, setEditingPerson] = useState<unknown | null>(null);
 
@@ -49,8 +84,21 @@ export default function PageProfessores() {
     return () => clearTimeout(id);
   }, [search]);
 
+  // Query das unidades
+  const unidadesQuery = useQuery({
+    queryKey: ["unidades"],
+    queryFn: () => listUnidades({}),
+  });
+
   const query = useInfiniteQuery({
-    queryKey: ["professores", debounced, unidade],
+    queryKey: [
+      "professores",
+      debounced,
+      unidadeId,
+      status,
+      faixa,
+      especialidade,
+    ],
     initialPageParam: 1,
     getNextPageParam: (lastPage: PageData) =>
       lastPage.hasNextPage ? lastPage.page + 1 : undefined,
@@ -61,9 +109,18 @@ export default function PageProfessores() {
         search: debounced,
       };
 
-      // Adicionar filtro de unidade se fornecido
-      if (unidade) {
-        params.unidade_id = unidade;
+      // Adicionar filtros se fornecidos
+      if (unidadeId) {
+        params.unidade_id = unidadeId;
+      }
+      if (status !== "todos") {
+        params.status = status;
+      }
+      if (faixa !== "todos") {
+        params.faixa_ministrante = faixa;
+      }
+      if (especialidade !== "todos") {
+        params.especialidades = especialidade;
       }
 
       return listProfessores(params);
@@ -134,6 +191,13 @@ export default function PageProfessores() {
           {/* Header */}
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div className="flex items-center gap-3">
+              <button
+                onClick={() => router.back()}
+                className="p-2 bg-gray-200 hover:bg-gray-300 rounded-lg transition-colors"
+                title="Voltar"
+              >
+                <ArrowLeft className="h-5 w-5 text-gray-600" />
+              </button>
               <div className="p-2 bg-red-600 rounded-lg">
                 <BookOpen className="h-6 w-6 text-white" />
               </div>
@@ -220,17 +284,98 @@ export default function PageProfessores() {
           {/* Filtros */}
           <Card>
             <CardContent className="p-6">
-              <div className="flex flex-col sm:flex-row gap-4 items-center">
-                <div className="relative flex-1 min-w-[200px] max-w-md">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <input
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                    placeholder="Buscar professor por nome ou CPF..."
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                  />
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
+                <div className="relative flex-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Buscar por nome, CPF ou email
+                  </label>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <input
+                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                      placeholder="Digite para buscar..."
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                    />
+                  </div>
                 </div>
-                {/* Filtro de unidades será implementado quando necessário */}
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Status
+                  </label>
+                  <select
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                    value={status}
+                    onChange={(e) => setStatus(e.target.value)}
+                  >
+                    <option value="todos">Todos os Status</option>
+                    <option value="ATIVO">Ativos</option>
+                    <option value="INATIVO">Inativos</option>
+                    <option value="SUSPENSO">Suspensos</option>
+                    <option value="AFASTADO">Afastados</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Unidade
+                  </label>
+                  <select
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                    value={unidadeId}
+                    onChange={(e) => setUnidadeId(e.target.value)}
+                  >
+                    <option value="">Todas as Unidades</option>
+                    {unidadesQuery.data?.items?.map(
+                      (unidade: { id: string; nome: string }) => (
+                        <option key={unidade.id} value={unidade.id}>
+                          {unidade.nome}
+                        </option>
+                      )
+                    )}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Faixa
+                  </label>
+                  <select
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                    value={faixa}
+                    onChange={(e) => setFaixa(e.target.value)}
+                  >
+                    <option value="todos">Todas as Faixas</option>
+                    <option value="BRANCA">Branca</option>
+                    <option value="AZUL">Azul</option>
+                    <option value="ROXA">Roxa</option>
+                    <option value="MARROM">Marrom</option>
+                    <option value="PRETA">Preta</option>
+                    <option value="CORAL">Coral</option>
+                    <option value="VERMELHA">Vermelha</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Especialidade
+                  </label>
+                  <select
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                    value={especialidade}
+                    onChange={(e) => setEspecialidade(e.target.value)}
+                  >
+                    <option value="todos">Todas as Especialidades</option>
+                    <option value="Jiu-Jitsu">Jiu-Jitsu</option>
+                    <option value="MMA">MMA</option>
+                    <option value="Muay Thai">Muay Thai</option>
+                    <option value="Boxe">Boxe</option>
+                    <option value="Wrestling">Wrestling</option>
+                    <option value="Judô">Judô</option>
+                    <option value="Kids">Kids</option>
+                  </select>
+                </div>
               </div>
             </CardContent>
           </Card>

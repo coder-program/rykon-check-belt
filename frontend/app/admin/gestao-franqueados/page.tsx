@@ -28,6 +28,7 @@ import {
   Plus,
   ArrowRight,
   UserCog,
+  ArrowLeft,
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -74,6 +75,71 @@ export default function GestaoFranqueadosPage() {
     useState(false);
   const [selectedUsuarioId, setSelectedUsuarioId] = useState<string>("");
 
+  // Estados dos filtros
+  const [filtros, setFiltros] = useState({
+    busca: "",
+    situacao: "",
+    ativo: "",
+    temUnidades: "",
+    temUsuario: "",
+  });
+
+  // Hooks sempre chamados (antes de qualquer return condicional)
+  const franqueadosQuery = useQuery({
+    queryKey: ["franqueados-gestao"],
+    queryFn: () => listFranqueados({ pageSize: 100 }),
+  });
+
+  const unidadesQuery = useQuery({
+    queryKey: ["unidades-todas"],
+    queryFn: () => listUnidades({ pageSize: 500 }),
+  });
+
+  // Query para buscar usuários com perfil FRANQUEADO
+  const usuariosFranqueadosQuery = useQuery({
+    queryKey: ["usuarios-franqueados"],
+    queryFn: () => getUsuariosByPerfil("FRANQUEADO"),
+  });
+
+  const associarUnidadesMutation = useMutation({
+    mutationFn: ({
+      franqueadoId,
+      unidadeIds,
+    }: {
+      franqueadoId: string;
+      unidadeIds: string[];
+    }) => updateFranqueado(franqueadoId, { unidades_gerencia: unidadeIds }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["franqueados-gestao"] });
+      queryClient.invalidateQueries({ queryKey: ["unidades-todas"] });
+      toast.success("Unidades associadas com sucesso!");
+      setShowAssociacaoModal(false);
+    },
+    onError: (error: Error) => {
+      console.error("Erro ao associar unidades:", error);
+      toast.error("Erro ao associar unidades");
+    },
+  });
+
+  const vincularUsuarioMutation = useMutation({
+    mutationFn: ({
+      franqueadoId,
+      usuarioId,
+    }: {
+      franqueadoId: string;
+      usuarioId: string;
+    }) => updateFranqueado(franqueadoId, { usuario_id: usuarioId }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["franqueados-gestao"] });
+      toast.success("Usuário vinculado com sucesso!");
+      setShowVincularUsuarioModal(false);
+    },
+    onError: (error: Error) => {
+      console.error("Erro ao vincular usuário:", error);
+      toast.error("Erro ao vincular usuário");
+    },
+  });
+
   // Verificar se é master
   const hasPerfil = (p: string) =>
     (user?.perfis || [])
@@ -96,74 +162,20 @@ export default function GestaoFranqueadosPage() {
     );
   }
 
-  const franqueadosQuery = useQuery({
-    queryKey: ["franqueados-gestao"],
-    queryFn: () => listFranqueados({ pageSize: 100 }),
-  });
+  // Funções de filtro
+  const handleFiltroChange = (campo: string, valor: string) => {
+    setFiltros((prev) => ({ ...prev, [campo]: valor }));
+  };
 
-  const unidadesQuery = useQuery({
-    queryKey: ["unidades-todas"],
-    queryFn: () => listUnidades({ pageSize: 500 }),
-  });
-
-  // Query para buscar usuários com perfil FRANQUEADO
-  const usuariosFranqueadosQuery = useQuery({
-    queryKey: ["usuarios-franqueados"],
-    queryFn: () => getUsuariosByPerfil("FRANQUEADO"),
-  });
-
-  const associarUnidadesMutation = useMutation({
-    mutationFn: ({
-      franqueadoId,
-      unidadeIds,
-      isAssociacao,
-      isDesassociacao,
-    }: {
-      franqueadoId: string;
-      unidadeIds: string[];
-      isAssociacao?: boolean;
-      isDesassociacao?: boolean;
-    }) => updateFranqueado(franqueadoId, { unidades_gerencia: unidadeIds }),
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["franqueados-gestao"] });
-      queryClient.invalidateQueries({ queryKey: ["unidades-todas"] });
-
-      // Mostrar mensagem apropriada baseada na ação
-      if (variables.isAssociacao) {
-        toast.success("Unidades associadas com sucesso!");
-      } else if (variables.isDesassociacao) {
-        toast.success("Unidades desassociadas com sucesso!");
-      } else {
-        toast.success("Associações atualizadas com sucesso!");
-      }
-
-      setShowAssociacaoModal(false);
-      setUnidadesVinculadas([]);
-    },
-    onError: (error: any) => {
-      toast.error(`Erro ao atualizar unidades: ${error.message}`);
-    },
-  });
-
-  // Mutation para vincular usuário ao franqueado
-  const vincularUsuarioMutation = useMutation({
-    mutationFn: ({
-      franqueadoId,
-      usuarioId,
-    }: {
-      franqueadoId: string;
-      usuarioId: string | null;
-    }) => updateFranqueado(franqueadoId, { usuario_id: usuarioId }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["franqueados-gestao"] });
-      toast.success("Usuário vinculado com sucesso!");
-      setShowVincularUsuarioModal(false);
-      setSelectedUsuarioId("");
-    },
-    onError: (error: any) => {
-      toast.error(`Erro ao vincular usuário: ${error.message}`);
-    },
-  });
+  const limparFiltros = () => {
+    setFiltros({
+      busca: "",
+      situacao: "",
+      ativo: "",
+      temUnidades: "",
+      temUsuario: "",
+    });
+  };
 
   const abrirModalVincularUsuario = (franqueado: Franqueado) => {
     setSelectedFranqueado(franqueado);
@@ -220,6 +232,49 @@ export default function GestaoFranqueadosPage() {
 
   const franqueados = franqueadosQuery.data?.items || [];
   const todasUnidades = unidadesQuery.data?.items || [];
+  const usuarios = usuariosFranqueadosQuery.data || [];
+
+  // Aplicar filtros
+  const franqueadosFiltrados = franqueados.filter((franqueado) => {
+    // Filtro de busca (nome, email, CNPJ)
+    if (filtros.busca) {
+      const busca = filtros.busca.toLowerCase();
+      const matches =
+        franqueado.nome.toLowerCase().includes(busca) ||
+        franqueado.email.toLowerCase().includes(busca) ||
+        franqueado.cnpj.includes(filtros.busca);
+      if (!matches) return false;
+    }
+
+    // Filtro de situação
+    if (filtros.situacao && franqueado.situacao !== filtros.situacao) {
+      return false;
+    }
+
+    // Filtro de ativo
+    if (filtros.ativo) {
+      const isAtivo = filtros.ativo === "true";
+      if (franqueado.ativo !== isAtivo) return false;
+    }
+
+    // Filtro de tem unidades
+    if (filtros.temUnidades) {
+      const temUnidades = todasUnidades.some(
+        (u: Unidade) => u.franqueado_id === franqueado.id
+      );
+      const filtroTemUnidades = filtros.temUnidades === "true";
+      if (temUnidades !== filtroTemUnidades) return false;
+    }
+
+    // Filtro de tem usuário vinculado
+    if (filtros.temUsuario) {
+      const temUsuario = !!franqueado.usuario_id;
+      const filtroTemUsuario = filtros.temUsuario === "true";
+      if (temUsuario !== filtroTemUsuario) return false;
+    }
+
+    return true;
+  });
 
   // Estatísticas
   const stats = {
@@ -246,6 +301,13 @@ export default function GestaoFranqueadosPage() {
           <div className="flex items-center justify-between">
             <div>
               <div className="flex items-center gap-3 mb-2">
+                <button
+                  onClick={() => router.push("/dashboard")}
+                  className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
+                  title="Voltar para o Dashboard"
+                >
+                  <ArrowLeft className="h-6 w-6" />
+                </button>
                 <Building2 className="h-8 w-8 text-blue-600" />
                 <h1 className="text-3xl font-bold text-gray-900">
                   Gestão de Franqueados
@@ -342,6 +404,104 @@ export default function GestaoFranqueadosPage() {
           </Card>
         </div>
 
+        {/* Filtros */}
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Settings className="h-5 w-5" />
+              Filtros
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+              {/* Busca */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Buscar
+                </label>
+                <input
+                  type="text"
+                  placeholder="Nome, email ou CNPJ..."
+                  value={filtros.busca}
+                  onChange={(e) => handleFiltroChange("busca", e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                />
+              </div>
+
+              {/* Situação */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Situação
+                </label>
+                <select
+                  value={filtros.situacao}
+                  onChange={(e) =>
+                    handleFiltroChange("situacao", e.target.value)
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                >
+                  <option value="">Todas</option>
+                  <option value="ATIVA">Ativa</option>
+                  <option value="INATIVA">Inativa</option>
+                  <option value="EM_HOMOLOGACAO">Em Homologação</option>
+                </select>
+              </div>
+
+              {/* Tem Unidades */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Unidades
+                </label>
+                <select
+                  value={filtros.temUnidades}
+                  onChange={(e) =>
+                    handleFiltroChange("temUnidades", e.target.value)
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                >
+                  <option value="">Todos</option>
+                  <option value="true">Com unidades</option>
+                  <option value="false">Sem unidades</option>
+                </select>
+              </div>
+
+              {/* Tem Usuário */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Usuário
+                </label>
+                <select
+                  value={filtros.temUsuario}
+                  onChange={(e) =>
+                    handleFiltroChange("temUsuario", e.target.value)
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                >
+                  <option value="">Todos</option>
+                  <option value="true">Com usuário</option>
+                  <option value="false">Sem usuário</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Botão Limpar Filtros */}
+            <div className="mt-4 flex justify-end">
+              <button
+                onClick={limparFiltros}
+                className="px-4 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors text-sm font-medium"
+              >
+                Limpar Filtros
+              </button>
+            </div>
+
+            {/* Contador de resultados */}
+            <div className="mt-2 text-sm text-gray-500">
+              Mostrando {franqueadosFiltrados.length} de {franqueados.length}{" "}
+              franqueados
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Lista de Franqueados */}
         <Card>
           <CardHeader>
@@ -350,13 +510,13 @@ export default function GestaoFranqueadosPage() {
               Franqueados e Suas Unidades
             </CardTitle>
             <CardDescription>
-              Clique em "Gerenciar Unidades" para associar/desassociar unidades
-              de cada franqueado
+              Clique em &quot;Gerenciar Unidades&quot; para associar/desassociar
+              unidades de cada franqueado
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {franqueados.map((franqueado: Franqueado) => {
+              {franqueadosFiltrados.map((franqueado: Franqueado) => {
                 // Buscar unidades vinculadas pelo franqueado_id
                 const unidadesFranqueado = todasUnidades.filter(
                   (u: Unidade) => u.franqueado_id === franqueado.id
@@ -394,18 +554,20 @@ export default function GestaoFranqueadosPage() {
                 return (
                   <div
                     key={franqueado.id}
-                    className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                    className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors overflow-hidden"
                   >
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                    <div className="flex items-center gap-4 min-w-0 flex-1">
+                      <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
                         <Building2 className="h-6 w-6 text-blue-600" />
                       </div>
-                      <div>
+                      <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 mb-1">
-                          <h3 className="font-semibold">{franqueado.nome}</h3>
+                          <h3 className="font-semibold truncate max-w-md">
+                            {franqueado.nome}
+                          </h3>
                           {getStatusBadge()}
                         </div>
-                        <p className="text-sm text-gray-600">
+                        <p className="text-sm text-gray-600 truncate max-w-md">
                           {franqueado.email}
                         </p>
                         <p className="text-xs text-gray-500">
@@ -414,10 +576,10 @@ export default function GestaoFranqueadosPage() {
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 flex-shrink-0">
                       {unidadesFranqueado.length > 0 && (
-                        <div className="text-right">
-                          <div className="text-sm font-medium">
+                        <div className="text-right max-w-md">
+                          <div className="text-sm font-medium truncate">
                             {unidadesFranqueado.map((u, i) => (
                               <span key={u.id} className="text-gray-600">
                                 {u.nome}
@@ -430,7 +592,7 @@ export default function GestaoFranqueadosPage() {
 
                       <button
                         onClick={() => abrirModalVincularUsuario(franqueado)}
-                        className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-3 py-2 rounded-lg text-sm transition-colors"
+                        className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-3 py-2 rounded-lg text-sm transition-colors whitespace-nowrap"
                         title="Vincular usuário a este franqueado"
                       >
                         <UserCog className="h-4 w-4" />
@@ -439,7 +601,7 @@ export default function GestaoFranqueadosPage() {
 
                       <button
                         onClick={() => abrirModalAssociacao(franqueado)}
-                        className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm transition-colors"
+                        className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm transition-colors whitespace-nowrap"
                       >
                         <Settings className="h-4 w-4" />
                         Gerenciar Unidades

@@ -7,7 +7,7 @@ import {
 } from '../dto/franqueado-simplified.dto';
 
 @Injectable()
-export class FranqueadosService {
+export class FranqueadosServiceSimplified {
   constructor(private readonly dataSource: DataSource) {}
 
   async list(params: {

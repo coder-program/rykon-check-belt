@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { useAuth } from "@/app/auth/AuthContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
 import {
   listarParametros,
   listarAlunosAptos,
@@ -30,12 +31,14 @@ import {
   Settings,
   Award,
   Calendar,
+  ArrowLeft,
 } from "lucide-react";
 import toast from "react-hot-toast";
 
 export default function AprovacaoGraduacaoPage() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const router = useRouter();
 
   const [parametroSelecionado, setParametroSelecionado] = useState<string>("");
   const [filtroStatus, setFiltroStatus] = useState<
@@ -296,6 +299,16 @@ export default function AprovacaoGraduacaoPage() {
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
+          <div className="flex items-center justify-between mb-2">
+            <button
+              type="button"
+              onClick={() => router.back()}
+              className="px-3 py-2 text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 rounded-lg font-medium"
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </button>
+          </div>
+
           <div className="flex items-center gap-3 mb-2">
             <Trophy className="h-8 w-8 text-yellow-600" />
             <h1 className="text-3xl font-bold text-gray-900">

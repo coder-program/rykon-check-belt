@@ -19,6 +19,8 @@ import {
   OrigemGrau,
 } from '../../graduacao/entities/aluno-faixa-grau.entity';
 import { UsuariosService } from '../../usuarios/services/usuarios.service';
+import { AlunoUnidadeService } from './aluno-unidade.service';
+import { AlunoUnidade } from '../entities/aluno-unidade.entity';
 
 interface ListAlunosParams {
   page?: number;
@@ -40,8 +42,11 @@ export class AlunosService {
     private readonly alunoFaixaRepository: Repository<AlunoFaixa>,
     @InjectRepository(AlunoFaixaGrau)
     private readonly alunoFaixaGrauRepository: Repository<AlunoFaixaGrau>,
+    @InjectRepository(AlunoUnidade)
+    private readonly alunoUnidadeRepository: Repository<AlunoUnidade>,
     private dataSource: DataSource,
     private readonly usuariosService: UsuariosService,
+    private readonly alunoUnidadeService: AlunoUnidadeService,
   ) {}
 
   async list(params: ListAlunosParams, user?: any) {
@@ -51,6 +56,13 @@ export class AlunosService {
     const query = this.alunoRepository.createQueryBuilder('aluno');
 
     query.leftJoinAndSelect('aluno.unidade', 'unidade');
+    query.leftJoinAndSelect(
+      'aluno.alunoUnidades',
+      'alunoUnidades',
+      'alunoUnidades.ativo = :ativo',
+      { ativo: true },
+    );
+    query.leftJoinAndSelect('alunoUnidades.unidade', 'unidadeMultipla');
     query.leftJoinAndSelect('aluno.faixas', 'faixas', 'faixas.ativa = :ativa', {
       ativa: true,
     });
@@ -178,7 +190,7 @@ export class AlunosService {
   async findById(id: string, user?: any): Promise<Aluno> {
     const aluno = await this.alunoRepository.findOne({
       where: { id },
-      relations: ['unidade'], // Removendo relações problemáticas temporariamente
+      relations: ['unidade', 'alunoUnidades', 'alunoUnidades.unidade'],
     });
 
     if (!aluno) {
@@ -257,6 +269,16 @@ export class AlunosService {
           : undefined,
       };
 
+      // Manter compatibilidade com sistema antigo (unidade_id único)
+      if (dto.unidade_id) {
+        alunoData.unidade_id = dto.unidade_id;
+      } else if (dto.unidades && dto.unidades.length > 0) {
+        // Se usar o novo sistema, usar a primeira unidade como principal no campo legado
+        const unidadePrincipal =
+          dto.unidades.find((u) => u.is_principal) || dto.unidades[0];
+        alunoData.unidade_id = unidadePrincipal.unidade_id;
+      }
+
       const aluno = queryRunner.manager.create(Aluno, alunoData);
       savedAluno = await queryRunner.manager.save(Aluno, aluno);
 
@@ -334,6 +356,44 @@ export class AlunosService {
 
           await queryRunner.manager.save(AlunoFaixaGrau, grau);
         }
+      }
+
+      // 7. Vincular aluno às unidades (novo sistema)
+      if (dto.unidades && dto.unidades.length > 0) {
+        const vinculos = dto.unidades.map((unidadeDto) => {
+          const vinculo = queryRunner.manager.create(AlunoUnidade, {
+            aluno_id: savedAluno.id,
+            unidade_id: unidadeDto.unidade_id,
+            data_matricula: unidadeDto.data_matricula
+              ? new Date(unidadeDto.data_matricula)
+              : new Date(),
+            is_principal: unidadeDto.is_principal || false,
+            observacoes: unidadeDto.observacoes,
+            ativo: true,
+          });
+          return vinculo;
+        });
+
+        // Garantir que pelo menos uma unidade seja principal
+        const temPrincipal = vinculos.some((v) => v.is_principal);
+        if (!temPrincipal && vinculos.length > 0) {
+          vinculos[0].is_principal = true;
+        }
+
+        await queryRunner.manager.save(AlunoUnidade, vinculos);
+      } else if (dto.unidade_id) {
+        // Sistema legado: criar um único vínculo
+        const vinculoLegado = queryRunner.manager.create(AlunoUnidade, {
+          aluno_id: savedAluno.id,
+          unidade_id: dto.unidade_id,
+          data_matricula: dto.data_matricula
+            ? new Date(dto.data_matricula)
+            : new Date(),
+          is_principal: true,
+          ativo: true,
+        });
+
+        await queryRunner.manager.save(AlunoUnidade, vinculoLegado);
       }
 
       await queryRunner.commitTransaction();

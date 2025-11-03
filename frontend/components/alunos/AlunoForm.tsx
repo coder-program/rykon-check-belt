@@ -11,6 +11,7 @@ import {
   Shield,
   Calendar,
 } from "lucide-react";
+import MultiUnidadeSelector from "./MultiUnidadeSelector";
 
 type Genero = "MASCULINO" | "FEMININO" | "OUTRO";
 type StatusAluno = "ATIVO" | "INATIVO" | "SUSPENSO" | "CANCELADO";
@@ -33,6 +34,13 @@ type FaixaEnum =
   | "MARROM"
   | "PRETA";
 
+interface UnidadeSelecionada {
+  unidade_id: string;
+  data_matricula: string;
+  is_principal: boolean;
+  observacoes?: string;
+}
+
 interface AlunoFormData {
   // Dados Pessoais
   nome_completo: string;
@@ -44,8 +52,10 @@ interface AlunoFormData {
   telefone_emergencia?: string;
   nome_contato_emergencia?: string;
 
-  // Matrícula
-  unidade_id: string;
+  // Matrícula - suporte a múltiplas unidades
+  unidades?: UnidadeSelecionada[];
+  // Manter compatibilidade com sistema antigo
+  unidade_id?: string;
   data_matricula?: string;
   numero_matricula?: string;
   status?: StatusAluno;
@@ -88,6 +98,7 @@ interface AlunoFormProps {
   isEditing: boolean;
   isLoading: boolean;
   unidades: Unidade[];
+  enableMultiUnit?: boolean; // Nova propriedade para ativar suporte a múltiplas unidades
 }
 
 const faixas: { value: FaixaEnum; label: string; color: string }[] = [
@@ -118,6 +129,7 @@ export default function AlunoForm({
   isEditing,
   isLoading,
   unidades,
+  enableMultiUnit = false,
 }: AlunoFormProps) {
   const [activeTab, setActiveTab] = React.useState(0);
   const [isMenor, setIsMenor] = React.useState(false);
@@ -390,29 +402,45 @@ export default function AlunoForm({
                   Dados de Matrícula
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Unidade *
-                    </label>
-                    <select
-                      required
-                      value={formData.unidade_id}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          unidade_id: e.target.value,
-                        })
-                      }
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    >
-                      <option value="">Selecione a unidade</option>
-                      {unidades.map((u) => (
-                        <option key={u.id} value={u.id}>
-                          {u.nome}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                  {enableMultiUnit ? (
+                    <div className="md:col-span-2">
+                      <MultiUnidadeSelector
+                        unidades={unidades}
+                        unidadesSelecionadas={formData.unidades || []}
+                        onChange={(novasUnidades) =>
+                          setFormData({
+                            ...formData,
+                            unidades: novasUnidades,
+                          })
+                        }
+                        required={true}
+                      />
+                    </div>
+                  ) : (
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Unidade *
+                      </label>
+                      <select
+                        required
+                        value={formData.unidade_id || ""}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            unidade_id: e.target.value,
+                          })
+                        }
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      >
+                        <option value="">Selecione a unidade</option>
+                        {unidades.map((u) => (
+                          <option key={u.id} value={u.id}>
+                            {u.nome}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
