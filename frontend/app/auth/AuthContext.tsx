@@ -75,6 +75,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setIsAuthenticated(false);
   };
 
+  const updateUser = (userData: any) => {
+    setUser(userData);
+  };
+
   const value = {
     user,
     loading,
@@ -82,6 +86,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     login,
     logout,
     checkAuthStatus,
+    updateUser,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

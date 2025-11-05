@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { useAuth } from "@/app/auth/AuthContext";
 import {
   X,
   Building2,
@@ -109,6 +110,7 @@ interface UnidadeFormProps {
   isLoading: boolean;
   franqueados: Franqueado[];
   instrutores: Instrutor[];
+  myFranqueado?: Franqueado; // Franqueado do usuário logado (se aplicável)
 }
 
 export default function UnidadeForm({
@@ -120,8 +122,51 @@ export default function UnidadeForm({
   isLoading,
   franqueados,
   instrutores,
+  myFranqueado,
 }: UnidadeFormProps) {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = React.useState(0);
+
+  // Debug completo do usuário
+  console.log("👤 UnidadeForm - Usuário completo:", user);
+  console.log("📋 Perfis do usuário:", user?.perfis);
+  console.log(
+    "📝 Nome dos perfis:",
+    user?.perfis?.map((p: any) => p.nome || p.perfil || p)
+  );
+
+  // Verificar se usuário é franqueado - perfis pode ser array de strings ou objetos
+  const isFranqueado = user?.perfis?.some((perfil: any) => {
+    const perfilNome =
+      typeof perfil === "string" ? perfil : perfil.nome || perfil.perfil;
+    return perfilNome?.toLowerCase() === "franqueado";
+  });
+
+  // Debug
+  console.log("🔍 UnidadeForm - Debug:", {
+    isFranqueado,
+    myFranqueado,
+    hasFranqueadoId: !!myFranqueado?.id,
+    formDataFranqueadoId: formData.franqueado_id,
+  });
+
+  // Set franqueado_id automatically if user is franqueado and myFranqueado is provided
+  React.useEffect(() => {
+    if (isFranqueado && myFranqueado?.id) {
+      // Sempre forçar o franqueado_id quando for usuário franqueado
+      if (formData.franqueado_id !== myFranqueado.id) {
+        console.log(
+          "✅ Preenchendo franqueado_id automaticamente:",
+          myFranqueado.id
+        );
+        setFormData((prev) => ({
+          ...prev,
+          franqueado_id: myFranqueado.id,
+        }));
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isFranqueado, myFranqueado?.id]);
 
   const tabs = [
     { id: 0, label: "Identificação", icon: Building2 },
@@ -289,24 +334,44 @@ export default function UnidadeForm({
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Franquia *
                     </label>
-                    <select
-                      required
-                      value={formData.franqueado_id}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          franqueado_id: e.target.value,
-                        })
-                      }
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    >
-                      <option value="">Selecione uma franquia</option>
-                      {franqueados.map((f) => (
-                        <option key={f.id} value={f.id}>
-                          {f.nome} {f.razao_social && `- ${f.razao_social}`}
-                        </option>
-                      ))}
-                    </select>
+                    {(() => {
+                      console.log("🎯 Renderizando campo franquia:", {
+                        isFranqueado,
+                        hasMyFranqueado: !!myFranqueado,
+                        myFranqueadoData: myFranqueado,
+                      });
+                      return isFranqueado && myFranqueado ? (
+                        <div className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-700">
+                          {myFranqueado.nome}{" "}
+                          {myFranqueado.razao_social &&
+                            `- ${myFranqueado.razao_social}`}
+                          <input
+                            type="hidden"
+                            name="franqueado_id"
+                            value={myFranqueado.id}
+                          />
+                        </div>
+                      ) : (
+                        <select
+                          required
+                          value={formData.franqueado_id}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              franqueado_id: e.target.value,
+                            })
+                          }
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        >
+                          <option value="">Selecione uma franquia</option>
+                          {franqueados.map((f) => (
+                            <option key={f.id} value={f.id}>
+                              {f.nome} {f.razao_social && `- ${f.razao_social}`}
+                            </option>
+                          ))}
+                        </select>
+                      );
+                    })()}
                   </div>
 
                   <div>

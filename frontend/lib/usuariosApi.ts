@@ -263,19 +263,13 @@ export const getUnidades = async (): Promise<Unidade[]> => {
 };
 
 export const getUnidadesAtivas = async (): Promise<Unidade[]> => {
-  const response = await api("/unidades");
-  // Extrair o array de unidades da resposta paginada
-  let unidades: Unidade[] = [];
-  if (response && response.items && Array.isArray(response.items)) {
-    unidades = response.items;
-  } else if (Array.isArray(response)) {
-    unidades = response;
+  // Usar endpoint público que não requer autenticação
+  const response = await api("/unidades/public/ativas");
+
+  // O endpoint já retorna apenas unidades ativas/homologação
+  if (Array.isArray(response)) {
+    return response;
   }
 
-  // Filtrar unidades ATIVAS ou em HOMOLOGACAO (disponíveis para cadastro)
-  const ativas = unidades.filter(
-    (u: Unidade) =>
-      u.status === "ATIVA" || u.status === "HOMOLOGACAO" || u.ativo === true
-  );
-  return ativas;
+  return [];
 };

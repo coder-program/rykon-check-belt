@@ -19,6 +19,7 @@ import { PersonForm } from "@/components/people/PersonForm";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { useAuth } from "@/app/auth/AuthContext";
 
 // Types
 interface Professor {
@@ -66,6 +67,7 @@ async function getProfessoresStats(params: Record<string, string>) {
 
 export default function PageProfessores() {
   const router = useRouter();
+  const { user } = useAuth();
   const [search, setSearch] = useState("");
   const [debounced, setDebounced] = useState("");
   const [unidadeId, setUnidadeId] = useState("");
@@ -74,6 +76,16 @@ export default function PageProfessores() {
   const [especialidade, setEspecialidade] = useState("todos");
   const [showForm, setShowForm] = useState(false);
   const [editingPerson, setEditingPerson] = useState<unknown | null>(null);
+
+  // Verificar se é gerente de unidade
+  const isGerenteUnidade = user?.perfis?.some((perfil: any) => {
+    const perfilNome =
+      typeof perfil === "string" ? perfil : perfil.nome || perfil.perfil;
+    return (
+      perfilNome?.toLowerCase() === "gerente_unidade" ||
+      perfilNome?.toLowerCase() === "gerente"
+    );
+  });
 
   // Temporariamente permitir para todos - ajustar depois
   const canCreate = true;
@@ -89,6 +101,25 @@ export default function PageProfessores() {
     queryKey: ["unidades"],
     queryFn: () => listUnidades({}),
   });
+
+  // Buscar unidade do gerente (se for gerente de unidade)
+  const { data: minhaUnidadeData } = useQuery({
+    queryKey: ["minha-unidade-gerente", user?.id],
+    queryFn: async () => {
+      const result = await listUnidades({ pageSize: "1" });
+      return result.items?.[0] || null;
+    },
+    enabled: !!user?.id && isGerenteUnidade,
+  });
+
+  const minhaUnidade = isGerenteUnidade ? minhaUnidadeData : null;
+
+  // Se for gerente de unidade, forçar filtro pela unidade dele
+  React.useEffect(() => {
+    if (isGerenteUnidade && minhaUnidade?.id && !unidadeId) {
+      setUnidadeId(minhaUnidade.id);
+    }
+  }, [isGerenteUnidade, minhaUnidade, unidadeId]);
 
   const query = useInfiniteQuery({
     queryKey: [
@@ -321,20 +352,26 @@ export default function PageProfessores() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Unidade
                   </label>
-                  <select
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-                    value={unidadeId}
-                    onChange={(e) => setUnidadeId(e.target.value)}
-                  >
-                    <option value="">Todas as Unidades</option>
-                    {unidadesQuery.data?.items?.map(
-                      (unidade: { id: string; nome: string }) => (
-                        <option key={unidade.id} value={unidade.id}>
-                          {unidade.nome}
-                        </option>
-                      )
-                    )}
-                  </select>
+                  {isGerenteUnidade && minhaUnidade ? (
+                    <div className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed">
+                      {minhaUnidade.nome}
+                    </div>
+                  ) : (
+                    <select
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                      value={unidadeId}
+                      onChange={(e) => setUnidadeId(e.target.value)}
+                    >
+                      <option value="">Todas as Unidades</option>
+                      {unidadesQuery.data?.items?.map(
+                        (unidade: { id: string; nome: string }) => (
+                          <option key={unidade.id} value={unidade.id}>
+                            {unidade.nome}
+                          </option>
+                        )
+                      )}
+                    </select>
+                  )}
                 </div>
 
                 <div>

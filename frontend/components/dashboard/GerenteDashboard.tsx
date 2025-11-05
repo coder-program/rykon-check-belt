@@ -121,12 +121,34 @@ export default function GerenteDashboard() {
 
   const quickActions = [
     {
+      title: "TeamCruz Dashboard",
+      description: "Ver estatísticas e visão geral",
+      icon: BarChart3,
+      action: () => router.push("/teamcruz"),
+      color: "bg-red-600",
+    },
+    {
+      title: "Cadastrar Usuário",
+      description: "Criar usuário para o sistema.",
+      icon: UserCheck,
+      action: () => router.push("/admin/cadastrar-usuario"),
+      color: "bg-pink-500",
+    },
+    {
+      title: "Cadastrar Professor",
+      description: "Adicionar novo professor/instrutor",
+      icon: GraduationCap,
+      action: () => router.push("/professores"),
+      color: "bg-teal-500",
+    },
+    {
       title: "Gerenciar Alunos",
       description: "Ver e editar alunos da unidade",
       icon: Users,
       action: () => router.push("/alunos"),
       color: "bg-blue-500",
     },
+
     {
       title: "Aprovar Alunos",
       description: "Aprovar cadastros de alunos",

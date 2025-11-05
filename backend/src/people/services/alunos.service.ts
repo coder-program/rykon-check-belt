@@ -56,13 +56,14 @@ export class AlunosService {
     const query = this.alunoRepository.createQueryBuilder('aluno');
 
     query.leftJoinAndSelect('aluno.unidade', 'unidade');
-    query.leftJoinAndSelect(
-      'aluno.alunoUnidades',
-      'alunoUnidades',
-      'alunoUnidades.ativo = :ativo',
-      { ativo: true },
-    );
-    query.leftJoinAndSelect('alunoUnidades.unidade', 'unidadeMultipla');
+    // Comentado temporariamente - tabela aluno_unidades não existe
+    // query.leftJoinAndSelect(
+    //   'aluno.alunoUnidades',
+    //   'alunoUnidades',
+    //   'alunoUnidades.ativo = :ativo',
+    //   { ativo: true },
+    // );
+    // query.leftJoinAndSelect('alunoUnidades.unidade', 'unidadeMultipla');
     query.leftJoinAndSelect('aluno.faixas', 'faixas', 'faixas.ativa = :ativa', {
       ativa: true,
     });

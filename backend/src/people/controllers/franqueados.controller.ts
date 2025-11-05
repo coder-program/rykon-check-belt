@@ -11,6 +11,7 @@ import {
   ValidationPipe,
   UsePipes,
   Request,
+  NotFoundException,
 } from '@nestjs/common';
 import { CustomValidationPipe } from '../../common/pipes/validation.pipe';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
@@ -19,6 +20,7 @@ import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { ProfileCompleteGuard } from '../../auth/guards/profile-complete.guard';
 import { Roles } from '../../auth/decorators/roles.decorator';
 import { RolesGuard } from '../../auth/guards/roles.guard';
+import { AllowIncomplete } from '../../auth/decorators/allow-incomplete.decorator';
 import {
   CreateFranqueadoSimplifiedDto,
   UpdateFranqueadoSimplifiedDto,
@@ -38,16 +40,22 @@ export class FranqueadosController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @AllowIncomplete()
   @Get('me')
   @ApiOperation({ summary: 'Buscar franqueado do usuário logado' })
   @ApiResponse({ status: 200, description: 'Franqueado encontrado' })
   @ApiResponse({ status: 404, description: 'Franqueado não encontrado' })
-  getMyFranqueado(@Request() req: any) {
-    return this.service.getByUsuarioId(req.user.id);
+  async getMyFranqueado(@Request() req: any) {
+    const franqueado = await this.service.getByUsuarioId(req.user.id);
+    if (!franqueado) {
+      throw new NotFoundException('Franqueado não encontrado');
+    }
+    return franqueado;
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('franqueado')
+  @AllowIncomplete()
   @Post('minha-franquia')
   @UsePipes(new CustomValidationPipe())
   @ApiOperation({ summary: 'Franqueado cadastra sua própria franquia' })
@@ -69,6 +77,7 @@ export class FranqueadosController {
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('franqueado')
+  @AllowIncomplete()
   @Patch('minha-franquia/:id')
   @UsePipes(new CustomValidationPipe())
   @ApiOperation({ summary: 'Franqueado atualiza sua própria franquia' })

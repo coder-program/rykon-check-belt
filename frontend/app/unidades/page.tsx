@@ -164,9 +164,12 @@ export default function PageUnidades() {
   }, [search]);
 
   // Buscar franqueado do usuário logado (se for franqueado)
-  const isFranqueado = user?.perfis?.some(
-    (perfil: any) => perfil.nome?.toLowerCase() === "franqueado"
-  );
+  const isFranqueado = user?.perfis?.some((perfil: any) => {
+    const perfilNome =
+      typeof perfil === "string" ? perfil : perfil.nome || perfil.perfil;
+    return perfilNome?.toLowerCase() === "franqueado";
+  });
+
   const { data: myFranqueado } = useQuery({
     queryKey: ["franqueado-me", user?.id],
     queryFn: getMyFranqueado,
@@ -643,6 +646,7 @@ export default function PageUnidades() {
             }
             franqueados={franqueadosQuery.data?.items || []}
             instrutores={instrutoresQuery.data?.items || []}
+            myFranqueado={myFranqueado}
           />
         )}
       </div>

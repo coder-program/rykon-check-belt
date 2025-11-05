@@ -123,14 +123,46 @@ export default function PageAlunos() {
   }, [search]);
 
   // Buscar franqueado do usuário logado (se for franqueado)
-  const isFranqueado = user?.perfis?.some(
-    (perfil: any) => perfil.nome?.toLowerCase() === "franqueado"
-  );
+  const isFranqueado = user?.perfis?.some((perfil: any) => {
+    const perfilNome =
+      typeof perfil === "string" ? perfil : perfil.nome || perfil.perfil;
+    return perfilNome?.toLowerCase() === "franqueado";
+  });
+
+  // Verificar se é gerente de unidade
+  const isGerenteUnidade = user?.perfis?.some((perfil: any) => {
+    const perfilNome =
+      typeof perfil === "string" ? perfil : perfil.nome || perfil.perfil;
+    return (
+      perfilNome?.toLowerCase() === "gerente_unidade" ||
+      perfilNome?.toLowerCase() === "gerente"
+    );
+  });
+
   const { data: myFranqueado } = useQuery({
     queryKey: ["franqueado-me", user?.id],
     queryFn: getMyFranqueado,
     enabled: !!user?.id && isFranqueado,
   });
+
+  // Buscar unidade do gerente (se for gerente de unidade)
+  const { data: minhaUnidadeData } = useQuery({
+    queryKey: ["minha-unidade-gerente", user?.id],
+    queryFn: async () => {
+      const result = await listUnidades({ pageSize: 1 });
+      return result.items?.[0] || null;
+    },
+    enabled: !!user?.id && isGerenteUnidade,
+  });
+
+  const minhaUnidade = isGerenteUnidade ? minhaUnidadeData : null;
+
+  // Se for gerente de unidade, forçar filtro pela unidade dele
+  React.useEffect(() => {
+    if (isGerenteUnidade && minhaUnidade?.id && !unidadeId) {
+      setUnidadeId(minhaUnidade.id);
+    }
+  }, [isGerenteUnidade, minhaUnidade, unidadeId]);
 
   const query = useInfiniteQuery({
     queryKey: ["alunos", debounced, status, unidadeId, faixa, categoria],
@@ -404,18 +436,24 @@ export default function PageAlunos() {
             <label className="label">
               <span className="label-text">Unidade</span>
             </label>
-            <select
-              className="select select-bordered w-full"
-              value={unidadeId}
-              onChange={(e) => setUnidadeId(e.target.value)}
-            >
-              <option value="">Todas as Unidades</option>
-              {unidadesQuery.data?.items?.map((unidade) => (
-                <option key={unidade.id} value={unidade.id}>
-                  {unidade.nome}
-                </option>
-              ))}
-            </select>
+            {isGerenteUnidade && minhaUnidade ? (
+              <div className="select select-bordered w-full bg-gray-100 cursor-not-allowed flex items-center">
+                {minhaUnidade.nome}
+              </div>
+            ) : (
+              <select
+                className="select select-bordered w-full"
+                value={unidadeId}
+                onChange={(e) => setUnidadeId(e.target.value)}
+              >
+                <option value="">Todas as Unidades</option>
+                {unidadesQuery.data?.items?.map((unidade) => (
+                  <option key={unidade.id} value={unidade.id}>
+                    {unidade.nome}
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
 
           <div>

@@ -189,6 +189,13 @@ export default function FranqueadoDashboard() {
 
   const quickActions = [
     {
+      title: "TeamCruz Dashboard",
+      description: "Ver estatísticas e visão geral",
+      icon: BarChart3,
+      action: () => router.push("/teamcruz"),
+      color: "bg-red-600",
+    },
+    {
       title: "Gerenciar Unidades",
       description: "Administrar suas academias",
       icon: Building2,
@@ -196,41 +203,54 @@ export default function FranqueadoDashboard() {
       color: "bg-blue-500",
     },
     {
-      title: "Cadastrar Gerente",
-      description: "Adicionar gerente ou recepcionista",
-      icon: Users,
-      action: () => router.push("/admin/cadastrar-usuario"),
-      color: "bg-indigo-500",
-    },
-    {
-      title: "Aprovar Usuários",
-      description: "Aprovar cadastros pendentes (alunos, gerentes, etc)",
-      icon: UserCheck,
-      action: () => router.push("/admin/usuarios-pendentes"),
-      color: "bg-orange-500",
-    },
-    {
-      title: "Meus Alunos",
-      description: "Ver todos os alunos das suas unidades",
+      title: "Gerenciar Alunos",
+      description: "Ver e editar alunos das unidades",
       icon: Users,
       action: () => router.push("/alunos"),
       color: "bg-green-500",
     },
     {
+      title: "Cadastrar Professor",
+      description: "Adicionar novo professor/instrutor",
+      icon: GraduationCap,
+      action: () => router.push("/professores"),
+      color: "bg-teal-500",
+    },
+    {
+      title: "Cadastrar Gerente",
+      description: "Adicionar gerente ou recepcionista",
+      icon: UserCheck,
+      action: () => router.push("/admin/cadastrar-usuario"),
+      color: "bg-indigo-500",
+    },
+    {
+      title: "Aprovar Alunos",
+      description: "Aprovar cadastros de alunos",
+      icon: UserCheck,
+      action: () => router.push("/admin/usuarios-pendentes"),
+      color: "bg-orange-500",
+    },
+    {
+      title: "Registrar Presença",
+      description: "Marcar presença nas aulas",
+      icon: CheckCircle,
+      action: () => router.push("/presenca"),
+      color: "bg-green-600",
+    },
+    {
       title: "Graduações",
       description: `${graduacoesEsteTrimestre} graduações neste trimestre`,
-      icon: GraduationCap,
+      icon: Trophy,
       action: () => router.push("/admin/aprovacao-graduacao"),
       color: "bg-yellow-500",
       urgent: graduacoesEsteTrimestre > 0,
     },
     {
-      title: "Relatórios Financeiros",
-      description: "Plano não contratado",
+      title: "Relatórios",
+      description: "Visualizar relatórios das unidades",
       icon: BarChart3,
-      action: () => {},
-      color: "bg-gray-400",
-      disabled: true,
+      action: () => router.push("/relatorios"),
+      color: "bg-purple-500",
     },
   ];
 
@@ -316,18 +336,14 @@ export default function FranqueadoDashboard() {
         {/* Quick Actions */}
         <div className="mb-8">
           <h2 className="text-xl font-semibold mb-4">Ações Rápidas</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {quickActions.map((action, index) => (
               <Card
                 key={index}
-                className={`transition-all ${
-                  action.disabled
-                    ? "opacity-60 cursor-not-allowed"
-                    : "cursor-pointer hover:shadow-lg transform hover:scale-105"
-                } ${
+                className={`cursor-pointer hover:shadow-lg transform hover:scale-105 transition-all ${
                   action.urgent ? "ring-2 ring-yellow-400 bg-yellow-50" : ""
                 }`}
-                onClick={action.disabled ? undefined : action.action}
+                onClick={action.action}
               >
                 <CardHeader>
                   <CardTitle className="flex items-center justify-between">
@@ -343,11 +359,7 @@ export default function FranqueadoDashboard() {
                       <AlertCircle className="h-4 w-4 text-yellow-600" />
                     )}
                   </CardTitle>
-                  <CardDescription
-                    className={`text-xs ${
-                      action.disabled ? "text-gray-500 italic" : ""
-                    }`}
-                  >
+                  <CardDescription className="text-xs">
                     {action.description}
                   </CardDescription>
                 </CardHeader>

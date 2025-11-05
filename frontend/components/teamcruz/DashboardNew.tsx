@@ -818,13 +818,13 @@ export default function DashboardNew() {
 
   const tabs = [
     { id: "overview", label: "Visão Geral", icon: Activity },
-    { id: "checkin", label: "Check-in", icon: CheckCircle },
+    // { id: "checkin", label: "Check-in", icon: CheckCircle }, // Comentado temporariamente
     { id: "alunos", label: "Alunos", icon: Users },
     { id: "professores", label: "Professores", icon: GraduationCap },
     { id: "unidades", label: "Unidades", icon: Building2 },
     { id: "graduacoes", label: "Graduações", icon: Trophy },
-    { id: "aulas", label: "Aulas", icon: Calendar },
-    { id: "social", label: "Comunidade", icon: Share2 },
+    // { id: "aulas", label: "Aulas", icon: Calendar }, // Comentado temporariamente
+    // { id: "social", label: "Comunidade", icon: Share2 }, // Comentado temporariamente
     { id: "campanhas", label: "Campanhas", icon: Megaphone },
     { id: "loja", label: "Loja Virtual", icon: ShoppingBag },
   ];
@@ -1149,6 +1149,15 @@ export default function DashboardNew() {
       <div className="navbar bg-white shadow-lg border-b-2 border-blue-100">
         <div className="flex-1">
           <div className="flex items-center gap-3 px-4">
+            <button
+              onClick={() => (window.location.href = "/dashboard")}
+              className="btn btn-primary gap-2 shadow-md"
+              title="Voltar ao Dashboard"
+            >
+              <ArrowLeftIcon className="h-5 w-5" />
+              Voltar
+            </button>
+            <div className="divider divider-horizontal mx-2"></div>
             <div className="indicator">
               <Shield className="h-10 w-10 text-red-600" />
               <span className="indicator-item badge badge-warning badge-xs animate-pulse"></span>
@@ -1164,24 +1173,6 @@ export default function DashboardNew() {
           </div>
         </div>
         <div className="flex-none gap-4 items-center">
-          <div className="form-control">
-            <label className="label">
-              <span className="label-text text-xs">Filtrar por Unidade:</span>
-            </label>
-            <select
-              className="select select-bordered select-sm w-48"
-              value={selectedUnidade}
-              onChange={(e) => setSelectedUnidade(e.target.value)}
-            >
-              <option value="todas">📍 Todas as Unidades</option>
-              {Array.isArray(unidadesQuery.data) &&
-                unidadesQuery.data?.map((unidade: any) => (
-                  <option key={unidade.id} value={unidade.id}>
-                    📍 {unidade.nome}
-                  </option>
-                ))}
-            </select>
-          </div>
           <div className="text-right mr-4">
             <p className="text-sm opacity-70">
               {format(currentTime, "EEEE, d 'de' MMMM", { locale: ptBR })}
@@ -1207,7 +1198,7 @@ export default function DashboardNew() {
       {/* Nav Tabs - estilo pill sobre barra clara */}
       <div className="bg-gradient-to-r from-white to-blue-50 border-y border-blue-100">
         <div className="container mx-auto px-4 py-3">
-          <div className="flex items-center">
+          <div className="flex items-center justify-between">
             <div className="flex gap-2 rounded-xl bg-white/90 backdrop-blur border border-blue-200 p-1 shadow-sm">
               {tabs.map((tab) => (
                 <button
@@ -1223,6 +1214,29 @@ export default function DashboardNew() {
                   {tab.label}
                 </button>
               ))}
+            </div>
+
+            {/* Filtro de Unidade - DESTACADO */}
+            <div className="flex items-center gap-3 bg-white/90 backdrop-blur border-2 border-blue-300 rounded-xl px-4 py-2 shadow-md">
+              <Building2 className="h-5 w-5 text-blue-600" />
+              <div className="flex flex-col">
+                <span className="text-xs font-semibold text-blue-600 uppercase">
+                  Filtrar Unidade
+                </span>
+                <select
+                  className="select select-bordered select-sm w-64 mt-1"
+                  value={selectedUnidade}
+                  onChange={(e) => setSelectedUnidade(e.target.value)}
+                >
+                  <option value="todas">📍 Todas as Unidades</option>
+                  {Array.isArray(unidadesQuery.data) &&
+                    unidadesQuery.data?.map((unidade: any) => (
+                      <option key={unidade.id} value={unidade.id}>
+                        📍 {unidade.nome}
+                      </option>
+                    ))}
+                </select>
+              </div>
             </div>
           </div>
         </div>

@@ -120,8 +120,18 @@ function LoginContent() {
 
     const result = await login(formData.email, formData.password);
     if (result.success) {
-      // Verificar se é franqueado primeiro
-      const isFranqueado = result.user?.perfis?.includes("franqueado");
+      // Verificar se é franqueado primeiro - usando mesma lógica dos outros componentes
+      const isFranqueado = result.user?.perfis?.some(
+        (perfil: string | { nome?: string; name?: string }) => {
+          if (typeof perfil === "string")
+            return perfil.toLowerCase() === "franqueado";
+          if (typeof perfil === "object" && perfil?.nome)
+            return perfil.nome.toLowerCase() === "franqueado";
+          if (typeof perfil === "object" && perfil?.name)
+            return perfil.name.toLowerCase() === "franqueado";
+          return String(perfil).toLowerCase() === "franqueado";
+        }
+      );
 
       if (isFranqueado) {
         // Franqueado sempre vai para minha-franquia, independente do cadastro_completo

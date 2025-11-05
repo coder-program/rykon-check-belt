@@ -82,10 +82,26 @@ export default function CadastrarUsuarioPage() {
     enabled: !!user?.id,
   });
 
-  // Buscar unidades do franqueado
+  // Verificar se usuário logado é gerente de unidade
+  const isGerenteUnidade = user?.perfis?.some((perfil: any) => {
+    const perfilNome =
+      typeof perfil === "string" ? perfil : perfil.nome || perfil.perfil;
+    return (
+      perfilNome?.toLowerCase() === "gerente_unidade" ||
+      perfilNome?.toLowerCase() === "gerente"
+    );
+  });
+
+  // Buscar unidades do franqueado ou do gerente
   const { data: unidadesData } = useQuery({
-    queryKey: ["unidades-franqueado", franqueado?.id],
+    queryKey: ["unidades-franqueado", franqueado?.id, user?.id],
     queryFn: async () => {
+      // Se for gerente de unidade, buscar apenas a unidade dele
+      if (isGerenteUnidade) {
+        const result = await listUnidades({ pageSize: 1 });
+        return result;
+      }
+      // Se for franqueado, buscar todas as unidades da franquia
       if (!franqueado?.id) return { items: [] };
       const result = await listUnidades({
         pageSize: 100,
@@ -93,17 +109,44 @@ export default function CadastrarUsuarioPage() {
       });
       return result;
     },
-    enabled: !!franqueado?.id,
+    enabled: !!user?.id,
   });
 
   const unidades = unidadesData?.items || [];
+  const minhaUnidade =
+    isGerenteUnidade && unidades.length > 0 ? unidades[0] : null;
 
-  // Filtrar apenas perfis que o franqueado pode cadastrar
-  const perfisDisponiveis = perfisData?.filter((perfil: any) =>
-    ["GERENTE_UNIDADE", "RECEPCIONISTA", "PROFESSOR", "INSTRUTOR"].includes(
-      perfil.nome
-    )
-  );
+  // Preencher unidade automaticamente se for gerente
+  React.useEffect(() => {
+    if (isGerenteUnidade && minhaUnidade && !formData.unidade_id) {
+      setFormData((prev) => ({
+        ...prev,
+        unidade_id: minhaUnidade.id,
+      }));
+    }
+  }, [isGerenteUnidade, minhaUnidade, formData.unidade_id]);
+
+  // Filtrar apenas perfis que o usuário pode cadastrar
+  const perfisDisponiveis = perfisData?.filter((perfil: any) => {
+    // Gerente de unidade pode cadastrar: ALUNO, PROFESSOR, INSTRUTOR, RECEPCIONISTA, GERENTE_UNIDADE
+    if (isGerenteUnidade) {
+      return [
+        "ALUNO",
+        "GERENTE_UNIDADE",
+        "RECEPCIONISTA",
+        "PROFESSOR",
+        "INSTRUTOR",
+      ].includes(perfil.nome);
+    }
+    // Franqueado pode cadastrar todos os perfis operacionais
+    return [
+      "ALUNO",
+      "GERENTE_UNIDADE",
+      "RECEPCIONISTA",
+      "PROFESSOR",
+      "INSTRUTOR",
+    ].includes(perfil.nome);
+  });
 
   // Detectar o perfil selecionado
   const perfilSelecionado = perfisDisponiveis?.find(
@@ -112,6 +155,7 @@ export default function CadastrarUsuarioPage() {
   const perfilNome = perfilSelecionado?.nome || "";
   const isProfessor = ["PROFESSOR", "INSTRUTOR"].includes(perfilNome);
   const isRecepcionista = perfilNome === "RECEPCIONISTA";
+  const isAluno = perfilNome === "ALUNO";
 
   // Mutation para criar usuário
   const createUserMutation = useMutation({
@@ -380,21 +424,34 @@ export default function CadastrarUsuarioPage() {
                 </div>
                 <div>
                   <Label htmlFor="unidade">Unidade *</Label>
-                  <Select
-                    value={formData.unidade_id}
-                    onValueChange={(value) => handleChange("unidade_id", value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione a unidade" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {unidades.map((unidade: any) => (
-                        <SelectItem key={unidade.id} value={unidade.id}>
-                          {unidade.nome}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  {isGerenteUnidade && minhaUnidade ? (
+                    <div className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-700">
+                      {minhaUnidade.nome}
+                      <input
+                        type="hidden"
+                        name="unidade_id"
+                        value={minhaUnidade.id}
+                      />
+                    </div>
+                  ) : (
+                    <Select
+                      value={formData.unidade_id}
+                      onValueChange={(value) =>
+                        handleChange("unidade_id", value)
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione a unidade" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {unidades.map((unidade: any) => (
+                          <SelectItem key={unidade.id} value={unidade.id}>
+                            {unidade.nome}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
                 </div>
               </div>
 

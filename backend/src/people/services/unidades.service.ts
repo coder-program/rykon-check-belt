@@ -17,28 +17,43 @@ export class UnidadesService {
 
   async criar(dto: CreateUnidadeDto, user?: any): Promise<Unidade> {
     const q = `INSERT INTO teamcruz.unidades
-      (franqueado_id, nome, cnpj, status, responsavel_nome, responsavel_cpf, responsavel_papel,
-       responsavel_contato, qtde_tatames, capacidade_max_alunos, valor_plano_padrao,
-       horarios_funcionamento, modalidades, endereco_id, created_at, updated_at)
-      VALUES ($1,$2,$3,COALESCE($4,'HOMOLOGACAO')::teamcruz.status_unidade_enum,$5,$6,$7::teamcruz.papel_responsavel_enum,$8,$9,$10,$11,$12,$13,$14,NOW(),NOW())
+      (franqueado_id, nome, cnpj, razao_social, nome_fantasia, inscricao_estadual, inscricao_municipal,
+       codigo_interno, telefone_fixo, telefone_celular, email, website, redes_sociais,
+       status, responsavel_nome, responsavel_cpf, responsavel_papel,
+       responsavel_contato, qtde_tatames, area_tatame_m2, capacidade_max_alunos, valor_plano_padrao,
+       horarios_funcionamento, modalidades, instrutor_principal_id, endereco_id, created_at, updated_at)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,COALESCE($14,'HOMOLOGACAO')::teamcruz.status_unidade_enum,
+              $15,$16,$17::teamcruz.papel_responsavel_enum,$18,$19,$20,$21,$22,$23,$24,$25,$26,NOW(),NOW())
       RETURNING *`;
 
     const params = [
       dto.franqueado_id,
       dto.nome,
       dto.cnpj,
+      dto.razao_social ?? null,
+      dto.nome_fantasia ?? null,
+      dto.inscricao_estadual ?? null,
+      dto.inscricao_municipal ?? null,
+      dto.codigo_interno ?? null,
+      dto.telefone_fixo ?? null,
+      dto.telefone_celular ?? null,
+      dto.email ?? null,
+      dto.website ?? null,
+      dto.redes_sociais ? JSON.stringify(dto.redes_sociais) : null,
       dto.status ?? 'HOMOLOGACAO',
       dto.responsavel_nome,
       dto.responsavel_cpf,
       dto.responsavel_papel,
       dto.responsavel_contato,
       dto.qtde_tatames ?? null,
+      dto.area_tatame_m2 ?? null,
       dto.capacidade_max_alunos ?? null,
       dto.valor_plano_padrao ?? null,
       dto.horarios_funcionamento
         ? JSON.stringify(dto.horarios_funcionamento)
         : null,
       dto.modalidades ? JSON.stringify(dto.modalidades) : null,
+      dto.instrutor_principal_id ?? null,
       dto.endereco_id ?? null,
     ];
 
@@ -144,10 +159,19 @@ export class UnidadesService {
     // Se franqueado (não master), filtra por sua franquia
     else if (user && this.isFranqueado(user) && !this.isMaster(user)) {
       const franqueadoId = await this.getFranqueadoIdByUser(user);
+      console.log('🔒 [SEGURANÇA] Franqueado detectado:', {
+        userId: user.id,
+        userName: user.nome,
+        franqueadoId,
+      });
       if (franqueadoId) {
         whereConditions.push(`u.franqueado_id = $${paramIndex}`);
         queryParams.push(franqueadoId);
         paramIndex++;
+        console.log(
+          '✅ [SEGURANÇA] Filtro aplicado - mostrando apenas unidades da franquia:',
+          franqueadoId,
+        );
       }
     }
 
@@ -181,6 +205,20 @@ export class UnidadesService {
       total,
       hasNextPage: offset + pageSize < total,
     };
+  }
+
+  // Método PÚBLICO para listagem de unidades ativas (cadastro público)
+  async listarPublicasAtivas(): Promise<any[]> {
+    const q = `
+      SELECT u.id, u.nome, u.status, u.endereco_id,
+             e.cidade, e.estado, e.bairro
+      FROM teamcruz.unidades u
+      LEFT JOIN teamcruz.enderecos e ON e.id = u.endereco_id
+      WHERE u.status IN ('ATIVA', 'HOMOLOGACAO')
+      ORDER BY u.nome ASC
+    `;
+    const res = await this.dataSource.query(q);
+    return res;
   }
 
   async obter(id: string, user?: any): Promise<any> {
@@ -279,8 +317,25 @@ export class UnidadesService {
     let whereClause = '';
     let queryParams: any[] = [];
 
+    // Se gerente de unidade, filtra pela unidade que ele gerencia
+    if (user && this.isGerenteUnidade(user) && !this.isMaster(user)) {
+      const unidadeId = await this.getUnidadeIdByGerente(user);
+      if (unidadeId) {
+        whereClause = 'WHERE id = $1';
+        queryParams.push(unidadeId);
+      }
+    }
+    // Se recepcionista, filtra pelas unidades que ele trabalha
+    else if (user && this.isRecepcionista(user) && !this.isMaster(user)) {
+      const unidadeIds = await this.getUnidadesIdsByRecepcionista(user);
+      if (unidadeIds && unidadeIds.length > 0) {
+        const placeholders = unidadeIds.map((_, i) => `$${i + 1}`).join(',');
+        whereClause = `WHERE id IN (${placeholders})`;
+        queryParams.push(...unidadeIds);
+      }
+    }
     // Se franqueado (não master), filtra por sua franquia
-    if (user && this.isFranqueado(user) && !this.isMaster(user)) {
+    else if (user && this.isFranqueado(user) && !this.isMaster(user)) {
       const franqueadoId = await this.getFranqueadoIdByUser(user);
       if (franqueadoId) {
         whereClause = 'WHERE franqueado_id = $1';

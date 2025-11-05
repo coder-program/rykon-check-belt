@@ -125,13 +125,12 @@ export default function CompleteProfilePage() {
     try {
       const apiUrl =
         process.env.NEXT_PUBLIC_API_URL || "http://200.98.72.161/api";
-      const response = await fetch(`${apiUrl}/unidades`);
+      // Usar endpoint público que não requer autenticação
+      const response = await fetch(`${apiUrl}/unidades/public/ativas`);
       const data = await response.json();
-      // Garantir que data seja um array
+      // O endpoint público já retorna array direto
       if (Array.isArray(data)) {
         setUnidades(data);
-      } else if (data?.items && Array.isArray(data.items)) {
-        setUnidades(data.items);
       } else {
         console.warn("Resposta da API não é um array:", data);
         setUnidades([]);

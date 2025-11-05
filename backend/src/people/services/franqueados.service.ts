@@ -94,7 +94,7 @@ export class FranqueadosService {
         COALESCE(array_length(f.unidades_gerencia, 1), 0) as total_unidades
       FROM teamcruz.franqueados f
       LEFT JOIN teamcruz.usuarios u ON f.usuario_id = u.id
-      WHERE f.id = $1
+      WHERE f.id = $1 AND f.ativo = true
     `;
 
     const result = await this.dataSource.query(query, [id]);
@@ -110,7 +110,7 @@ export class FranqueadosService {
         COALESCE(array_length(f.unidades_gerencia, 1), 0) as total_unidades
       FROM teamcruz.franqueados f
       LEFT JOIN teamcruz.usuarios u ON f.usuario_id = u.id
-      WHERE f.usuario_id = $1
+      WHERE f.usuario_id = $1 AND f.ativo = true
     `;
 
     const result = await this.dataSource.query(query, [usuarioId]);
@@ -146,6 +146,19 @@ export class FranqueadosService {
     console.log('🔍 [Service] Parâmetros:', params);
 
     const result = await this.dataSource.query(query, params);
+
+    // Se tem usuario_id, atualizar o campo cadastro_completo do usuário
+    if (body.usuario_id) {
+      await this.dataSource.query(
+        `UPDATE teamcruz.usuarios SET cadastro_completo = true WHERE id = $1`,
+        [body.usuario_id],
+      );
+      console.log(
+        '✅ [Service] Campo cadastro_completo atualizado para usuario_id:',
+        body.usuario_id,
+      );
+    }
+
     return result[0];
   }
 
@@ -205,11 +218,29 @@ export class FranqueadosService {
     `;
 
     const result = await this.dataSource.query(query, params);
+
+    // Se tem usuario_id, garantir que cadastro_completo seja true
+    if (result[0]?.usuario_id) {
+      await this.dataSource.query(
+        `UPDATE teamcruz.usuarios SET cadastro_completo = true WHERE id = $1`,
+        [result[0].usuario_id],
+      );
+      console.log(
+        '✅ [Service] Campo cadastro_completo atualizado para usuario_id:',
+        result[0].usuario_id,
+      );
+    }
+
     return result[0];
   }
 
   async remove(id: string): Promise<void> {
-    const query = `DELETE FROM teamcruz.franqueados WHERE id = $1`;
+    // Soft delete para evitar problemas de constraint com unidades/professores
+    const query = `
+      UPDATE teamcruz.franqueados
+      SET ativo = false, updated_at = NOW()
+      WHERE id = $1
+    `;
     await this.dataSource.query(query, [id]);
   }
 
