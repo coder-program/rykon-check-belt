@@ -94,12 +94,19 @@ export default function MinhaFranquiaPage() {
     ativo: true,
   });
 
-  // Verificar se usuário está autenticado
+  // Verificar se usuário está autenticado e se cadastro já está completo
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (!token && !user) {
       console.log("Usuário não autenticado, redirecionando para login");
-      router.push("/login");
+      router.replace("/login");
+      return;
+    }
+
+    // Se o cadastro já está completo, redirecionar IMEDIATAMENTE para o dashboard
+    if (user?.cadastro_completo) {
+      console.log("Cadastro já completo - Redirecionando para dashboard");
+      router.replace("/dashboard");
       return;
     }
   }, [user, router]);
@@ -142,19 +149,6 @@ export default function MinhaFranquiaPage() {
             telefone: franquia.telefone || user?.telefone || "",
             ativo: franquia.ativo !== undefined ? franquia.ativo : true,
           });
-
-          // Se o cadastro está completo, redirecionar para o dashboard
-          if (user?.cadastro_completo) {
-            console.log(
-              "Franquia já cadastrada e cadastro_completo = true - Redirecionando para dashboard"
-            );
-            toast.success(
-              "Dados já cadastrados! Redirecionando para o dashboard..."
-            );
-            setTimeout(() => {
-              router.push("/dashboard");
-            }, 1500);
-          }
         }
       } else if (response.status === 404) {
         // Franquia não encontrada é normal para primeira vez
@@ -332,12 +326,16 @@ export default function MinhaFranquiaPage() {
   };
 
   // Mostrar loading enquanto não há usuário ou está redirecionando
-  if (!user) {
+  if (!user || user?.cadastro_completo) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black p-4 flex items-center justify-center">
         <div className="text-center text-white">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-500 mx-auto mb-4"></div>
-          <p>Verificando autenticação...</p>
+          <p>
+            {!user
+              ? "Verificando autenticação..."
+              : "Redirecionando para o dashboard..."}
+          </p>
         </div>
       </div>
     );
@@ -383,7 +381,7 @@ export default function MinhaFranquiaPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Nome Completo <span className="text-red-500">*</span>
+                  Nome da franquia <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"

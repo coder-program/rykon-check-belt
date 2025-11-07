@@ -1216,17 +1216,29 @@ export default function DashboardNew() {
               ))}
             </div>
 
-            {/* Filtro de Unidade - DESTACADO */}
-            <div className="flex items-center gap-3 bg-white/90 backdrop-blur border-2 border-blue-300 rounded-xl px-4 py-2 shadow-md">
-              <Building2 className="h-5 w-5 text-blue-600" />
-              <div className="flex flex-col">
-                <span className="text-xs font-semibold text-blue-600 uppercase">
+            {/* Filtro de Unidade - MELHORADO */}
+            <div className="flex items-center gap-3 bg-white backdrop-blur-sm border-2 border-blue-400 rounded-xl px-5 py-3 shadow-lg hover:shadow-xl transition-shadow">
+              <div className="bg-blue-100 p-2 rounded-lg">
+                <Building2 className="h-5 w-5 text-blue-600" />
+              </div>
+              <div className="flex flex-col gap-1">
+                <span className="text-xs font-bold text-blue-700 uppercase tracking-wide">
                   Filtrar Unidade
                 </span>
                 <select
-                  className="select select-bordered select-sm w-64 mt-1"
+                  className="text-base font-semibold text-gray-800 bg-transparent border-none outline-none cursor-pointer w-56 hover:text-blue-600 transition-colors"
                   value={selectedUnidade}
                   onChange={(e) => setSelectedUnidade(e.target.value)}
+                  style={{
+                    WebkitAppearance: "none",
+                    MozAppearance: "none",
+                    appearance: "none",
+                    backgroundImage: `url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e")`,
+                    backgroundRepeat: "no-repeat",
+                    backgroundPosition: "right 0.5rem center",
+                    backgroundSize: "1.25rem",
+                    paddingRight: "2rem",
+                  }}
                 >
                   <option value="todas">📍 Todas as Unidades</option>
                   {Array.isArray(unidadesQuery.data) &&
@@ -1252,73 +1264,83 @@ export default function DashboardNew() {
               exit={{ opacity: 0, y: -20 }}
               className="space-y-6"
             >
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <div className="stats shadow bg-gradient-to-br from-blue-500 to-blue-600">
-                  <div className="stat text-white">
+              {/* Stats Cards - Grid Responsivo */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {/* Total de Alunos */}
+                <div className="stats shadow-lg bg-gradient-to-br from-blue-500 to-blue-600 hover:shadow-xl transition-shadow">
+                  <div className="stat text-white p-4">
                     <div className="stat-figure">
-                      <Users className="h-8 w-8 opacity-80" />
+                      <Users className="h-10 w-10 opacity-80" />
                     </div>
-                    <div className="stat-title text-blue-100">
+                    <div className="stat-title text-blue-100 font-medium">
                       Total de Alunos
                     </div>
-                    <div className="stat-value">
+                    <div className="stat-value text-4xl">
                       {statsQuery.isLoading
                         ? "..."
                         : statsQuery.data?.totalAlunos || 0}
                     </div>
-                    <div className="stat-desc text-blue-200">
+                    <div className="stat-desc text-blue-200 mt-1">
                       ↗︎ 12% vs último mês
                     </div>
                   </div>
                 </div>
-                <div className="stats shadow bg-gradient-to-br from-green-500 to-emerald-600">
-                  <div className="stat text-white">
+
+                {/* Aulas Hoje */}
+                <div className="stats shadow-lg bg-gradient-to-br from-green-500 to-emerald-600 hover:shadow-xl transition-shadow">
+                  <div className="stat text-white p-4">
                     <div className="stat-figure">
-                      <Activity className="h-8 w-8 opacity-80" />
+                      <Activity className="h-10 w-10 opacity-80" />
                     </div>
-                    <div className="stat-title text-green-100">Aulas Hoje</div>
-                    <div className="stat-value">
+                    <div className="stat-title text-green-100 font-medium">
+                      Aulas Hoje
+                    </div>
+                    <div className="stat-value text-4xl">
                       {statsQuery.isLoading
                         ? "..."
                         : statsQuery.data?.aulaHoje || 0}
                     </div>
-                    <div className="stat-desc text-green-200">
+                    <div className="stat-desc text-green-200 mt-1">
                       4 turmas agendadas
                     </div>
                   </div>
                 </div>
-                <div className="stats shadow bg-gradient-to-br from-yellow-400 to-amber-500">
-                  <div className="stat text-white">
+
+                {/* Próximos Graduáveis */}
+                <div className="stats shadow-lg bg-gradient-to-br from-yellow-400 to-amber-500 hover:shadow-xl transition-shadow">
+                  <div className="stat text-white p-4">
                     <div className="stat-figure">
-                      <Award className="h-8 w-8 opacity-80" />
+                      <Award className="h-10 w-10 opacity-80" />
                     </div>
-                    <div className="stat-title text-yellow-100">
+                    <div className="stat-title text-yellow-100 font-medium">
                       Próximos Graduáveis
                     </div>
-                    <div className="stat-value">
+                    <div className="stat-value text-4xl">
                       {statsQuery.isLoading
                         ? "..."
                         : statsQuery.data?.proximosGraduaveis || 0}
                     </div>
-                    <div className="stat-desc text-yellow-200">
+                    <div className="stat-desc text-yellow-200 mt-1">
                       ↗︎ 5 novos este mês
                     </div>
                   </div>
                 </div>
-                <div className="stats shadow bg-gradient-to-br from-purple-500 to-indigo-600">
-                  <div className="stat text-white">
+
+                {/* Presenças Hoje */}
+                <div className="stats shadow-lg bg-gradient-to-br from-purple-500 to-indigo-600 hover:shadow-xl transition-shadow">
+                  <div className="stat text-white p-4">
                     <div className="stat-figure">
-                      <CheckCircle className="h-8 w-8 opacity-80" />
+                      <CheckCircle className="h-10 w-10 opacity-80" />
                     </div>
-                    <div className="stat-title text-purple-100">
+                    <div className="stat-title text-purple-100 font-medium">
                       Presenças Hoje
                     </div>
-                    <div className="stat-value">
+                    <div className="stat-value text-4xl">
                       {statsQuery.isLoading
                         ? "..."
                         : statsQuery.data?.presencasHoje || 0}
                     </div>
-                    <div className="stat-desc text-purple-200">
+                    <div className="stat-desc text-purple-200 mt-1">
                       ↗︎ 18% vs média
                     </div>
                   </div>
@@ -1327,7 +1349,7 @@ export default function DashboardNew() {
 
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Próximos a Graduar */}
-                <Card className="lg:col-span-2 bg-white border border-blue-200">
+                <Card className="lg:col-span-2 bg-white border border-blue-200 shadow-lg">
                   <CardHeader>
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                       <CardTitle className="flex items-center gap-2">
@@ -1475,54 +1497,56 @@ export default function DashboardNew() {
                 </Card>
 
                 {/* Ranking de Assiduidade */}
-                <Card className="bg-white border border-blue-200">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Zap className="h-5 w-5 text-warning" />
+                <Card className="bg-white border border-blue-200 shadow-lg">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="flex items-center gap-2 text-lg">
+                      <Zap className="h-5 w-5 text-yellow-500" />
                       Top Assiduidade
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-4">
+                  <CardContent className="space-y-3">
                     {/* TODO: Implementar API de ranking quando disponível */}
                     {(statsQuery.data ? [] : mockData.ranking).map(
                       (aluno, index) => (
                         <div
                           key={aluno.id}
-                          className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg"
+                          className="flex items-center gap-3 p-3 bg-gradient-to-r from-gray-50 to-blue-50 rounded-lg hover:shadow-md transition-shadow"
                         >
                           <div
-                            className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${
+                            className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm shadow-md ${
                               index === 0
-                                ? "bg-yellow-400 text-yellow-900"
+                                ? "bg-gradient-to-br from-yellow-400 to-yellow-500 text-yellow-900"
                                 : index === 1
-                                ? "bg-gray-400 text-white"
-                                : "bg-orange-400 text-orange-900"
+                                ? "bg-gradient-to-br from-gray-300 to-gray-400 text-white"
+                                : "bg-gradient-to-br from-orange-400 to-orange-500 text-orange-900"
                             }`}
                           >
                             {index + 1}
                           </div>
-                          <div className="flex-1">
-                            <p className="font-medium text-sm text-gray-900">
+                          <div className="flex-1 min-w-0">
+                            <p className="font-semibold text-sm text-gray-900 truncate">
                               {aluno.nome}
                             </p>
-                            <div className="w-full bg-gray-200 rounded-full h-2 mt-1">
+                            <div className="w-full bg-gray-200 rounded-full h-2.5 mt-1.5">
                               <motion.div
                                 initial={{ width: 0 }}
                                 animate={{ width: `${aluno.percent}%` }}
                                 transition={{ duration: 1, delay: index * 0.1 }}
-                                className="bg-gradient-to-r from-blue-500 to-blue-600 h-full rounded-full"
+                                className="bg-gradient-to-r from-blue-500 to-blue-600 h-full rounded-full shadow-sm"
                               />
                             </div>
-                            <div className="flex items-center gap-1 mt-1">
-                              <Zap className="h-3 w-3 text-yellow-500" />
-                              <span className="text-xs text-gray-600">
+                            <div className="flex items-center gap-1 mt-1.5">
+                              <Zap className="h-3.5 w-3.5 text-yellow-500" />
+                              <span className="text-xs text-gray-600 font-medium">
                                 {aluno.streak} dias consecutivos
                               </span>
                             </div>
                           </div>
-                          <span className="text-sm font-bold text-gray-900">
-                            {aluno.percent}%
-                          </span>
+                          <div className="flex flex-col items-end">
+                            <span className="text-lg font-bold text-blue-600">
+                              {aluno.percent}%
+                            </span>
+                          </div>
                         </div>
                       )
                     )}
@@ -1540,7 +1564,7 @@ export default function DashboardNew() {
               </div>
 
               {/* Aulas do Dia */}
-              <Card className="bg-white border border-blue-200">
+              <Card className="bg-white border border-blue-200 shadow-lg">
                 <CardHeader className="flex flex-row items-center justify-between">
                   <CardTitle className="flex items-center gap-2">
                     <Calendar className="h-5 w-5 text-info" />

@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/app/auth/AuthContext";
 import {
   getUsuarios,
   getPerfis,
@@ -97,6 +98,12 @@ interface FormData {
   ativo: boolean;
   cadastro_completo: boolean;
   perfil_ids: string[];
+  unidade_id?: string; // Unidade para GERENTE_UNIDADE
+  // Campos do franqueado (opcionais)
+  nome_franqueado?: string;
+  email_franqueado?: string;
+  telefone_franqueado?: string;
+  cpf_franqueado?: string;
 }
 
 interface ValidationErrors {
@@ -111,6 +118,7 @@ interface ValidationErrors {
 export default function UsuariosManagerNew() {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<
@@ -133,6 +141,37 @@ export default function UsuariosManagerNew() {
     ativo: true,
     cadastro_completo: false,
     perfil_ids: [],
+    unidade_id: "", // Inicializar vazio
+    nome_franqueado: "",
+    email_franqueado: "",
+    telefone_franqueado: "",
+    cpf_franqueado: "",
+  });
+
+  // Verificar se o usuário logado é MASTER
+  // user.perfis é array de strings: ['FRANQUEADO'] ou ['MASTER']
+  const userPerfisArray = user?.perfis || [];
+
+  const isMaster = userPerfisArray.some((perfil: any) =>
+    typeof perfil === "string"
+      ? ["MASTER", "SUPER_ADMIN", "ADMIN_SISTEMA"].includes(
+          perfil.toUpperCase()
+        )
+      : perfil.nome?.toUpperCase() === "MASTER" ||
+        perfil.nome?.toUpperCase() === "SUPER_ADMIN" ||
+        perfil.nome?.toUpperCase() === "ADMIN_SISTEMA"
+  );
+
+  const isFranqueado = userPerfisArray.some((perfil: any) =>
+    typeof perfil === "string"
+      ? perfil.toUpperCase() === "FRANQUEADO"
+      : perfil.nome?.toUpperCase() === "FRANQUEADO"
+  );
+
+  console.log("🔍 DEBUG PERFIS:", {
+    userPerfisArray,
+    isMaster,
+    isFranqueado,
   });
 
   // Queries
@@ -145,6 +184,83 @@ export default function UsuariosManagerNew() {
     queryKey: ["perfis"],
     queryFn: getPerfis,
   });
+
+  // Buscar unidades do franqueado logado
+  const { data: unidades = [] } = useQuery({
+    queryKey: ["unidades-franqueado"],
+    queryFn: async () => {
+      const response = await fetch(
+        `${
+          process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api"
+        }/unidades`,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
+      if (!response.ok) throw new Error("Erro ao buscar unidades");
+      const data = await response.json();
+      return data.items || [];
+    },
+    enabled: !!user && isFranqueado, // Só busca se for franqueado
+  });
+
+  console.log("🏢 Unidades do franqueado:", unidades);
+
+  console.log(
+    "📋 Todos os perfis retornados:",
+    perfis.map((p: any) => p.nome)
+  );
+
+  // Filtrar perfis disponíveis baseado no perfil do usuário logado
+  const perfisDisponiveis = perfis.filter((perfil: any) => {
+    const nomePerfil = perfil.nome?.toUpperCase();
+
+    // Se não conseguiu detectar o usuário, NÃO mostrar perfis (segurança)
+    if (!user || !user.perfis || user.perfis.length === 0) {
+      console.log("❌ Usuário não detectado - bloqueando todos os perfis");
+      return false;
+    }
+
+    // MASTER pode criar qualquer perfil
+    if (isMaster) {
+      console.log(`✅ MASTER pode criar: ${nomePerfil}`);
+      return true;
+    }
+
+    // FRANQUEADO pode criar apenas estes perfis:
+    if (isFranqueado) {
+      const permitido = [
+        "GERENTE_UNIDADE",
+        "RECEPCIONISTA",
+        "ALUNO",
+        "RESPONSAVEL",
+        "INSTRUTOR",
+      ].includes(nomePerfil);
+      console.log(
+        `${permitido ? "✅" : "❌"} FRANQUEADO - ${nomePerfil}: ${permitido}`
+      );
+      return permitido;
+    }
+
+    // Se não for MASTER nem FRANQUEADO, NÃO pode criar usuários
+    console.log(`❌ Sem permissão para: ${nomePerfil}`);
+    return false;
+  });
+
+  console.log(
+    "📋 Perfis disponíveis FINAL:",
+    perfisDisponiveis.map((p: any) => p.nome)
+  );
+
+  // Detectar se perfil FRANQUEADO está selecionado
+  const perfilFranqueadoId = perfis.find(
+    (p: any) => p.nome?.toUpperCase() === "FRANQUEADO"
+  )?.id;
+  const isFranqueadoSelecionado = formData.perfil_ids.includes(
+    perfilFranqueadoId || ""
+  );
 
   // Mutations
   const createMutation = useMutation({
@@ -290,7 +406,8 @@ export default function UsuariosManagerNew() {
           data: updateData,
         });
       } else {
-        await createMutation.mutateAsync({
+        // Criar usuário
+        const createPayload: any = {
           username: formData.username,
           email: formData.email,
           password: formData.password,
@@ -300,7 +417,56 @@ export default function UsuariosManagerNew() {
           ativo: formData.ativo,
           cadastro_completo: formData.cadastro_completo,
           perfil_ids: formData.perfil_ids,
+        };
+
+        // Se for GERENTE_UNIDADE, adicionar unidade_id
+        const isGerenteSelected = formData.perfil_ids.some((id) => {
+          const perfil = perfisDisponiveis.find((p: any) => p.id === id);
+          return perfil?.nome?.toUpperCase() === "GERENTE_UNIDADE";
         });
+
+        if (isGerenteSelected && formData.unidade_id) {
+          createPayload.unidade_id = formData.unidade_id;
+          console.log("🔗 [GERENTE] Enviando unidade_id:", formData.unidade_id);
+        }
+
+        const novoUsuario = await createMutation.mutateAsync(createPayload);
+
+        // Se tem perfil FRANQUEADO e marcou cadastro completo, criar registro na tabela franqueados
+        if (isFranqueadoSelecionado && formData.cadastro_completo) {
+          try {
+            const token = localStorage.getItem("token");
+            const franqueadoData = {
+              nome: formData.nome_franqueado || formData.nome,
+              email: formData.email_franqueado || formData.email,
+              telefone:
+                formData.telefone_franqueado?.replace(/\D/g, "") ||
+                formData.telefone.replace(/\D/g, ""),
+              cpf:
+                formData.cpf_franqueado?.replace(/\D/g, "") ||
+                formData.cpf.replace(/\D/g, ""),
+              usuario_id: novoUsuario.id,
+              situacao: "ATIVA",
+              ativo: true,
+            };
+
+            await fetch(`${process.env.NEXT_PUBLIC_API_URL}/franqueados`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify(franqueadoData),
+            });
+
+            toast.success("Usuário e Franqueado criados com sucesso!");
+          } catch (error) {
+            console.error("Erro ao criar franqueado:", error);
+            toast.error(
+              "Usuário criado, mas houve erro ao criar registro de franqueado"
+            );
+          }
+        }
       }
     } catch (error) {
       console.error("Erro ao salvar usuário:", error);
@@ -789,7 +955,7 @@ export default function UsuariosManagerNew() {
                     Perfis de Acesso
                   </label>
                   <div className="space-y-2">
-                    {perfis.map((perfil: any) => (
+                    {perfisDisponiveis.map((perfil: any) => (
                       <label key={perfil.id} className="flex items-center">
                         <input
                           type="checkbox"
@@ -823,6 +989,138 @@ export default function UsuariosManagerNew() {
                     ))}
                   </div>
                 </div>
+
+                {/* Unidade (apenas para GERENTE_UNIDADE) */}
+                {formData.perfil_ids.some((id) => {
+                  const perfil = perfisDisponiveis.find(
+                    (p: any) => p.id === id
+                  );
+                  return perfil?.nome?.toUpperCase() === "GERENTE_UNIDADE";
+                }) && (
+                  <div className="p-4 bg-amber-50 border-2 border-amber-300 rounded-lg">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Unidade que o Gerente irá Gerenciar *
+                    </label>
+                    <select
+                      value={formData.unidade_id || ""}
+                      onChange={(e) =>
+                        setFormData({ ...formData, unidade_id: e.target.value })
+                      }
+                      required
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="">Selecione uma unidade</option>
+                      {unidades.map((unidade: any) => (
+                        <option key={unidade.id} value={unidade.id}>
+                          {unidade.nome} - {unidade.status}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-xs text-amber-700 mt-2">
+                      ℹ️ O gerente será vinculado a esta unidade e só poderá
+                      gerenciá-la.
+                    </p>
+                  </div>
+                )}
+
+                {/* Campos do Franqueado (condicional) */}
+                {isFranqueadoSelecionado &&
+                  !editingUser &&
+                  formData.cadastro_completo && (
+                    <div className="p-4 bg-blue-50 border-2 border-blue-300 rounded-lg space-y-4">
+                      <h3 className="text-lg font-semibold text-blue-900 mb-4">
+                        Dados do Franqueado
+                      </h3>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Nome da Franquia *
+                          </label>
+                          <input
+                            type="text"
+                            value={formData.nome_franqueado || formData.nome}
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                nome_franqueado: e.target.value,
+                              })
+                            }
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                            placeholder="Nome completo"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            CPF do Franqueado *
+                          </label>
+                          <input
+                            type="text"
+                            value={formData.cpf_franqueado || formData.cpf}
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                cpf_franqueado: formatCPF(e.target.value),
+                              })
+                            }
+                            maxLength={14}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                            placeholder="000.000.000-00"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Email da Franquia *
+                          </label>
+                          <input
+                            type="email"
+                            value={formData.email_franqueado || formData.email}
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                email_franqueado: e.target.value,
+                              })
+                            }
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                            placeholder="email@exemplo.com"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Telefone da Franquia *
+                          </label>
+                          <input
+                            type="tel"
+                            value={
+                              formData.telefone_franqueado || formData.telefone
+                            }
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                telefone_franqueado: formatPhone(
+                                  e.target.value
+                                ),
+                              })
+                            }
+                            maxLength={15}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                            placeholder="(11) 99999-9999"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="bg-blue-100 p-3 rounded-lg">
+                        <p className="text-sm text-blue-800">
+                          ℹ️ Ao marcar "Cadastro Completo" abaixo, será criado
+                          automaticamente um registro de franqueado vinculado a
+                          este usuário.
+                        </p>
+                      </div>
+                    </div>
+                  )}
 
                 {/* Status */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

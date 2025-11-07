@@ -121,22 +121,100 @@ export default function CompleteProfilePage() {
     }
   }, [user?.data_nascimento]);
 
+  // Verificar se é gerente de unidade
+  console.log("🔍 [DEBUG] Verificando se é gerente. user:", user);
+  console.log("🔍 [DEBUG] user.perfis:", user?.perfis);
+
+  const isGerenteUnidade = user?.perfis?.some((perfil: any) => {
+    const perfilNome =
+      typeof perfil === "string" ? perfil : perfil.nome || perfil.perfil;
+    console.log("🔍 [DEBUG] Verificando perfil:", perfilNome);
+    return (
+      perfilNome?.toLowerCase() === "gerente_unidade" ||
+      perfilNome?.toLowerCase() === "gerente"
+    );
+  });
+
+  console.log("🔍 [DEBUG] isGerenteUnidade =", isGerenteUnidade);
+
+  // Buscar unidade do gerente (se for gerente)
+  useEffect(() => {
+    console.log("🔍 [EFFECT] useEffect do gerente disparado");
+    console.log("🔍 [EFFECT] isGerenteUnidade:", isGerenteUnidade);
+    console.log("🔍 [EFFECT] user?.cpf:", user?.cpf);
+
+    if (isGerenteUnidade && user?.cpf) {
+      console.log(
+        "🔍 [GERENTE] Detectado perfil de gerente, buscando unidade..."
+      );
+      console.log("🔍 [GERENTE] User CPF:", user.cpf);
+
+      // Buscar unidade onde este CPF é responsavel_cpf
+      const buscarUnidadeGerente = async () => {
+        try {
+          const apiUrl =
+            process.env.NEXT_PUBLIC_API_URL || "http://200.98.72.161/api";
+          const token = localStorage.getItem("token");
+
+          console.log(
+            "🔍 [GERENTE] Fazendo request para:",
+            `${apiUrl}/unidades?responsavel_cpf=${user.cpf}`
+          );
+
+          const response = await fetch(
+            `${apiUrl}/unidades?responsavel_cpf=${user.cpf}`,
+            {
+              headers: { Authorization: `Bearer ${token}` },
+            }
+          );
+          const data = await response.json();
+
+          console.log("🔍 [GERENTE] Resposta da API:", data);
+
+          if (data.items && data.items[0]) {
+            console.log("✅ [GERENTE] Unidade encontrada:", data.items[0]);
+            setFormData((prev) => ({
+              ...prev,
+              unidade_id: data.items[0].id,
+            }));
+          } else {
+            console.warn(
+              "⚠️ [GERENTE] Nenhuma unidade encontrada para este CPF"
+            );
+          }
+        } catch (err) {
+          console.error("❌ [GERENTE] Erro ao buscar unidade:", err);
+        }
+      };
+      buscarUnidadeGerente();
+    }
+  }, [isGerenteUnidade, user?.cpf]);
+
   const loadUnidades = async () => {
+    console.log("🔍 [loadUnidades] Iniciando busca de unidades públicas...");
     try {
       const apiUrl =
         process.env.NEXT_PUBLIC_API_URL || "http://200.98.72.161/api";
+      const url = `${apiUrl}/unidades/public/ativas`;
+      console.log("🔍 [loadUnidades] URL:", url);
+
       // Usar endpoint público que não requer autenticação
-      const response = await fetch(`${apiUrl}/unidades/public/ativas`);
+      const response = await fetch(url);
+      console.log("🔍 [loadUnidades] Response status:", response.status);
+
       const data = await response.json();
+      console.log("🔍 [loadUnidades] Data recebida:", data);
+
       // O endpoint público já retorna array direto
       if (Array.isArray(data)) {
+        console.log("✅ [loadUnidades] Carregadas", data.length, "unidades");
         setUnidades(data);
       } else {
-        console.warn("Resposta da API não é um array:", data);
+        console.warn("⚠️ [loadUnidades] Resposta da API não é um array:", data);
         setUnidades([]);
       }
     } catch (err) {
-      console.error("Erro ao carregar unidades:", err);
+      console.error("❌ [loadUnidades] Erro ao carregar unidades:", err);
       setUnidades([]);
     }
   };
@@ -164,6 +242,11 @@ export default function CompleteProfilePage() {
     setSuccess("");
     setLoading(true);
 
+    console.log("📝 [handleSubmit] Iniciando envio do formulário");
+    console.log("📝 [handleSubmit] isGerenteUnidade:", isGerenteUnidade);
+    console.log("📝 [handleSubmit] formData.unidade_id:", formData.unidade_id);
+    console.log("📝 [handleSubmit] formData completo:", formData);
+
     try {
       // Validar campos obrigatórios
       if (!formData.unidade_id) {
@@ -184,17 +267,21 @@ export default function CompleteProfilePage() {
         }
       }
 
+      console.log("📤 [handleSubmit] Enviando para API...");
       const response = await authService.completeProfile(formData);
+      console.log("✅ [handleSubmit] Resposta da API:", response);
 
-      // Se retornou um novo token, salvar no localStorage
+      // Se retornou um novo token, atualizar no localStorage
       if (response.access_token) {
         localStorage.setItem("token", response.access_token);
+
+        // Atualizar contexto de autenticação
+        if (checkAuthStatus) {
+          await checkAuthStatus();
+        }
       }
 
-      // Cadastro completado com sucesso, limpar dados e redirecionar
-      localStorage.removeItem("token");
-      localStorage.removeItem("user");
-
+      console.log("🎉 [handleSubmit] Cadastro concluído! Redirecionando...");
       // Redirecionar para página de sucesso
       router.push("/cadastro-concluido");
     } catch (err: any) {
@@ -307,20 +394,42 @@ export default function CompleteProfilePage() {
             <label className="block text-sm font-medium text-gray-300 mb-2">
               Unidade *
             </label>
+            {(() => {
+              console.log("🔍 [RENDER] Renderizando select de unidade");
+              console.log("🔍 [RENDER] isGerenteUnidade:", isGerenteUnidade);
+              console.log(
+                "🔍 [RENDER] formData.unidade_id:",
+                formData.unidade_id
+              );
+              console.log("🔍 [RENDER] unidades.length:", unidades.length);
+              console.log("🔍 [RENDER] unidades:", unidades);
+              return null;
+            })()}
             <select
               name="unidade_id"
               value={formData.unidade_id}
               onChange={handleChange}
               required
-              className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-red-500"
+              disabled={isGerenteUnidade} // Gerente não pode escolher unidade
+              className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <option value="">Selecione uma unidade</option>
+              <option value="">
+                {isGerenteUnidade
+                  ? "Carregando sua unidade..."
+                  : "Selecione uma unidade"}
+              </option>
               {unidades.map((unidade) => (
                 <option key={unidade.id} value={unidade.id}>
                   {unidade.nome}
                 </option>
               ))}
             </select>
+            {isGerenteUnidade && (
+              <p className="text-xs text-gray-400 mt-1">
+                Sua unidade foi definida pelo franqueado e não pode ser
+                alterada.
+              </p>
+            )}
           </div>
 
           {/* Data de Nascimento - EDITÁVEL */}

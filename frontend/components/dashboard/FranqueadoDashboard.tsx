@@ -25,6 +25,7 @@ import {
   Loader2,
   UserCheck,
   CheckCircle,
+  Calendar,
 } from "lucide-react";
 
 export default function FranqueadoDashboard() {
@@ -203,25 +204,25 @@ export default function FranqueadoDashboard() {
       color: "bg-blue-500",
     },
     {
-      title: "Gerenciar Alunos",
-      description: "Ver e editar alunos das unidades",
-      icon: Users,
-      action: () => router.push("/alunos"),
-      color: "bg-green-500",
+      title: "Gerenciar Usuários",
+      description: "Gerenciar usuários do sistema",
+      icon: UserCheck,
+      action: () => router.push("/usuarios"),
+      color: "bg-indigo-500",
     },
     {
-      title: "Cadastrar Professor",
+      title: "Gerenciar Professor",
       description: "Adicionar novo professor/instrutor",
       icon: GraduationCap,
       action: () => router.push("/professores"),
       color: "bg-teal-500",
     },
     {
-      title: "Cadastrar Gerente",
-      description: "Adicionar gerente ou recepcionista",
-      icon: UserCheck,
-      action: () => router.push("/admin/cadastrar-usuario"),
-      color: "bg-indigo-500",
+      title: "Gerenciar Alunos",
+      description: "Ver e editar alunos das unidades",
+      icon: Users,
+      action: () => router.push("/alunos"),
+      color: "bg-green-500",
     },
     {
       title: "Aprovar Alunos",
@@ -236,6 +237,13 @@ export default function FranqueadoDashboard() {
       icon: CheckCircle,
       action: () => router.push("/presenca"),
       color: "bg-green-600",
+    },
+    {
+      title: "Horários de Aulas",
+      description: "Ver grade de horários",
+      icon: Calendar,
+      action: () => router.push("/aulas"),
+      color: "bg-cyan-500",
     },
     {
       title: "Graduações",

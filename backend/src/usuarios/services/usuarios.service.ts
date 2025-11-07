@@ -195,13 +195,31 @@ export class UsuariosService {
   }
 
   async findAllWithHierarchy(user?: any): Promise<Usuario[]> {
+    console.log('🔐 [HIERARCHY] Método findAllWithHierarchy chamado');
+    console.log(
+      '🔐 [HIERARCHY] Usuário recebido:',
+      user
+        ? {
+            id: user.id,
+            nome: user.nome,
+            email: user.email,
+            cpf: user.cpf,
+            perfis: user.perfis,
+          }
+        : 'NENHUM USUÁRIO',
+    );
+
     if (!user || !user.perfis) {
+      console.log('⚠️ [HIERARCHY] Sem usuário ou perfis - retornando todos');
       return this.findAll();
     }
 
     const perfis =
       user.perfis.map((p: any) => (typeof p === 'string' ? p : p.nome)) || [];
     const perfisLower = perfis.map((p: string) => p.toLowerCase());
+
+    console.log('🔐 [HIERARCHY] Perfis detectados:', perfis);
+    console.log('🔐 [HIERARCHY] Perfis lowercase:', perfisLower);
 
     const isMaster =
       perfisLower.includes('master') ||
@@ -211,28 +229,63 @@ export class UsuariosService {
     const isGerente = perfisLower.includes('gerente_unidade');
     const isRecepcionista = perfisLower.includes('recepcionista');
 
+    console.log('🔐 [HIERARCHY] Flags de perfil:', {
+      isMaster,
+      isFranqueado,
+      isGerente,
+      isRecepcionista,
+    });
+
     // Master vê todos
     if (isMaster) {
+      console.log('✅ [HIERARCHY] Usuário é MASTER - retornando todos');
       return this.findAll();
     }
 
     // Franqueado vê apenas usuários das suas unidades
     if (isFranqueado) {
+      console.log('🔍 [FILTRO FRANQUEADO] Iniciando filtro para usuário:', {
+        userId: user.id,
+        userName: user.nome,
+        userCPF: user.cpf,
+      });
+
       const franqueadoData = await this.usuarioRepository.query(
         `SELECT id FROM teamcruz.franqueados WHERE usuario_id = $1`,
         [user.id],
       );
 
+      console.log(
+        '🔍 [FILTRO FRANQUEADO] Dados do franqueado encontrados:',
+        franqueadoData,
+      );
+
       if (!franqueadoData || franqueadoData.length === 0) {
+        console.log(
+          '⚠️ [FILTRO FRANQUEADO] Nenhum franqueado encontrado para este usuário',
+        );
         return [];
       }
 
       const franqueadoId = franqueadoData[0].id;
+      console.log('🔍 [FILTRO FRANQUEADO] ID do franqueado:', franqueadoId);
 
       // Buscar IDs de usuários das unidades do franqueado
+      // Inclui: alunos, professores, gerentes e recepcionistas das unidades
+      // EXCLUI: outros franqueados (que devem ver apenas suas próprias listas)
       const usuariosIds = await this.usuarioRepository.query(
         `
-        SELECT DISTINCT u.id
+        SELECT DISTINCT u.id,
+               u.nome,
+               u.email,
+               CASE
+                 WHEN f.id = $1 THEN 'proprio_franqueado'
+                 WHEN u.id = $2 THEN 'usuario_autenticado'
+                 WHEN un_aluno.franqueado_id = $1 THEN 'aluno_da_unidade'
+                 WHEN un_prof.franqueado_id = $1 THEN 'professor_da_unidade'
+                 WHEN un_gerente.franqueado_id = $1 THEN 'gerente_da_unidade'
+                 ELSE 'outro'
+               END as motivo_inclusao
         FROM teamcruz.usuarios u
         LEFT JOIN teamcruz.alunos a ON a.usuario_id = u.id
         LEFT JOIN teamcruz.professores p ON p.usuario_id = u.id
@@ -240,20 +293,54 @@ export class UsuariosService {
         LEFT JOIN teamcruz.unidades un_aluno ON un_aluno.id = a.unidade_id
         LEFT JOIN teamcruz.unidades un_prof ON un_prof.id = pu.unidade_id
         LEFT JOIN teamcruz.unidades un_gerente ON un_gerente.responsavel_cpf = u.cpf
-        WHERE (un_aluno.franqueado_id = $1
-           OR un_prof.franqueado_id = $1
-           OR un_gerente.franqueado_id = $1)
+        LEFT JOIN teamcruz.franqueados f ON f.usuario_id = u.id
+        LEFT JOIN teamcruz.usuario_perfis up ON up.usuario_id = u.id
+        LEFT JOIN teamcruz.perfis perfil ON perfil.id = up.perfil_id
+        WHERE (
+          (un_aluno.franqueado_id = $1 OR un_prof.franqueado_id = $1 OR un_gerente.franqueado_id = $1)
+          OR f.id = $1
+          OR u.id = $2
+        )
+        -- Excluir usuários que são FRANQUEADOS de outras franquias
+        AND NOT EXISTS (
+          SELECT 1
+          FROM teamcruz.usuario_perfis up2
+          INNER JOIN teamcruz.perfis p2 ON p2.id = up2.perfil_id
+          INNER JOIN teamcruz.franqueados f2 ON f2.usuario_id = u.id
+          WHERE up2.usuario_id = u.id
+            AND UPPER(p2.nome) = 'FRANQUEADO'
+            AND f2.id != $1
+            AND u.id != $2
+        )
         `,
-        [franqueadoId],
+        [franqueadoId, user.id],
+      );
+
+      console.log(
+        '🔍 [FILTRO FRANQUEADO] Usuários encontrados na query:',
+        usuariosIds.map((u: any) => ({
+          id: u.id,
+          nome: u.nome,
+          email: u.email,
+          motivo: u.motivo_inclusao,
+        })),
       );
 
       const ids = usuariosIds.map((row: any) => row.id);
 
       if (ids.length === 0) {
+        console.log(
+          '⚠️ [FILTRO FRANQUEADO] Nenhum usuário encontrado após filtro',
+        );
         return [];
       }
 
-      return await this.usuarioRepository.find({
+      console.log(
+        '🔍 [FILTRO FRANQUEADO] IDs dos usuários que serão retornados:',
+        ids,
+      );
+
+      const resultado = await this.usuarioRepository.find({
         where: ids.map((id) => ({ id })),
         relations: ['perfis'],
         select: {
@@ -270,6 +357,21 @@ export class UsuariosService {
           updated_at: true,
         },
       });
+
+      console.log(
+        '✅ [FILTRO FRANQUEADO] Total de usuários retornados:',
+        resultado.length,
+      );
+      console.log(
+        '✅ [FILTRO FRANQUEADO] Usuários:',
+        resultado.map((u: any) => ({
+          id: u.id,
+          nome: u.nome,
+          email: u.email,
+        })),
+      );
+
+      return resultado;
     }
 
     // Gerente vê apenas usuários da sua unidade

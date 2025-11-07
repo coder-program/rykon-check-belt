@@ -9,14 +9,17 @@ import {
   Delete,
   ValidationPipe,
   Request,
+  UseGuards,
 } from '@nestjs/common';
 import { ProfessoresService } from '../services/professores.service';
 import { ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { CreateProfessorDto } from '../dto/create-professor.dto';
 import { UpdateProfessorDto } from '../dto/update-professor.dto';
+import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 
 @ApiTags('Professores')
 @Controller('professores')
+@UseGuards(JwtAuthGuard)
 export class ProfessoresController {
   constructor(private readonly service: ProfessoresService) {}
 
@@ -28,7 +31,9 @@ export class ProfessoresController {
   @ApiQuery({ name: 'page', required: false })
   @ApiQuery({ name: 'pageSize', required: false })
   list(@Query(ValidationPipe) query: any, @Request() req) {
+    console.log('🎯 [PROFESSORES CONTROLLER] req.user:', req.user);
     const user = req?.user || null;
+    console.log('🎯 [PROFESSORES CONTROLLER] user enviado ao service:', user);
     return this.service.list(query, user);
   }
 

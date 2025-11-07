@@ -9,6 +9,7 @@ const ALLOWED_INCOMPLETE_PAGES = [
   "/login",
   "/register",
   "/complete-profile",
+  "/cadastro-concluido", // Página de confirmação após completar cadastro
   "/reset-password",
   "/onboarding/recepcionista",
   "/minha-franquia", // Franqueados podem acessar mesmo com cadastro incompleto

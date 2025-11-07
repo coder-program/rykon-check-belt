@@ -53,7 +53,7 @@ interface HorariosFuncionamento {
 interface UnidadeFormData {
   franqueado_id: string;
   nome: string;
-  cnpj: string;
+  cnpj?: string;
   razao_social: string;
   nome_fantasia?: string;
   inscricao_estadual?: string;
@@ -140,6 +140,13 @@ export default function UnidadeForm({
     const perfilNome =
       typeof perfil === "string" ? perfil : perfil.nome || perfil.perfil;
     return perfilNome?.toLowerCase() === "franqueado";
+  });
+
+  // Verificar se usuário é MASTER
+  const isMaster = user?.perfis?.some((perfil: any) => {
+    const perfilNome =
+      typeof perfil === "string" ? perfil : perfil.nome || perfil.perfil;
+    return perfilNome?.toUpperCase() === "MASTER";
   });
 
   // Debug
@@ -392,11 +399,11 @@ export default function UnidadeForm({
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      CNPJ *
+                      CNPJ{" "}
+                      <span className="text-gray-500 text-xs">(opcional)</span>
                     </label>
                     <input
                       type="text"
-                      required
                       value={formData.cnpj}
                       onChange={(e) =>
                         setFormData({
@@ -407,6 +414,9 @@ export default function UnidadeForm({
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       placeholder="00.000.000/0000-00"
                     />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Deixe em branco para projetos sociais ou igrejas
+                    </p>
                   </div>
 
                   <div className="md:col-span-2">
@@ -1082,39 +1092,69 @@ export default function UnidadeForm({
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Situação da Unidade
                     </label>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                      {(
-                        ["ATIVA", "INATIVA", "HOMOLOGACAO"] as StatusUnidade[]
-                      ).map((sit) => (
-                        <label
-                          key={sit}
-                          className={`flex items-center justify-center p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                            formData.status === sit
-                              ? "border-blue-600 bg-blue-50"
-                              : "border-gray-300 hover:border-gray-400"
-                          }`}
-                        >
-                          <input
-                            type="radio"
-                            name="status"
-                            value={sit}
-                            checked={formData.status === sit}
-                            onChange={(e) =>
-                              setFormData({
-                                ...formData,
-                                status: e.target.value as StatusUnidade,
-                              })
-                            }
-                            className="mr-3"
-                          />
-                          <span className="font-medium">
-                            {sit === "HOMOLOGACAO"
-                              ? "Em Homologação"
-                              : sit.charAt(0) + sit.slice(1).toLowerCase()}
+
+                    {/* Apenas MASTER pode alterar o status */}
+                    {isMaster ? (
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        {(
+                          ["ATIVA", "INATIVA", "HOMOLOGACAO"] as StatusUnidade[]
+                        ).map((sit) => (
+                          <label
+                            key={sit}
+                            className={`flex items-center justify-center p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                              formData.status === sit
+                                ? "border-blue-600 bg-blue-50"
+                                : "border-gray-300 hover:border-gray-400"
+                            }`}
+                          >
+                            <input
+                              type="radio"
+                              name="status"
+                              value={sit}
+                              checked={formData.status === sit}
+                              onChange={(e) =>
+                                setFormData({
+                                  ...formData,
+                                  status: e.target.value as StatusUnidade,
+                                })
+                              }
+                              className="mr-3"
+                            />
+                            <span className="font-medium">
+                              {sit === "HOMOLOGACAO"
+                                ? "Em Homologação"
+                                : sit.charAt(0) + sit.slice(1).toLowerCase()}
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="p-4 bg-gray-100 border-2 border-gray-300 rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <div
+                            className={`w-3 h-3 rounded-full ${
+                              formData.status === "ATIVA"
+                                ? "bg-green-500"
+                                : formData.status === "HOMOLOGACAO"
+                                ? "bg-yellow-500"
+                                : "bg-red-500"
+                            }`}
+                          ></div>
+                          <span className="font-semibold text-gray-800">
+                            {formData.status === "HOMOLOGACAO"
+                              ? "Em Homologação - Aguardando Aprovação"
+                              : formData.status === "ATIVA"
+                              ? "Ativa"
+                              : "Inativa"}
                           </span>
-                        </label>
-                      ))}
-                    </div>
+                        </div>
+                        <p className="text-sm text-gray-600 mt-2">
+                          {!isEditing &&
+                            "Novas unidades são criadas em homologação. "}
+                          Apenas administradores podem alterar o status.
+                        </p>
+                      </div>
+                    )}
                   </div>
 
                   <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
@@ -1142,7 +1182,7 @@ export default function UnidadeForm({
                       Requisitos
                     </h4>
                     <ul className="text-sm text-yellow-800 space-y-1">
-                      <li>✓ CNPJ único para cada unidade</li>
+                      <li>✓ CNPJ opcional (único se informado)</li>
                       <li>✓ Email único para cada unidade</li>
                       <li>
                         ✓ Pelo menos 1 instrutor faixa-preta cadastrado como

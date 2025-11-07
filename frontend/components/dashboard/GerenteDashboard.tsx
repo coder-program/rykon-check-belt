@@ -128,14 +128,14 @@ export default function GerenteDashboard() {
       color: "bg-red-600",
     },
     {
-      title: "Cadastrar Usuário",
-      description: "Criar usuário para o sistema.",
+      title: "Gerenciar Usuários",
+      description: "Gerenciar usuários do sistema",
       icon: UserCheck,
-      action: () => router.push("/admin/cadastrar-usuario"),
+      action: () => router.push("/usuarios"),
       color: "bg-pink-500",
     },
     {
-      title: "Cadastrar Professor",
+      title: "Gerenciar Professor",
       description: "Adicionar novo professor/instrutor",
       icon: GraduationCap,
       action: () => router.push("/professores"),

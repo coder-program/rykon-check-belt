@@ -611,27 +611,8 @@ export default function MeuPerfilPage() {
                       ? "bg-purple-100 text-purple-800"
                       : "bg-gray-100 text-gray-800"
                   }`}
-                >
-                  {tipoUsuario === "aluno"
-                    ? "👨‍🎓 Aluno"
-                    : tipoUsuario === "professor"
-                    ? "👨‍🏫 Professor"
-                    : "👤 Usuário"}
-                </span>
+                ></span>
               )}
-            </div>
-
-            {/* Debug Info (remover em produção) */}
-            <div className="mt-4 p-3 bg-gray-100 rounded-md text-xs">
-              <strong>🔍 Debug Info:</strong>
-              <br />• User ID: {user?.id}
-              <br />• Tipo: {tipoUsuario || "carregando..."}
-              <br />• Dados Aluno:{" "}
-              {dadosAluno ? "✅ Carregados" : "❌ Não encontrado"}
-              <br />• Dados Professor:{" "}
-              {dadosProfessor ? "✅ Carregados" : "❌ Não encontrado"}
-              <br />• Loading Aluno: {loadingAluno ? "⏳" : "✅"}
-              <br />• Error Aluno: {errorAluno?.message || "Nenhum"}
             </div>
           </div>
 

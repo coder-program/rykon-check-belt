@@ -153,6 +153,32 @@ export default function GestaoUnidadesPage() {
     },
   });
 
+  const aprovarUnidadeMutation = useMutation({
+    mutationFn: async (unidadeId: string) => {
+      return updateUnidade(unidadeId, { status: "ATIVA" });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["unidades-gestao"] });
+      toast.success("Unidade aprovada com sucesso!");
+    },
+    onError: (error: any) => {
+      toast.error(error?.message || "Erro ao aprovar unidade");
+    },
+  });
+
+  const reprovarUnidadeMutation = useMutation({
+    mutationFn: async (unidadeId: string) => {
+      return updateUnidade(unidadeId, { status: "INATIVA" });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["unidades-gestao"] });
+      toast.success("Unidade reprovada");
+    },
+    onError: (error: any) => {
+      toast.error(error?.message || "Erro ao reprovar unidade");
+    },
+  });
+
   const abrirModalProfessores = (unidade: Unidade) => {
     setSelectedUnidade(unidade);
 
@@ -559,6 +585,46 @@ export default function GestaoUnidadesPage() {
                         </div>
 
                         <div className="flex items-center gap-3">
+                          {/* Approve / Reject buttons for MASTER when unit is pending (HOMOLOGACAO) */}
+                          {unidade.status === "HOMOLOGACAO" &&
+                            hasPerfil("master") && (
+                              <div className="flex items-center gap-2">
+                                <button
+                                  onClick={() => {
+                                    if (
+                                      confirm(
+                                        `Aprovar a unidade "${unidade.nome}"? Essa ação deixará a unidade como ATIVA.`
+                                      )
+                                    ) {
+                                      aprovarUnidadeMutation.mutate(unidade.id);
+                                    }
+                                  }}
+                                  className="px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm transition-colors"
+                                >
+                                  <CheckCircle className="h-4 w-4 inline-block mr-2" />
+                                  Aprovar
+                                </button>
+
+                                <button
+                                  onClick={() => {
+                                    if (
+                                      confirm(
+                                        `Reprovar a unidade "${unidade.nome}"? Essa ação deixará a unidade como INATIVA.`
+                                      )
+                                    ) {
+                                      reprovarUnidadeMutation.mutate(
+                                        unidade.id
+                                      );
+                                    }
+                                  }}
+                                  className="px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm transition-colors"
+                                >
+                                  <XCircle className="h-4 w-4 inline-block mr-2" />
+                                  Reprovar
+                                </button>
+                              </div>
+                            )}
+
                           {unidade.professores.length > 0 && (
                             <div className="text-right max-w-xs">
                               <div className="text-sm font-medium">

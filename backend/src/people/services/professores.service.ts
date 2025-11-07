@@ -34,6 +34,13 @@ export class ProfessoresService {
   ) {}
 
   async list(params: ListProfessoresParams, user?: any) {
+    console.log('🔍 [PROFESSORES] Iniciando listagem com params:', params);
+    console.log('🔍 [PROFESSORES] User:', {
+      id: user?.id,
+      username: user?.username,
+      perfis: user?.perfis,
+    });
+
     const page = Math.max(1, Number(params.page) || 1);
     const pageSize = Math.min(100, Math.max(1, Number(params.pageSize) || 20));
 
@@ -52,21 +59,74 @@ export class ProfessoresService {
       );
     }
 
-    // Filtro por unidade
-    if (params.unidade_id) {
+    // Aplicar filtros de segurança baseados no perfil do usuário
+    // FRANQUEADO: só vê professores das suas unidades
+    if (user && this.isFranqueado(user) && !this.isMaster(user)) {
+      console.log('🔒 [PROFESSORES] Usuário é FRANQUEADO - aplicando filtro');
+      const franqueadoId = await this.getFranqueadoIdByUser(user);
+      console.log('🔒 [PROFESSORES] franqueadoId:', franqueadoId);
+
+      if (franqueadoId) {
+        // Se especificou unidade_id, validar que pertence ao franqueado
+        if (params.unidade_id) {
+          console.log(
+            '🔒 [PROFESSORES] Filtrando por unidade_id:',
+            params.unidade_id,
+          );
+          query.andWhere(
+            'person.unidade_id = :unidade AND person.unidade_id IN (SELECT id FROM teamcruz.unidades WHERE franqueado_id = :franqueadoId)',
+            { unidade: params.unidade_id, franqueadoId },
+          );
+        } else {
+          console.log(
+            '🔒 [PROFESSORES] Filtrando por todas as unidades do franqueado',
+          );
+          // Sem filtro de unidade: mostrar todas as unidades do franqueado
+          query.andWhere(
+            'person.unidade_id IN (SELECT id FROM teamcruz.unidades WHERE franqueado_id = :franqueadoId)',
+            { franqueadoId },
+          );
+        }
+      } else {
+        console.log(
+          '⚠️ [PROFESSORES] Franqueado sem registro - bloqueando acesso',
+        );
+        // Franqueado sem registro: não pode ver nenhum professor
+        query.andWhere('1 = 0');
+      }
+    }
+    // GERENTE DE UNIDADE: só vê professores da sua unidade
+    else if (user && this.isGerenteUnidade(user) && !this.isMaster(user)) {
+      console.log(
+        '🔒 [PROFESSORES] Usuário é GERENTE_UNIDADE - aplicando filtro',
+      );
+      const unidadeDoGerente = await this.getUnidadeDoGerente(user);
+      console.log('🔒 [PROFESSORES] unidadeDoGerente:', unidadeDoGerente);
+
+      if (unidadeDoGerente) {
+        // Forçar filtro pela unidade do gerente
+        query.andWhere('person.unidade_id = :unidadeGerente', {
+          unidadeGerente: unidadeDoGerente,
+        });
+      } else {
+        console.log('⚠️ [PROFESSORES] Gerente sem unidade - bloqueando acesso');
+        // Gerente sem unidade: não pode ver nenhum professor
+        query.andWhere('1 = 0');
+      }
+    }
+    // MASTER ou outros perfis: pode filtrar por qualquer unidade
+    else if (params.unidade_id) {
+      console.log(
+        '✅ [PROFESSORES] MASTER ou admin - filtrando por unidade:',
+        params.unidade_id,
+      );
       query.andWhere('person.unidade_id = :unidade', {
         unidade: params.unidade_id,
       });
-    }
-    // Se franqueado (não master), filtra apenas professores das suas unidades
-    else if (user && this.isFranqueado(user) && !this.isMaster(user)) {
-      const franqueadoId = await this.getFranqueadoIdByUser(user);
-      if (franqueadoId) {
-        query.andWhere(
-          'person.unidade_id IN (SELECT id FROM teamcruz.unidades WHERE franqueado_id = :franqueadoId)',
-          { franqueadoId },
-        );
-      }
+    } else {
+      console.log(
+        '✅ [PROFESSORES] MASTER ou admin - sem filtro de unidade (todos)',
+      );
     }
 
     // Filtro por status
@@ -78,10 +138,22 @@ export class ProfessoresService {
     query.orderBy('person.nome_completo', 'ASC');
 
     // Paginação
+    console.log('📝 [PROFESSORES] SQL Query:', query.getQueryAndParameters());
+
     const [items, total] = await query
       .skip((page - 1) * pageSize)
       .take(pageSize)
       .getManyAndCount();
+
+    console.log('📊 [PROFESSORES] Resultados:', {
+      total,
+      items: items.length,
+      professores: items.map((p) => ({
+        id: p.id,
+        nome: p.nome_completo,
+        unidade_id: p.unidade_id,
+      })),
+    });
 
     // Buscar unidades de cada professor
     const itemsWithUnidades = await Promise.all(
@@ -443,11 +515,48 @@ export class ProfessoresService {
 
   // Métodos auxiliares para controle de acesso por perfil
   private isMaster(user: any): boolean {
-    return user?.perfis?.some((p: string) => p.toLowerCase() === 'master');
+    const result = user?.perfis?.some((p: any) => {
+      const nome = typeof p === 'string' ? p : p?.nome;
+      return nome?.toLowerCase() === 'master';
+    });
+    console.log(
+      '🔍 [PROFESSORES] isMaster:',
+      result,
+      'perfis:',
+      user?.perfis?.map((p: any) => (typeof p === 'string' ? p : p?.nome)),
+    );
+    return result;
   }
 
   private isFranqueado(user: any): boolean {
-    return user?.perfis?.some((p: string) => p.toLowerCase() === 'franqueado');
+    const result = user?.perfis?.some((p: any) => {
+      const nome = typeof p === 'string' ? p : p?.nome;
+      return nome?.toLowerCase() === 'franqueado';
+    });
+    console.log(
+      '🔍 [PROFESSORES] isFranqueado:',
+      result,
+      'perfis:',
+      user?.perfis?.map((p: any) => (typeof p === 'string' ? p : p?.nome)),
+    );
+    return result;
+  }
+
+  private isGerenteUnidade(user: any): boolean {
+    const result = user?.perfis?.some((p: any) => {
+      const nome = typeof p === 'string' ? p : p?.nome;
+      return (
+        nome?.toLowerCase() === 'gerente_unidade' ||
+        nome?.toLowerCase() === 'gerente'
+      );
+    });
+    console.log(
+      '🔍 [PROFESSORES] isGerenteUnidade:',
+      result,
+      'perfis:',
+      user?.perfis?.map((p: any) => (typeof p === 'string' ? p : p?.nome)),
+    );
+    return result;
   }
 
   private async getFranqueadoIdByUser(user: any): Promise<string | null> {
@@ -457,6 +566,16 @@ export class ProfessoresService {
       [user.id],
     );
     return result[0]?.id || null;
+  }
+
+  private async getUnidadeDoGerente(user: any): Promise<string | null> {
+    if (!user?.id) return null;
+    // Busca a unidade onde o usuário é gerente
+    const result = await this.dataSource.query(
+      `SELECT unidade_id FROM teamcruz.pessoas WHERE usuario_id = $1 AND tipo_cadastro = 'GERENTE_UNIDADE' LIMIT 1`,
+      [user.id],
+    );
+    return result[0]?.unidade_id || null;
   }
 
   private async getUnidadesDeFranqueado(

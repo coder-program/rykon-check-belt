@@ -69,14 +69,28 @@ export class UnidadesService {
         params[0] = franqueadoId; // sobrescreve franqueado_id informado
       }
 
+      // Se usuário NÃO é MASTER, força status HOMOLOGACAO
+      if (user && !this.isMaster(user)) {
+        params[13] = 'HOMOLOGACAO'; // índice 13 é o status na query
+      }
+
+      // Validar CNPJ duplicado apenas quando CNPJ for informado
+      if (dto.cnpj && dto.cnpj.trim() !== '') {
+        const cnpjExistente = await this.dataSource.query(
+          'SELECT id FROM teamcruz.unidades WHERE cnpj = $1',
+          [dto.cnpj],
+        );
+        if (cnpjExistente && cnpjExistente.length > 0) {
+          throw new ConflictException('CNPJ já cadastrado para outra unidade.');
+        }
+      }
+
       const res = await this.dataSource.query(q, params);
       // Ao criar, retornar também o endereço populado (quando houver)
       return await this.formatarUnidadeComEndereco(res[0]);
     } catch (e: any) {
-      // 23505 -> duplicate_key_violation (cnpj único)
-      if (e?.code === '23505') {
-        throw new ConflictException('CNPJ já cadastrado para outra unidade.');
-      }
+      // Se já tratamos o erro de CNPJ duplicado acima, não precisa verificar novamente
+      // Apenas propagar outros erros
       throw e;
     }
   }
@@ -100,9 +114,16 @@ export class UnidadesService {
       search?: string;
       status?: StatusUnidade | string;
       franqueado_id?: string;
+      responsavel_cpf?: string;
     },
     user?: any,
   ) {
+    console.log('🔍 [UNIDADES][SERVICE] listar called with params:', params);
+    console.log(
+      '🔍 [UNIDADES][SERVICE] user (partial):',
+      user ? { id: user.id, perfis: user.perfis } : null,
+    );
+
     const page = Math.max(1, Number(params.page) || 1);
     const pageSize = Math.min(100, Math.max(1, Number(params.pageSize) || 20));
     const offset = (page - 1) * pageSize;
@@ -126,6 +147,17 @@ export class UnidadesService {
     ) {
       whereConditions.push(`u.status = $${paramIndex}`);
       queryParams.push(params.status);
+      paramIndex++;
+    }
+
+    // Filtrar por responsavel_cpf se fornecido (usado para gerentes encontrarem sua unidade)
+    if (params.responsavel_cpf) {
+      console.log(
+        '🔍 [UNIDADES] Buscando unidade por responsavel_cpf:',
+        params.responsavel_cpf,
+      );
+      whereConditions.push(`u.responsavel_cpf = $${paramIndex}`);
+      queryParams.push(params.responsavel_cpf);
       paramIndex++;
     }
 
@@ -184,6 +216,11 @@ export class UnidadesService {
     const countQ = `SELECT COUNT(*) as total FROM teamcruz.unidades u ${whereClause}`;
     const countRes = await this.dataSource.query(countQ, queryParams);
     const total = parseInt(countRes[0].total);
+    console.log('🔢 [UNIDADES] count query executed', {
+      countQuery: countQ,
+      params: queryParams,
+      total,
+    });
 
     // Query com dados
     const q = `SELECT u.*, f.nome as franqueado_nome
@@ -195,9 +232,18 @@ export class UnidadesService {
 
     queryParams.push(pageSize, offset);
     const res = await this.dataSource.query(q, queryParams);
+    console.log('📦 [UNIDADES] data query executed', {
+      dataQuery: q,
+      params: queryParams,
+      rows: res.length,
+    });
     const items = await Promise.all(
       res.map((row: any) => this.formatarUnidadeComEndereco(row)),
     );
+    console.log('✅ [UNIDADES] returning items', {
+      returned: items.length,
+      sample: items.slice(0, 3),
+    });
     return {
       items,
       page,
@@ -209,15 +255,20 @@ export class UnidadesService {
 
   // Método PÚBLICO para listagem de unidades ativas (cadastro público)
   async listarPublicasAtivas(): Promise<any[]> {
+    console.log('🔍 [UNIDADES][SERVICE][PUBLIC/ATIVAS] called');
     const q = `
       SELECT u.id, u.nome, u.status, u.endereco_id,
              e.cidade, e.estado, e.bairro
       FROM teamcruz.unidades u
       LEFT JOIN teamcruz.enderecos e ON e.id = u.endereco_id
-      WHERE u.status IN ('ATIVA', 'HOMOLOGACAO')
+      WHERE u.status = 'ATIVA'
       ORDER BY u.nome ASC
     `;
     const res = await this.dataSource.query(q);
+    console.log(
+      '📦 [UNIDADES][SERVICE][PUBLIC/ATIVAS] result rows:',
+      res.length,
+    );
     return res;
   }
 
@@ -243,12 +294,31 @@ export class UnidadesService {
     dto: UpdateUnidadeDto,
     user?: any,
   ): Promise<Unidade | null> {
+    // Validar CNPJ duplicado apenas quando CNPJ for informado e diferente de vazio
+    if (dto.cnpj !== undefined && dto.cnpj && dto.cnpj.trim() !== '') {
+      const cnpjExistente = await this.dataSource.query(
+        'SELECT id FROM teamcruz.unidades WHERE cnpj = $1 AND id != $2',
+        [dto.cnpj, id],
+      );
+      if (cnpjExistente && cnpjExistente.length > 0) {
+        throw new ConflictException('CNPJ já cadastrado para outra unidade.');
+      }
+    }
+
     const fields: string[] = [];
     const values: any[] = [];
     let idx = 1;
 
     for (const [key, value] of Object.entries(dto)) {
       if (value !== undefined) {
+        // Se não for MASTER, não permitir alteração de status
+        if (key === 'status' && user && !this.isMaster(user)) {
+          console.log(
+            '⚠️ Usuário não-MASTER tentou alterar status. Ignorando.',
+          );
+          continue; // pula este campo
+        }
+
         if (key === 'horarios_funcionamento' || key === 'modalidades') {
           fields.push(`${key} = $${idx++}`);
           values.push(value ? JSON.stringify(value) : null);

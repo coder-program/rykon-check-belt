@@ -59,7 +59,7 @@ export class Unidade {
   @Column({ length: 150 })
   nome: string;
 
-  @Column({ length: 18, unique: true })
+  @Column({ length: 18, nullable: true })
   cnpj: string;
 
   @Column({ length: 200, nullable: true })

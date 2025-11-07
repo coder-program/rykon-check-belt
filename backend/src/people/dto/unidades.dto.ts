@@ -33,13 +33,10 @@ export class CreateUnidadeDto {
   @Length(1, 150)
   nome!: string;
 
-  @ApiProperty({ example: '12.345.678/0001-90' })
+  @ApiPropertyOptional({ example: '12.345.678/0001-90' })
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  @Matches(/^\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}$/, {
-    message: 'CNPJ deve estar no formato XX.XXX.XXX/XXXX-XX',
-  })
-  cnpj!: string;
+  cnpj?: string;
 
   @ApiProperty({ example: 'TeamCruz Barueri Ltda' })
   @IsString()
@@ -236,8 +233,6 @@ export class UpdateUnidadeDto {
   @ApiPropertyOptional({ example: '12.345.678/0001-90' })
   @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  @Length(14, 18)
   cnpj?: string;
 
   @ApiPropertyOptional({ example: 'TeamCruz Barueri Ltda' })
