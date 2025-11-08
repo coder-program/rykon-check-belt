@@ -162,4 +162,28 @@ export class AulaService {
     ];
     return dias[dia] || 'todos';
   }
+
+  async countHoje(unidade_id?: string): Promise<number> {
+    const hoje = new Date();
+    const diaSemanaHoje = hoje.getDay(); // 0 = domingo, 1 = segunda, etc
+
+    const query = this.aulaRepository
+      .createQueryBuilder('aula')
+      .where('aula.ativo = :ativo', { ativo: true })
+      .andWhere('aula.dia_semana = :dia_semana', { dia_semana: diaSemanaHoje });
+
+    if (unidade_id) {
+      query.andWhere('aula.unidade_id = :unidade_id', { unidade_id });
+    }
+
+    const count = await query.getCount();
+
+    console.log('📊 [AULAS HOJE]', {
+      unidade_id,
+      dia_semana: diaSemanaHoje,
+      count,
+    });
+
+    return count;
+  }
 }

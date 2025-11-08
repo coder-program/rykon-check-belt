@@ -22,6 +22,7 @@ import {
   UserCheck,
   Star,
   Target,
+  Building2,
 } from "lucide-react";
 
 interface InstrutorStats {
@@ -56,6 +57,25 @@ interface AlunoDestaque {
 export default function InstrutorDashboard() {
   const { user, token } = useAuth();
   const router = useRouter();
+
+  // Buscar unidade do professor
+  const { data: unidadeData, isLoading: loadingUnidade } = useQuery({
+    queryKey: ["unidade-professor", user?.id],
+    queryFn: async () => {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/usuarios/${user?.id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
+      if (!response.ok) throw new Error("Erro ao buscar unidade");
+      const userData = await response.json();
+      return userData.unidade;
+    },
+    enabled: !!user?.id,
+  });
 
   // Buscar estatísticas do instrutor
   const { data: instrutorStats, isLoading: statsLoading } =
@@ -146,6 +166,13 @@ export default function InstrutorDashboard() {
       urgent: true,
     },
     {
+      title: "Gerenciar Aulas",
+      description: "Criar e editar aulas/horários",
+      icon: Calendar,
+      action: () => router.push("/aulas"),
+      color: "bg-indigo-500",
+    },
+    {
       title: "Horários",
       description: "Visualizar cronograma de aulas",
       icon: TrendingUp,
@@ -159,15 +186,33 @@ export default function InstrutorDashboard() {
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <div className="flex items-center gap-3 mb-2">
-            <BookOpen className="h-8 w-8 text-blue-600" />
-            <h1 className="text-3xl font-bold text-gray-900">
-              Dashboard Instrutor
-            </h1>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <BookOpen className="h-8 w-8 text-blue-600" />
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900">
+                  Dashboard Instrutor
+                </h1>
+                <p className="text-gray-600">
+                  Bem-vindo, Prof.{" "}
+                  <span className="font-semibold">{user?.nome}</span>!
+                </p>
+              </div>
+            </div>
+
+            {/* Badge da Unidade - Destacado */}
+            {unidadeData && (
+              <div className="flex items-center gap-2 bg-gradient-to-r from-purple-500 to-pink-600 text-white px-6 py-3 rounded-lg shadow-lg">
+                <Building2 className="h-5 w-5" />
+                <div className="text-left">
+                  <p className="text-xs font-medium opacity-90">Unidade</p>
+                  <p className="text-lg font-bold">
+                    {unidadeData?.nome || "Carregando..."}
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
-          <p className="text-gray-600">
-            Bem-vindo, Prof. {user?.nome}! Gerencie suas turmas e alunos.
-          </p>
         </div>
 
         {/* Stats Cards */}

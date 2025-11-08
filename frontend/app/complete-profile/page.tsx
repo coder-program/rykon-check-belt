@@ -135,7 +135,24 @@ export default function CompleteProfilePage() {
     );
   });
 
+  const isRecepcionista = user?.perfis?.some((perfil: any) => {
+    const perfilNome =
+      typeof perfil === "string" ? perfil : perfil.nome || perfil.perfil;
+    return perfilNome?.toLowerCase() === "recepcionista";
+  });
+
+  const isProfessor = user?.perfis?.some((perfil: any) => {
+    const perfilNome =
+      typeof perfil === "string" ? perfil : perfil.nome || perfil.perfil;
+    return (
+      perfilNome?.toLowerCase() === "professor" ||
+      perfilNome?.toLowerCase() === "instrutor"
+    );
+  });
+
   console.log("🔍 [DEBUG] isGerenteUnidade =", isGerenteUnidade);
+  console.log("🔍 [DEBUG] isRecepcionista =", isRecepcionista);
+  console.log("🔍 [DEBUG] isProfessor =", isProfessor);
 
   // Buscar unidade do gerente (se for gerente)
   useEffect(() => {
@@ -189,6 +206,49 @@ export default function CompleteProfilePage() {
       buscarUnidadeGerente();
     }
   }, [isGerenteUnidade, user?.cpf]);
+
+  // Buscar unidade de recepcionista ou professor
+  useEffect(() => {
+    console.log("🔍 [EFFECT] useEffect de recep/prof disparado");
+
+    if ((isRecepcionista || isProfessor) && user?.id) {
+      console.log("🔍 [RECEP/PROF] Detectado perfil, buscando unidade...");
+
+      const buscarUnidade = async () => {
+        try {
+          const apiUrl =
+            process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api";
+          const token = localStorage.getItem("token");
+
+          // Buscar usuário completo com unidade enriquecida
+          const response = await fetch(`${apiUrl}/usuarios/${user.id}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          const userData = await response.json();
+
+          console.log("🔍 [RECEP/PROF] Dados do usuário:", userData);
+
+          if (userData.unidade?.id) {
+            console.log(
+              "✅ [RECEP/PROF] Unidade encontrada:",
+              userData.unidade
+            );
+            setFormData((prev) => ({
+              ...prev,
+              unidade_id: userData.unidade.id,
+            }));
+          } else {
+            console.warn(
+              "⚠️ [RECEP/PROF] Nenhuma unidade encontrada para este usuário"
+            );
+          }
+        } catch (err) {
+          console.error("❌ [RECEP/PROF] Erro ao buscar unidade:", err);
+        }
+      };
+      buscarUnidade();
+    }
+  }, [isRecepcionista, isProfessor, user?.id]);
 
   const loadUnidades = async () => {
     console.log("🔍 [loadUnidades] Iniciando busca de unidades públicas...");
@@ -332,8 +392,6 @@ export default function CompleteProfilePage() {
     : "";
 
   const isAluno = perfilPrincipal === "aluno";
-  const isProfessor =
-    perfilPrincipal === "professor" || perfilPrincipal === "instrutor";
 
   // Mostrar loading enquanto carrega autenticação
   if (authLoading) {
@@ -410,11 +468,11 @@ export default function CompleteProfilePage() {
               value={formData.unidade_id}
               onChange={handleChange}
               required
-              disabled={isGerenteUnidade} // Gerente não pode escolher unidade
+              disabled={isGerenteUnidade || isRecepcionista || isProfessor} // Não pode escolher se já foi definido
               className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <option value="">
-                {isGerenteUnidade
+                {isGerenteUnidade || isRecepcionista || isProfessor
                   ? "Carregando sua unidade..."
                   : "Selecione uma unidade"}
               </option>
@@ -424,10 +482,9 @@ export default function CompleteProfilePage() {
                 </option>
               ))}
             </select>
-            {isGerenteUnidade && (
+            {(isGerenteUnidade || isRecepcionista || isProfessor) && (
               <p className="text-xs text-gray-400 mt-1">
-                Sua unidade foi definida pelo franqueado e não pode ser
-                alterada.
+                Sua unidade foi definida no cadastro e não pode ser alterada.
               </p>
             )}
           </div>

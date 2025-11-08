@@ -34,6 +34,11 @@ interface PendingUser {
   perfis: string[];
   ativo: boolean;
   created_at: string;
+  unidade?: {
+    id: string;
+    nome: string;
+    status: string;
+  };
 }
 
 function AprovacaoUsuariosPage() {
@@ -75,10 +80,11 @@ function AprovacaoUsuariosPage() {
   });
   const queryClient = useQueryClient();
 
-  // Query separada para estatísticas (sempre busca todos os usuários)
-  const { data: allUsersForStats = [] } = useQuery({
+  // Query separada para estatísticas (busca todos os usuários visíveis para o perfil)
+  const { data: allUsersForStats = [], isLoading: isLoadingStats } = useQuery({
     queryKey: ["todos-usuarios-stats"],
     queryFn: async () => {
+      console.log("📊 [STATS] Iniciando busca de estatísticas...");
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/usuarios`,
         {
@@ -89,14 +95,30 @@ function AprovacaoUsuariosPage() {
       );
 
       if (!response.ok) {
+        console.error("❌ [STATS] Erro na resposta:", response.status);
         throw new Error("Erro ao carregar estatísticas");
       }
 
       const data = await response.json();
-      return data.map((user: any) => ({
+      console.log("📊 [STATS] Dados brutos recebidos:", data);
+      console.log("📊 [STATS] Total de usuários:", data.length);
+
+      const stats = data.map((user: any) => ({
         id: user.id,
         ativo: user.ativo,
       }));
+
+      console.log("📊 [STATS] Estatísticas processadas:", stats);
+      console.log(
+        "📊 [STATS] Pendentes:",
+        stats.filter((u: any) => !u.ativo).length
+      );
+      console.log(
+        "📊 [STATS] Aprovados:",
+        stats.filter((u: any) => u.ativo).length
+      );
+
+      return stats;
     },
   });
 
@@ -150,6 +172,8 @@ function AprovacaoUsuariosPage() {
 
       const data = await response.json();
 
+      console.log("🔍 [PENDENTES] Dados brutos da API:", data);
+
       // Transformar dados para o formato esperado
       let allUsers = data.map((user: any) => ({
         id: user.id,
@@ -162,6 +186,8 @@ function AprovacaoUsuariosPage() {
         created_at: user.created_at,
         unidade: user.unidade, // Incluir dados da unidade
       }));
+
+      console.log("🔍 [PENDENTES] Usuários transformados:", allUsers);
 
       // Filtrar baseado no estado
       let filtered = allUsers;
@@ -497,7 +523,17 @@ function AprovacaoUsuariosPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-yellow-600">
-                {allUsersForStats.filter((u) => !u.ativo).length}
+                {(() => {
+                  const pendentes = allUsersForStats.filter(
+                    (u) => !u.ativo
+                  ).length;
+                  console.log(
+                    "🟡 [CARD PENDENTES] allUsersForStats:",
+                    allUsersForStats
+                  );
+                  console.log("🟡 [CARD PENDENTES] Count:", pendentes);
+                  return pendentes;
+                })()}
               </div>
             </CardContent>
           </Card>
@@ -509,7 +545,13 @@ function AprovacaoUsuariosPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-green-600">
-                {allUsersForStats.filter((u) => u.ativo).length}
+                {(() => {
+                  const aprovados = allUsersForStats.filter(
+                    (u) => u.ativo
+                  ).length;
+                  console.log("🟢 [CARD APROVADOS] Count:", aprovados);
+                  return aprovados;
+                })()}
               </div>
             </CardContent>
           </Card>
@@ -521,7 +563,13 @@ function AprovacaoUsuariosPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-blue-600">
-                {allUsersForStats.length}
+                {(() => {
+                  console.log(
+                    "🔵 [CARD TOTAL] Count:",
+                    allUsersForStats.length
+                  );
+                  return allUsersForStats.length;
+                })()}
               </div>
             </CardContent>
           </Card>
@@ -616,7 +664,13 @@ function AprovacaoUsuariosPage() {
 
                         <div className="mt-2">
                           <span className="text-xs text-gray-500">
-                            Perfis: {userItem.perfis.join(", ")} • Cadastrado em{" "}
+                            Perfis: {userItem.perfis.join(", ")}
+                            {userItem.unidade && (
+                              <span className="ml-2 text-amber-600 font-medium">
+                                • Unidade: {userItem.unidade.nome}
+                              </span>
+                            )}
+                            {" • "}Cadastrado em{" "}
                             {new Date(userItem.created_at).toLocaleDateString(
                               "pt-BR"
                             )}

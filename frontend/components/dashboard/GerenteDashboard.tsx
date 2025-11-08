@@ -58,6 +58,28 @@ export default function GerenteDashboard() {
     enabled: !!unidade?.id,
   });
 
+  // Buscar aulas de hoje
+  const { data: aulasHoje } = useQuery({
+    queryKey: ["aulas-hoje", unidade?.id],
+    queryFn: async () => {
+      if (!unidade?.id) return { count: 0 };
+      const token = localStorage.getItem("token");
+      const apiUrl =
+        process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api";
+      const response = await fetch(
+        `${apiUrl}/aulas/hoje?unidade_id=${unidade.id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      if (!response.ok) return { count: 0 };
+      return response.json();
+    },
+    enabled: !!unidade?.id,
+  });
+
   const alunos = alunosData?.items || [];
 
   // Calcular estatísticas baseadas nos dados reais
@@ -83,8 +105,8 @@ export default function GerenteDashboard() {
       },
       0
     ),
-    graduacoesPendentes: 5, // TODO: buscar da API de graduações
-    aulasHoje: 4, // TODO: buscar da API de aulas
+    graduacoesPendentes: 0, // TODO: Implementar API de graduações pendentes
+    aulasHoje: aulasHoje?.count || 0, // ✅ Buscar do banco
   };
 
   const isLoading = loadingUnidade || loadingAlunos;
@@ -140,6 +162,13 @@ export default function GerenteDashboard() {
       icon: GraduationCap,
       action: () => router.push("/professores"),
       color: "bg-teal-500",
+    },
+    {
+      title: "Gerenciar Aulas",
+      description: "Criar e editar aulas/horários",
+      icon: Calendar,
+      action: () => router.push("/aulas"),
+      color: "bg-indigo-500",
     },
     {
       title: "Gerenciar Alunos",
@@ -199,16 +228,31 @@ export default function GerenteDashboard() {
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <div className="flex items-center gap-3 mb-2">
-            <Building2 className="h-8 w-8 text-blue-600" />
-            <h1 className="text-3xl font-bold text-gray-900">
-              Dashboard Gerente
-            </h1>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <Building2 className="h-8 w-8 text-blue-600" />
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900">
+                  Dashboard Gerente
+                </h1>
+                <p className="text-gray-600">
+                  Bem-vindo, <span className="font-semibold">{user?.nome}</span>
+                  !
+                </p>
+              </div>
+            </div>
+
+            {/* Badge da Unidade - Destacado */}
+            <div className="flex items-center gap-2 bg-gradient-to-r from-blue-500 to-indigo-600 text-white px-6 py-3 rounded-lg shadow-lg">
+              <Building2 className="h-5 w-5" />
+              <div className="text-left">
+                <p className="text-xs font-medium opacity-90">Unidade</p>
+                <p className="text-lg font-bold">
+                  {unidade?.nome || "Carregando..."}
+                </p>
+              </div>
+            </div>
           </div>
-          <p className="text-gray-600">
-            Bem-vindo, {user?.nome}! Gerencie sua unidade{" "}
-            <span className="font-semibold text-blue-600">{unidade.nome}</span>.
-          </p>
         </div>
 
         {/* Stats Cards */}

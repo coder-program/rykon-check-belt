@@ -218,6 +218,13 @@ export default function FranqueadoDashboard() {
       color: "bg-teal-500",
     },
     {
+      title: "Gerenciar Aulas",
+      description: "Criar e editar aulas/horários",
+      icon: Calendar,
+      action: () => router.push("/aulas"),
+      color: "bg-indigo-500",
+    },
+    {
       title: "Gerenciar Alunos",
       description: "Ver e editar alunos das unidades",
       icon: Users,

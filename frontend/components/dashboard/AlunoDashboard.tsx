@@ -19,6 +19,7 @@ import {
   Star,
   Target,
   Award,
+  Building2,
 } from "lucide-react";
 import { getStatusGraduacao, StatusGraduacao } from "@/lib/graduacaoApi";
 import { http } from "@/lib/api";
@@ -143,6 +144,10 @@ export default function AlunoDashboard() {
   >([]);
   const [estatisticasCompeticoes, setEstatisticasCompeticoes] =
     useState<EstatisticasCompeticoes | null>(null);
+  const [unidadeAluno, setUnidadeAluno] = useState<{
+    id: string;
+    nome: string;
+  } | null>(null);
   // Histórico será implementado futuramente
   // const [historicoPresenca, setHistoricoPresenca] = useState<HistoricoPresenca[]>([]);
   const [loading, setLoading] = useState(true);
@@ -169,6 +174,7 @@ export default function AlunoDashboard() {
         aulasData,
         rankingDataResult,
         competicoesData,
+        alunoData,
       ] = await Promise.allSettled([
         // 1. Status de Graduação
         getStatusGraduacao(user.id),
@@ -184,6 +190,9 @@ export default function AlunoDashboard() {
 
         // 5. Histórico de Competições
         http("/competicoes/meu-historico", { auth: true }),
+
+        // 6. Dados do Aluno (inclui unidade)
+        http(`/alunos/usuario/${user.id}`, { auth: true }),
       ]);
 
       // Processar resultados
@@ -221,6 +230,18 @@ export default function AlunoDashboard() {
           "❌ Erro ao carregar competições:",
           competicoesData.reason
         );
+      }
+
+      if (alunoData.status === "fulfilled") {
+        const aluno = alunoData.value;
+        if (aluno.unidade) {
+          setUnidadeAluno({
+            id: aluno.unidade.id || aluno.unidade_id,
+            nome: aluno.unidade.nome || "Unidade",
+          });
+        }
+      } else {
+        console.error("❌ Erro ao carregar dados do aluno:", alunoData.reason);
       }
 
       // Histórico será implementado futuramente
@@ -330,13 +351,33 @@ export default function AlunoDashboard() {
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <div className="flex items-center gap-3 mb-2">
-            <GraduationCap className="h-8 w-8 text-blue-600" />
-            <h1 className="text-3xl font-bold text-gray-900">Meu Dashboard</h1>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <GraduationCap className="h-8 w-8 text-blue-600" />
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900">
+                  Meu Dashboard
+                </h1>
+                <p className="text-gray-600">
+                  Bem-vindo, <span className="font-semibold">{user?.nome}</span>
+                  ! Acompanhe sua jornada no Jiu-Jitsu.
+                </p>
+              </div>
+            </div>
+
+            {/* Badge da Unidade - Destacado */}
+            {unidadeAluno && (
+              <div className="flex items-center gap-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white px-6 py-3 rounded-lg shadow-lg">
+                <Building2 className="h-5 w-5" />
+                <div className="text-left">
+                  <p className="text-xs font-medium opacity-90">
+                    Minha Unidade
+                  </p>
+                  <p className="text-lg font-bold">{unidadeAluno.nome}</p>
+                </div>
+              </div>
+            )}
           </div>
-          <p className="text-gray-600">
-            Bem-vindo, {user?.nome}! Acompanhe sua jornada no Jiu-Jitsu.
-          </p>
         </div>
 
         {/* Loading State */}

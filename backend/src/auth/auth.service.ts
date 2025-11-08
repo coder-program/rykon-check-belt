@@ -13,6 +13,7 @@ import { AlunosService } from '../people/services/alunos.service';
 import { ProfessoresService } from '../people/services/professores.service';
 import { ResponsaveisService } from '../people/services/responsaveis.service';
 import { UnidadesService } from '../people/services/unidades.service';
+import { PapelResponsavel } from '../people/entities/unidade.entity';
 import { AuditService } from '../audit/audit.service';
 import { AuditAction } from '../audit/entities/audit-log.entity';
 import { Usuario } from '../usuarios/entities/usuario.entity';
@@ -631,10 +632,21 @@ export class AuthService {
           cpf: user.cpf,
         });
         try {
+          // ✅ PASSO 1: Remover CPF de TODAS as outras unidades (para evitar conflito)
+          const query = `
+            UPDATE teamcruz.unidades
+            SET responsavel_cpf = NULL, responsavel_papel = NULL, updated_at = NOW()
+            WHERE responsavel_cpf = $1 AND responsavel_papel = 'GERENTE'
+          `;
+          await this.dataSource.query(query, [user.cpf]);
+          console.log('🧹 [GERENTE] CPF removido de unidades anteriores');
+
+          // ✅ PASSO 2: Definir CPF na nova unidade
           await this.unidadesService.atualizar(payload.unidade_id, {
             responsavel_cpf: user.cpf,
+            responsavel_papel: PapelResponsavel.GERENTE,
           });
-          console.log('✅ [GERENTE] Vinculado com sucesso!');
+          console.log('✅ [GERENTE] Vinculado à nova unidade com sucesso!');
         } catch (error) {
           console.error(
             '❌ Erro ao vincular gerente à unidade:',
@@ -698,6 +710,11 @@ export class AuthService {
     // Professor: criar registro na tabela professores e professor_unidades
     if (perfilNome === 'professor' || perfilNome === 'instrutor') {
       try {
+        console.log('🔗 [PROFESSOR] Criando registro de professor...', {
+          usuario_id: user.id,
+          unidade_id: payload.unidade_id,
+        });
+
         const professor = await this.professoresService.create({
           usuario_id: user.id,
           especialidade: payload.especialidade || null,
@@ -707,29 +724,52 @@ export class AuthService {
 
         // Vincular professor à unidade
         if (payload.unidade_id) {
+          console.log('🔗 [PROFESSOR] Vinculando professor à unidade...', {
+            professor_id: professor.id,
+            unidade_id: payload.unidade_id,
+          });
           await this.dataSource.query(
             `INSERT INTO teamcruz.professor_unidades (professor_id, unidade_id, created_at, updated_at)
              VALUES ($1, $2, NOW(), NOW())`,
             [professor.id, payload.unidade_id],
           );
+          console.log('✅ [PROFESSOR] Vinculado com sucesso!');
+        } else {
+          console.log('⚠️ [PROFESSOR] Nenhuma unidade fornecida para vincular');
         }
       } catch (error) {
         console.error('❌ Erro ao criar registro de professor:', error.message);
       }
     }
 
-    // Recepcionista: criar registro na tabela recepcionistas
-    if (perfilNome === 'recepcionista' && payload.unidade_id) {
-      try {
-        await this.dataSource.query(
-          `INSERT INTO teamcruz.recepcionistas (usuario_id, unidade_id, created_at, updated_at)
-           VALUES ($1, $2, NOW(), NOW())`,
-          [user.id, payload.unidade_id],
-        );
-      } catch (error) {
-        console.error(
-          '❌ Erro ao criar registro de recepcionista:',
-          error.message,
+    // Recepcionista: criar registro na tabela recepcionista_unidades
+    if (perfilNome === 'recepcionista') {
+      if (payload.unidade_id) {
+        try {
+          console.log(
+            '🔗 [RECEPCIONISTA] Vinculando recepcionista à unidade...',
+            {
+              usuario_id: user.id,
+              unidade_id: payload.unidade_id,
+            },
+          );
+          await this.dataSource.query(
+            `INSERT INTO teamcruz.recepcionista_unidades (usuario_id, unidade_id, ativo, created_at, updated_at)
+             VALUES ($1, $2, true, NOW(), NOW())`,
+            [user.id, payload.unidade_id],
+          );
+          console.log(
+            '✅ [RECEPCIONISTA] Vinculado com sucesso à tabela recepcionista_unidades!',
+          );
+        } catch (error) {
+          console.error(
+            '❌ Erro ao criar registro de recepcionista:',
+            error.message,
+          );
+        }
+      } else {
+        console.log(
+          '⚠️ [RECEPCIONISTA] Nenhuma unidade fornecida para vincular',
         );
       }
     }

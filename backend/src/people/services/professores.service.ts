@@ -570,12 +570,24 @@ export class ProfessoresService {
 
   private async getUnidadeDoGerente(user: any): Promise<string | null> {
     if (!user?.id) return null;
-    // Busca a unidade onde o usuário é gerente
-    const result = await this.dataSource.query(
-      `SELECT unidade_id FROM teamcruz.pessoas WHERE usuario_id = $1 AND tipo_cadastro = 'GERENTE_UNIDADE' LIMIT 1`,
+
+    // Buscar CPF do usuário
+    const userResult = await this.dataSource.query(
+      `SELECT cpf FROM teamcruz.usuarios WHERE id = $1 LIMIT 1`,
       [user.id],
     );
-    return result[0]?.unidade_id || null;
+
+    if (!userResult || !userResult[0]?.cpf) return null;
+
+    const cpf = userResult[0].cpf;
+
+    // Buscar unidade onde o usuário é gerente (responsavel_cpf + responsavel_papel = GERENTE)
+    const result = await this.dataSource.query(
+      `SELECT id FROM teamcruz.unidades WHERE responsavel_cpf = $1 AND responsavel_papel = 'GERENTE' LIMIT 1`,
+      [cpf],
+    );
+
+    return result[0]?.id || null;
   }
 
   private async getUnidadesDeFranqueado(

@@ -168,10 +168,17 @@ export default function UsuariosManagerNew() {
       : perfil.nome?.toUpperCase() === "FRANQUEADO"
   );
 
+  const isGerenteUnidade = userPerfisArray.some((perfil: any) =>
+    typeof perfil === "string"
+      ? perfil.toUpperCase() === "GERENTE_UNIDADE"
+      : perfil.nome?.toUpperCase() === "GERENTE_UNIDADE"
+  );
+
   console.log("🔍 DEBUG PERFIS:", {
     userPerfisArray,
     isMaster,
     isFranqueado,
+    isGerenteUnidade,
   });
 
   // Queries
@@ -180,12 +187,22 @@ export default function UsuariosManagerNew() {
     queryFn: getUsuarios,
   });
 
+  // Log para debug dos usuários retornados
+  console.log(
+    "👥 [FRONTEND] Usuários recebidos da API:",
+    usuarios.map((u: any) => ({
+      nome: u.nome,
+      perfis: u.perfis?.map((p: any) => p.nome),
+      unidade: u.unidade,
+    }))
+  );
+
   const { data: perfis = [] } = useQuery({
     queryKey: ["perfis"],
     queryFn: getPerfis,
   });
 
-  // Buscar unidades do franqueado logado
+  // Buscar unidades do franqueado ou gerente logado
   const { data: unidades = [] } = useQuery({
     queryKey: ["unidades-franqueado"],
     queryFn: async () => {
@@ -203,10 +220,10 @@ export default function UsuariosManagerNew() {
       const data = await response.json();
       return data.items || [];
     },
-    enabled: !!user && isFranqueado, // Só busca se for franqueado
+    enabled: !!user && (isFranqueado || isGerenteUnidade), // Busca se for franqueado OU gerente
   });
 
-  console.log("🏢 Unidades do franqueado:", unidades);
+  console.log("🏢 Unidades disponíveis:", unidades);
 
   console.log(
     "📋 Todos os perfis retornados:",
@@ -244,7 +261,23 @@ export default function UsuariosManagerNew() {
       return permitido;
     }
 
-    // Se não for MASTER nem FRANQUEADO, NÃO pode criar usuários
+    // GERENTE_UNIDADE pode criar apenas estes perfis:
+    if (isGerenteUnidade) {
+      const permitido = [
+        "RECEPCIONISTA",
+        "ALUNO",
+        "RESPONSAVEL",
+        "INSTRUTOR",
+      ].includes(nomePerfil);
+      console.log(
+        `${
+          permitido ? "✅" : "❌"
+        } GERENTE_UNIDADE - ${nomePerfil}: ${permitido}`
+      );
+      return permitido;
+    }
+
+    // Se não for MASTER, FRANQUEADO nem GERENTE_UNIDADE, NÃO pode criar usuários
     console.log(`❌ Sem permissão para: ${nomePerfil}`);
     return false;
   });
@@ -341,6 +374,13 @@ export default function UsuariosManagerNew() {
 
   const handleOpenModal = (user?: any) => {
     if (user) {
+      console.log("🔧 [MODAL] Abrindo modal para editar usuário:", {
+        nome: user.nome,
+        perfis: user.perfis?.map((p: any) => p.nome),
+        unidade: user.unidade,
+        unidade_id: user.unidade?.id,
+      });
+
       setEditingUser(user);
       setFormData({
         username: user.username || "",
@@ -352,6 +392,7 @@ export default function UsuariosManagerNew() {
         ativo: user.ativo ?? true,
         cadastro_completo: user.cadastro_completo ?? false,
         perfil_ids: user.perfis?.map((p: any) => p.id) || [],
+        unidade_id: user.unidade?.id || "", // ✅ CARREGAR unidade_id
       });
     } else {
       setEditingUser(null);
@@ -365,6 +406,7 @@ export default function UsuariosManagerNew() {
         ativo: true,
         cadastro_completo: false,
         perfil_ids: [],
+        unidade_id: "", // Garantir campo vazio para criação
       });
     }
     setValidationErrors({});
@@ -387,6 +429,13 @@ export default function UsuariosManagerNew() {
 
     try {
       if (editingUser) {
+        console.log("💾 [UPDATE] Preparando dados para atualização:", {
+          userId: editingUser.id,
+          nome: formData.nome,
+          perfil_ids: formData.perfil_ids,
+          unidade_id: formData.unidade_id,
+        });
+
         const updateData: any = {
           email: formData.email,
           nome: formData.nome,
@@ -397,9 +446,20 @@ export default function UsuariosManagerNew() {
           perfil_ids: formData.perfil_ids,
         };
 
+        // ✅ ADICIONAR unidade_id no UPDATE
+        if (formData.unidade_id) {
+          updateData.unidade_id = formData.unidade_id;
+          console.log(
+            "🏢 [UPDATE] Incluindo unidade_id no payload:",
+            formData.unidade_id
+          );
+        }
+
         if (formData.password.trim()) {
           updateData.password = formData.password;
         }
+
+        console.log("📤 [UPDATE] Payload final:", updateData);
 
         await updateMutation.mutateAsync({
           id: editingUser.id,
@@ -419,15 +479,38 @@ export default function UsuariosManagerNew() {
           perfil_ids: formData.perfil_ids,
         };
 
-        // Se for GERENTE_UNIDADE, adicionar unidade_id
+        // Se for GERENTE_UNIDADE, RECEPCIONISTA ou INSTRUTOR, adicionar unidade_id
         const isGerenteSelected = formData.perfil_ids.some((id) => {
           const perfil = perfisDisponiveis.find((p: any) => p.id === id);
           return perfil?.nome?.toUpperCase() === "GERENTE_UNIDADE";
         });
 
-        if (isGerenteSelected && formData.unidade_id) {
+        const isRecepcionistaSelected = formData.perfil_ids.some((id) => {
+          const perfil = perfisDisponiveis.find((p: any) => p.id === id);
+          return perfil?.nome?.toUpperCase() === "RECEPCIONISTA";
+        });
+
+        const isInstrutorSelected = formData.perfil_ids.some((id) => {
+          const perfil = perfisDisponiveis.find((p: any) => p.id === id);
+          return perfil?.nome?.toUpperCase() === "INSTRUTOR";
+        });
+
+        if (
+          (isGerenteSelected ||
+            isRecepcionistaSelected ||
+            isInstrutorSelected) &&
+          formData.unidade_id
+        ) {
           createPayload.unidade_id = formData.unidade_id;
-          console.log("🔗 [GERENTE] Enviando unidade_id:", formData.unidade_id);
+          console.log(
+            "🔗 [UNIDADE] Enviando unidade_id:",
+            formData.unidade_id,
+            {
+              isGerente: isGerenteSelected,
+              isRecepcionista: isRecepcionistaSelected,
+              isInstrutor: isInstrutorSelected,
+            }
+          );
         }
 
         const novoUsuario = await createMutation.mutateAsync(createPayload);
@@ -645,6 +728,9 @@ export default function UsuariosManagerNew() {
                       Perfis
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Unidade
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Status
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -656,7 +742,7 @@ export default function UsuariosManagerNew() {
                   {usuariosFiltrados.length === 0 ? (
                     <tr>
                       <td
-                        colSpan={5}
+                        colSpan={6}
                         className="px-6 py-4 text-center text-gray-500"
                       >
                         Nenhum usuário encontrado
@@ -707,6 +793,17 @@ export default function UsuariosManagerNew() {
                               </span>
                             )}
                           </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {usuario.unidade ? (
+                            <div className="text-sm text-amber-600 font-medium">
+                              📍 {usuario.unidade.nome}
+                            </div>
+                          ) : (
+                            <span className="text-sm text-gray-400 italic">
+                              —
+                            </span>
+                          )}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span
@@ -990,16 +1087,21 @@ export default function UsuariosManagerNew() {
                   </div>
                 </div>
 
-                {/* Unidade (apenas para GERENTE_UNIDADE) */}
+                {/* Unidade (para GERENTE_UNIDADE, RECEPCIONISTA e INSTRUTOR) */}
                 {formData.perfil_ids.some((id) => {
                   const perfil = perfisDisponiveis.find(
                     (p: any) => p.id === id
                   );
-                  return perfil?.nome?.toUpperCase() === "GERENTE_UNIDADE";
+                  const nome = perfil?.nome?.toUpperCase();
+                  return (
+                    nome === "GERENTE_UNIDADE" ||
+                    nome === "RECEPCIONISTA" ||
+                    nome === "INSTRUTOR"
+                  );
                 }) && (
                   <div className="p-4 bg-amber-50 border-2 border-amber-300 rounded-lg">
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Unidade que o Gerente irá Gerenciar *
+                      Unidade de Trabalho *
                     </label>
                     <select
                       value={formData.unidade_id || ""}
@@ -1017,8 +1119,28 @@ export default function UsuariosManagerNew() {
                       ))}
                     </select>
                     <p className="text-xs text-amber-700 mt-2">
-                      ℹ️ O gerente será vinculado a esta unidade e só poderá
-                      gerenciá-la.
+                      {formData.perfil_ids.some((id) => {
+                        const perfil = perfisDisponiveis.find(
+                          (p: any) => p.id === id
+                        );
+                        return (
+                          perfil?.nome?.toUpperCase() === "GERENTE_UNIDADE"
+                        );
+                      }) &&
+                        "ℹ️ O gerente será vinculado a esta unidade e só poderá gerenciá-la."}
+                      {formData.perfil_ids.some((id) => {
+                        const perfil = perfisDisponiveis.find(
+                          (p: any) => p.id === id
+                        );
+                        return perfil?.nome?.toUpperCase() === "RECEPCIONISTA";
+                      }) && "ℹ️ O recepcionista trabalhará nesta unidade."}
+                      {formData.perfil_ids.some((id) => {
+                        const perfil = perfisDisponiveis.find(
+                          (p: any) => p.id === id
+                        );
+                        return perfil?.nome?.toUpperCase() === "INSTRUTOR";
+                      }) &&
+                        "ℹ️ O instrutor/professor trabalhará nesta unidade."}
                     </p>
                   </div>
                 )}

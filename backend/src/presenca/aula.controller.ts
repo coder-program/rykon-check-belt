@@ -71,6 +71,25 @@ export class AulaController {
     return this.aulaService.findHorariosDisponiveis(unidadeIdFiltro);
   }
 
+  @Get('hoje')
+  @ApiOperation({ summary: 'Contar aulas de hoje' })
+  @ApiResponse({ status: 200, description: 'Quantidade de aulas hoje' })
+  async countHoje(
+    @Query('unidade_id') unidade_id?: string,
+    @Request() req?: any,
+  ) {
+    // REGRA: Cada usuário só pode ver aulas da sua unidade
+    let unidadeIdFiltro = unidade_id;
+
+    // Se o usuário tem aluno associado, força a usar a unidade do aluno
+    if (req?.user?.aluno?.unidade_id) {
+      unidadeIdFiltro = req.user.aluno.unidade_id;
+    }
+
+    const count = await this.aulaService.countHoje(unidadeIdFiltro);
+    return { count, unidade_id: unidadeIdFiltro };
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Buscar aula por ID' })
   @ApiResponse({ status: 200, description: 'Aula encontrada' })

@@ -208,11 +208,18 @@ export default function RecepcionistaDashboard() {
       color: "bg-purple-500",
     },
     {
+      title: "Gerenciar Aulas",
+      description: "Criar e editar aulas/horários",
+      icon: Calendar,
+      action: () => router.push("/aulas"),
+      color: "bg-indigo-500",
+    },
+    {
       title: "Horários de Aulas",
       description: "Ver grade de horários",
       icon: Calendar,
       action: () => router.push("/horarios"),
-      color: "bg-indigo-500",
+      color: "bg-cyan-500",
     },
   ];
 
@@ -221,14 +228,29 @@ export default function RecepcionistaDashboard() {
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <div className="flex items-center gap-3 mb-2">
-            <UserCheck className="h-8 w-8 text-green-600" />
-            <h1 className="text-3xl font-bold text-gray-900">Recepção</h1>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <UserCheck className="h-8 w-8 text-green-600" />
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900">Recepção</h1>
+                <p className="text-gray-600">
+                  Bem-vindo, <span className="font-semibold">{user?.nome}</span>
+                  !
+                </p>
+              </div>
+            </div>
+
+            {/* Badge da Unidade - Destacado */}
+            <div className="flex items-center gap-2 bg-gradient-to-r from-cyan-500 to-blue-600 text-white px-6 py-3 rounded-lg shadow-lg">
+              <Building2 className="h-5 w-5" />
+              <div className="text-left">
+                <p className="text-xs font-medium opacity-90">Unidade</p>
+                <p className="text-lg font-bold">
+                  {unidade?.nome || "Carregando..."}
+                </p>
+              </div>
+            </div>
           </div>
-          <p className="text-gray-600">
-            Bem-vindo, {user?.nome}! Unidade:{" "}
-            <span className="font-semibold text-blue-600">{unidade.nome}</span>
-          </p>
         </div>
 
         {/* Stats Cards */}
