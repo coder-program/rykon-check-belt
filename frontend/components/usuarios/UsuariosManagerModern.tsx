@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/app/auth/AuthContext";
@@ -99,6 +99,7 @@ interface FormData {
   cadastro_completo: boolean;
   perfil_ids: string[];
   unidade_id?: string; // Unidade para GERENTE_UNIDADE
+  foto?: string; // URL ou base64 da foto
   // Campos do franqueado (opcionais)
   nome_franqueado?: string;
   email_franqueado?: string;
@@ -142,6 +143,7 @@ export default function UsuariosManagerNew() {
     cadastro_completo: false,
     perfil_ids: [],
     unidade_id: "", // Inicializar vazio
+    foto: "", // Inicializar vazio
     nome_franqueado: "",
     email_franqueado: "",
     telefone_franqueado: "",
@@ -174,28 +176,11 @@ export default function UsuariosManagerNew() {
       : perfil.nome?.toUpperCase() === "GERENTE_UNIDADE"
   );
 
-  console.log("🔍 DEBUG PERFIS:", {
-    userPerfisArray,
-    isMaster,
-    isFranqueado,
-    isGerenteUnidade,
-  });
-
   // Queries
   const { data: usuarios = [], isLoading: loadingUsuarios } = useQuery({
     queryKey: ["usuarios"],
     queryFn: getUsuarios,
   });
-
-  // Log para debug dos usuários retornados
-  console.log(
-    "👥 [FRONTEND] Usuários recebidos da API:",
-    usuarios.map((u: any) => ({
-      nome: u.nome,
-      perfis: u.perfis?.map((p: any) => p.nome),
-      unidade: u.unidade,
-    }))
-  );
 
   const { data: perfis = [] } = useQuery({
     queryKey: ["perfis"],
@@ -203,32 +188,39 @@ export default function UsuariosManagerNew() {
   });
 
   // Buscar unidades do franqueado ou gerente logado
-  const { data: unidades = [] } = useQuery({
+  const { data: unidades = [], isLoading: isLoadingUnidades } = useQuery({
     queryKey: ["unidades-franqueado"],
     queryFn: async () => {
+      console.log("🔍 [UsuariosManager] Buscando unidades...");
       const response = await fetch(
         `${
           process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api"
-        }/unidades`,
+        }/unidades?status=ATIVA`,
         {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("token")}`,
           },
         }
       );
-      if (!response.ok) throw new Error("Erro ao buscar unidades");
+      if (!response.ok) {
+        console.error(
+          "❌ [UsuariosManager] Erro ao buscar unidades:",
+          response.status
+        );
+        throw new Error("Erro ao buscar unidades");
+      }
       const data = await response.json();
-      return data.items || [];
+      console.log("📦 [UsuariosManager] Dados recebidos:", data);
+      // Filtrar apenas unidades ATIVAS
+      const items = data.items || [];
+      const unidadesAtivas = items.filter(
+        (unidade: any) => unidade.status === "ATIVA"
+      );
+      console.log("✅ [UsuariosManager] Unidades ATIVAS:", unidadesAtivas);
+      return unidadesAtivas;
     },
     enabled: !!user && (isFranqueado || isGerenteUnidade), // Busca se for franqueado OU gerente
   });
-
-  console.log("🏢 Unidades disponíveis:", unidades);
-
-  console.log(
-    "📋 Todos os perfis retornados:",
-    perfis.map((p: any) => p.nome)
-  );
 
   // Filtrar perfis disponíveis baseado no perfil do usuário logado
   const perfisDisponiveis = perfis.filter((perfil: any) => {
@@ -236,13 +228,11 @@ export default function UsuariosManagerNew() {
 
     // Se não conseguiu detectar o usuário, NÃO mostrar perfis (segurança)
     if (!user || !user.perfis || user.perfis.length === 0) {
-      console.log("❌ Usuário não detectado - bloqueando todos os perfis");
       return false;
     }
 
     // MASTER pode criar qualquer perfil
     if (isMaster) {
-      console.log(`✅ MASTER pode criar: ${nomePerfil}`);
       return true;
     }
 
@@ -255,9 +245,6 @@ export default function UsuariosManagerNew() {
         "RESPONSAVEL",
         "INSTRUTOR",
       ].includes(nomePerfil);
-      console.log(
-        `${permitido ? "✅" : "❌"} FRANQUEADO - ${nomePerfil}: ${permitido}`
-      );
       return permitido;
     }
 
@@ -269,23 +256,12 @@ export default function UsuariosManagerNew() {
         "RESPONSAVEL",
         "INSTRUTOR",
       ].includes(nomePerfil);
-      console.log(
-        `${
-          permitido ? "✅" : "❌"
-        } GERENTE_UNIDADE - ${nomePerfil}: ${permitido}`
-      );
       return permitido;
     }
 
     // Se não for MASTER, FRANQUEADO nem GERENTE_UNIDADE, NÃO pode criar usuários
-    console.log(`❌ Sem permissão para: ${nomePerfil}`);
     return false;
   });
-
-  console.log(
-    "📋 Perfis disponíveis FINAL:",
-    perfisDisponiveis.map((p: any) => p.nome)
-  );
 
   // Detectar se perfil FRANQUEADO está selecionado
   const perfilFranqueadoId = perfis.find(
@@ -294,6 +270,53 @@ export default function UsuariosManagerNew() {
   const isFranqueadoSelecionado = formData.perfil_ids.includes(
     perfilFranqueadoId || ""
   );
+
+  // Detectar GERENTE_UNIDADE selecionado
+  const perfilGerenteUnidadeId = perfis.find(
+    (p: any) => p.nome?.toUpperCase() === "GERENTE_UNIDADE"
+  )?.id;
+  const isGerenteUnidadeSelecionado = formData.perfil_ids.includes(
+    perfilGerenteUnidadeId || ""
+  );
+
+  // Detectar RECEPCIONISTA selecionado
+  const perfilRecepcionistaId = perfis.find(
+    (p: any) => p.nome?.toUpperCase() === "RECEPCIONISTA"
+  )?.id;
+  const isRecepcionistaSelecionado = formData.perfil_ids.includes(
+    perfilRecepcionistaId || ""
+  );
+
+  // Detectar INSTRUTOR selecionado
+  const perfilInstrutorId = perfis.find(
+    (p: any) => p.nome?.toUpperCase() === "INSTRUTOR"
+  )?.id;
+  const isInstrutorSelecionado = formData.perfil_ids.includes(
+    perfilInstrutorId || ""
+  );
+
+  // Verificar se algum perfil que precisa de cadastro completo está selecionado
+  const precisaCadastroCompleto =
+    isFranqueadoSelecionado ||
+    isGerenteUnidadeSelecionado ||
+    isRecepcionistaSelecionado ||
+    isInstrutorSelecionado;
+
+  // Auto-preencher unidade_id quando gerente está criando usuário
+  useEffect(() => {
+    if (
+      isGerenteUnidade &&
+      unidades.length > 0 &&
+      !formData.unidade_id &&
+      !editingUser
+    ) {
+      console.log(
+        "✅ [UsuariosManager] Auto-preenchendo unidade do gerente:",
+        unidades[0]
+      );
+      setFormData((prev) => ({ ...prev, unidade_id: unidades[0].id }));
+    }
+  }, [isGerenteUnidade, unidades, formData.unidade_id, editingUser]);
 
   // Mutations
   const createMutation = useMutation({
@@ -331,6 +354,20 @@ export default function UsuariosManagerNew() {
       toast.error(error?.message || "Erro ao excluir usuário");
     },
   });
+
+  // Auto-selecionar unidade para GERENTE_UNIDADE ao abrir modal de criação
+  React.useEffect(() => {
+    // Só aplicar quando modal está aberto E criando novo usuário (não editando)
+    if (showModal && !editingUser && isGerenteUnidade) {
+      // GERENTE_UNIDADE tem sua unidade disponível no objeto user
+      if (user?.unidade?.id) {
+        setFormData((prev) => ({
+          ...prev,
+          unidade_id: user.unidade.id,
+        }));
+      }
+    }
+  }, [showModal, editingUser, isGerenteUnidade, user]);
 
   // Validação do formulário
   const validateForm = (): boolean => {
@@ -374,13 +411,6 @@ export default function UsuariosManagerNew() {
 
   const handleOpenModal = (user?: any) => {
     if (user) {
-      console.log("🔧 [MODAL] Abrindo modal para editar usuário:", {
-        nome: user.nome,
-        perfis: user.perfis?.map((p: any) => p.nome),
-        unidade: user.unidade,
-        unidade_id: user.unidade?.id,
-      });
-
       setEditingUser(user);
       setFormData({
         username: user.username || "",
@@ -392,7 +422,8 @@ export default function UsuariosManagerNew() {
         ativo: user.ativo ?? true,
         cadastro_completo: user.cadastro_completo ?? false,
         perfil_ids: user.perfis?.map((p: any) => p.id) || [],
-        unidade_id: user.unidade?.id || "", // ✅ CARREGAR unidade_id
+        unidade_id: user.unidade?.id || "",
+        foto: user.foto || "",
       });
     } else {
       setEditingUser(null);
@@ -407,6 +438,7 @@ export default function UsuariosManagerNew() {
         cadastro_completo: false,
         perfil_ids: [],
         unidade_id: "", // Garantir campo vazio para criação
+        foto: "", // Garantir campo vazio para criação
       });
     }
     setValidationErrors({});
@@ -429,13 +461,6 @@ export default function UsuariosManagerNew() {
 
     try {
       if (editingUser) {
-        console.log("💾 [UPDATE] Preparando dados para atualização:", {
-          userId: editingUser.id,
-          nome: formData.nome,
-          perfil_ids: formData.perfil_ids,
-          unidade_id: formData.unidade_id,
-        });
-
         const updateData: any = {
           email: formData.email,
           nome: formData.nome,
@@ -444,22 +469,16 @@ export default function UsuariosManagerNew() {
           ativo: formData.ativo,
           cadastro_completo: formData.cadastro_completo,
           perfil_ids: formData.perfil_ids,
+          foto: formData.foto || null, // Incluir foto
         };
 
-        // ✅ ADICIONAR unidade_id no UPDATE
         if (formData.unidade_id) {
           updateData.unidade_id = formData.unidade_id;
-          console.log(
-            "🏢 [UPDATE] Incluindo unidade_id no payload:",
-            formData.unidade_id
-          );
         }
 
         if (formData.password.trim()) {
           updateData.password = formData.password;
         }
-
-        console.log("📤 [UPDATE] Payload final:", updateData);
 
         await updateMutation.mutateAsync({
           id: editingUser.id,
@@ -477,6 +496,7 @@ export default function UsuariosManagerNew() {
           ativo: formData.ativo,
           cadastro_completo: formData.cadastro_completo,
           perfil_ids: formData.perfil_ids,
+          foto: formData.foto || null, // ✅ Incluir foto
         };
 
         // Se for GERENTE_UNIDADE, RECEPCIONISTA ou INSTRUTOR, adicionar unidade_id
@@ -502,15 +522,6 @@ export default function UsuariosManagerNew() {
           formData.unidade_id
         ) {
           createPayload.unidade_id = formData.unidade_id;
-          console.log(
-            "🔗 [UNIDADE] Enviando unidade_id:",
-            formData.unidade_id,
-            {
-              isGerente: isGerenteSelected,
-              isRecepcionista: isRecepcionistaSelected,
-              isInstrutor: isInstrutorSelected,
-            }
-          );
         }
 
         const novoUsuario = await createMutation.mutateAsync(createPayload);
@@ -529,7 +540,7 @@ export default function UsuariosManagerNew() {
                 formData.cpf_franqueado?.replace(/\D/g, "") ||
                 formData.cpf.replace(/\D/g, ""),
               usuario_id: novoUsuario.id,
-              situacao: "ATIVA",
+              // Não enviar situacao - backend decide (MASTER cria ATIVA, outros EM_HOMOLOGACAO)
               ativo: true,
             };
 
@@ -752,12 +763,26 @@ export default function UsuariosManagerNew() {
                     usuariosFiltrados.map((usuario: any) => (
                       <tr key={usuario.id} className="hover:bg-gray-50">
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div>
-                            <div className="text-sm font-medium text-gray-900">
-                              {usuario.nome || "N/A"}
+                          <div className="flex items-center gap-3">
+                            {/* Foto do Usuário */}
+                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-bold text-sm overflow-hidden flex-shrink-0">
+                              {usuario.foto ? (
+                                <img
+                                  src={usuario.foto}
+                                  alt={usuario.nome}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                usuario.nome?.charAt(0).toUpperCase() || "?"
+                              )}
                             </div>
-                            <div className="text-sm text-gray-500">
-                              @{usuario.username}
+                            <div>
+                              <div className="text-sm font-medium text-gray-900">
+                                {usuario.nome || "N/A"}
+                              </div>
+                              <div className="text-sm text-gray-500">
+                                @{usuario.username}
+                              </div>
                             </div>
                           </div>
                         </td>
@@ -826,17 +851,22 @@ export default function UsuariosManagerNew() {
                             <button
                               onClick={() => handleOpenModal(usuario)}
                               className="text-blue-600 hover:text-blue-900"
+                              title="Editar usuário"
                             >
                               <Edit className="h-4 w-4" />
                             </button>
-                            <button
-                              onClick={() =>
-                                handleDelete(usuario.id, usuario.nome)
-                              }
-                              className="text-red-600 hover:text-red-900"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
+                            {/* Não mostrar botão de exclusão para o próprio usuário logado */}
+                            {user?.id !== usuario.id && (
+                              <button
+                                onClick={() =>
+                                  handleDelete(usuario.id, usuario.nome)
+                                }
+                                className="text-red-600 hover:text-red-900"
+                                title="Excluir usuário"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -891,6 +921,77 @@ export default function UsuariosManagerNew() {
                         {validationErrors.nome}
                       </p>
                     )}
+                  </div>
+
+                  {/* Foto de Perfil */}
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Foto de Perfil
+                    </label>
+                    <div className="flex items-center gap-4">
+                      {/* Preview da Foto */}
+                      <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-bold text-2xl overflow-hidden flex-shrink-0">
+                        {formData.foto ? (
+                          <img
+                            src={formData.foto}
+                            alt="Preview"
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          formData.nome.charAt(0).toUpperCase() || "?"
+                        )}
+                      </div>
+
+                      {/* Input de Foto */}
+                      <div className="flex-1">
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/png,image/jpg,image/webp"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              // Validar tamanho (máx 2MB)
+                              if (file.size > 2 * 1024 * 1024) {
+                                alert("A foto deve ter no máximo 2MB");
+                                return;
+                              }
+
+                              // Converter para base64
+                              const reader = new FileReader();
+                              reader.onloadend = () => {
+                                setFormData({
+                                  ...formData,
+                                  foto: reader.result as string,
+                                });
+                              };
+                              reader.readAsDataURL(file);
+                            }
+                          }}
+                          className="hidden"
+                          id="foto-input"
+                        />
+                        <label
+                          htmlFor="foto-input"
+                          className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 cursor-pointer transition-colors text-sm"
+                        >
+                          Escolher Foto
+                        </label>
+                        {formData.foto && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setFormData({ ...formData, foto: "" })
+                            }
+                            className="ml-2 inline-flex items-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 cursor-pointer transition-colors text-sm"
+                          >
+                            Remover
+                          </button>
+                        )}
+                        <p className="text-xs text-gray-500 mt-2">
+                          JPG, PNG ou WEBP. Máximo 2MB.
+                        </p>
+                      </div>
+                    </div>
                   </div>
 
                   {/* Username */}
@@ -1049,7 +1150,10 @@ export default function UsuariosManagerNew() {
                 {/* Perfis */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Perfis de Acesso
+                    Perfis de Acesso <span className="text-red-500">*</span>
+                    <span className="text-xs text-gray-500 ml-2">
+                      (Selecione apenas um perfil)
+                    </span>
                   </label>
                   <div className="space-y-2">
                     {perfisDisponiveis.map((perfil: any) => (
@@ -1059,9 +1163,10 @@ export default function UsuariosManagerNew() {
                           checked={formData.perfil_ids.includes(perfil.id)}
                           onChange={(e) => {
                             if (e.target.checked) {
+                              // Permite apenas UM perfil selecionado
                               setFormData({
                                 ...formData,
-                                perfil_ids: [...formData.perfil_ids, perfil.id],
+                                perfil_ids: [perfil.id], // Substitui qualquer perfil anterior
                               });
                             } else {
                               setFormData({
@@ -1085,9 +1190,14 @@ export default function UsuariosManagerNew() {
                       </label>
                     ))}
                   </div>
+                  {formData.perfil_ids.length === 0 && (
+                    <p className="text-amber-600 text-sm mt-2">
+                      ⚠️ Selecione um perfil de acesso
+                    </p>
+                  )}
                 </div>
 
-                {/* Unidade (para GERENTE_UNIDADE, RECEPCIONISTA e INSTRUTOR) */}
+                {/* Unidade (para GERENTE_UNIDADE, RECEPCIONISTA, INSTRUTOR e TABLET_CHECKIN) */}
                 {formData.perfil_ids.some((id) => {
                   const perfil = perfisDisponiveis.find(
                     (p: any) => p.id === id
@@ -1096,7 +1206,8 @@ export default function UsuariosManagerNew() {
                   return (
                     nome === "GERENTE_UNIDADE" ||
                     nome === "RECEPCIONISTA" ||
-                    nome === "INSTRUTOR"
+                    nome === "INSTRUTOR" ||
+                    nome === "TABLET_CHECKIN"
                   );
                 }) && (
                   <div className="p-4 bg-amber-50 border-2 border-amber-300 rounded-lg">
@@ -1108,17 +1219,37 @@ export default function UsuariosManagerNew() {
                       onChange={(e) =>
                         setFormData({ ...formData, unidade_id: e.target.value })
                       }
+                      disabled={isGerenteUnidade || isLoadingUnidades} // GERENTE só cria para sua unidade
                       required
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                     >
-                      <option value="">Selecione uma unidade</option>
-                      {unidades.map((unidade: any) => (
-                        <option key={unidade.id} value={unidade.id}>
-                          {unidade.nome} - {unidade.status}
-                        </option>
-                      ))}
+                      {isLoadingUnidades ? (
+                        <option value="">Carregando unidades...</option>
+                      ) : unidades.length === 0 ? (
+                        <option value="">Nenhuma unidade disponível</option>
+                      ) : (
+                        <>
+                          <option value="">Selecione uma unidade</option>
+                          {unidades.map((unidade: any) => (
+                            <option key={unidade.id} value={unidade.id}>
+                              {unidade.nome}
+                            </option>
+                          ))}
+                        </>
+                      )}
                     </select>
                     <p className="text-xs text-amber-700 mt-2">
+                      {isLoadingUnidades && (
+                        <span className="block mb-1 animate-pulse">
+                          ⏳ Carregando unidades disponíveis...
+                        </span>
+                      )}
+                      {isGerenteUnidade && !editingUser && (
+                        <span className="block mb-1">
+                          🔒 Você só pode criar usuários para sua unidade (
+                          {user?.unidade?.nome || "carregando..."})
+                        </span>
+                      )}
                       {formData.perfil_ids.some((id) => {
                         const perfil = perfisDisponiveis.find(
                           (p: any) => p.id === id
@@ -1141,6 +1272,13 @@ export default function UsuariosManagerNew() {
                         return perfil?.nome?.toUpperCase() === "INSTRUTOR";
                       }) &&
                         "ℹ️ O instrutor/professor trabalhará nesta unidade."}
+                      {formData.perfil_ids.some((id) => {
+                        const perfil = perfisDisponiveis.find(
+                          (p: any) => p.id === id
+                        );
+                        return perfil?.nome?.toUpperCase() === "TABLET_CHECKIN";
+                      }) &&
+                        "📱 O tablet ficará fixo nesta unidade e verá apenas alunos dela."}
                     </p>
                   </div>
                 )}
@@ -1239,6 +1377,252 @@ export default function UsuariosManagerNew() {
                           ℹ️ Ao marcar "Cadastro Completo" abaixo, será criado
                           automaticamente um registro de franqueado vinculado a
                           este usuário.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                {/* Campos do Gerente de Unidade (condicional) */}
+                {isGerenteUnidadeSelecionado &&
+                  !editingUser &&
+                  formData.cadastro_completo && (
+                    <div className="p-4 bg-green-50 border-2 border-green-300 rounded-lg space-y-4">
+                      <h3 className="text-lg font-semibold text-green-900 mb-4">
+                        Dados do Gerente de Unidade
+                      </h3>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Nome Completo *
+                          </label>
+                          <input
+                            type="text"
+                            value={formData.nome}
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                nome: e.target.value,
+                              })
+                            }
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                            placeholder="Nome completo do gerente"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            CPF *
+                          </label>
+                          <input
+                            type="text"
+                            value={formData.cpf}
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                cpf: formatCPF(e.target.value),
+                              })
+                            }
+                            maxLength={14}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                            placeholder="000.000.000-00"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Email *
+                          </label>
+                          <input
+                            type="email"
+                            value={formData.email}
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                email: e.target.value,
+                              })
+                            }
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                            placeholder="email@exemplo.com"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Telefone *
+                          </label>
+                          <input
+                            type="tel"
+                            value={formData.telefone}
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                telefone: formatPhone(e.target.value),
+                              })
+                            }
+                            maxLength={15}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                            placeholder="(11) 99999-9999"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="bg-green-100 p-3 rounded-lg">
+                        <p className="text-sm text-green-800">
+                          ℹ️ O gerente será responsável por administrar a
+                          unidade selecionada acima.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                {/* Campos do Recepcionista (condicional) */}
+                {isRecepcionistaSelecionado &&
+                  !editingUser &&
+                  formData.cadastro_completo && (
+                    <div className="p-4 bg-purple-50 border-2 border-purple-300 rounded-lg space-y-4">
+                      <h3 className="text-lg font-semibold text-purple-900 mb-4">
+                        Dados do Recepcionista
+                      </h3>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Nome Completo *
+                          </label>
+                          <input
+                            type="text"
+                            value={formData.nome}
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                nome: e.target.value,
+                              })
+                            }
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                            placeholder="Nome completo"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            CPF *
+                          </label>
+                          <input
+                            type="text"
+                            value={formData.cpf}
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                cpf: formatCPF(e.target.value),
+                              })
+                            }
+                            maxLength={14}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                            placeholder="000.000.000-00"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Telefone *
+                          </label>
+                          <input
+                            type="tel"
+                            value={formData.telefone}
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                telefone: formatPhone(e.target.value),
+                              })
+                            }
+                            maxLength={15}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                            placeholder="(11) 99999-9999"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="bg-purple-100 p-3 rounded-lg">
+                        <p className="text-sm text-purple-800">
+                          ℹ️ O recepcionista terá acesso a cadastros básicos e
+                          atendimento.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                {/* Campos do Instrutor (condicional) */}
+                {isInstrutorSelecionado &&
+                  !editingUser &&
+                  formData.cadastro_completo && (
+                    <div className="p-4 bg-orange-50 border-2 border-orange-300 rounded-lg space-y-4">
+                      <h3 className="text-lg font-semibold text-orange-900 mb-4">
+                        Dados do Instrutor/Professor
+                      </h3>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Nome Completo *
+                          </label>
+                          <input
+                            type="text"
+                            value={formData.nome}
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                nome: e.target.value,
+                              })
+                            }
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
+                            placeholder="Nome completo"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            CPF *
+                          </label>
+                          <input
+                            type="text"
+                            value={formData.cpf}
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                cpf: formatCPF(e.target.value),
+                              })
+                            }
+                            maxLength={14}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
+                            placeholder="000.000.000-00"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Telefone *
+                          </label>
+                          <input
+                            type="tel"
+                            value={formData.telefone}
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                telefone: formatPhone(e.target.value),
+                              })
+                            }
+                            maxLength={15}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
+                            placeholder="(11) 99999-9999"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="bg-orange-100 p-3 rounded-lg">
+                        <p className="text-sm text-orange-800">
+                          ℹ️ O instrutor poderá gerenciar aulas e alunos da
+                          unidade.
                         </p>
                       </div>
                     </div>

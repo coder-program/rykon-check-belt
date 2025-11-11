@@ -39,12 +39,6 @@ export class UnidadesController {
   })
   async listarAtivas(@Request() req) {
     // Log entry to help trace public unidade lookups
-    console.log('🔍 [UNIDADES][PUBLIC/ATIVAS] request incoming', {
-      path: req?.url,
-      headers: {
-        authorization: req?.headers?.authorization,
-      },
-    });
     return this.unidadesService.listarPublicasAtivas();
   }
 
@@ -83,13 +77,23 @@ export class UnidadesController {
   async listar(@Query() query: UnidadeQueryDto, @Request() req) {
     // usuário autenticado é obrigatório para filtrar corretamente
     const user = req.user;
-    // Log incoming query and auth info for debugging responsavel_cpf flows
-    console.log('🔍 [UNIDADES] listar called', {
+    console.log('🔍 [UnidadesController.listar] Requisição recebida:', {
+      userId: user?.id,
+      userName: user?.nome,
+      perfis: user?.perfis,
       query,
-      user: user ? { id: user.id, perfis: user.perfis } : null,
-      authHeader: req?.headers?.authorization,
     });
-    return this.unidadesService.listar(query, user);
+    // Log incoming query and auth info for debugging responsavel_cpf flows
+    const result = await this.unidadesService.listar(query, user);
+    console.log('✅ [UnidadesController.listar] Resultado:', {
+      totalItems: result.items?.length,
+      unidades: result.items?.map((u) => ({
+        id: u.id,
+        nome: u.nome,
+        status: u.status,
+      })),
+    });
+    return result;
   }
 
   @UseGuards(JwtAuthGuard)

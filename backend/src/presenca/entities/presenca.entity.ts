@@ -19,6 +19,7 @@ export enum PresencaMetodo {
   NOME = 'nome',
   MANUAL = 'manual',
   RESPONSAVEL = 'responsavel',
+  LISTA = 'lista',
 }
 
 export enum PresencaStatus {
@@ -26,6 +27,12 @@ export enum PresencaStatus {
   FALTA = 'falta',
   JUSTIFICADA = 'justificada',
   CANCELADA = 'cancelada',
+}
+
+export enum StatusAprovacao {
+  PENDENTE = 'PENDENTE',
+  APROVADO = 'APROVADO',
+  REJEITADO = 'REJEITADO',
 }
 
 @Entity({ name: 'presencas', schema: 'teamcruz' })
@@ -80,6 +87,36 @@ export class Presenca {
   @Column({ name: 'created_by', type: 'uuid', nullable: true })
   created_by: string;
 
+  // Campos de aprovação para tablet check-in
+  @Column({
+    name: 'status_aprovacao',
+    type: 'varchar',
+    length: 20,
+    default: 'PENDENTE',
+    nullable: true,
+  })
+  status_aprovacao: string;
+
+  @Column({ name: 'aprovado_por_id', type: 'uuid', nullable: true })
+  aprovado_por_id: string;
+
+  @Column({ name: 'aprovado_em', type: 'timestamptz', nullable: true })
+  aprovado_em: Date;
+
+  @Column({ name: 'observacao_aprovacao', type: 'text', nullable: true })
+  observacao_aprovacao: string;
+
+  @Column({
+    name: 'metodo',
+    type: 'varchar',
+    length: 20,
+    nullable: true,
+  })
+  metodo: string;
+
+  @Column({ name: 'data_presenca', type: 'timestamptz', nullable: true })
+  data_presenca: Date;
+
   @CreateDateColumn({ name: 'created_at' })
   created_at: Date;
 
@@ -98,4 +135,8 @@ export class Presenca {
   @ManyToOne(() => Usuario, { eager: false })
   @JoinColumn({ name: 'created_by' })
   criador: Usuario;
+
+  @ManyToOne(() => Usuario, { eager: false })
+  @JoinColumn({ name: 'aprovado_por_id' })
+  aprovador: Usuario;
 }

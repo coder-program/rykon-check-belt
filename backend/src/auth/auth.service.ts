@@ -13,7 +13,6 @@ import { AlunosService } from '../people/services/alunos.service';
 import { ProfessoresService } from '../people/services/professores.service';
 import { ResponsaveisService } from '../people/services/responsaveis.service';
 import { UnidadesService } from '../people/services/unidades.service';
-import { PapelResponsavel } from '../people/entities/unidade.entity';
 import { AuditService } from '../audit/audit.service';
 import { AuditAction } from '../audit/entities/audit-log.entity';
 import { Usuario } from '../usuarios/entities/usuario.entity';
@@ -82,20 +81,21 @@ export class AuthService {
   private REFRESH_TTL_MS = 1000 * 60 * 60 * 24 * 60; // 60 dias
 
   async validateUser(
-    email: string,
+    emailOrUsername: string,
     pass: string,
   ): Promise<
     { user: Usuario; error?: string } | { user: null; error: string }
   > {
     try {
-      // Usa findByEmail diretamente
-      const user = await this.usuariosService.findByEmail(email);
+      // Usa findByEmailOrUsername - aceita email OU username
+      const user =
+        await this.usuariosService.findByEmailOrUsername(emailOrUsername);
 
       if (!user) {
         return {
           user: null,
           error:
-            'Email não encontrado. Verifique se você digitou o email correto ou cadastre-se primeiro.',
+            'Email ou username não encontrado. Verifique suas credenciais ou cadastre-se primeiro.',
         };
       }
 
@@ -196,14 +196,6 @@ export class AuthService {
   ): Promise<any | null> {
     const user = await this.usuariosService.findOne(payload.sub);
 
-    console.log('🔍 [validateToken] User encontrado:', {
-      id: user?.id,
-      username: user?.username,
-      email: user?.email,
-      cpf: user?.cpf,
-      cadastro_completo: user?.cadastro_completo,
-    });
-
     if (!user) {
       console.error('❌ [validateToken] Usuário não encontrado');
       return null;
@@ -237,22 +229,8 @@ export class AuthService {
         : null,
     };
 
-    console.log('🔍 [validateToken] userData antes de remover password:', {
-      id: userData.id,
-      username: userData.username,
-      cpf: userData.cpf,
-      perfis: userData.perfis,
-    });
-
     // Remover password do retorno para segurança
     const { password, ...userDataWithoutPassword } = userData;
-
-    console.log('🔍 [validateToken] userDataWithoutPassword:', {
-      id: userDataWithoutPassword.id,
-      username: userDataWithoutPassword.username,
-      cpf: userDataWithoutPassword.cpf,
-      perfis: userDataWithoutPassword.perfis,
-    });
 
     return userDataWithoutPassword;
   }
@@ -287,15 +265,22 @@ export class AuthService {
     // Buscar unidade do usuário (se for gerente ou tiver unidade vinculada)
     let unidade: any = null;
     try {
-      if (user.cpf) {
+      // Verificar se é gerente através dos perfis
+      const isGerenteUnidade = perfis.some(
+        (p: string) => p.toLowerCase() === 'gerente_unidade',
+      );
+
+      if (user.id && isGerenteUnidade) {
+        // Buscar unidade do gerente via tabela gerente_unidades
         const query = `
-          SELECT id, nome, cnpj, status, responsavel_nome
-          FROM teamcruz.unidades
-          WHERE responsavel_cpf = $1
+          SELECT u.id, u.nome, u.cnpj, u.status
+          FROM teamcruz.gerente_unidades gu
+          INNER JOIN teamcruz.unidades u ON u.id = gu.unidade_id
+          WHERE gu.usuario_id = $1 AND gu.ativo = true
           LIMIT 1
         `;
         const result = await this.usuariosService['dataSource'].query(query, [
-          user.cpf,
+          user.id,
         ]);
         if (result && result.length > 0) {
           unidade = result[0];
@@ -471,52 +456,38 @@ export class AuthService {
         perfilPrincipal === 'gerente_unidade' ||
         perfilPrincipal === 'gerente'
       ) {
-        console.log(
-          '🔍 [completeProfile GERENTE] Iniciando vinculação de gerente',
-        );
-        console.log('🔍 [completeProfile GERENTE] User:', {
-          id: userId,
-          nome: user.nome,
+        console.log('🔍 [completeProfile] Processando gerente:', {
+          userId,
           cpf: user.cpf,
+          unidadeId: profileData.unidade_id,
         });
-        console.log(
-          '🔍 [completeProfile GERENTE] profileData.unidade_id:',
-          profileData.unidade_id,
+
+        // Verificar se gerente já está vinculado via tabela gerente_unidades
+        const vinculoExistente = await this.dataSource.query(
+          `SELECT unidade_id FROM teamcruz.gerente_unidades
+           WHERE usuario_id = $1 AND ativo = true LIMIT 1`,
+          [userId],
         );
 
-        // Se o gerente foi criado com unidade_id pelo franqueado, usar essa unidade
-        // Não permitir que o gerente escolha outra unidade no complete-profile
-
-        // Buscar qual unidade este gerente gerencia (através do responsavel_cpf)
-        const unidadeDoGerente = await this.dataSource.query(
-          `SELECT id, nome FROM teamcruz.unidades WHERE responsavel_cpf = $1 LIMIT 1`,
-          [user.cpf],
-        );
-
-        console.log(
-          '🔍 [completeProfile GERENTE] Unidades encontradas com CPF:',
-          unidadeDoGerente,
-        );
-
-        if (unidadeDoGerente && unidadeDoGerente[0]) {
+        if (vinculoExistente && vinculoExistente[0]) {
           console.log(
-            `✅ [completeProfile GERENTE] Gerente ${user.nome} JÁ vinculado à unidade ${unidadeDoGerente[0].nome} (${unidadeDoGerente[0].id})`,
+            '✅ [completeProfile] Gerente já vinculado à unidade:',
+            vinculoExistente[0].unidade_id,
           );
-          // Gerente já está vinculado via responsavel_cpf, não precisa fazer nada
         } else if (profileData.unidade_id) {
-          console.log(
-            `🔄 [completeProfile GERENTE] Vinculando gerente à unidade ${profileData.unidade_id}`,
+          console.warn(
+            `⚠️ [completeProfile] Gerente não estava vinculado. Vinculando à unidade: ${profileData.unidade_id}`,
           );
-          // Se não encontrou via CPF mas veio unidade_id do formulário, vincular
-          await this.unidadesService.atualizar(profileData.unidade_id, {
-            responsavel_cpf: user.cpf,
-          });
-          console.log(
-            `✅ [completeProfile GERENTE] Gerente ${user.nome} VINCULADO à unidade ${profileData.unidade_id}`,
+          // Vincular gerente à unidade via tabela gerente_unidades
+          await this.dataSource.query(
+            `INSERT INTO teamcruz.gerente_unidades (usuario_id, unidade_id, ativo, data_vinculo)
+             VALUES ($1, $2, true, NOW())
+             ON CONFLICT (usuario_id) DO UPDATE SET unidade_id = $2, ativo = true`,
+            [userId, profileData.unidade_id],
           );
         } else {
           console.warn(
-            `⚠️ [completeProfile GERENTE] Gerente ${user.nome} SEM UNIDADE DEFINIDA!`,
+            `⚠️ [completeProfile] Gerente ${user.nome} SEM UNIDADE DEFINIDA!`,
           );
         }
       }
@@ -605,7 +576,7 @@ export class AuthService {
 
     // Cria usuário com perfil selecionado
     const user = await this.usuariosService.create({
-      username: payload.email,
+      username: payload.username,
       email: payload.email,
       nome: payload.nome,
       password: payload.password,
@@ -614,39 +585,35 @@ export class AuthService {
       data_nascimento: payload.data_nascimento, // Adicionar data de nascimento ao usuário
       ativo: usuarioAtivo, // Ativo apenas se perfil não requer aprovação
       perfil_ids: [perfilId],
-      cadastro_completo: perfilNome === 'aluno' ? false : true, // Apenas aluno precisa completar cadastro, franqueado vai direto para minha-franquia
+      cadastro_completo: true, // ✅ ALUNO já vai com cadastro completo, não precisa logar 2x
     } as any);
 
     // VINCULAR USUÁRIO À UNIDADE conforme perfil
-    console.log('🔗 [CREATE USER] Verificando vínculo com unidade', {
-      perfil: perfilNome,
-      unidade_id: payload.unidade_id,
-      user_cpf: user.cpf,
-    });
 
     if (payload.unidade_id) {
-      // Gerente: vincular como responsavel_cpf na unidade
+      // Gerente: vincular via tabela gerente_unidades
       if (perfilNome === 'gerente_unidade') {
-        console.log('🔗 [GERENTE] Vinculando gerente à unidade...', {
-          unidade_id: payload.unidade_id,
-          cpf: user.cpf,
-        });
         try {
-          // ✅ PASSO 1: Remover CPF de TODAS as outras unidades (para evitar conflito)
-          const query = `
-            UPDATE teamcruz.unidades
-            SET responsavel_cpf = NULL, responsavel_papel = NULL, updated_at = NOW()
-            WHERE responsavel_cpf = $1 AND responsavel_papel = 'GERENTE'
-          `;
-          await this.dataSource.query(query, [user.cpf]);
-          console.log('🧹 [GERENTE] CPF removido de unidades anteriores');
+          // Desvincular gerente de qualquer unidade anterior
+          await this.dataSource.query(
+            `UPDATE teamcruz.gerente_unidades
+             SET ativo = false, updated_at = NOW()
+             WHERE usuario_id = $1`,
+            [user.id],
+          );
 
-          // ✅ PASSO 2: Definir CPF na nova unidade
-          await this.unidadesService.atualizar(payload.unidade_id, {
-            responsavel_cpf: user.cpf,
-            responsavel_papel: PapelResponsavel.GERENTE,
-          });
-          console.log('✅ [GERENTE] Vinculado à nova unidade com sucesso!');
+          // Vincular gerente à nova unidade
+          await this.dataSource.query(
+            `INSERT INTO teamcruz.gerente_unidades (usuario_id, unidade_id, ativo, data_vinculo)
+             VALUES ($1, $2, true, NOW())
+             ON CONFLICT (usuario_id) DO UPDATE
+             SET unidade_id = $2, ativo = true, updated_at = NOW()`,
+            [user.id, payload.unidade_id],
+          );
+
+          console.log(
+            `✅ [approveUser GERENTE] Gerente ${user.nome} vinculado à unidade ${payload.unidade_id}`,
+          );
         } catch (error) {
           console.error(
             '❌ Erro ao vincular gerente à unidade:',
@@ -658,25 +625,56 @@ export class AuthService {
       // Aluno: criar registro na tabela alunos
       if (perfilNome === 'aluno') {
         try {
+          // Usar dados do usuário + dados adicionais do payload
           await this.alunosService.create({
+            // Dados obrigatórios
             usuario_id: user.id,
             unidade_id: payload.unidade_id,
-            faixa_id: payload.faixa_id || null,
-            data_nascimento: payload.data_nascimento || null,
+            nome_completo: user.nome,
+            cpf: user.cpf,
+            data_nascimento: user.data_nascimento || payload.data_nascimento,
+            genero: payload.genero || 'OUTRO', // Default se não informado
+            
+            // Contato
+            email: user.email,
+            telefone_whatsapp: user.telefone,
+            telefone_emergencia: payload.telefone_emergencia || null,
+            nome_contato_emergencia: payload.nome_contato_emergencia || null,
+            
+            // Matrícula
+            data_matricula: new Date().toISOString().split('T')[0],
+            status: 'ATIVO', // Aluno ativo por padrão no auto-cadastro
+            
+            // Graduação
+            faixa_atual: payload.faixa_atual || 'BRANCA',
+            graus: 0,
+            
+            // Dados opcionais
             peso: payload.peso || null,
             altura: payload.altura || null,
             tipo_sanguineo: payload.tipo_sanguineo || null,
             alergias: payload.alergias || null,
-            medicamentos: payload.medicamentos || null,
-            condicoes_medicas: payload.condicoes_medicas || null,
-            contato_emergencia_nome: payload.contato_emergencia_nome || null,
-            contato_emergencia_telefone:
-              payload.contato_emergencia_telefone || null,
-            contato_emergencia_parentesco:
-              payload.contato_emergencia_parentesco || null,
+            medicamentos_uso_continuo: payload.medicamentos || null,
+            observacoes_medicas: payload.condicoes_medicas || null,
+            plano_saude: payload.plano_saude || null,
+            
+            // Responsável (para menores)
+            responsavel_nome: payload.responsavel_nome || null,
+            responsavel_cpf: payload.responsavel_cpf || null,
+            responsavel_telefone: payload.responsavel_telefone || null,
+            responsavel_parentesco: payload.responsavel_parentesco || null,
+            
+            // LGPD
+            consent_lgpd: payload.consent_lgpd || false,
+            consent_imagem: payload.consent_imagem || false,
+            consent_lgpd_date: payload.consent_lgpd ? new Date() : null,
           } as any);
+          
+          console.log(`✅ [registerAluno] Aluno ${user.nome} criado na unidade ${payload.unidade_id}`);
         } catch (error) {
           console.error('❌ Erro ao criar registro de aluno:', error.message);
+          console.error('Stack:', error.stack);
+          // Não lançar erro para não bloquear o cadastro do usuário
         }
       }
     } else if (perfilNome !== 'franqueado' && perfilNome !== 'master') {
@@ -710,11 +708,6 @@ export class AuthService {
     // Professor: criar registro na tabela professores e professor_unidades
     if (perfilNome === 'professor' || perfilNome === 'instrutor') {
       try {
-        console.log('🔗 [PROFESSOR] Criando registro de professor...', {
-          usuario_id: user.id,
-          unidade_id: payload.unidade_id,
-        });
-
         const professor = await this.professoresService.create({
           usuario_id: user.id,
           especialidade: payload.especialidade || null,
@@ -724,18 +717,11 @@ export class AuthService {
 
         // Vincular professor à unidade
         if (payload.unidade_id) {
-          console.log('🔗 [PROFESSOR] Vinculando professor à unidade...', {
-            professor_id: professor.id,
-            unidade_id: payload.unidade_id,
-          });
           await this.dataSource.query(
             `INSERT INTO teamcruz.professor_unidades (professor_id, unidade_id, created_at, updated_at)
              VALUES ($1, $2, NOW(), NOW())`,
             [professor.id, payload.unidade_id],
           );
-          console.log('✅ [PROFESSOR] Vinculado com sucesso!');
-        } else {
-          console.log('⚠️ [PROFESSOR] Nenhuma unidade fornecida para vincular');
         }
       } catch (error) {
         console.error('❌ Erro ao criar registro de professor:', error.message);
@@ -746,20 +732,10 @@ export class AuthService {
     if (perfilNome === 'recepcionista') {
       if (payload.unidade_id) {
         try {
-          console.log(
-            '🔗 [RECEPCIONISTA] Vinculando recepcionista à unidade...',
-            {
-              usuario_id: user.id,
-              unidade_id: payload.unidade_id,
-            },
-          );
           await this.dataSource.query(
             `INSERT INTO teamcruz.recepcionista_unidades (usuario_id, unidade_id, ativo, created_at, updated_at)
              VALUES ($1, $2, true, NOW(), NOW())`,
             [user.id, payload.unidade_id],
-          );
-          console.log(
-            '✅ [RECEPCIONISTA] Vinculado com sucesso à tabela recepcionista_unidades!',
           );
         } catch (error) {
           console.error(
@@ -767,10 +743,6 @@ export class AuthService {
             error.message,
           );
         }
-      } else {
-        console.log(
-          '⚠️ [RECEPCIONISTA] Nenhuma unidade fornecida para vincular',
-        );
       }
     }
 

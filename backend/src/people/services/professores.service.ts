@@ -34,13 +34,6 @@ export class ProfessoresService {
   ) {}
 
   async list(params: ListProfessoresParams, user?: any) {
-    console.log('🔍 [PROFESSORES] Iniciando listagem com params:', params);
-    console.log('🔍 [PROFESSORES] User:', {
-      id: user?.id,
-      username: user?.username,
-      perfis: user?.perfis,
-    });
-
     const page = Math.max(1, Number(params.page) || 1);
     const pageSize = Math.min(100, Math.max(1, Number(params.pageSize) || 20));
 
@@ -62,25 +55,16 @@ export class ProfessoresService {
     // Aplicar filtros de segurança baseados no perfil do usuário
     // FRANQUEADO: só vê professores das suas unidades
     if (user && this.isFranqueado(user) && !this.isMaster(user)) {
-      console.log('🔒 [PROFESSORES] Usuário é FRANQUEADO - aplicando filtro');
       const franqueadoId = await this.getFranqueadoIdByUser(user);
-      console.log('🔒 [PROFESSORES] franqueadoId:', franqueadoId);
 
       if (franqueadoId) {
         // Se especificou unidade_id, validar que pertence ao franqueado
         if (params.unidade_id) {
-          console.log(
-            '🔒 [PROFESSORES] Filtrando por unidade_id:',
-            params.unidade_id,
-          );
           query.andWhere(
             'person.unidade_id = :unidade AND person.unidade_id IN (SELECT id FROM teamcruz.unidades WHERE franqueado_id = :franqueadoId)',
             { unidade: params.unidade_id, franqueadoId },
           );
         } else {
-          console.log(
-            '🔒 [PROFESSORES] Filtrando por todas as unidades do franqueado',
-          );
           // Sem filtro de unidade: mostrar todas as unidades do franqueado
           query.andWhere(
             'person.unidade_id IN (SELECT id FROM teamcruz.unidades WHERE franqueado_id = :franqueadoId)',
@@ -88,20 +72,12 @@ export class ProfessoresService {
           );
         }
       } else {
-        console.log(
-          '⚠️ [PROFESSORES] Franqueado sem registro - bloqueando acesso',
-        );
-        // Franqueado sem registro: não pode ver nenhum professor
         query.andWhere('1 = 0');
       }
     }
     // GERENTE DE UNIDADE: só vê professores da sua unidade
     else if (user && this.isGerenteUnidade(user) && !this.isMaster(user)) {
-      console.log(
-        '🔒 [PROFESSORES] Usuário é GERENTE_UNIDADE - aplicando filtro',
-      );
       const unidadeDoGerente = await this.getUnidadeDoGerente(user);
-      console.log('🔒 [PROFESSORES] unidadeDoGerente:', unidadeDoGerente);
 
       if (unidadeDoGerente) {
         // Forçar filtro pela unidade do gerente
@@ -109,51 +85,34 @@ export class ProfessoresService {
           unidadeGerente: unidadeDoGerente,
         });
       } else {
-        console.log('⚠️ [PROFESSORES] Gerente sem unidade - bloqueando acesso');
         // Gerente sem unidade: não pode ver nenhum professor
         query.andWhere('1 = 0');
       }
     }
     // MASTER ou outros perfis: pode filtrar por qualquer unidade
     else if (params.unidade_id) {
-      console.log(
-        '✅ [PROFESSORES] MASTER ou admin - filtrando por unidade:',
-        params.unidade_id,
-      );
       query.andWhere('person.unidade_id = :unidade', {
         unidade: params.unidade_id,
       });
-    } else {
-      console.log(
-        '✅ [PROFESSORES] MASTER ou admin - sem filtro de unidade (todos)',
-      );
     }
-
     // Filtro por status
     if (params.status) {
       query.andWhere('person.status = :status', { status: params.status });
+    } else {
+      // Se não especificou status, mostrar apenas ATIVOS (excluir deletados/inativos)
+      query.andWhere('person.status = :status', {
+        status: StatusCadastro.ATIVO,
+      });
     }
 
     // Ordenar por nome
     query.orderBy('person.nome_completo', 'ASC');
 
     // Paginação
-    console.log('📝 [PROFESSORES] SQL Query:', query.getQueryAndParameters());
-
     const [items, total] = await query
       .skip((page - 1) * pageSize)
       .take(pageSize)
       .getManyAndCount();
-
-    console.log('📊 [PROFESSORES] Resultados:', {
-      total,
-      items: items.length,
-      professores: items.map((p) => ({
-        id: p.id,
-        nome: p.nome_completo,
-        unidade_id: p.unidade_id,
-      })),
-    });
 
     // Buscar unidades de cada professor
     const itemsWithUnidades = await Promise.all(
@@ -270,7 +229,9 @@ export class ProfessoresService {
         ...dto,
         tipo_cadastro: TipoCadastro.PROFESSOR,
         status: dto.status || StatusCadastro.ATIVO,
-        data_nascimento: new Date(dto.data_nascimento),
+        data_nascimento: dto.data_nascimento
+          ? new Date(dto.data_nascimento)
+          : undefined,
         data_inicio_docencia: dto.data_inicio_docencia
           ? new Date(dto.data_inicio_docencia)
           : undefined,
@@ -279,14 +240,38 @@ export class ProfessoresService {
       const professor = this.personRepository.create(professorData);
       const savedProfessor: any = await queryRunner.manager.save(professor);
 
-      // 4. Vincular à unidade principal
-      const unidadePrincipal = queryRunner.manager.create(ProfessorUnidade, {
-        professor_id: savedProfessor.id,
-        unidade_id: dto.unidade_id,
-        is_principal: true,
-        ativo: true,
-      });
-      await queryRunner.manager.save(ProfessorUnidade, unidadePrincipal);
+      // 4. Atualizar ou criar vínculo na tabela professor_unidades
+      // Se já existe registro com usuario_id (criado na criação do usuário),
+      // atualizar professor_id. Caso contrário, criar novo registro.
+      const existingVinculo = await queryRunner.manager.query(
+        `SELECT * FROM teamcruz.professor_unidades
+         WHERE usuario_id = $1 AND unidade_id = $2 LIMIT 1`,
+        [dto.usuario_id, dto.unidade_id],
+      );
+
+      if (existingVinculo && existingVinculo.length > 0) {
+        // Atualizar registro existente com professor_id
+        console.log(
+          `✅ [Professor Create] Atualizando vínculo existente para usuario_id ${dto.usuario_id}`,
+        );
+        await queryRunner.manager.query(
+          `UPDATE teamcruz.professor_unidades
+           SET professor_id = $1, is_principal = true, ativo = true, updated_at = NOW()
+           WHERE usuario_id = $2 AND unidade_id = $3`,
+          [savedProfessor.id, dto.usuario_id, dto.unidade_id],
+        );
+      } else {
+        // Criar novo vínculo na unidade principal
+        console.log(
+          `✅ [Professor Create] Criando novo vínculo para unidade ${dto.unidade_id}`,
+        );
+        await queryRunner.manager.query(
+          `INSERT INTO teamcruz.professor_unidades
+           (professor_id, usuario_id, unidade_id, is_principal, ativo)
+           VALUES ($1, $2, $3, true, true)`,
+          [savedProfessor.id, dto.usuario_id, dto.unidade_id],
+        );
+      }
 
       // 5. Vincular a unidades adicionais (se houver)
       if (dto.unidades_adicionais && dto.unidades_adicionais.length > 0) {
@@ -468,7 +453,9 @@ export class ProfessoresService {
       throw new NotFoundException('Professor não encontrado');
     }
 
-    await this.personRepository.remove(professor);
+    // Soft delete - marca como INATIVO em vez de deletar
+    professor.status = StatusCadastro.INATIVO;
+    await this.personRepository.save(professor);
   }
 
   /**
@@ -519,12 +506,6 @@ export class ProfessoresService {
       const nome = typeof p === 'string' ? p : p?.nome;
       return nome?.toLowerCase() === 'master';
     });
-    console.log(
-      '🔍 [PROFESSORES] isMaster:',
-      result,
-      'perfis:',
-      user?.perfis?.map((p: any) => (typeof p === 'string' ? p : p?.nome)),
-    );
     return result;
   }
 
@@ -533,12 +514,6 @@ export class ProfessoresService {
       const nome = typeof p === 'string' ? p : p?.nome;
       return nome?.toLowerCase() === 'franqueado';
     });
-    console.log(
-      '🔍 [PROFESSORES] isFranqueado:',
-      result,
-      'perfis:',
-      user?.perfis?.map((p: any) => (typeof p === 'string' ? p : p?.nome)),
-    );
     return result;
   }
 
@@ -550,12 +525,6 @@ export class ProfessoresService {
         nome?.toLowerCase() === 'gerente'
       );
     });
-    console.log(
-      '🔍 [PROFESSORES] isGerenteUnidade:',
-      result,
-      'perfis:',
-      user?.perfis?.map((p: any) => (typeof p === 'string' ? p : p?.nome)),
-    );
     return result;
   }
 
@@ -571,23 +540,14 @@ export class ProfessoresService {
   private async getUnidadeDoGerente(user: any): Promise<string | null> {
     if (!user?.id) return null;
 
-    // Buscar CPF do usuário
-    const userResult = await this.dataSource.query(
-      `SELECT cpf FROM teamcruz.usuarios WHERE id = $1 LIMIT 1`,
+    // Buscar unidade onde o usuário é gerente via tabela gerente_unidades
+    const result = await this.dataSource.query(
+      `SELECT unidade_id FROM teamcruz.gerente_unidades
+       WHERE usuario_id = $1 AND ativo = true LIMIT 1`,
       [user.id],
     );
 
-    if (!userResult || !userResult[0]?.cpf) return null;
-
-    const cpf = userResult[0].cpf;
-
-    // Buscar unidade onde o usuário é gerente (responsavel_cpf + responsavel_papel = GERENTE)
-    const result = await this.dataSource.query(
-      `SELECT id FROM teamcruz.unidades WHERE responsavel_cpf = $1 AND responsavel_papel = 'GERENTE' LIMIT 1`,
-      [cpf],
-    );
-
-    return result[0]?.id || null;
+    return result[0]?.unidade_id || null;
   }
 
   private async getUnidadesDeFranqueado(

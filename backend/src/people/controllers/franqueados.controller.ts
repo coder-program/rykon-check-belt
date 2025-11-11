@@ -106,8 +106,21 @@ export class FranqueadosController {
   @ApiOperation({ summary: 'Criar novo franqueado' })
   @ApiResponse({ status: 201, description: 'Franqueado criado com sucesso' })
   @ApiResponse({ status: 400, description: 'Dados inválidos' })
-  create(@Body() body: CreateFranqueadoSimplifiedDto) {
-    return this.service.create(body);
+  create(@Request() req: any, @Body() body: CreateFranqueadoSimplifiedDto) {
+    // Se for MASTER criando, vai direto como ATIVA, senão vai para homologação
+    const isMaster = req.user?.perfis?.some(
+      (p: any) => p.nome === 'MASTER' || p === 'MASTER',
+    );
+
+    const dadosFranquia: CreateFranqueadoSimplifiedDto = {
+      ...body,
+      situacao: (isMaster ? 'ATIVA' : 'EM_HOMOLOGACAO') as
+        | 'ATIVA'
+        | 'INATIVA'
+        | 'EM_HOMOLOGACAO',
+    };
+
+    return this.service.create(dadosFranquia);
   }
 
   @Get('usuario/:usuarioId')
@@ -134,12 +147,6 @@ export class FranqueadosController {
   @ApiResponse({ status: 200, description: 'Franqueado atualizado' })
   @ApiResponse({ status: 404, description: 'Franqueado não encontrado' })
   update(@Param('id') id: string, @Body() body: UpdateFranqueadoSimplifiedDto) {
-    console.log('🔍 [Controller] DTO recebido:', {
-      ativo: body.ativo,
-      ativoType: typeof body.ativo,
-      fullDto: body,
-    });
-
     return this.service.update(id, body);
   }
 

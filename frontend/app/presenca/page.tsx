@@ -282,7 +282,6 @@ export default function PresencaPage() {
 
       newScanner.render(
         (decodedText) => {
-          console.log("QR Code detectado:", decodedText);
           processQRCode(decodedText);
           newScanner.clear();
           setScannerActive(false);

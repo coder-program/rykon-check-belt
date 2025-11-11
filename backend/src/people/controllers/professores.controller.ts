@@ -31,9 +31,7 @@ export class ProfessoresController {
   @ApiQuery({ name: 'page', required: false })
   @ApiQuery({ name: 'pageSize', required: false })
   list(@Query(ValidationPipe) query: any, @Request() req) {
-    console.log('🎯 [PROFESSORES CONTROLLER] req.user:', req.user);
     const user = req?.user || null;
-    console.log('🎯 [PROFESSORES CONTROLLER] user enviado ao service:', user);
     return this.service.list(query, user);
   }
 

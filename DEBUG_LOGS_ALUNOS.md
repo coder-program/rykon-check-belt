@@ -58,9 +58,6 @@ O backend vai mostrar LOGS COMPLETOS assim:
 # 1. Verificar no navegador (F12 > Network)
 # Deve ter: Authorization: Bearer eyJhbGc...
 
-# 2. Se não tiver, verificar localStorage
-console.log(localStorage.getItem('token'))
-
 # 3. Fazer logout e login novamente
 ```
 

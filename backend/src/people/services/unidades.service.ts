@@ -18,12 +18,10 @@ export class UnidadesService {
   async criar(dto: CreateUnidadeDto, user?: any): Promise<Unidade> {
     const q = `INSERT INTO teamcruz.unidades
       (franqueado_id, nome, cnpj, razao_social, nome_fantasia, inscricao_estadual, inscricao_municipal,
-       codigo_interno, telefone_fixo, telefone_celular, email, website, redes_sociais,
-       status, responsavel_nome, responsavel_cpf, responsavel_papel,
-       responsavel_contato, qtde_tatames, area_tatame_m2, capacidade_max_alunos, valor_plano_padrao,
-       horarios_funcionamento, modalidades, instrutor_principal_id, endereco_id, created_at, updated_at)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,COALESCE($14,'HOMOLOGACAO')::teamcruz.status_unidade_enum,
-              $15,$16,$17::teamcruz.papel_responsavel_enum,$18,$19,$20,$21,$22,$23,$24,$25,$26,NOW(),NOW())
+       telefone_fixo, telefone_celular, email, website, redes_sociais,
+       status, horarios_funcionamento, endereco_id, created_at, updated_at)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,COALESCE($13,'HOMOLOGACAO')::teamcruz.status_unidade_enum,
+              $14,$15,NOW(),NOW())
       RETURNING *`;
 
     const params = [
@@ -34,26 +32,15 @@ export class UnidadesService {
       dto.nome_fantasia ?? null,
       dto.inscricao_estadual ?? null,
       dto.inscricao_municipal ?? null,
-      dto.codigo_interno ?? null,
       dto.telefone_fixo ?? null,
       dto.telefone_celular ?? null,
       dto.email ?? null,
       dto.website ?? null,
       dto.redes_sociais ? JSON.stringify(dto.redes_sociais) : null,
       dto.status ?? 'HOMOLOGACAO',
-      dto.responsavel_nome,
-      dto.responsavel_cpf,
-      dto.responsavel_papel,
-      dto.responsavel_contato,
-      dto.qtde_tatames ?? null,
-      dto.area_tatame_m2 ?? null,
-      dto.capacidade_max_alunos ?? null,
-      dto.valor_plano_padrao ?? null,
       dto.horarios_funcionamento
         ? JSON.stringify(dto.horarios_funcionamento)
         : null,
-      dto.modalidades ? JSON.stringify(dto.modalidades) : null,
-      dto.instrutor_principal_id ?? null,
       dto.endereco_id ?? null,
     ];
 
@@ -71,7 +58,7 @@ export class UnidadesService {
 
       // Se usuário NÃO é MASTER, força status HOMOLOGACAO
       if (user && !this.isMaster(user)) {
-        params[13] = 'HOMOLOGACAO'; // índice 13 é o status na query
+        params[12] = 'HOMOLOGACAO'; // índice 12 é o status na query (posição $13)
       }
 
       // Validar CNPJ duplicado apenas quando CNPJ for informado
@@ -114,16 +101,9 @@ export class UnidadesService {
       search?: string;
       status?: StatusUnidade | string;
       franqueado_id?: string;
-      responsavel_cpf?: string;
     },
     user?: any,
   ) {
-    console.log('🔍 [UNIDADES][SERVICE] listar called with params:', params);
-    console.log(
-      '🔍 [UNIDADES][SERVICE] user (partial):',
-      user ? { id: user.id, perfis: user.perfis } : null,
-    );
-
     const page = Math.max(1, Number(params.page) || 1);
     const pageSize = Math.min(100, Math.max(1, Number(params.pageSize) || 20));
     const offset = (page - 1) * pageSize;
@@ -148,17 +128,9 @@ export class UnidadesService {
       whereConditions.push(`u.status = $${paramIndex}`);
       queryParams.push(params.status);
       paramIndex++;
-    }
-
-    // Filtrar por responsavel_cpf se fornecido (usado para gerentes encontrarem sua unidade)
-    if (params.responsavel_cpf) {
-      console.log(
-        '🔍 [UNIDADES] Buscando unidade por responsavel_cpf:',
-        params.responsavel_cpf,
-      );
-      whereConditions.push(`u.responsavel_cpf = $${paramIndex}`);
-      queryParams.push(params.responsavel_cpf);
-      paramIndex++;
+    } else {
+      // Se não especificou status ou é 'todos', excluir apenas INATIVAS (mostrar ATIVA e HOMOLOGACAO)
+      whereConditions.push(`u.status != 'INATIVA'`);
     }
 
     // Filtrar por franqueado_id se fornecido explicitamente na query
@@ -169,11 +141,25 @@ export class UnidadesService {
     }
     // Se gerente de unidade, filtra pela unidade que ele gerencia
     else if (user && this.isGerenteUnidade(user) && !this.isMaster(user)) {
+      console.log('🔍 [UnidadesService.listar] Gerente detectado:', {
+        userId: user.id,
+        userName: user.nome,
+        perfis: user.perfis,
+      });
       const unidadeId = await this.getUnidadeIdByGerente(user);
+      console.log('📍 [UnidadesService.listar] Unidade do gerente:', unidadeId);
       if (unidadeId) {
         whereConditions.push(`u.id = $${paramIndex}`);
         queryParams.push(unidadeId);
         paramIndex++;
+        console.log('✅ [UnidadesService.listar] Filtro aplicado:', {
+          whereCondition: `u.id = ${unidadeId}`,
+          paramIndex,
+        });
+      } else {
+        console.warn(
+          '⚠️ [UnidadesService.listar] Gerente sem unidade vinculada!',
+        );
       }
     }
     // Se recepcionista, filtra pelas unidades que ele trabalha
@@ -191,19 +177,10 @@ export class UnidadesService {
     // Se franqueado (não master), filtra por sua franquia
     else if (user && this.isFranqueado(user) && !this.isMaster(user)) {
       const franqueadoId = await this.getFranqueadoIdByUser(user);
-      console.log('🔒 [SEGURANÇA] Franqueado detectado:', {
-        userId: user.id,
-        userName: user.nome,
-        franqueadoId,
-      });
       if (franqueadoId) {
         whereConditions.push(`u.franqueado_id = $${paramIndex}`);
         queryParams.push(franqueadoId);
         paramIndex++;
-        console.log(
-          '✅ [SEGURANÇA] Filtro aplicado - mostrando apenas unidades da franquia:',
-          franqueadoId,
-        );
       }
     }
 
@@ -216,11 +193,6 @@ export class UnidadesService {
     const countQ = `SELECT COUNT(*) as total FROM teamcruz.unidades u ${whereClause}`;
     const countRes = await this.dataSource.query(countQ, queryParams);
     const total = parseInt(countRes[0].total);
-    console.log('🔢 [UNIDADES] count query executed', {
-      countQuery: countQ,
-      params: queryParams,
-      total,
-    });
 
     // Query com dados
     const q = `SELECT u.*, f.nome as franqueado_nome
@@ -232,18 +204,9 @@ export class UnidadesService {
 
     queryParams.push(pageSize, offset);
     const res = await this.dataSource.query(q, queryParams);
-    console.log('📦 [UNIDADES] data query executed', {
-      dataQuery: q,
-      params: queryParams,
-      rows: res.length,
-    });
     const items = await Promise.all(
       res.map((row: any) => this.formatarUnidadeComEndereco(row)),
     );
-    console.log('✅ [UNIDADES] returning items', {
-      returned: items.length,
-      sample: items.slice(0, 3),
-    });
     return {
       items,
       page,
@@ -255,7 +218,6 @@ export class UnidadesService {
 
   // Método PÚBLICO para listagem de unidades ativas (cadastro público)
   async listarPublicasAtivas(): Promise<any[]> {
-    console.log('🔍 [UNIDADES][SERVICE][PUBLIC/ATIVAS] called');
     const q = `
       SELECT u.id, u.nome, u.status, u.endereco_id,
              e.cidade, e.estado, e.bairro
@@ -265,10 +227,6 @@ export class UnidadesService {
       ORDER BY u.nome ASC
     `;
     const res = await this.dataSource.query(q);
-    console.log(
-      '📦 [UNIDADES][SERVICE][PUBLIC/ATIVAS] result rows:',
-      res.length,
-    );
     return res;
   }
 
@@ -313,9 +271,6 @@ export class UnidadesService {
       if (value !== undefined) {
         // Se não for MASTER, não permitir alteração de status
         if (key === 'status' && user && !this.isMaster(user)) {
-          console.log(
-            '⚠️ Usuário não-MASTER tentou alterar status. Ignorando.',
-          );
           continue; // pula este campo
         }
 
@@ -371,11 +326,13 @@ export class UnidadesService {
       }
     }
 
+    // Soft delete - marca como INATIVA em vez de deletar
     const res = await this.dataSource.query(
-      `DELETE FROM teamcruz.unidades WHERE id = $1`,
+      `UPDATE teamcruz.unidades SET status = 'INATIVA', updated_at = NOW() WHERE id = $1 RETURNING id, nome, status`,
       [id],
     );
-    return res.affectedRows > 0 || res.rowCount > 0;
+
+    return res.length > 0;
   }
 
   async obterEstatisticas(user?: any): Promise<{
@@ -473,32 +430,32 @@ export class UnidadesService {
 
   private async getUnidadeIdByGerente(user: any): Promise<string | null> {
     if (!user?.id) return null;
-    // Buscar unidade onde o usuário é o responsável com papel GERENTE
-    const res = await this.dataSource.query(
-      `SELECT id FROM teamcruz.unidades
-       WHERE responsavel_cpf = (
-         SELECT cpf FROM teamcruz.usuarios WHERE id = $1
-       )
-       AND responsavel_papel = 'GERENTE'
+
+    console.log(
+      '🔍 [getUnidadeIdByGerente] Buscando unidade para gerente:',
+      user.id,
+    );
+
+    // Buscar unidade vinculada ao gerente através da tabela gerente_unidades
+    const result = await this.dataSource.query(
+      `SELECT gu.unidade_id
+       FROM teamcruz.gerente_unidades gu
+       WHERE gu.usuario_id = $1
+         AND gu.ativo = true
        LIMIT 1`,
       [user.id],
     );
-    return res[0]?.id || null;
+
+    const unidadeId = result.length > 0 ? result[0].unidade_id : null;
+    console.log('✅ [getUnidadeIdByGerente] Resultado:', unidadeId);
+
+    return unidadeId;
   }
 
   private async getUnidadeIdByRecepcionista(user: any): Promise<string | null> {
-    if (!user?.id) return null;
     // MÉTODO ANTIGO - mantido para compatibilidade
-    // Buscar unidade onde o usuário é o responsável (recepcionista)
-    const res = await this.dataSource.query(
-      `SELECT id FROM teamcruz.unidades
-       WHERE responsavel_cpf = (
-         SELECT cpf FROM teamcruz.usuarios WHERE id = $1
-       )
-       LIMIT 1`,
-      [user.id],
-    );
-    return res[0]?.id || null;
+    // Por enquanto retorna null - usar getUnidadesIdsByRecepcionista
+    return null;
   }
 
   private async getUnidadesIdsByRecepcionista(user: any): Promise<string[]> {
@@ -530,7 +487,6 @@ export class UnidadesService {
       nome_fantasia: row.nome_fantasia,
       inscricao_estadual: row.inscricao_estadual,
       inscricao_municipal: row.inscricao_municipal,
-      codigo_interno: row.codigo_interno,
       // Contato
       telefone_fixo: row.telefone_fixo,
       telefone_celular: row.telefone_celular,
@@ -539,25 +495,8 @@ export class UnidadesService {
       redes_sociais: row.redes_sociais,
       // Status
       status: row.status,
-      // Responsável da Unidade (diferente do instrutor principal)
-      responsavel_nome: row.responsavel_nome,
-      responsavel_cpf: row.responsavel_cpf,
-      responsavel_papel: row.responsavel_papel,
-      responsavel_contato: row.responsavel_contato,
-      // Estrutura
-      qtde_tatames: row.qtde_tatames,
-      area_tatame_m2: row.area_tatame_m2
-        ? parseFloat(row.area_tatame_m2)
-        : null,
-      capacidade_max_alunos: row.capacidade_max_alunos,
-      qtde_instrutores: row.qtde_instrutores || 0,
-      valor_plano_padrao: row.valor_plano_padrao
-        ? parseFloat(row.valor_plano_padrao)
-        : null,
+      // Dados estruturais
       horarios_funcionamento: row.horarios_funcionamento,
-      modalidades: row.modalidades,
-      // Responsável Técnico
-      instrutor_principal_id: row.instrutor_principal_id,
       // Endereço
       endereco_id: row.endereco_id || null,
       created_at: new Date(row.created_at),

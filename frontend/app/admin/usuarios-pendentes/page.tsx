@@ -84,7 +84,6 @@ function AprovacaoUsuariosPage() {
   const { data: allUsersForStats = [], isLoading: isLoadingStats } = useQuery({
     queryKey: ["todos-usuarios-stats"],
     queryFn: async () => {
-      console.log("📊 [STATS] Iniciando busca de estatísticas...");
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/usuarios`,
         {
@@ -95,28 +94,15 @@ function AprovacaoUsuariosPage() {
       );
 
       if (!response.ok) {
-        console.error("❌ [STATS] Erro na resposta:", response.status);
+        console.error("[STATS] Erro na resposta:", response.status);
         throw new Error("Erro ao carregar estatísticas");
       }
 
       const data = await response.json();
-      console.log("📊 [STATS] Dados brutos recebidos:", data);
-      console.log("📊 [STATS] Total de usuários:", data.length);
-
       const stats = data.map((user: any) => ({
         id: user.id,
         ativo: user.ativo,
       }));
-
-      console.log("📊 [STATS] Estatísticas processadas:", stats);
-      console.log(
-        "📊 [STATS] Pendentes:",
-        stats.filter((u: any) => !u.ativo).length
-      );
-      console.log(
-        "📊 [STATS] Aprovados:",
-        stats.filter((u: any) => u.ativo).length
-      );
 
       return stats;
     },
@@ -172,8 +158,6 @@ function AprovacaoUsuariosPage() {
 
       const data = await response.json();
 
-      console.log("🔍 [PENDENTES] Dados brutos da API:", data);
-
       // Transformar dados para o formato esperado
       let allUsers = data.map((user: any) => ({
         id: user.id,
@@ -186,8 +170,6 @@ function AprovacaoUsuariosPage() {
         created_at: user.created_at,
         unidade: user.unidade, // Incluir dados da unidade
       }));
-
-      console.log("🔍 [PENDENTES] Usuários transformados:", allUsers);
 
       // Filtrar baseado no estado
       let filtered = allUsers;
@@ -356,9 +338,7 @@ function AprovacaoUsuariosPage() {
           personData = await alunoResponse.json();
           tipoEncontrado = "ALUNO";
         }
-      } catch (error) {
-        console.log("Não é aluno:", error);
-      }
+      } catch (error) {}
 
       // 2. Se não encontrou como aluno, tentar como professor
       if (!personData) {
@@ -376,9 +356,7 @@ function AprovacaoUsuariosPage() {
             personData = await professorResponse.json();
             tipoEncontrado = "PROFESSOR";
           }
-        } catch (error) {
-          console.log("Não é professor:", error);
-        }
+        } catch (error) {}
       }
 
       // 3. Se não encontrou como professor, tentar como franqueado
@@ -397,9 +375,7 @@ function AprovacaoUsuariosPage() {
             personData = await franqueadoResponse.json();
             tipoEncontrado = "FRANQUEADO";
           }
-        } catch (error) {
-          console.log("Não é franqueado:", error);
-        }
+        } catch (error) {}
       }
 
       // 4. Se ainda não encontrou, verificar se é apenas usuário básico
@@ -527,11 +503,6 @@ function AprovacaoUsuariosPage() {
                   const pendentes = allUsersForStats.filter(
                     (u) => !u.ativo
                   ).length;
-                  console.log(
-                    "🟡 [CARD PENDENTES] allUsersForStats:",
-                    allUsersForStats
-                  );
-                  console.log("🟡 [CARD PENDENTES] Count:", pendentes);
                   return pendentes;
                 })()}
               </div>
@@ -549,7 +520,6 @@ function AprovacaoUsuariosPage() {
                   const aprovados = allUsersForStats.filter(
                     (u) => u.ativo
                   ).length;
-                  console.log("🟢 [CARD APROVADOS] Count:", aprovados);
                   return aprovados;
                 })()}
               </div>
@@ -564,10 +534,6 @@ function AprovacaoUsuariosPage() {
             <CardContent>
               <div className="text-2xl font-bold text-blue-600">
                 {(() => {
-                  console.log(
-                    "🔵 [CARD TOTAL] Count:",
-                    allUsersForStats.length
-                  );
                   return allUsersForStats.length;
                 })()}
               </div>

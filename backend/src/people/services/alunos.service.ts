@@ -856,4 +856,61 @@ export class AlunosService {
     );
     return result.map((r: any) => r.id);
   }
+
+  // ========== TABLET CHECK-IN ==========
+
+  async listarAlunosParaCheckin(user: any, search?: string) {
+    // Buscar unidade do usuário (TABLET_CHECKIN deve estar vinculado a uma unidade)
+    let unidadeId: string | null = null;
+
+    // Para TABLET_CHECKIN, buscar via tablet_unidades
+    if (user?.perfis?.includes('TABLET_CHECKIN')) {
+      const result = await this.dataSource.query(
+        `SELECT unidade_id FROM teamcruz.tablet_unidades WHERE tablet_id = $1 AND ativo = true LIMIT 1`,
+        [user.id],
+      );
+      unidadeId = result[0]?.unidade_id || null;
+    }
+
+    if (!unidadeId) {
+      console.warn(
+        '⚠️ [listarAlunosParaCheckin] Usuário não vinculado a unidade',
+      );
+      return [];
+    }
+
+    // Buscar alunos ativos da unidade
+    const query = this.alunoRepository.createQueryBuilder('aluno');
+
+    query.leftJoinAndSelect('aluno.unidade', 'unidade');
+    query.leftJoinAndSelect('aluno.faixas', 'faixas', 'faixas.ativa = :ativa', {
+      ativa: true,
+    });
+    query.leftJoinAndSelect('faixas.faixaDef', 'faixaDef');
+
+    query.where('aluno.unidade_id = :unidadeId', { unidadeId });
+    query.andWhere('aluno.status = :status', { status: StatusAluno.ATIVO });
+
+    if (search) {
+      query.andWhere(
+        '(LOWER(aluno.nome_completo) LIKE :search OR aluno.cpf LIKE :search)',
+        { search: `%${search.toLowerCase()}%` },
+      );
+    }
+
+    query.orderBy('aluno.nome_completo', 'ASC');
+
+    const alunos = await query.getMany();
+
+    return alunos.map((aluno) => ({
+      id: aluno.id,
+      nome: aluno.nome_completo,
+      cpf: aluno.cpf,
+      foto: aluno.foto_url,
+      faixa: aluno.faixas?.[0]?.faixaDef?.nome_exibicao || 'Sem faixa',
+      corFaixa: aluno.faixas?.[0]?.faixaDef?.cor_hex || '#CCCCCC',
+      numeroMatricula: aluno.numero_matricula,
+      unidade: aluno.unidade?.nome,
+    }));
+  }
 }

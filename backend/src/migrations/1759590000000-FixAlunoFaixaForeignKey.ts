@@ -47,7 +47,5 @@ export class FixAlunoFaixaForeignKey1759590000000
       ON DELETE CASCADE
       ON UPDATE NO ACTION
     `);
-
-    console.log('✅ [Migration] Foreign key revertida para estado anterior');
   }
 }

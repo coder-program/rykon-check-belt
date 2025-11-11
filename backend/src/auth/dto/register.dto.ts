@@ -20,6 +20,19 @@ export class RegisterDto {
   @IsValidName()
   nome: string;
 
+  @ApiProperty({
+    example: 'joao.silva',
+    description:
+      'Username único (letras, números e ponto - sem espaços ou caracteres especiais)',
+  })
+  @IsString()
+  @IsNotEmpty()
+  @MinLength(3)
+  @Matches(/^[a-zA-Z0-9.]+$/, {
+    message: 'Username deve conter apenas letras, números e ponto',
+  })
+  username: string;
+
   @ApiProperty({ example: 'joao@email.com' })
   @IsEmail()
   @IsNotEmpty()

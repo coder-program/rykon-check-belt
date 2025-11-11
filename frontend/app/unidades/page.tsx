@@ -17,7 +17,6 @@ import {
   updateUnidade,
   deleteUnidade,
   listFranqueados,
-  listInstrutores,
   createEndereco,
   updateEndereco,
   getEndereco,
@@ -31,7 +30,6 @@ import {
   MapPin,
   Building2,
   Phone,
-  User,
   AlertCircle,
   CheckCircle2,
   ArrowLeft,
@@ -40,19 +38,6 @@ import toast from "react-hot-toast";
 import UnidadeForm from "@/components/unidades/UnidadeForm";
 
 type StatusUnidade = "ATIVA" | "INATIVA" | "HOMOLOGACAO";
-type PapelResponsavel =
-  | "PROPRIETARIO"
-  | "GERENTE"
-  | "INSTRUTOR"
-  | "ADMINISTRATIVO";
-type Modalidade =
-  | "INFANTIL"
-  | "ADULTO"
-  | "NO_GI"
-  | "COMPETICAO"
-  | "FEMININO"
-  | "AUTODEFESA"
-  | "CONDICIONAMENTO";
 
 interface RedesSociais {
   instagram?: string;
@@ -80,7 +65,6 @@ interface UnidadeFormData {
   nome_fantasia?: string;
   inscricao_estadual?: string;
   inscricao_municipal?: string;
-  codigo_interno?: string;
   telefone_fixo?: string;
   telefone_celular: string;
   email: string;
@@ -96,18 +80,7 @@ interface UnidadeFormData {
   cidade?: string;
   estado?: string;
   pais?: string;
-  responsavel_nome: string;
-  responsavel_cpf: string;
-  responsavel_papel: PapelResponsavel;
-  responsavel_contato: string;
-  qtde_tatames?: number;
-  area_tatame_m2?: number;
-  capacidade_max_alunos?: number;
-  qtde_instrutores?: number;
-  valor_plano_padrao?: number;
   horarios_funcionamento?: HorariosFuncionamento;
-  modalidades?: Modalidade[];
-  instrutor_principal_id?: string;
   status: StatusUnidade;
 }
 
@@ -137,25 +110,13 @@ export default function PageUnidades() {
     nome_fantasia: "",
     inscricao_estadual: "",
     inscricao_municipal: "",
-    codigo_interno: "",
     telefone_fixo: "",
     telefone_celular: "",
     email: "",
     website: "",
     redes_sociais: {},
     status: "HOMOLOGACAO",
-    responsavel_nome: "",
-    responsavel_cpf: "",
-    responsavel_papel: "PROPRIETARIO",
-    responsavel_contato: "",
-    qtde_tatames: undefined,
-    area_tatame_m2: undefined,
-    capacidade_max_alunos: undefined,
-    qtde_instrutores: undefined,
-    valor_plano_padrao: undefined,
     horarios_funcionamento: {},
-    modalidades: [],
-    instrutor_principal_id: undefined,
   });
 
   React.useEffect(() => {
@@ -195,11 +156,6 @@ export default function PageUnidades() {
   const franqueadosQuery = useQuery({
     queryKey: ["franqueados"],
     queryFn: () => listFranqueados({ pageSize: 100 }),
-  });
-
-  const instrutoresQuery = useQuery({
-    queryKey: ["instrutores"],
-    queryFn: () => listInstrutores({ pageSize: 200 }),
   });
 
   const qc = useQueryClient();
@@ -259,7 +215,6 @@ export default function PageUnidades() {
       nome_fantasia: "",
       inscricao_estadual: "",
       inscricao_municipal: "",
-      codigo_interno: "",
       telefone_fixo: "",
       telefone_celular: "",
       email: "",
@@ -276,18 +231,7 @@ export default function PageUnidades() {
       estado: "",
       pais: "Brasil",
       status: "HOMOLOGACAO",
-      responsavel_nome: "",
-      responsavel_cpf: "",
-      responsavel_papel: "PROPRIETARIO",
-      responsavel_contato: "",
-      qtde_tatames: undefined,
-      area_tatame_m2: undefined,
-      capacidade_max_alunos: undefined,
-      qtde_instrutores: undefined,
-      valor_plano_padrao: undefined,
       horarios_funcionamento: {},
-      modalidades: [],
-      instrutor_principal_id: undefined,
     });
   };
 
@@ -332,9 +276,6 @@ export default function PageUnidades() {
         cnpj: formData.cnpj?.replace(/\D/g, "") || "",
         telefone_celular: formData.telefone_celular?.replace(/\D/g, "") || "",
         telefone_fixo: formData.telefone_fixo?.replace(/\D/g, "") || "",
-        responsavel_cpf: formData.responsavel_cpf?.replace(/\D/g, "") || "",
-        responsavel_contato:
-          formData.responsavel_contato?.replace(/\D/g, "") || "",
         endereco_id,
         // Remover campos de endereço pois são salvos separadamente
         cep: undefined,
@@ -360,9 +301,6 @@ export default function PageUnidades() {
         cnpj: formData.cnpj?.replace(/\D/g, "") || "",
         telefone_celular: formData.telefone_celular?.replace(/\D/g, "") || "",
         telefone_fixo: formData.telefone_fixo?.replace(/\D/g, "") || "",
-        responsavel_cpf: formData.responsavel_cpf?.replace(/\D/g, "") || "",
-        responsavel_contato:
-          formData.responsavel_contato?.replace(/\D/g, "") || "",
       };
 
       if (editingUnidade?.id) {
@@ -385,7 +323,6 @@ export default function PageUnidades() {
       nome_fantasia: unidade.nome_fantasia || "",
       inscricao_estadual: unidade.inscricao_estadual || "",
       inscricao_municipal: unidade.inscricao_municipal || "",
-      codigo_interno: unidade.codigo_interno || "",
       telefone_fixo: unidade.telefone_fixo || "",
       telefone_celular: unidade.telefone_celular || "",
       email: unidade.email || "",
@@ -402,18 +339,7 @@ export default function PageUnidades() {
       estado: "",
       pais: "Brasil",
       status: unidade.status || "HOMOLOGACAO",
-      responsavel_nome: unidade.responsavel_nome || "",
-      responsavel_cpf: unidade.responsavel_cpf || "",
-      responsavel_papel: unidade.responsavel_papel || "PROPRIETARIO",
-      responsavel_contato: unidade.responsavel_contato || "",
-      qtde_tatames: unidade.qtde_tatames,
-      area_tatame_m2: unidade.area_tatame_m2,
-      capacidade_max_alunos: unidade.capacidade_max_alunos,
-      qtde_instrutores: unidade.qtde_instrutores,
-      valor_plano_padrao: unidade.valor_plano_padrao,
       horarios_funcionamento: unidade.horarios_funcionamento || {},
-      modalidades: unidade.modalidades || [],
-      instrutor_principal_id: unidade.instrutor_principal_id,
     };
 
     // Buscar dados do endereço se houver endereco_id
@@ -577,21 +503,13 @@ export default function PageUnidades() {
                           <span>CNPJ: {unidade.cnpj}</span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <User className="h-4 w-4" />
-                          <span>{unidade.responsavel_nome}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
                           <Phone className="h-4 w-4" />
-                          <span>{unidade.responsavel_contato}</span>
+                          <span>{unidade.telefone_celular}</span>
                         </div>
                         <div className="flex items-center gap-2">
                           <MapPin className="h-4 w-4" />
                           <span>
-                            {unidade.capacidade_max_alunos
-                              ? `${unidade.capacidade_max_alunos} alunos`
-                              : "Cap. não definida"}
-                            {unidade.qtde_tatames &&
-                              ` • ${unidade.qtde_tatames} tatames`}
+                            {unidade.endereco?.cidade || "Cidade não definida"}
                           </span>
                         </div>
                       </div>
@@ -645,7 +563,6 @@ export default function PageUnidades() {
                 : createMutation.isPending
             }
             franqueados={franqueadosQuery.data?.items || []}
-            instrutores={instrutoresQuery.data?.items || []}
             myFranqueado={myFranqueado}
           />
         )}

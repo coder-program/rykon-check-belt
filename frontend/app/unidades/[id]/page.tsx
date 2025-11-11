@@ -52,7 +52,6 @@ export default function UnidadeDetalhesPage() {
       }
 
       const data = await response.json();
-      console.log("Dados da unidade:", data);
       return data;
     },
   });
@@ -273,14 +272,6 @@ export default function UnidadeDetalhesPage() {
                     CNPJ
                   </label>
                   <p className="text-gray-900">{unidade.cnpj}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-semibold text-gray-700">
-                    Código Interno
-                  </label>
-                  <p className="text-gray-900">
-                    {unidade.codigo_interno || "-"}
-                  </p>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">

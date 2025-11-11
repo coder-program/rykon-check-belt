@@ -98,14 +98,12 @@ export default function MinhaFranquiaPage() {
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (!token && !user) {
-      console.log("Usuário não autenticado, redirecionando para login");
       router.replace("/login");
       return;
     }
 
     // Se o cadastro já está completo, redirecionar IMEDIATAMENTE para o dashboard
     if (user?.cadastro_completo) {
-      console.log("Cadastro já completo - Redirecionando para dashboard");
       router.replace("/dashboard");
       return;
     }
@@ -128,7 +126,6 @@ export default function MinhaFranquiaPage() {
 
       // Se não há token, não tenta fazer a requisição
       if (!token) {
-        console.log("Token não encontrado, usuário não está logado");
         return;
       }
 
@@ -152,7 +149,6 @@ export default function MinhaFranquiaPage() {
         }
       } else if (response.status === 404) {
         // Franquia não encontrada é normal para primeira vez
-        console.log("Franquia não encontrada - primeira vez usando a página");
         // Manter o formulário limpo para novo cadastro
       } else {
         console.error(

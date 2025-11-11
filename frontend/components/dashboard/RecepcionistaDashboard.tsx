@@ -175,23 +175,18 @@ export default function RecepcionistaDashboard() {
 
   const quickActions = [
     {
-      title: "Registrar Check-in",
-      description: "Check-in manual de alunos",
+      title: "Check-in",
+      description: "Fazer check-in de aluno",
       icon: CheckCircle,
-      action: () => {
-        // Scroll para lista de alunos
-        document.getElementById("lista-alunos")?.scrollIntoView({
-          behavior: "smooth",
-        });
-      },
+      action: () => router.push("/presenca"),
       color: "bg-green-500",
     },
     {
-      title: "Aprovar Alunos",
-      description: "Aprovar cadastros de alunos",
+      title: "Aprovar Check-ins",
+      description: "Aprovar check-ins do tablet",
       icon: UserCheck,
-      action: () => router.push("/admin/usuarios-pendentes"),
-      color: "bg-orange-500",
+      action: () => router.push("/checkin/aprovacao"),
+      color: "bg-purple-500",
     },
     {
       title: "Cadastrar Aluno",
@@ -201,22 +196,8 @@ export default function RecepcionistaDashboard() {
       color: "bg-blue-500",
     },
     {
-      title: "Lista de Alunos",
-      description: "Ver todos os alunos",
-      icon: Users,
-      action: () => router.push("/alunos"),
-      color: "bg-purple-500",
-    },
-    {
-      title: "Gerenciar Aulas",
-      description: "Criar e editar aulas/horários",
-      icon: Calendar,
-      action: () => router.push("/aulas"),
-      color: "bg-indigo-500",
-    },
-    {
-      title: "Horários de Aulas",
-      description: "Ver grade de horários",
+      title: "Horários",
+      description: "Ver horários das aulas",
       icon: Calendar,
       action: () => router.push("/horarios"),
       color: "bg-cyan-500",

@@ -202,4 +202,26 @@ export class AlunosController {
       unidades,
     );
   }
+
+  // ===== TABLET CHECK-IN =====
+
+  @Get('unidade/checkin')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({
+    summary: '📱 Listar alunos ativos para check-in via tablet',
+    description:
+      'Lista todos os alunos ativos da unidade do usuário logado (para interface de tablet)',
+  })
+  @ApiQuery({
+    name: 'search',
+    required: false,
+    description: 'Buscar por nome ou CPF',
+  })
+  @ApiResponse({ status: 200, description: '✅ Lista de alunos para check-in' })
+  async listarAlunosParaCheckin(
+    @Query('search') search: string,
+    @Request() req,
+  ) {
+    return this.service.listarAlunosParaCheckin(req.user, search);
+  }
 }

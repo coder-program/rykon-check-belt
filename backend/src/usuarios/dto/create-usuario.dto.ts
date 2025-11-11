@@ -9,6 +9,7 @@ import {
   IsDateString,
   Length,
   Matches,
+  MinLength,
 } from 'class-validator';
 import { IsValidName } from '../../common/decorators/is-valid-name.decorator';
 
@@ -36,6 +37,10 @@ export enum FaixaMinistrante {
 
 export class CreateUsuarioDto {
   @IsString()
+  @MinLength(3, { message: 'Username deve ter no mínimo 3 caracteres' })
+  @Matches(/^[a-zA-Z0-9.]+$/, {
+    message: 'Username deve conter apenas letras, números e ponto',
+  })
   username: string;
 
   @IsEmail()
@@ -77,6 +82,10 @@ export class CreateUsuarioDto {
   @IsOptional()
   @IsUUID()
   unidade_id?: string;
+
+  @IsOptional()
+  @IsString()
+  foto?: string;
 
   // ===== Campos específicos para PROFESSOR/INSTRUTOR =====
   @IsOptional()

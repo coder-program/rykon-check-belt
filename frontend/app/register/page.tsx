@@ -55,12 +55,14 @@ import {
 export default function RegisterPage() {
   const [formData, setFormData] = useState({
     nome: "",
+    username: "",
     email: "",
     password: "",
     confirmPassword: "",
     cpf: "",
     telefone: "",
     data_nascimento: "",
+    genero: "", // Adicionar gênero
     perfil_id: "", // Adicionar perfil selecionado
     unidade_id: "", // Adicionar unidade selecionada
   });
@@ -79,8 +81,6 @@ export default function RegisterPage() {
     const loadUnidades = async () => {
       try {
         const data = await getUnidadesAtivas();
-        console.log("Unidades carregadas:", data);
-
         if (!data || !Array.isArray(data)) {
           console.error("Resposta da API de unidades inválida:", data);
           throw new Error("Formato de resposta inválido");
@@ -217,6 +217,18 @@ export default function RegisterPage() {
       setError("Nome é obrigatório");
       return false;
     }
+    if (!formData.username.trim()) {
+      setError("Username é obrigatório");
+      return false;
+    }
+    if (!/^[a-zA-Z0-9.]+$/.test(formData.username)) {
+      setError("Username deve conter apenas letras, números e ponto");
+      return false;
+    }
+    if (formData.username.length < 3) {
+      setError("Username deve ter pelo menos 3 caracteres");
+      return false;
+    }
     if (!formData.email.trim()) {
       setError("Email é obrigatório");
       return false;
@@ -245,6 +257,10 @@ export default function RegisterPage() {
     }
     if (!formData.data_nascimento) {
       setError("Data de nascimento é obrigatória");
+      return false;
+    }
+    if (!formData.genero) {
+      setError("Gênero é obrigatório");
       return false;
     }
     if (!formData.unidade_id) {
@@ -290,20 +306,24 @@ export default function RegisterPage() {
     try {
       const registerData: {
         nome: string;
+        username: string;
         email: string;
         password: string;
         cpf: string;
         telefone: string;
         data_nascimento: string;
+        genero?: string;
         perfil_id?: string;
         unidade_id?: string;
       } = {
         nome: formData.nome,
+        username: formData.username,
         email: formData.email,
         password: formData.password,
         cpf: cleanCPF(formData.cpf), // Remove pontos, traços e outros caracteres, mantendo apenas números
         telefone: formData.telefone.replace(/\D/g, ""), // Remove formatação do telefone também
         data_nascimento: formData.data_nascimento,
+        genero: formData.genero || "OUTRO", // Incluir gênero
         unidade_id: formData.unidade_id,
       };
 
@@ -391,6 +411,31 @@ export default function RegisterPage() {
                       className="h-11 bg-gray-800/50 border-gray-600 text-white placeholder-gray-400 focus:border-red-500 focus:ring-red-500"
                       placeholder="Seu nome completo"
                     />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label
+                      htmlFor="username"
+                      className="flex items-center gap-2 text-gray-200"
+                    >
+                      <User className="h-4 w-4 text-red-400" />
+                      Username
+                    </Label>
+                    <Input
+                      id="username"
+                      name="username"
+                      type="text"
+                      required
+                      value={formData.username}
+                      onChange={handleChange}
+                      className="h-11 bg-gray-800/50 border-gray-600 text-white placeholder-gray-400 focus:border-red-500 focus:ring-red-500"
+                      placeholder="seu.username (letras, números e ponto)"
+                      minLength={3}
+                    />
+                    <p className="text-xs text-gray-400">
+                      Usado para login. Apenas letras, números e ponto (sem
+                      espaços)
+                    </p>
                   </div>
 
                   <div className="space-y-2">
@@ -507,6 +552,37 @@ export default function RegisterPage() {
                     className="h-11 bg-gray-800/50 border-gray-600 text-white placeholder-gray-400 focus:border-red-500 focus:ring-red-500"
                   />
                   <p className="text-xs text-gray-400">Idade mínima: 10 anos</p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label
+                    htmlFor="genero"
+                    className="flex items-center gap-2 text-gray-200"
+                  >
+                    <User2 className="h-4 w-4 text-red-400" />
+                    Gênero *
+                  </Label>
+                  <Select
+                    value={formData.genero}
+                    onValueChange={(value) =>
+                      setFormData({ ...formData, genero: value })
+                    }
+                  >
+                    <SelectTrigger className="h-11 bg-gray-800/50 border-gray-600 text-white focus:border-red-500 focus:ring-red-500">
+                      <SelectValue placeholder="Selecione o gênero" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-gray-800 border-gray-600">
+                      <SelectItem value="MASCULINO" className="text-white">
+                        Masculino
+                      </SelectItem>
+                      <SelectItem value="FEMININO" className="text-white">
+                        Feminino
+                      </SelectItem>
+                      <SelectItem value="OUTRO" className="text-white">
+                        Outro
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="space-y-2">

@@ -13,6 +13,7 @@ export interface Usuario {
   cadastro_completo?: boolean;
   perfis?: Perfil[];
   ultimo_login?: string;
+  foto?: string;
   created_at: string;
   updated_at: string;
 }
@@ -27,6 +28,7 @@ export interface CreateUsuarioDto {
   ativo?: boolean;
   cadastro_completo?: boolean;
   perfil_ids?: string[];
+  foto?: string;
 }
 
 export interface UpdateUsuarioDto {
@@ -37,6 +39,7 @@ export interface UpdateUsuarioDto {
   ativo?: boolean;
   cadastro_completo?: boolean;
   perfil_ids?: string[];
+  foto?: string;
 }
 
 export const getUsuarios = async (): Promise<Usuario[]> => {

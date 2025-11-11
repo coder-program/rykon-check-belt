@@ -3263,7 +3263,6 @@ export default function DashboardNew() {
                 <button
                   onClick={() => {
                     // TODO: Salvar configurações no backend
-                    console.log("Salvando configurações:", graduationConfig);
                     setShowConfigModal(false);
                   }}
                   className="btn btn-primary"

@@ -9,7 +9,6 @@ export class RemoverCamposEnderecoAlunos1756927700000
     // Verificar se a tabela alunos existe antes de tentar alterar
     const hasTable = await queryRunner.hasTable('alunos');
     if (!hasTable) {
-      console.log('Tabela alunos não existe, migration não necessária');
       return;
     }
 
@@ -20,7 +19,6 @@ export class RemoverCamposEnderecoAlunos1756927700000
       const hasColumn = await queryRunner.hasColumn('alunos', columnName);
       if (hasColumn) {
         await queryRunner.dropColumn('alunos', columnName);
-        console.log(`Coluna ${columnName} removida da tabela alunos`);
       }
     }
 
@@ -31,7 +29,6 @@ export class RemoverCamposEnderecoAlunos1756927700000
       const hasColumn = await queryRunner.hasColumn('alunos', columnName);
       if (hasColumn) {
         await queryRunner.dropColumn('alunos', columnName);
-        console.log(`Coluna ${columnName} removida da tabela alunos`);
       }
     }
   }

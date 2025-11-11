@@ -21,14 +21,15 @@ import { JiuJitsuWatermark } from "@/components/ui/jiujitsu-watermark";
 import { Mail, Lock, AlertCircle, LogIn, Eye, EyeOff } from "lucide-react";
 
 function LoginContent() {
-  const [formData, setFormData] = useState({ email: "", password: "" });
+  const [formData, setFormData] = useState({
+    emailOrUsername: "",
+    password: "",
+  });
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [forgotPasswordEmail, setForgotPasswordEmail] = useState("");
   const [forgotPasswordLoading, setForgotPasswordLoading] = useState(false);
-  const [showResetLink, setShowResetLink] = useState(false);
-  const [resetToken, setResetToken] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showSupport, setShowSupport] = useState(false);
   const [supportEmail, setSupportEmail] = useState("");
@@ -118,7 +119,7 @@ function LoginContent() {
     setIsLoading(true);
     setError("");
 
-    const result = await login(formData.email, formData.password);
+    const result = await login(formData.emailOrUsername, formData.password);
     if (result.success) {
       // Verificar se é franqueado primeiro - usando mesma lógica dos outros componentes
       const isFranqueado = result.user?.perfis?.some(
@@ -133,13 +134,29 @@ function LoginContent() {
         }
       );
 
+      // Verificar se é tablet_checkin
+      const isTabletCheckin = result.user?.perfis?.some(
+        (perfil: string | { nome?: string; name?: string }) => {
+          if (typeof perfil === "string")
+            return perfil.toLowerCase() === "tablet_checkin";
+          if (typeof perfil === "object" && perfil?.nome)
+            return perfil.nome.toLowerCase() === "tablet_checkin";
+          if (typeof perfil === "object" && perfil?.name)
+            return perfil.name.toLowerCase() === "tablet_checkin";
+          return String(perfil).toLowerCase() === "tablet_checkin";
+        }
+      );
+
       if (isFranqueado) {
         // Franqueado sempre vai para minha-franquia, independente do cadastro_completo
         router.push("/minha-franquia");
+      } else if (isTabletCheckin) {
+        // Tablet checkin sempre vai para a rota de check-in
+        router.push("/checkin/tablet");
       } else if (result.user?.cadastro_completo === false) {
         // Outros perfis com cadastro incompleto vão para complete-profile
         toast("Complete seu cadastro para acessar o sistema", {
-          icon: "\uD83D\uDCCB",
+          icon: "📋",
           duration: 3000,
         });
         router.push("/complete-profile");
@@ -193,25 +210,13 @@ function LoginContent() {
       }
 
       // Email encontrado e processado com sucesso
-      if (data.token) {
-        // Modo desenvolvimento - mostrar botão de link direto
-        setResetToken(data.token);
-        setShowResetLink(true);
-        toast.success(
-          "✅ Email enviado! Use o botão verde abaixo para trocar a senha diretamente.",
-          {
-            duration: 8000,
-          }
-        );
-      } else {
-        // Modo produção - apenas confirmação
-        toast.success(
-          data.message || "Email de recuperação enviado com sucesso!",
-          {
-            duration: 5000,
-          }
-        );
-      }
+      toast.success(
+        data.message ||
+          "Email de recuperação enviado com sucesso! Verifique sua caixa de entrada.",
+        {
+          duration: 5000,
+        }
+      );
     } catch (error) {
       console.error("Erro na recuperação de senha:", error);
       toast.error(
@@ -225,8 +230,6 @@ function LoginContent() {
   const handleBackToLogin = () => {
     setShowForgotPassword(false);
     setForgotPasswordEmail("");
-    setShowResetLink(false);
-    setResetToken("");
     window.location.hash = "";
   };
 
@@ -313,23 +316,6 @@ function LoginContent() {
                       )}
                     </Button>
 
-                    {/* Botão de Link Direto - Só aparece em desenvolvimento */}
-                    {showResetLink && resetToken && (
-                      <Button
-                        type="button"
-                        onClick={() => {
-                          const resetUrl = `/reset-password?token=${resetToken}`;
-                          window.open(resetUrl, "_blank");
-                        }}
-                        className="w-full h-12 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-bold tracking-wide border border-green-500 shadow-lg shadow-green-900/50"
-                      >
-                        <span className="flex items-center justify-center gap-2">
-                          <Lock className="h-5 w-5" />
-                          🚀 Trocar Senha Agora (Link Direto)
-                        </span>
-                      </Button>
-                    )}
-
                     <Button
                       type="button"
                       variant="outline"
@@ -353,19 +339,19 @@ function LoginContent() {
 
                   <div className="space-y-2">
                     <Label
-                      htmlFor="email"
+                      htmlFor="emailOrUsername"
                       className="flex items-center gap-2 text-gray-200"
                     >
                       <Mail className="h-4 w-4 text-red-400" />
-                      Email
+                      Email ou Username
                     </Label>
                     <Input
-                      type="email"
-                      id="email"
-                      name="email"
-                      value={formData.email}
+                      type="text"
+                      id="emailOrUsername"
+                      name="emailOrUsername"
+                      value={formData.emailOrUsername}
                       onChange={handleChange}
-                      placeholder="seu.email@teamcruz.com.br"
+                      placeholder="seu.email@teamcruz.com.br ou seu.username"
                       required
                       disabled={isLoading}
                       className="h-12 bg-gray-800/50 border-gray-600 text-white placeholder-gray-400 focus:border-red-500 focus:ring-red-500"

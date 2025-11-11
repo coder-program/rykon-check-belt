@@ -81,9 +81,6 @@ export class CreateResponsaveisTable1738451000000
     await queryRunner.query(`
       CREATE INDEX idx_alunos_responsavel_id ON teamcruz.alunos(responsavel_id);
     `);
-
-    console.log('✅ Tabela responsaveis criada com sucesso');
-    console.log('✅ Coluna responsavel_id adicionada à tabela alunos');
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
@@ -114,8 +111,5 @@ export class CreateResponsaveisTable1738451000000
     await queryRunner.query(`
       DROP TABLE IF EXISTS teamcruz.responsaveis CASCADE;
     `);
-
-    console.log('✅ Tabela responsaveis removida');
-    console.log('✅ Coluna responsavel_id removida da tabela alunos');
   }
 }

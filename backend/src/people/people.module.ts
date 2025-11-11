@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AlunosController } from './controllers/alunos.controller';
 import { ProfessoresController } from './controllers/professores.controller';
@@ -11,6 +11,7 @@ import { FranqueadosService } from './services/franqueados.service';
 import { UnidadesService } from './services/unidades.service';
 import { RecepcionistaUnidadesService } from './services/recepcionista-unidades.service';
 import { ResponsaveisService } from './services/responsaveis.service';
+import { GerenteUnidadesService } from './services/gerente-unidades.service';
 import { UsuariosModule } from '../usuarios/usuarios.module';
 import { EnderecosModule } from '../enderecos/enderecos.module';
 import { Franqueado } from './entities/franqueado.entity';
@@ -24,12 +25,16 @@ import { AlunoFaixa } from '../graduacao/entities/aluno-faixa.entity';
 import { AlunoFaixaGrau } from '../graduacao/entities/aluno-faixa-grau.entity';
 import { ProfessorUnidade } from './entities/professor-unidade.entity';
 import { RecepcionistaUnidade } from './entities/recepcionista-unidade.entity';
+import { GerenteUnidade } from './entities/gerente-unidade.entity';
 import { AlunoUnidade } from './entities/aluno-unidade.entity';
+import { AlunoModalidade } from './entities/aluno-modalidade.entity';
 import { AlunoUnidadeService } from './services/aluno-unidade.service';
+import { AlunoModalidadeService } from './services/aluno-modalidade.service';
+import { Modalidade } from '../modalidades/entities/modalidade.entity';
 
 @Module({
   imports: [
-    UsuariosModule,
+    forwardRef(() => UsuariosModule),
     TypeOrmModule.forFeature([
       Person,
       Aluno,
@@ -42,7 +47,10 @@ import { AlunoUnidadeService } from './services/aluno-unidade.service';
       AlunoFaixaGrau,
       ProfessorUnidade,
       RecepcionistaUnidade,
+      GerenteUnidade,
       AlunoUnidade,
+      AlunoModalidade,
+      Modalidade,
     ]),
     EnderecosModule,
   ],
@@ -59,8 +67,10 @@ import { AlunoUnidadeService } from './services/aluno-unidade.service';
     FranqueadosService,
     UnidadesService,
     RecepcionistaUnidadesService,
+    GerenteUnidadesService,
     ResponsaveisService,
     AlunoUnidadeService,
+    AlunoModalidadeService,
   ],
   exports: [
     AlunosService,
@@ -68,7 +78,9 @@ import { AlunoUnidadeService } from './services/aluno-unidade.service';
     FranqueadosService,
     UnidadesService,
     RecepcionistaUnidadesService,
+    GerenteUnidadesService,
     ResponsaveisService,
+    AlunoModalidadeService,
   ],
 })
 export class PeopleModule {}

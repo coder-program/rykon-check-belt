@@ -105,10 +105,7 @@ export default function AprovacaoGraduacaoPage() {
   const faixasQuery = useQuery({
     queryKey: ["faixas-graduacao", selectedAlunoManual?.id],
     queryFn: async () => {
-      console.log("🔍 Buscando faixas válidas para graduação...");
-
       if (!selectedAlunoManual?.id) {
-        console.log("⚠️ Nenhum aluno selecionado, buscando todas as faixas");
         return await listarFaixas("ADULTO");
       }
 
@@ -118,13 +115,6 @@ export default function AprovacaoGraduacaoPage() {
           selectedAlunoManual.id,
           "ADULTO"
         );
-        console.log("📋 Faixas válidas para graduação:", faixasValidas);
-
-        if (faixasValidas.length === 0) {
-          console.log(
-            "⚠️ Nenhuma faixa válida encontrada, aluno pode estar na faixa máxima"
-          );
-        }
 
         return faixasValidas;
       } catch (error) {
@@ -789,9 +779,6 @@ export default function AprovacaoGraduacaoPage() {
                           key={aluno.id}
                           onClick={() => {
                             // Debug log para verificar estrutura dos dados
-                            console.log("Dados do aluno:", aluno);
-                            console.log("Faixa atual:", aluno.faixa_atual);
-                            console.log("Faixas relacionadas:", aluno.faixas);
 
                             // Buscar faixa ativa primeiro, senão usar faixa_atual enum
                             const faixaAtiva =
@@ -961,13 +948,6 @@ export default function AprovacaoGraduacaoPage() {
                       Selecione uma faixa
                     </option>
                     {(() => {
-                      console.log(
-                        "🎯 Dados das faixas no select:",
-                        faixasQuery.data
-                      );
-                      console.log("🎯 Loading:", faixasQuery.isLoading);
-                      console.log("🎯 Error:", faixasQuery.error);
-
                       if (faixasQuery.isLoading) {
                         return <option value="">Carregando faixas...</option>;
                       }

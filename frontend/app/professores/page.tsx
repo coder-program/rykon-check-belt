@@ -1,13 +1,19 @@
 "use client";
 
 import React, { useState } from "react";
-import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import {
+  useInfiniteQuery,
+  useQuery,
+  useMutation,
+  useQueryClient,
+} from "@tanstack/react-query";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
-import { listProfessores } from "@/lib/peopleApi";
+import { listProfessores, deleteProfessor } from "@/lib/peopleApi";
 import {
   Search,
   Plus,
   Edit,
+  Trash2,
   BookOpen,
   Users,
   Award,
@@ -20,6 +26,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/app/auth/AuthContext";
+import toast, { Toaster } from "react-hot-toast";
 
 // Types
 interface Professor {
@@ -68,6 +75,7 @@ async function getProfessoresStats(params: Record<string, string>) {
 export default function PageProfessores() {
   const router = useRouter();
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [debounced, setDebounced] = useState("");
   const [unidadeId, setUnidadeId] = useState("");
@@ -76,6 +84,13 @@ export default function PageProfessores() {
   const [especialidade, setEspecialidade] = useState("todos");
   const [showForm, setShowForm] = useState(false);
   const [editingPerson, setEditingPerson] = useState<unknown | null>(null);
+
+  // Verificar se é MASTER
+  const isMaster = user?.perfis?.some((perfil: any) => {
+    const perfilNome =
+      typeof perfil === "string" ? perfil : perfil.nome || perfil.perfil;
+    return perfilNome?.toLowerCase() === "master";
+  });
 
   // Verificar se é gerente de unidade
   const isGerenteUnidade = user?.perfis?.some((perfil: any) => {
@@ -90,6 +105,31 @@ export default function PageProfessores() {
   // Temporariamente permitir para todos - ajustar depois
   const canCreate = true;
   const canEdit = true;
+  const canDelete = isMaster; // Apenas MASTER pode excluir
+
+  // Mutation para deletar professor
+  const deleteMutation = useMutation({
+    mutationFn: deleteProfessor,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["professores"] });
+      toast.success("Professor excluído com sucesso!");
+    },
+    onError: (error: any) => {
+      toast.error(error?.message || "Erro ao excluir professor");
+    },
+  });
+
+  const handleDelete = (professor: Professor) => {
+    if (
+      confirm(
+        `Tem certeza que deseja excluir ${
+          professor.nome_completo || professor.nome
+        }?`
+      )
+    ) {
+      deleteMutation.mutate(professor.id);
+    }
+  };
 
   React.useEffect(() => {
     const id = setTimeout(() => setDebounced(search), 300);
@@ -208,6 +248,7 @@ export default function PageProfessores() {
 
   return (
     <ProtectedRoute>
+      <Toaster position="top-right" />
       <div className="min-h-screen bg-gray-50 p-6">
         <div className="max-w-7xl mx-auto space-y-6">
           {query.isLoading && (
@@ -537,9 +578,20 @@ export default function PageProfessores() {
                                 setEditingPerson(professor);
                                 setShowForm(true);
                               }}
-                              className="hover:bg-red-50 hover:text-red-600"
+                              className="hover:bg-blue-50 hover:text-blue-600"
                             >
                               <Edit className="h-4 w-4" />
+                            </Button>
+                          )}
+                          {canDelete && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDelete(professor)}
+                              className="hover:bg-red-50 hover:text-red-600"
+                              disabled={deleteMutation.isPending}
+                            >
+                              <Trash2 className="h-4 w-4" />
                             </Button>
                           )}
                         </div>

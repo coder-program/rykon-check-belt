@@ -62,6 +62,10 @@ export async function createProfessor(data: any) {
   });
 }
 
+export async function deleteProfessor(id: string) {
+  return http(`/professores/${id}`, { method: "DELETE", auth: true });
+}
+
 export async function listFranqueados(params: any): Promise<PageResp<any>> {
   // Filtrar valores undefined/null/empty antes de criar URLSearchParams
   const filteredParams = Object.fromEntries(

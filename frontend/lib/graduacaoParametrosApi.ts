@@ -251,8 +251,6 @@ export async function graduarAlunoAutomatico(
   alunoId: string,
   observacao?: string
 ): Promise<any> {
-  console.log("🎯 Iniciando graduação automática para aluno:", alunoId);
-
   try {
     // Buscar a próxima faixa baseada na ordem sequencial
     const proximaFaixa = await buscarProximaFaixa(alunoId, "ADULTO");
@@ -262,13 +260,6 @@ export async function graduarAlunoAutomatico(
         "Não foi possível determinar a próxima faixa na sequência. O aluno pode já estar na faixa máxima ou ocorreu um erro."
       );
     }
-
-    console.log(
-      "📈 Próxima faixa determinada:",
-      proximaFaixa.nome_exibicao,
-      "- Ordem:",
-      proximaFaixa.ordem
-    );
 
     // Usar graduação manual com a faixa determinada automaticamente
     return await graduarAlunoManual(alunoId, {
@@ -377,11 +368,6 @@ export async function listarFaixasValidasParaGraduacao(
       (faixa: any) => (faixa.ordem || 0) > faixaAtualOrdem
     );
 
-    console.log(
-      `Aluno na faixa ordem ${faixaAtualOrdem}, faixas válidas:`,
-      faixasValidas.map((f) => `${f.nome_exibicao} (ordem: ${f.ordem})`)
-    );
-
     return faixasValidas;
   } catch (error) {
     console.error("Erro ao buscar faixas válidas para graduação:", error);
@@ -421,13 +407,6 @@ export async function buscarProximaFaixa(
     // 3. Encontrar a próxima faixa na sequência (ordem + 1)
     const proximaFaixa = todasFaixas.find(
       (faixa: any) => (faixa.ordem || 0) === faixaAtualOrdem + 1
-    );
-
-    console.log(
-      `Aluno na faixa ordem ${faixaAtualOrdem}, próxima faixa:`,
-      proximaFaixa
-        ? `${proximaFaixa.nome_exibicao} (ordem: ${proximaFaixa.ordem})`
-        : "Não encontrada"
     );
 
     return proximaFaixa || null;

@@ -1614,10 +1614,6 @@ export default function FranqueadoForm({
                       checked={formData.ativo}
                       onChange={(e) => {
                         const isChecked = e.target.checked;
-                        console.log(
-                          "🔍 [FranqueadoForm] Checkbox changed:",
-                          isChecked
-                        );
                         setFormData({ ...formData, ativo: isChecked });
                       }}
                       className={`w-6 h-6 rounded focus:ring-2 ${

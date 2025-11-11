@@ -122,13 +122,9 @@ export default function CompleteProfilePage() {
   }, [user?.data_nascimento]);
 
   // Verificar se é gerente de unidade
-  console.log("🔍 [DEBUG] Verificando se é gerente. user:", user);
-  console.log("🔍 [DEBUG] user.perfis:", user?.perfis);
-
   const isGerenteUnidade = user?.perfis?.some((perfil: any) => {
     const perfilNome =
       typeof perfil === "string" ? perfil : perfil.nome || perfil.perfil;
-    console.log("🔍 [DEBUG] Verificando perfil:", perfilNome);
     return (
       perfilNome?.toLowerCase() === "gerente_unidade" ||
       perfilNome?.toLowerCase() === "gerente"
@@ -150,33 +146,15 @@ export default function CompleteProfilePage() {
     );
   });
 
-  console.log("🔍 [DEBUG] isGerenteUnidade =", isGerenteUnidade);
-  console.log("🔍 [DEBUG] isRecepcionista =", isRecepcionista);
-  console.log("🔍 [DEBUG] isProfessor =", isProfessor);
-
   // Buscar unidade do gerente (se for gerente)
   useEffect(() => {
-    console.log("🔍 [EFFECT] useEffect do gerente disparado");
-    console.log("🔍 [EFFECT] isGerenteUnidade:", isGerenteUnidade);
-    console.log("🔍 [EFFECT] user?.cpf:", user?.cpf);
-
     if (isGerenteUnidade && user?.cpf) {
-      console.log(
-        "🔍 [GERENTE] Detectado perfil de gerente, buscando unidade..."
-      );
-      console.log("🔍 [GERENTE] User CPF:", user.cpf);
-
       // Buscar unidade onde este CPF é responsavel_cpf
       const buscarUnidadeGerente = async () => {
         try {
           const apiUrl =
             process.env.NEXT_PUBLIC_API_URL || "http://200.98.72.161/api";
           const token = localStorage.getItem("token");
-
-          console.log(
-            "🔍 [GERENTE] Fazendo request para:",
-            `${apiUrl}/unidades?responsavel_cpf=${user.cpf}`
-          );
 
           const response = await fetch(
             `${apiUrl}/unidades?responsavel_cpf=${user.cpf}`,
@@ -186,21 +164,16 @@ export default function CompleteProfilePage() {
           );
           const data = await response.json();
 
-          console.log("🔍 [GERENTE] Resposta da API:", data);
-
           if (data.items && data.items[0]) {
-            console.log("✅ [GERENTE] Unidade encontrada:", data.items[0]);
             setFormData((prev) => ({
               ...prev,
               unidade_id: data.items[0].id,
             }));
           } else {
-            console.warn(
-              "⚠️ [GERENTE] Nenhuma unidade encontrada para este CPF"
-            );
+            console.warn("[GERENTE] Nenhuma unidade encontrada para este CPF");
           }
         } catch (err) {
-          console.error("❌ [GERENTE] Erro ao buscar unidade:", err);
+          console.error("[GERENTE] Erro ao buscar unidade:", err);
         }
       };
       buscarUnidadeGerente();
@@ -209,11 +182,7 @@ export default function CompleteProfilePage() {
 
   // Buscar unidade de recepcionista ou professor
   useEffect(() => {
-    console.log("🔍 [EFFECT] useEffect de recep/prof disparado");
-
     if ((isRecepcionista || isProfessor) && user?.id) {
-      console.log("🔍 [RECEP/PROF] Detectado perfil, buscando unidade...");
-
       const buscarUnidade = async () => {
         try {
           const apiUrl =
@@ -226,13 +195,7 @@ export default function CompleteProfilePage() {
           });
           const userData = await response.json();
 
-          console.log("🔍 [RECEP/PROF] Dados do usuário:", userData);
-
           if (userData.unidade?.id) {
-            console.log(
-              "✅ [RECEP/PROF] Unidade encontrada:",
-              userData.unidade
-            );
             setFormData((prev) => ({
               ...prev,
               unidade_id: userData.unidade.id,
@@ -251,30 +214,90 @@ export default function CompleteProfilePage() {
   }, [isRecepcionista, isProfessor, user?.id]);
 
   const loadUnidades = async () => {
-    console.log("🔍 [loadUnidades] Iniciando busca de unidades públicas...");
     try {
       const apiUrl =
         process.env.NEXT_PUBLIC_API_URL || "http://200.98.72.161/api";
-      const url = `${apiUrl}/unidades/public/ativas`;
-      console.log("🔍 [loadUnidades] URL:", url);
 
-      // Usar endpoint público que não requer autenticação
-      const response = await fetch(url);
-      console.log("🔍 [loadUnidades] Response status:", response.status);
+      // Verificar se é GERENTE_UNIDADE
+      const perfis =
+        user?.perfis?.map((p: any) => {
+          return typeof p === "string"
+            ? p.toUpperCase()
+            : p.nome?.toUpperCase();
+        }) || [];
 
-      const data = await response.json();
-      console.log("🔍 [loadUnidades] Data recebida:", data);
+      const isGerente = perfis.includes("GERENTE_UNIDADE");
 
-      // O endpoint público já retorna array direto
-      if (Array.isArray(data)) {
-        console.log("✅ [loadUnidades] Carregadas", data.length, "unidades");
-        setUnidades(data);
+      console.log("🔍 [loadUnidades] Debug completo:", {
+        perfis,
+        isGerente,
+        userId: user?.id,
+        userName: user?.nome,
+      });
+
+      if (isGerente) {
+        // GERENTE: Buscar apenas a unidade vinculada via gerente_unidades
+        console.log(
+          "🔍 [loadUnidades] Gerente detectado - buscando unidade vinculada"
+        );
+        const token = localStorage.getItem("token");
+        console.log("🔑 [loadUnidades] Token presente:", !!token);
+
+        const response = await fetch(`${apiUrl}/unidades`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        console.log("📡 [loadUnidades] Response status:", response.status);
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error("❌ [loadUnidades] Erro na resposta:", errorText);
+          throw new Error("Erro ao buscar unidade do gerente");
+        }
+
+        const data = await response.json();
+        console.log("📦 [loadUnidades] Dados recebidos:", data);
+
+        const items = data.items || [];
+        console.log("📋 [loadUnidades] Items totais:", items.length, items);
+
+        // Filtrar apenas unidades ATIVAS
+        const unidadesAtivas = items.filter((u: any) => u.status === "ATIVA");
+
+        console.log("✅ [loadUnidades] Unidades ATIVAS do gerente:", {
+          total: unidadesAtivas.length,
+          unidades: unidadesAtivas.map((u: any) => ({
+            id: u.id,
+            nome: u.nome,
+            status: u.status,
+          })),
+        });
+        setUnidades(unidadesAtivas);
+
+        // Se só tem 1 unidade, preencher automaticamente
+        if (unidadesAtivas.length === 1) {
+          setFormData((prev) => ({
+            ...prev,
+            unidade_id: unidadesAtivas[0].id,
+          }));
+        }
       } else {
-        console.warn("⚠️ [loadUnidades] Resposta da API não é um array:", data);
-        setUnidades([]);
+        // OUTROS PERFIS: Buscar todas unidades ativas públicas
+        const url = `${apiUrl}/unidades/public/ativas`;
+        const response = await fetch(url);
+        const data = await response.json();
+
+        if (Array.isArray(data)) {
+          setUnidades(data);
+        } else {
+          console.warn("[loadUnidades] Resposta da API não é um array:", data);
+          setUnidades([]);
+        }
       }
     } catch (err) {
-      console.error("❌ [loadUnidades] Erro ao carregar unidades:", err);
+      console.error("[loadUnidades] Erro ao carregar unidades:", err);
       setUnidades([]);
     }
   };
@@ -302,11 +325,6 @@ export default function CompleteProfilePage() {
     setSuccess("");
     setLoading(true);
 
-    console.log("📝 [handleSubmit] Iniciando envio do formulário");
-    console.log("📝 [handleSubmit] isGerenteUnidade:", isGerenteUnidade);
-    console.log("📝 [handleSubmit] formData.unidade_id:", formData.unidade_id);
-    console.log("📝 [handleSubmit] formData completo:", formData);
-
     try {
       // Validar campos obrigatórios
       if (!formData.unidade_id) {
@@ -327,10 +345,7 @@ export default function CompleteProfilePage() {
         }
       }
 
-      console.log("📤 [handleSubmit] Enviando para API...");
       const response = await authService.completeProfile(formData);
-      console.log("✅ [handleSubmit] Resposta da API:", response);
-
       // Se retornou um novo token, atualizar no localStorage
       if (response.access_token) {
         localStorage.setItem("token", response.access_token);
@@ -341,7 +356,6 @@ export default function CompleteProfilePage() {
         }
       }
 
-      console.log("🎉 [handleSubmit] Cadastro concluído! Redirecionando...");
       // Redirecionar para página de sucesso
       router.push("/cadastro-concluido");
     } catch (err: any) {
@@ -453,14 +467,6 @@ export default function CompleteProfilePage() {
               Unidade *
             </label>
             {(() => {
-              console.log("🔍 [RENDER] Renderizando select de unidade");
-              console.log("🔍 [RENDER] isGerenteUnidade:", isGerenteUnidade);
-              console.log(
-                "🔍 [RENDER] formData.unidade_id:",
-                formData.unidade_id
-              );
-              console.log("🔍 [RENDER] unidades.length:", unidades.length);
-              console.log("🔍 [RENDER] unidades:", unidades);
               return null;
             })()}
             <select

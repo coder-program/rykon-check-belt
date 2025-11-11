@@ -1,10 +1,10 @@
 import { http } from "@/lib/api";
 
 export const authService = {
-  async login(email: string, password: string) {
+  async login(emailOrUsername: string, password: string) {
     const data = await http("/auth/login", {
       method: "POST",
-      body: { email, password },
+      body: { emailOrUsername, password },
     });
 
     // O backend já retorna todos os dados do usuário no login

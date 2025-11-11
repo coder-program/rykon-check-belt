@@ -34,12 +34,12 @@ export class CreateProfessorDto {
   cpf: string;
 
   @IsDateString({}, { message: 'Data de nascimento inválida' })
-  @IsNotEmpty({ message: 'Data de nascimento é obrigatória' })
-  data_nascimento: string;
+  @IsOptional()
+  data_nascimento?: string;
 
   @IsEnum(Genero, { message: 'Gênero inválido' })
-  @IsNotEmpty({ message: 'Gênero é obrigatório' })
-  genero: Genero;
+  @IsOptional()
+  genero?: Genero;
 
   // ===== CONTATO =====
   @IsEmail({}, { message: 'Email inválido' })
@@ -90,6 +90,11 @@ export class CreateProfessorDto {
   @IsUUID('4', { message: 'ID de unidade inválido' })
   @IsNotEmpty({ message: 'Unidade principal é obrigatória' })
   unidade_id: string;
+
+  // ===== USUARIO_ID (para complete-profile) =====
+  @IsUUID('4', { message: 'ID de usuário inválido' })
+  @IsOptional()
+  usuario_id?: string;
 
   // ===== UNIDADES ADICIONAIS =====
   @IsArray()

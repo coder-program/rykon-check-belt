@@ -16,7 +16,6 @@ import {
   Building2,
   Users,
   GraduationCap,
-  DollarSign,
   BarChart3,
   MapPin,
   Trophy,
@@ -82,6 +81,7 @@ export default function FranqueadoDashboard() {
   // Calcular estatísticas baseadas nos dados reais
   const stats = {
     minhasUnidades: unidades.length,
+    unidadesAtivas: unidades.filter((u: any) => u.status === "ATIVA").length,
     totalAlunos: alunosDasFranquias.length,
     totalProfessores: unidades.reduce(
       (sum: number, u: any) => sum + (u.qtde_instrutores || 0),
@@ -296,7 +296,10 @@ export default function FranqueadoDashboard() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stats.minhasUnidades}</div>
-              <p className="text-xs text-muted-foreground">Todas ativas</p>
+              <p className="text-xs text-muted-foreground">
+                {stats.unidadesAtivas} ativa
+                {stats.unidadesAtivas !== 1 ? "s" : ""}
+              </p>
             </CardContent>
           </Card>
 
@@ -315,7 +318,8 @@ export default function FranqueadoDashboard() {
             </CardContent>
           </Card>
 
-          <Card>
+          {/* Receita Mensal - Comentado até implementar módulo financeiro */}
+          {/* <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
                 Receita Mensal
@@ -330,7 +334,7 @@ export default function FranqueadoDashboard() {
                 Baseado nos valores dos planos
               </p>
             </CardContent>
-          </Card>
+          </Card> */}
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">

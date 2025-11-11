@@ -1,6 +1,6 @@
 # 📋 Changelog - Revisão Completa de Autenticação e Acesso
 
-**Data**: 2025-10-05  
+**Data**: 2025-10-05
 **Versão**: 1.0.0
 
 ---
@@ -16,9 +16,10 @@ Revisar e aprimorar toda a estrutura de autenticação, perfis de acesso e contr
 ### 1. Limpeza de Arquivos
 
 #### Removidos (Páginas de Teste/Debug)
+
 ```
 ❌ frontend/app/debug-pendentes/page.tsx
-❌ frontend/app/debug-status/page.tsx  
+❌ frontend/app/debug-status/page.tsx
 ❌ frontend/app/test-modal/page.tsx
 ❌ frontend/components/usuarios/ModalTest.tsx
 ❌ frontend/components/usuarios/UsuariosDebug.tsx
@@ -31,9 +32,11 @@ Revisar e aprimorar toda a estrutura de autenticação, perfis de acesso e contr
 ### 2. Novos Componentes Criados
 
 #### ✨ ProtectedRoute Component
+
 **Arquivo**: `frontend/components/auth/ProtectedRoute.tsx`
 
 **Funcionalidade**:
+
 - Componente wrapper para proteger rotas
 - Verifica autenticação do usuário
 - Valida perfis e permissões necessárias
@@ -42,6 +45,7 @@ Revisar e aprimorar toda a estrutura de autenticação, perfis de acesso e contr
 - Redireciona para login se não autenticado
 
 **Uso**:
+
 ```tsx
 <ProtectedRoute requiredPerfis={["master"]}>
   <MyProtectedPage />
@@ -51,15 +55,18 @@ Revisar e aprimorar toda a estrutura de autenticação, perfis de acesso e contr
 ---
 
 #### ✨ usePermissions Hook
+
 **Arquivo**: `frontend/hooks/usePermissions.ts`
 
 **Funcionalidade**:
+
 - Hook customizado para verificação de permissões
 - Centraliza lógica de verificação de acesso
 - Suporta verificação case-insensitive
 - Trata perfis tanto como strings quanto objetos
 
 **Métodos Disponíveis**:
+
 - `hasPerfil(perfil: string)` - Verifica perfil específico
 - `hasAnyPerfil(perfis: string[])` - Verifica se tem algum dos perfis
 - `hasAllPerfis(perfis: string[])` - Verifica se tem todos os perfis
@@ -74,6 +81,7 @@ Revisar e aprimorar toda a estrutura de autenticação, perfis de acesso e contr
 - `getUserPermissions()` - Retorna array de permissões do usuário
 
 **Uso**:
+
 ```tsx
 const { isMaster, hasPerfil } = usePermissions();
 
@@ -87,22 +95,17 @@ if (isMaster()) {
 ### 3. Melhorias no Código Existente
 
 #### AuthContext
+
 **Arquivo**: `frontend/app/auth/AuthContext.tsx`
 
 **Mudanças**:
+
 - ❌ Removidos logs de debug desnecessários
 - ✅ Mantida funcionalidade de verificação de autenticação
 - ✅ Código mais limpo e produção-ready
 
-**Antes**:
-```tsx
-console.log("=== AUTH CONTEXT - User Data ===");
-console.log("userData completo:", userData);
-console.log("userData.perfis:", userData?.perfis);
-console.log("================================");
-```
-
 **Depois**:
+
 ```tsx
 // Logs removidos - apenas funcionalidade essencial
 ```
@@ -110,9 +113,11 @@ console.log("================================");
 ---
 
 #### Página de Usuários Pendentes
+
 **Arquivo**: `frontend/app/admin/usuarios-pendentes/page.tsx`
 
 **Mudanças**:
+
 - ✅ Implementado uso do `ProtectedRoute`
 - ✅ Proteção a nível de componente para perfil Master
 - ❌ Removida lógica manual de verificação de acesso
@@ -120,15 +125,16 @@ console.log("================================");
 - ❌ Removida renderização condicional de erro de acesso
 
 **Antes**:
+
 ```tsx
 export default function AprovacaoUsuariosPage() {
   const [accessDenied, setAccessDenied] = useState(false);
-  
+
   if (response.status === 403 || response.status === 401) {
     setAccessDenied(true);
     throw new Error("Acesso negado");
   }
-  
+
   if (accessDenied) {
     return <AccessDeniedMessage />;
   }
@@ -136,6 +142,7 @@ export default function AprovacaoUsuariosPage() {
 ```
 
 **Depois**:
+
 ```tsx
 function AprovacaoUsuariosPage() {
   // Lógica da página
@@ -155,9 +162,11 @@ export default function ProtectedAprovacaoUsuariosPage() {
 ### 4. Documentação Criada
 
 #### ✨ AUTHENTICATION_GUIDE.md
+
 **Arquivo**: `AUTHENTICATION_GUIDE.md` (raiz do projeto)
 
 **Conteúdo**:
+
 - 📖 Visão geral da arquitetura de autenticação
 - 🔐 Documentação completa de Guards e Strategies
 - 👥 Descrição detalhada de todos os perfis de acesso
@@ -172,6 +181,7 @@ export default function ProtectedAprovacaoUsuariosPage() {
 - 🚀 Sugestões de melhorias futuras
 
 **Seções Principais**:
+
 1. Arquitetura de Autenticação (Backend e Frontend)
 2. Perfis de Acesso (Master, Franqueado, Instrutor, Aluno)
 3. Endpoints Protegidos
@@ -189,16 +199,17 @@ export default function ProtectedAprovacaoUsuariosPage() {
 
 ### Perfis Implementados
 
-| Perfil | Descrição | Principais Acessos |
-|--------|-----------|-------------------|
-| **Master** | Administrador do sistema | Todos os recursos, aprovação de usuários, gestão completa |
-| **Franqueado** | Dono de unidade(s) | Gestão das suas unidades, alunos e professores |
-| **Instrutor** | Professor | Registrar presença, visualizar alunos, registrar graduações |
-| **Aluno** | Aluno matriculado | Visualizar próprio progresso e frequência |
+| Perfil         | Descrição                | Principais Acessos                                          |
+| -------------- | ------------------------ | ----------------------------------------------------------- |
+| **Master**     | Administrador do sistema | Todos os recursos, aprovação de usuários, gestão completa   |
+| **Franqueado** | Dono de unidade(s)       | Gestão das suas unidades, alunos e professores              |
+| **Instrutor**  | Professor                | Registrar presença, visualizar alunos, registrar graduações |
+| **Aluno**      | Aluno matriculado        | Visualizar próprio progresso e frequência                   |
 
 ### Rotas Protegidas por Perfil
 
 #### Master (Admin)
+
 ```
 ✅ /admin/usuarios-pendentes     - Aprovar cadastros
 ✅ /admin/gestao-franqueados     - Gerenciar franqueados
@@ -209,6 +220,7 @@ export default function ProtectedAprovacaoUsuariosPage() {
 ```
 
 #### Rotas Compartilhadas (com filtros)
+
 ```
 ✅ /dashboard      - Dashboard específico por perfil
 ✅ /alunos         - Lista filtrada por acesso
@@ -222,6 +234,7 @@ export default function ProtectedAprovacaoUsuariosPage() {
 ## 🔄 Fluxo de Autenticação Atualizado
 
 ### 1. Login
+
 ```
 1. Frontend → POST /auth/login (email/username + senha)
 2. Backend valida via LocalAuthGuard
@@ -233,6 +246,7 @@ export default function ProtectedAprovacaoUsuariosPage() {
 ```
 
 ### 2. Proteção de Rota
+
 ```
 1. Usuário acessa rota protegida
 2. ProtectedRoute verifica autenticação
@@ -243,6 +257,7 @@ export default function ProtectedAprovacaoUsuariosPage() {
 ```
 
 ### 3. Verificação de Permissão
+
 ```
 1. Componente usa usePermissions hook
 2. Hook acessa dados do usuário via AuthContext
@@ -256,16 +271,19 @@ export default function ProtectedAprovacaoUsuariosPage() {
 ## 🎨 Melhorias de UX
 
 ### Telas de Loading
+
 - ⏳ Spinner animado durante verificação de autenticação
 - 📝 Mensagem informativa de progresso
 
 ### Telas de Acesso Negado
+
 - 🛡️ Ícone visual claro
 - 📋 Mensagem explicativa
 - 🔍 Lista de perfis/permissões necessárias
 - 🔙 Botão para voltar ao dashboard
 
 ### Redirecionamentos Automáticos
+
 - 🚀 Login → Dashboard apropriado
 - 🚫 Não autenticado → Login
 - ✅ Cadastro incompleto → Complete Profile
@@ -275,23 +293,28 @@ export default function ProtectedAprovacaoUsuariosPage() {
 ## 🐛 Problemas Corrigidos
 
 ### 1. ❌ Problema: Acesso negado para usuário Master
-**Causa**: Verificação manual de acesso com lógica inconsistente  
+
+**Causa**: Verificação manual de acesso com lógica inconsistente
 **Solução**: Implementado `ProtectedRoute` com verificação padronizada
 
 ### 2. ❌ Problema: Logs de debug em produção
-**Causa**: Console.log esquecidos no código  
+
+**Causa**: Console.log esquecidos no código
 **Solução**: Removidos todos os logs desnecessários
 
 ### 3. ❌ Problema: Arquivos de teste/mock no código de produção
-**Causa**: Arquivos de desenvolvimento não removidos  
+
+**Causa**: Arquivos de desenvolvimento não removidos
 **Solução**: Identificados e removidos todos os arquivos de teste
 
 ### 4. ❌ Problema: Verificação de perfil case-sensitive
-**Causa**: Comparação direta sem normalização  
+
+**Causa**: Comparação direta sem normalização
 **Solução**: Implementada normalização lowercase em `usePermissions`
 
 ### 5. ❌ Problema: Perfis como objetos vs strings
-**Causa**: Backend às vezes retorna objetos com `.nome`  
+
+**Causa**: Backend às vezes retorna objetos com `.nome`
 **Solução**: Hook trata ambos os formatos automaticamente
 
 ---
@@ -299,6 +322,7 @@ export default function ProtectedAprovacaoUsuariosPage() {
 ## 📈 Métricas de Qualidade
 
 ### Antes da Revisão
+
 - ❌ 5 arquivos de teste/debug em produção
 - ❌ Verificações de acesso duplicadas
 - ❌ Logs de debug no código
@@ -306,6 +330,7 @@ export default function ProtectedAprovacaoUsuariosPage() {
 - ❌ Lógica de verificação inconsistente
 
 ### Depois da Revisão
+
 - ✅ 0 arquivos de teste/debug
 - ✅ Componente ProtectedRoute centralizado
 - ✅ Código limpo e produção-ready
@@ -318,11 +343,14 @@ export default function ProtectedAprovacaoUsuariosPage() {
 ## 🚀 Próximos Passos Recomendados
 
 ### Segurança
+
 1. **Implementar Refresh Token**
+
    - Aumentar segurança com rotação de tokens
    - Tokens de curta duração
 
 2. **Rate Limiting**
+
    - Proteger contra brute force
    - Limitar tentativas de login
 
@@ -331,7 +359,9 @@ export default function ProtectedAprovacaoUsuariosPage() {
    - TOTP ou SMS
 
 ### Monitoramento
+
 4. **Auditoria de Acesso**
+
    - Log de todas as ações
    - Histórico de logins
    - Rastreamento de mudanças
@@ -341,6 +371,7 @@ export default function ProtectedAprovacaoUsuariosPage() {
    - Monitorar atividades suspeitas
 
 ### Políticas
+
 6. **Política de Senhas**
    - Requisitos de complexidade
    - Expiração periódica
@@ -351,6 +382,7 @@ export default function ProtectedAprovacaoUsuariosPage() {
 ## 📚 Arquivos Importantes Criados/Modificados
 
 ### Novos Arquivos ✨
+
 ```
 frontend/components/auth/ProtectedRoute.tsx        (126 linhas)
 frontend/hooks/usePermissions.ts                   (140 linhas)
@@ -359,12 +391,14 @@ CHANGELOG_AUTH_REVIEW.md                           (este arquivo)
 ```
 
 ### Arquivos Modificados 🔧
+
 ```
 frontend/app/auth/AuthContext.tsx                  (removidos logs)
 frontend/app/admin/usuarios-pendentes/page.tsx     (implementado ProtectedRoute)
 ```
 
 ### Arquivos Removidos ❌
+
 ```
 frontend/app/debug-pendentes/
 frontend/app/debug-status/
@@ -394,16 +428,19 @@ frontend/components/usuarios/UsuariosDebug.tsx
 ## 🎓 Como Usar Este Changelog
 
 1. **Para Desenvolvedores**:
+
    - Leia a seção "Mudanças Implementadas"
    - Consulte exemplos em "Como Usar"
    - Veja "Arquivos Importantes"
 
 2. **Para QA/Testes**:
+
    - Foque em "Problemas Corrigidos"
    - Teste os fluxos em "Fluxo de Autenticação"
    - Valide rotas em "Rotas Protegidas"
 
 3. **Para Product Owners**:
+
    - Revise "Métricas de Qualidade"
    - Considere "Próximos Passos Recomendados"
    - Avalie impacto em "Melhorias de UX"
@@ -418,17 +455,18 @@ frontend/components/usuarios/UsuariosDebug.tsx
 ## 📞 Contato e Suporte
 
 Para dúvidas sobre autenticação e permissões:
+
 - Consulte: `AUTHENTICATION_GUIDE.md`
 - Procure: Seção "Troubleshooting"
 - Exemplos: Seção "Como Usar"
 
 ---
 
-**Revisão completa realizada em**: 2025-10-05  
-**Tempo estimado da revisão**: ~2 horas  
-**Linhas de código adicionadas**: ~800  
-**Linhas de documentação**: ~700  
-**Arquivos removidos**: 5  
-**Componentes novos**: 2  
+**Revisão completa realizada em**: 2025-10-05
+**Tempo estimado da revisão**: ~2 horas
+**Linhas de código adicionadas**: ~800
+**Linhas de documentação**: ~700
+**Arquivos removidos**: 5
+**Componentes novos**: 2
 
 **Status**: ✅ Completo e Pronto para Produção

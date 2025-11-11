@@ -30,7 +30,7 @@ export default function ProtectedRoute({
 
     // Se o usuário está autenticado mas não completou o cadastro,
     // redireciona para a tela de completar perfil antes de acessar qualquer rota protegida
-    // EXCETO se for franqueado, que vai direto para minha-franquia
+    // EXCETO se for franqueado ou tablet_checkin, que vão direto para suas rotas específicas
     if (
       !loading &&
       isAuthenticated &&
@@ -50,6 +50,19 @@ export default function ProtectedRoute({
         }
       );
 
+      // Verificar se é tablet_checkin
+      const isTabletCheckin = user?.perfis?.some(
+        (perfil: string | { nome?: string; name?: string }) => {
+          if (typeof perfil === "string")
+            return perfil.toLowerCase() === "tablet_checkin";
+          if (typeof perfil === "object" && perfil?.nome)
+            return perfil.nome.toLowerCase() === "tablet_checkin";
+          if (typeof perfil === "object" && perfil?.name)
+            return perfil.name.toLowerCase() === "tablet_checkin";
+          return String(perfil).toLowerCase() === "tablet_checkin";
+        }
+      );
+
       // Verificar a URL atual para evitar loops
       const currentPath =
         typeof window !== "undefined" ? window.location.pathname : "";
@@ -57,7 +70,14 @@ export default function ProtectedRoute({
       if (isFranqueado && currentPath !== "/minha-franquia") {
         router.push("/minha-franquia");
         return;
-      } else if (!isFranqueado && currentPath !== "/complete-profile") {
+      } else if (isTabletCheckin && currentPath !== "/checkin/tablet") {
+        router.push("/checkin/tablet");
+        return;
+      } else if (
+        !isFranqueado &&
+        !isTabletCheckin &&
+        currentPath !== "/complete-profile"
+      ) {
         router.push("/complete-profile");
         return;
       }

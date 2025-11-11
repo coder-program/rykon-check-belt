@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Usuario } from './entities/usuario.entity';
 import { Perfil } from './entities/perfil.entity';
@@ -15,6 +15,7 @@ import { PerfisController } from './controllers/perfis.controller';
 import { PermissoesController } from './controllers/permissoes.controller';
 import { TiposPermissaoController } from './controllers/tipos-permissao.controller';
 import { NiveisPermissaoController } from './controllers/niveis-permissao.controller';
+import { PeopleModule } from '../people/people.module';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { NiveisPermissaoController } from './controllers/niveis-permissao.contro
       TipoPermissao,
       NivelPermissao,
     ]),
+    forwardRef(() => PeopleModule),
   ],
   controllers: [
     UsuariosController,

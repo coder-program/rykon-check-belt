@@ -27,10 +27,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     try {
       const token =
         typeof window !== "undefined" ? localStorage.getItem("token") : null;
-      console.log(
-        "🔍 AuthContext - Token no localStorage:",
-        token ? "Presente" : "Ausente"
-      );
 
       if (token) {
         const userData = await authService.validateToken(token);
@@ -45,10 +41,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  const login = async (email: string, password: string) => {
+  const login = async (emailOrUsername: string, password: string) => {
     try {
       setLoading(true);
-      const response = await authService.login(email, password);
+      const response = await authService.login(emailOrUsername, password);
 
       if (typeof window !== "undefined") {
         localStorage.setItem("token", response.access_token);

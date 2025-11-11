@@ -15,10 +15,12 @@ interface Unidade {
 
 // Interface para os dados do perfil
 interface ProfileData {
+  username?: string;
   nome: string;
   email: string;
   telefone: string;
   cpf: string;
+  foto?: string;
   data_nascimento?: string;
   genero?: string;
   numero_matricula?: string;
@@ -44,6 +46,10 @@ interface ProfileData {
   // Unidade
   unidade_id?: string;
   unidade_nome?: string;
+  // Campos de senha
+  senha_atual?: string;
+  nova_senha?: string;
+  confirmar_senha?: string;
 }
 
 export default function MeuPerfilPage() {
@@ -56,13 +62,14 @@ export default function MeuPerfilPage() {
     email: "",
     telefone: "",
     cpf: "",
+    foto: "",
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [successMessage, setSuccessMessage] = useState("");
   const [warningMessage, setWarningMessage] = useState("");
   const [tipoUsuario, setTipoUsuario] = useState<
-    "aluno" | "professor" | "usuario" | null
+    "aluno" | "professor" | "franqueado" | "usuario" | null
   >(null);
   const [unidadeOriginal, setUnidadeOriginal] = useState<string | null>(null);
   const [unidadeMudou, setUnidadeMudou] = useState(false);
@@ -77,28 +84,22 @@ export default function MeuPerfilPage() {
     queryFn: async () => {
       if (!user?.id) return null;
 
-      console.log("🔍 [DEBUG] Buscando dados do aluno para usuário:", user.id);
-
       const response = await fetch(`${API_URL}/alunos/usuario/${user.id}`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
       });
 
-      console.log("📡 [DEBUG] Response status aluno:", response.status);
-
       if (!response.ok) {
         if (response.status === 404) {
-          console.log("ℹ️ [DEBUG] Usuário não é aluno (404)");
           return null; // Não é aluno
         }
         const errorText = await response.text();
-        console.error("❌ [DEBUG] Erro ao buscar aluno:", errorText);
+        console.error("[DEBUG] Erro ao buscar aluno:", errorText);
         throw new Error("Erro ao carregar dados do aluno");
       }
 
       const data = await response.json();
-      console.log("✅ [DEBUG] Dados do aluno carregados:", data);
       return data;
     },
     enabled: !!user?.id,
@@ -122,6 +123,31 @@ export default function MeuPerfilPage() {
       if (!response.ok) {
         if (response.status === 404) return null; // Não é professor
         throw new Error("Erro ao carregar dados do professor");
+      }
+
+      return response.json();
+    },
+    enabled: !!user?.id,
+  });
+
+  // Query para buscar dados específicos do franqueado
+  const { data: dadosFranqueado } = useQuery({
+    queryKey: ["franqueado-by-usuario", user?.id],
+    queryFn: async () => {
+      if (!user?.id) return null;
+
+      const response = await fetch(
+        `${API_URL}/franqueados/usuario/${user.id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        if (response.status === 404) return null; // Não é franqueado
+        throw new Error("Erro ao carregar dados do franqueado");
       }
 
       return response.json();
@@ -159,26 +185,17 @@ export default function MeuPerfilPage() {
 
   // Determinar tipo de usuário e preencher formulário
   useEffect(() => {
-    console.log(
-      "🔄 [DEBUG] useEffect - user:",
-      user?.id,
-      "dadosAluno:",
-      !!dadosAluno,
-      "dadosProfessor:",
-      !!dadosProfessor
-    );
-
     if (user) {
       let dadosCompletos: ProfileData = {
         nome: user.nome || "",
         email: user.email || "",
         telefone: user.telefone || "",
         cpf: user.cpf || "",
+        foto: user.foto || "",
       };
 
       // Se é aluno, usar dados da entidade aluno
       if (dadosAluno) {
-        console.log("👨‍🎓 [DEBUG] Definindo como aluno, dados:", dadosAluno);
         setTipoUsuario("aluno");
         dadosCompletos = {
           ...dadosCompletos,
@@ -201,10 +218,6 @@ export default function MeuPerfilPage() {
       }
       // Se é professor, usar dados da entidade professor
       else if (dadosProfessor) {
-        console.log(
-          "👨‍🏫 [DEBUG] Definindo como professor, dados:",
-          dadosProfessor
-        );
         setTipoUsuario("professor");
         dadosCompletos = {
           ...dadosCompletos,
@@ -219,11 +232,24 @@ export default function MeuPerfilPage() {
           registro_profissional: dadosProfessor.registro_profissional || "",
         };
       }
-      // Se não é aluno nem professor, usar apenas dados básicos do usuário
+      // Se é franqueado, usar dados da entidade franqueado
+      else if (dadosFranqueado) {
+        setTipoUsuario("franqueado");
+        dadosCompletos = {
+          ...dadosCompletos,
+          nome: dadosFranqueado.nome || user.nome || "",
+          email: dadosFranqueado.email || user.email || "",
+          telefone: dadosFranqueado.telefone || user.telefone || "",
+          cpf: dadosFranqueado.cpf || user.cpf || "",
+        };
+      }
+      // Se não é aluno nem professor nem franqueado, usar apenas dados básicos do usuário
       else {
-        console.log("👤 [DEBUG] Definindo como usuário básico");
         setTipoUsuario("usuario");
       }
+
+      // Adicionar username de todos os usuários
+      dadosCompletos.username = user.username || "";
 
       // Adicionar dados de endereço e unidade se existirem
       if (dadosAluno || dadosProfessor) {
@@ -245,18 +271,26 @@ export default function MeuPerfilPage() {
         setUnidadeOriginal(entidadeData.unidade_id || "");
       }
 
-      console.log("📝 [DEBUG] Dados completos finais:", dadosCompletos);
+      // Adicionar endereço do franqueado se existir
+      if (dadosFranqueado && dadosFranqueado.endereco) {
+        dadosCompletos = {
+          ...dadosCompletos,
+          cep: dadosFranqueado.endereco.cep || "",
+          logradouro: dadosFranqueado.endereco.logradouro || "",
+          numero: dadosFranqueado.endereco.numero || "",
+          complemento: dadosFranqueado.endereco.complemento || "",
+          bairro: dadosFranqueado.endereco.bairro || "",
+          cidade: dadosFranqueado.endereco.cidade || "",
+          uf: dadosFranqueado.endereco.uf || "",
+        };
+      }
+
       setFormData(dadosCompletos);
     }
-  }, [user, dadosAluno, dadosProfessor]);
+  }, [user, dadosAluno, dadosProfessor, dadosFranqueado]);
 
   // Função para detectar mudança de unidade
   const handleUnidadeChange = (novaUnidadeId: string) => {
-    console.log("🏢 [DEBUG] Unidade alterada:", {
-      original: unidadeOriginal,
-      nova: novaUnidadeId,
-    });
-
     if (novaUnidadeId !== unidadeOriginal && unidadeOriginal) {
       setUnidadeMudou(true);
       setWarningMessage(
@@ -275,20 +309,41 @@ export default function MeuPerfilPage() {
     mutationFn: async (data: Partial<ProfileData>) => {
       if (!user?.id) throw new Error("Usuário não encontrado");
 
-      console.log(
-        "💾 [DEBUG] Atualizando perfil, tipo:",
-        tipoUsuario,
-        "dados:",
-        data
-      );
+      // Validar senha se fornecida
+      if (data.nova_senha || data.confirmar_senha || data.senha_atual) {
+        if (!data.senha_atual) {
+          throw new Error("Informe a senha atual para alterar a senha");
+        }
+        if (!data.nova_senha) {
+          throw new Error("Informe a nova senha");
+        }
+        if (data.nova_senha !== data.confirmar_senha) {
+          throw new Error("As senhas não conferem");
+        }
+        if (data.nova_senha.length < 6) {
+          throw new Error("A nova senha deve ter no mínimo 6 caracteres");
+        }
+      }
 
       // Separar dados do usuário básico dos dados específicos
-      const dadosUsuario = {
+      const dadosUsuario: any = {
         nome: data.nome,
         email: data.email,
         telefone: data.telefone,
         cpf: data.cpf,
+        foto: data.foto,
       };
+
+      // Adicionar username se foi alterado
+      if (data.username && data.username !== user.username) {
+        dadosUsuario.username = data.username;
+      }
+
+      // Adicionar senha se foi fornecida
+      if (data.senha_atual && data.nova_senha) {
+        dadosUsuario.senha_atual = data.senha_atual;
+        dadosUsuario.password = data.nova_senha;
+      }
 
       // Atualizar dados básicos do usuário
       const userResponse = await fetch(`${API_URL}/usuarios/${user.id}`, {
@@ -330,8 +385,6 @@ export default function MeuPerfilPage() {
           // Unidade
           unidade_id: data.unidade_id,
         };
-
-        console.log("👨‍🎓 [DEBUG] Atualizando dados do aluno:", dadosAlunoUpdate);
 
         const alunoResponse = await fetch(
           `${API_URL}/alunos/${dadosAluno.id}`,
@@ -376,11 +429,6 @@ export default function MeuPerfilPage() {
           unidade_id: data.unidade_id,
         };
 
-        console.log(
-          "👨‍🏫 [DEBUG] Atualizando dados do professor:",
-          dadosProfessorUpdate
-        );
-
         const professorResponse = await fetch(
           `${API_URL}/professores/${dadosProfessor.id}`,
           {
@@ -415,6 +463,14 @@ export default function MeuPerfilPage() {
       queryClient.invalidateQueries({
         queryKey: ["professor-by-usuario", user?.id],
       });
+
+      // Limpar campos de senha após sucesso
+      setFormData((prev) => ({
+        ...prev,
+        senha_atual: "",
+        nova_senha: "",
+        confirmar_senha: "",
+      }));
 
       // Limpar mensagem após 3 segundos
       setTimeout(() => setSuccessMessage(""), 3000);
@@ -533,7 +589,20 @@ export default function MeuPerfilPage() {
       email: formData.email.trim(),
       telefone: formData.telefone ? formData.telefone.replace(/\D/g, "") : "",
       cpf: formData.cpf ? formData.cpf.replace(/\D/g, "") : "",
+      foto: formData.foto,
     };
+
+    // Incluir username se foi fornecido
+    if (formData.username) {
+      dataToSubmit.username = formData.username.trim();
+    }
+
+    // Incluir senha se foi fornecida
+    if (formData.senha_atual || formData.nova_senha) {
+      dataToSubmit.senha_atual = formData.senha_atual;
+      dataToSubmit.nova_senha = formData.nova_senha;
+      dataToSubmit.confirmar_senha = formData.confirmar_senha;
+    }
 
     // Se é aluno, incluir campos específicos
     if (tipoUsuario === "aluno") {
@@ -566,7 +635,6 @@ export default function MeuPerfilPage() {
       }
     });
 
-    console.log("📤 [DEBUG] Enviando dados:", dataToSubmit);
     updateProfileMutation.mutate(dataToSubmit);
   };
 
@@ -635,7 +703,125 @@ export default function MeuPerfilPage() {
 
           {/* Formulário */}
           <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Seção de Foto de Perfil */}
+            <div className="border border-gray-200 rounded-lg p-6">
+              <h3 className="text-lg font-semibold text-gray-800 mb-4 border-b pb-2">
+                📸 Foto de Perfil
+              </h3>
+
+              <div className="flex items-center gap-6">
+                {/* Preview da Foto */}
+                <div className="w-24 h-24 rounded-full overflow-hidden border-2 border-gray-300 flex-shrink-0">
+                  {formData.foto ? (
+                    <img
+                      src={formData.foto}
+                      alt="Foto de perfil"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-bold text-2xl">
+                      {formData.nome?.charAt(0)?.toUpperCase() || "?"}
+                    </div>
+                  )}
+                </div>
+
+                {/* Controles de Upload */}
+                <div className="flex-1">
+                  <div className="flex flex-wrap gap-3">
+                    <label
+                      htmlFor="foto-input"
+                      className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 cursor-pointer transition-colors text-sm font-medium"
+                    >
+                      {formData.foto ? "Alterar Foto" : "Adicionar Foto"}
+                    </label>
+
+                    {formData.foto && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setFormData((prev) => ({ ...prev, foto: "" }))
+                        }
+                        className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors text-sm font-medium"
+                      >
+                        Remover Foto
+                      </button>
+                    )}
+                  </div>
+
+                  <p className="mt-2 text-xs text-gray-500">
+                    Formatos aceitos: JPG, PNG, WEBP • Tamanho máximo: 2MB
+                  </p>
+
+                  <input
+                    type="file"
+                    id="foto-input"
+                    accept="image/jpeg,image/png,image/webp"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        // Validar tamanho (2MB)
+                        if (file.size > 2 * 1024 * 1024) {
+                          setErrors((prev) => ({
+                            ...prev,
+                            foto: "Imagem muito grande. Máximo 2MB",
+                          }));
+                          e.target.value = "";
+                          return;
+                        }
+
+                        // Ler e converter para base64
+                        const reader = new FileReader();
+                        reader.onloadend = () => {
+                          setFormData((prev) => ({
+                            ...prev,
+                            foto: reader.result as string,
+                          }));
+                          setErrors((prev) => ({ ...prev, foto: "" }));
+                        };
+                        reader.onerror = () => {
+                          setErrors((prev) => ({
+                            ...prev,
+                            foto: "Erro ao carregar imagem",
+                          }));
+                        };
+                        reader.readAsDataURL(file);
+                      }
+                    }}
+                    className="hidden"
+                  />
+
+                  {errors.foto && (
+                    <p className="mt-2 text-sm text-red-600">{errors.foto}</p>
+                  )}
+                </div>
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Username */}
+              <div className="md:col-span-2">
+                <label
+                  htmlFor="username"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
+                  Username
+                </label>
+                <input
+                  type="text"
+                  id="username"
+                  name="username"
+                  value={formData.username || ""}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="seu.username"
+                  minLength={3}
+                  pattern="^[a-zA-Z0-9.]+$"
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  Apenas letras, números e ponto. Mínimo 3 caracteres
+                </p>
+              </div>
+
               {/* Nome Completo */}
               <div className="md:col-span-2">
                 <label
@@ -939,8 +1125,30 @@ export default function MeuPerfilPage() {
               </div>
             )}
 
+            {/* Seção específica para Franqueado */}
+            {tipoUsuario === "franqueado" && (
+              <div className="border-t pt-6">
+                <h3 className="text-lg font-medium text-gray-900 mb-4">
+                  🏢 Dados da Franquia
+                </h3>
+
+                <div className="bg-blue-50 p-4 rounded-lg">
+                  <p className="text-sm text-gray-700">
+                    ℹ️ Os dados da franquia (nome, email, telefone, CPF) são
+                    exibidos acima nos campos básicos.
+                  </p>
+                  <p className="text-sm text-gray-500 mt-2">
+                    Situação:{" "}
+                    <strong>{dadosFranqueado?.situacao || "ATIVA"}</strong>
+                  </p>
+                </div>
+              </div>
+            )}
+
             {/* Dados de Endereço */}
-            {(tipoUsuario === "aluno" || tipoUsuario === "professor") && (
+            {(tipoUsuario === "aluno" ||
+              tipoUsuario === "professor" ||
+              tipoUsuario === "franqueado") && (
               <div className="border border-gray-200 rounded-lg p-6">
                 <h3 className="text-lg font-semibold text-gray-800 mb-4 border-b pb-2">
                   📍 Endereço
@@ -1190,6 +1398,79 @@ export default function MeuPerfilPage() {
                     </span>
                   </p>
                 </div>
+              </div>
+            </div>
+
+            {/* Alteração de Senha */}
+            <div className="border-t pt-6">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">
+                🔒 Alterar Senha
+              </h3>
+
+              <div className="space-y-4">
+                <div>
+                  <label
+                    htmlFor="senha_atual"
+                    className="block text-sm font-medium text-gray-700 mb-2"
+                  >
+                    Senha Atual
+                  </label>
+                  <input
+                    type="password"
+                    id="senha_atual"
+                    name="senha_atual"
+                    value={formData.senha_atual || ""}
+                    onChange={handleChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Digite sua senha atual"
+                    autoComplete="current-password"
+                  />
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="nova_senha"
+                    className="block text-sm font-medium text-gray-700 mb-2"
+                  >
+                    Nova Senha
+                  </label>
+                  <input
+                    type="password"
+                    id="nova_senha"
+                    name="nova_senha"
+                    value={formData.nova_senha || ""}
+                    onChange={handleChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Digite a nova senha"
+                    autoComplete="new-password"
+                    minLength={6}
+                  />
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="confirmar_senha"
+                    className="block text-sm font-medium text-gray-700 mb-2"
+                  >
+                    Confirmar Nova Senha
+                  </label>
+                  <input
+                    type="password"
+                    id="confirmar_senha"
+                    name="confirmar_senha"
+                    value={formData.confirmar_senha || ""}
+                    onChange={handleChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Confirme a nova senha"
+                    autoComplete="new-password"
+                    minLength={6}
+                  />
+                </div>
+
+                <p className="text-xs text-gray-500">
+                  💡 Deixe em branco se não quiser alterar a senha. A nova senha
+                  deve ter no mínimo 6 caracteres.
+                </p>
               </div>
             </div>
 

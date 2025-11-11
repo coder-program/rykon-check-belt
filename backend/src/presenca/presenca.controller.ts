@@ -220,4 +220,94 @@ export class PresencaController {
   ) {
     return this.presencaService.getRankingUnidade(req.user, mes, ano);
   }
+
+  // ========== TABLET CHECK-IN ENDPOINTS ==========
+
+  @Post('checkin-tablet')
+  @ApiOperation({
+    summary: 'Check-in via tablet - cria presença pendente de aprovação',
+  })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        alunoId: { type: 'string', description: 'ID do aluno' },
+        aulaId: { type: 'string', description: 'ID da aula' },
+        metodo: {
+          type: 'string',
+          enum: ['LISTA', 'QR_CODE'],
+          description: 'Método de check-in',
+        },
+      },
+      required: ['alunoId', 'aulaId', 'metodo'],
+    },
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'Check-in registrado como PENDENTE',
+  })
+  @ApiResponse({ status: 400, description: 'Dados inválidos' })
+  async checkInTablet(
+    @Body() body: { alunoId: string; aulaId: string; metodo: string },
+    @Request() req,
+  ) {
+    return this.presencaService.checkInTablet(
+      body.alunoId,
+      body.aulaId,
+      body.metodo,
+      req.user,
+    );
+  }
+
+  @Get('pendentes')
+  @ApiOperation({ summary: 'Listar presenças pendentes de aprovação' })
+  @ApiResponse({ status: 200, description: 'Lista de presenças pendentes' })
+  async getPresencasPendentes(
+    @Request() req,
+    @Query('data') data?: string,
+    @Query('aulaId') aulaId?: string,
+  ) {
+    return this.presencaService.getPresencasPendentes(req.user, data, aulaId);
+  }
+
+  @Post(':id/aprovar')
+  @ApiOperation({ summary: 'Aprovar presença pendente' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        observacao: { type: 'string', description: 'Observação opcional' },
+      },
+    },
+  })
+  @ApiResponse({ status: 200, description: 'Presença aprovada' })
+  @ApiResponse({ status: 403, description: 'Sem permissão para aprovar' })
+  async aprovarPresenca(
+    @Param('id') id: string,
+    @Body() body: { observacao?: string },
+    @Request() req,
+  ) {
+    return this.presencaService.aprovarPresenca(id, req.user, body.observacao);
+  }
+
+  @Post(':id/rejeitar')
+  @ApiOperation({ summary: 'Rejeitar presença pendente' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        observacao: { type: 'string', description: 'Motivo da rejeição' },
+      },
+      required: ['observacao'],
+    },
+  })
+  @ApiResponse({ status: 200, description: 'Presença rejeitada' })
+  @ApiResponse({ status: 403, description: 'Sem permissão para rejeitar' })
+  async rejeitarPresenca(
+    @Param('id') id: string,
+    @Body() body: { observacao: string },
+    @Request() req,
+  ) {
+    return this.presencaService.rejeitarPresenca(id, req.user, body.observacao);
+  }
 }

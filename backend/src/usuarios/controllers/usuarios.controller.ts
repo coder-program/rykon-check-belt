@@ -75,17 +75,6 @@ export class UsuariosController {
   async getPendentes(@Request() req) {
     const result = await this.usuariosService.findPendingApproval(req.user);
 
-    console.log('📤 [CONTROLLER] Enviando resposta para frontend:', {
-      total: result.length,
-      sample: result[0]
-        ? {
-            id: result[0].id,
-            nome: result[0].nome,
-            unidade: result[0].unidade,
-          }
-        : null,
-    });
-
     return result;
   }
 
@@ -98,7 +87,6 @@ export class UsuariosController {
   @Get(':id')
   @ApiOperation({ summary: 'Obter usuário por ID' })
   findOne(@Param('id') id: string) {
-    console.log('📥 [CONTROLLER] Buscando usuário por ID:', id);
     return this.usuariosService.findOne(id);
   }
 
@@ -114,13 +102,6 @@ export class UsuariosController {
     @Param('id') id: string,
     @Body() updateUsuarioDto: Partial<CreateUsuarioDto>,
   ) {
-    console.log('📥 [CONTROLLER] Recebendo atualização de usuário:', {
-      id,
-      dados: {
-        ...updateUsuarioDto,
-        password: updateUsuarioDto.password ? '***' : undefined,
-      },
-    });
     return this.usuariosService.update(id, updateUsuarioDto);
   }
 

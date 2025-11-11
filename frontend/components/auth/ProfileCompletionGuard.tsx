@@ -34,9 +34,6 @@ export function ProfileCompletionGuard({
 
     // Se não está autenticado e não está numa página pública, vai para login
     if (!isAuthenticated || !user) {
-      console.log(
-        "🔄 [ProfileGuard] Usuário não autenticado tentando acessar página protegida, redirecionando para /login"
-      );
       router.push("/login");
       return;
     }
@@ -57,14 +54,8 @@ export function ProfileCompletionGuard({
       );
 
       if (isFranqueado && pathname !== "/minha-franquia") {
-        console.log(
-          "🔄 [ProfileGuard] Franqueado com cadastro incompleto, redirecionando para /minha-franquia"
-        );
         router.push("/minha-franquia");
       } else if (!isFranqueado && pathname !== "/complete-profile") {
-        console.log(
-          "🔄 [ProfileGuard] Usuário com cadastro incompleto, redirecionando para /complete-profile"
-        );
         router.push("/complete-profile");
       }
     }

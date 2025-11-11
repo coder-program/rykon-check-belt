@@ -5,12 +5,9 @@ import { useAuth } from "@/app/auth/AuthContext";
 import {
   X,
   Building2,
-  User,
   Phone,
   MapPin,
-  Info,
   FileText,
-  Users,
   Instagram,
   Facebook,
   Youtube,
@@ -26,19 +23,6 @@ interface RedesSociais {
 }
 
 type StatusUnidade = "ATIVA" | "INATIVA" | "HOMOLOGACAO";
-type PapelResponsavel =
-  | "PROPRIETARIO"
-  | "GERENTE"
-  | "INSTRUTOR"
-  | "ADMINISTRATIVO";
-type Modalidade =
-  | "INFANTIL"
-  | "ADULTO"
-  | "NO_GI"
-  | "COMPETICAO"
-  | "FEMININO"
-  | "AUTODEFESA"
-  | "CONDICIONAMENTO";
 
 interface HorariosFuncionamento {
   seg?: string;
@@ -58,7 +42,6 @@ interface UnidadeFormData {
   nome_fantasia?: string;
   inscricao_estadual?: string;
   inscricao_municipal?: string;
-  codigo_interno?: string;
   telefone_fixo?: string;
   telefone_celular: string;
   email: string;
@@ -74,18 +57,7 @@ interface UnidadeFormData {
   cidade?: string;
   estado?: string;
   pais?: string;
-  responsavel_nome: string;
-  responsavel_cpf: string;
-  responsavel_papel: PapelResponsavel;
-  responsavel_contato: string;
-  qtde_tatames?: number;
-  area_tatame_m2?: number;
-  capacidade_max_alunos?: number;
-  qtde_instrutores?: number;
-  valor_plano_padrao?: number;
   horarios_funcionamento?: HorariosFuncionamento;
-  modalidades?: Modalidade[];
-  instrutor_principal_id?: string;
   status: StatusUnidade;
 }
 
@@ -93,12 +65,6 @@ interface Franqueado {
   id: string;
   nome: string;
   razao_social?: string;
-}
-
-interface Instrutor {
-  id: string;
-  nome_completo: string;
-  faixa_ministrante?: string;
 }
 
 interface UnidadeFormProps {
@@ -109,7 +75,6 @@ interface UnidadeFormProps {
   isEditing: boolean;
   isLoading: boolean;
   franqueados: Franqueado[];
-  instrutores: Instrutor[];
   myFranqueado?: Franqueado; // Franqueado do usuário logado (se aplicável)
 }
 
@@ -121,19 +86,10 @@ export default function UnidadeForm({
   isEditing,
   isLoading,
   franqueados,
-  instrutores,
   myFranqueado,
 }: UnidadeFormProps) {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = React.useState(0);
-
-  // Debug completo do usuário
-  console.log("👤 UnidadeForm - Usuário completo:", user);
-  console.log("📋 Perfis do usuário:", user?.perfis);
-  console.log(
-    "📝 Nome dos perfis:",
-    user?.perfis?.map((p: any) => p.nome || p.perfil || p)
-  );
 
   // Verificar se usuário é franqueado - perfis pode ser array de strings ou objetos
   const isFranqueado = user?.perfis?.some((perfil: any) => {
@@ -149,23 +105,11 @@ export default function UnidadeForm({
     return perfilNome?.toUpperCase() === "MASTER";
   });
 
-  // Debug
-  console.log("🔍 UnidadeForm - Debug:", {
-    isFranqueado,
-    myFranqueado,
-    hasFranqueadoId: !!myFranqueado?.id,
-    formDataFranqueadoId: formData.franqueado_id,
-  });
-
   // Set franqueado_id automatically if user is franqueado and myFranqueado is provided
   React.useEffect(() => {
     if (isFranqueado && myFranqueado?.id) {
       // Sempre forçar o franqueado_id quando for usuário franqueado
       if (formData.franqueado_id !== myFranqueado.id) {
-        console.log(
-          "✅ Preenchendo franqueado_id automaticamente:",
-          myFranqueado.id
-        );
         setFormData((prev) => ({
           ...prev,
           franqueado_id: myFranqueado.id,
@@ -179,9 +123,7 @@ export default function UnidadeForm({
     { id: 0, label: "Identificação", icon: Building2 },
     { id: 1, label: "Contato", icon: Phone },
     { id: 2, label: "Endereço", icon: MapPin },
-    { id: 3, label: "Responsável", icon: User },
-    { id: 4, label: "Estrutura", icon: Info },
-    { id: 5, label: "Administração", icon: FileText },
+    { id: 3, label: "Administração", icon: FileText },
   ];
 
   const formatCNPJ = (value: string) => {
@@ -239,21 +181,30 @@ export default function UnidadeForm({
     const cep = formatCEP(e.target.value);
     setFormData({ ...formData, cep });
 
+    console.log("🔍 [FORM] CEP digitado:", cep, "- Tamanho:", cep.length);
+
     // Se CEP tem 9 caracteres (formato 00000-000), buscar endereço
     if (cep.length === 9) {
       try {
         const cepNumeros = cep.replace("-", "");
-        const response = await fetch(
-          `https://viacep.com.br/ws/${cepNumeros}/json/`
-        );
+        console.log("📡 [FORM] Buscando CEP:", cepNumeros);
+
+        // Usar API proxy do Next.js ao invés de chamar ViaCEP diretamente
+        // Isso evita problemas de CORS e conexão bloqueada
+        const response = await fetch(`/api/cep/${cepNumeros}`);
+        console.log("📡 [FORM] Resposta recebida - Status:", response.status);
 
         if (!response.ok) {
-          throw new Error("Erro na requisição ViaCEP");
+          console.log("❌ [FORM] Erro na resposta:", response.status);
+          // Se der erro, não faz nada - usuário preenche manualmente
+          return;
         }
 
         const data = await response.json();
+        console.log("✅ [FORM] Dados do CEP:", data);
 
-        if (!data.erro) {
+        if (data && !data.error) {
+          console.log("✅ [FORM] Preenchendo endereço automaticamente");
           setFormData((prev) => ({
             ...prev,
             logradouro: data.logradouro || prev.logradouro || "",
@@ -262,29 +213,14 @@ export default function UnidadeForm({
             estado: data.uf || prev.estado || "",
             pais: "Brasil",
           }));
+        } else {
+          console.log("⚠️ [FORM] Dados inválidos ou erro:", data);
         }
       } catch (error) {
-        console.error("❌ Erro ao buscar CEP:", error);
+        console.error("❌ [FORM] Erro ao buscar CEP:", error);
+        // Silenciosamente falha - usuário pode preencher manualmente
       }
     }
-  };
-
-  const modalidadesOptions: { value: Modalidade; label: string }[] = [
-    { value: "INFANTIL", label: "Infantil" },
-    { value: "ADULTO", label: "Adulto" },
-    { value: "FEMININO", label: "Feminino" },
-    { value: "COMPETICAO", label: "Competição" },
-    { value: "NO_GI", label: "No-Gi" },
-    { value: "AUTODEFESA", label: "Autodefesa" },
-    { value: "CONDICIONAMENTO", label: "Condicionamento" },
-  ];
-
-  const toggleModalidade = (mod: Modalidade) => {
-    const current = formData.modalidades || [];
-    const updated = current.includes(mod)
-      ? current.filter((m) => m !== mod)
-      : [...current, mod];
-    setFormData({ ...formData, modalidades: updated });
   };
 
   return (
@@ -342,11 +278,6 @@ export default function UnidadeForm({
                       Franquia *
                     </label>
                     {(() => {
-                      console.log("🎯 Renderizando campo franquia:", {
-                        isFranqueado,
-                        hasMyFranqueado: !!myFranqueado,
-                        myFranqueadoData: myFranqueado,
-                      });
                       return isFranqueado && myFranqueado ? (
                         <div className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-700">
                           {myFranqueado.nome}{" "}
@@ -393,7 +324,6 @@ export default function UnidadeForm({
                         setFormData({ ...formData, nome: e.target.value })
                       }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="TeamCruz Moema"
                     />
                   </div>
 
@@ -412,7 +342,6 @@ export default function UnidadeForm({
                         })
                       }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="00.000.000/0000-00"
                     />
                     <p className="text-xs text-gray-500 mt-1">
                       Deixe em branco para projetos sociais ou igrejas
@@ -434,7 +363,6 @@ export default function UnidadeForm({
                         })
                       }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="TeamCruz Moema Ltda"
                     />
                   </div>
 
@@ -452,29 +380,7 @@ export default function UnidadeForm({
                         })
                       }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="TC Moema"
                     />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Código Interno
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.codigo_interno || ""}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          codigo_interno: e.target.value,
-                        })
-                      }
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="Gerado automaticamente"
-                    />
-                    <p className="text-xs text-gray-500 mt-1">
-                      Deixe vazio para gerar automaticamente
-                    </p>
                   </div>
 
                   <div>
@@ -494,7 +400,6 @@ export default function UnidadeForm({
                         })
                       }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="123456789012 (apenas números)"
                     />
                   </div>
 
@@ -515,7 +420,6 @@ export default function UnidadeForm({
                         })
                       }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="9876543 (apenas números)"
                     />
                   </div>
                 </div>
@@ -541,7 +445,6 @@ export default function UnidadeForm({
                         setFormData({ ...formData, email: e.target.value })
                       }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="contato@unidade.com.br"
                     />
                   </div>
 
@@ -560,7 +463,6 @@ export default function UnidadeForm({
                         })
                       }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="(00) 00000-0000"
                     />
                   </div>
 
@@ -578,7 +480,6 @@ export default function UnidadeForm({
                         })
                       }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="(00) 0000-0000"
                     />
                   </div>
 
@@ -593,7 +494,6 @@ export default function UnidadeForm({
                         setFormData({ ...formData, website: e.target.value })
                       }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="https://www.unidade.com.br"
                     />
                   </div>
 
@@ -617,7 +517,6 @@ export default function UnidadeForm({
                             })
                           }
                           className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          placeholder="https://instagram.com/..."
                         />
                       </div>
 
@@ -636,7 +535,6 @@ export default function UnidadeForm({
                             })
                           }
                           className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          placeholder="https://facebook.com/..."
                         />
                       </div>
 
@@ -655,7 +553,6 @@ export default function UnidadeForm({
                             })
                           }
                           className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          placeholder="https://youtube.com/@..."
                         />
                       </div>
 
@@ -674,7 +571,6 @@ export default function UnidadeForm({
                             })
                           }
                           className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          placeholder="https://linkedin.com/company/..."
                         />
                       </div>
                     </div>
@@ -697,7 +593,6 @@ export default function UnidadeForm({
                       value={formData.cep || ""}
                       onChange={handleCEPChange}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="00000-000"
                       maxLength={9}
                     />
                   </div>
@@ -712,7 +607,6 @@ export default function UnidadeForm({
                         setFormData({ ...formData, logradouro: e.target.value })
                       }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="Nome da rua, avenida, etc."
                     />
                   </div>
                 </div>
@@ -729,7 +623,6 @@ export default function UnidadeForm({
                         setFormData({ ...formData, numero: e.target.value })
                       }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="123"
                     />
                   </div>
                   <div className="md:col-span-3">
@@ -746,7 +639,6 @@ export default function UnidadeForm({
                         })
                       }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="Apartamento, sala, andar, etc."
                     />
                   </div>
                 </div>
@@ -763,7 +655,6 @@ export default function UnidadeForm({
                         setFormData({ ...formData, bairro: e.target.value })
                       }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="Nome do bairro"
                     />
                   </div>
                   <div>
@@ -777,7 +668,6 @@ export default function UnidadeForm({
                         setFormData({ ...formData, cidade: e.target.value })
                       }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="Nome da cidade"
                     />
                   </div>
                   <div>
@@ -791,7 +681,6 @@ export default function UnidadeForm({
                         setFormData({ ...formData, estado: e.target.value })
                       }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="UF"
                       maxLength={2}
                     />
                   </div>
@@ -809,280 +698,14 @@ export default function UnidadeForm({
                         setFormData({ ...formData, pais: e.target.value })
                       }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="País"
                     />
                   </div>
                 </div>
               </div>
             )}
 
-            {/* Tab 3: Responsável */}
+            {/* Tab 3: Administração */}
             {activeTab === 3 && (
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium text-gray-900">
-                  Responsável pela Unidade
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Nome Completo *
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={formData.responsavel_nome}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          responsavel_nome: e.target.value,
-                        })
-                      }
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="João da Silva"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      CPF *
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={formData.responsavel_cpf}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          responsavel_cpf: formatCPF(e.target.value),
-                        })
-                      }
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="000.000.000-00"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Papel *
-                    </label>
-                    <select
-                      required
-                      value={formData.responsavel_papel}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          responsavel_papel: e.target.value as PapelResponsavel,
-                        })
-                      }
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    >
-                      <option value="PROPRIETARIO">Proprietário</option>
-                      <option value="GERENTE">Gerente</option>
-                      <option value="INSTRUTOR">Instrutor</option>
-                      <option value="ADMINISTRATIVO">Administrativo</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Telefone / WhatsApp *
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={formData.responsavel_contato}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          responsavel_contato: formatPhone(e.target.value),
-                        })
-                      }
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="(00) 00000-0000"
-                    />
-                  </div>
-
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Instrutor Principal (Responsável Técnico)
-                    </label>
-                    <select
-                      value={formData.instrutor_principal_id || ""}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          instrutor_principal_id: e.target.value || undefined,
-                        })
-                      }
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    >
-                      <option value="">
-                        Selecione o instrutor principal (faixa-preta)
-                      </option>
-                      {instrutores.map((inst) => (
-                        <option key={inst.id} value={inst.id}>
-                          {inst.nome_completo}
-                          {inst.faixa_ministrante &&
-                            ` - ${inst.faixa_ministrante}`}
-                        </option>
-                      ))}
-                    </select>
-                    <p className="text-xs text-gray-500 mt-1">
-                      Instrutor responsável técnico pela unidade (deve ser
-                      faixa-preta)
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Tab 4: Estrutura */}
-            {activeTab === 4 && (
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium text-gray-900">
-                  Estrutura da Unidade
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Quantidade de Tatames
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      value={formData.qtde_tatames || ""}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          qtde_tatames: e.target.value
-                            ? parseInt(e.target.value)
-                            : undefined,
-                        })
-                      }
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="3"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Área do Tatame (m²)
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={formData.area_tatame_m2 || ""}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          area_tatame_m2: e.target.value
-                            ? parseFloat(e.target.value)
-                            : undefined,
-                        })
-                      }
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="120.50"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Capacidade Máxima de Alunos
-                    </label>
-                    <input
-                      type="number"
-                      min="1"
-                      value={formData.capacidade_max_alunos || ""}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          capacidade_max_alunos: e.target.value
-                            ? parseInt(e.target.value)
-                            : undefined,
-                        })
-                      }
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="100"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Quantidade de Instrutores
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      value={formData.qtde_instrutores || ""}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          qtde_instrutores: e.target.value
-                            ? parseInt(e.target.value)
-                            : undefined,
-                        })
-                      }
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="5"
-                    />
-                  </div>
-
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Modalidades Oferecidas
-                    </label>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                      {modalidadesOptions.map((mod) => (
-                        <label
-                          key={mod.value}
-                          className={`flex items-center gap-2 p-3 border-2 rounded-lg cursor-pointer transition-all ${
-                            formData.modalidades?.includes(mod.value)
-                              ? "border-blue-600 bg-blue-50"
-                              : "border-gray-300 hover:border-gray-400"
-                          }`}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={formData.modalidades?.includes(mod.value)}
-                            onChange={() => toggleModalidade(mod.value)}
-                            className="w-4 h-4 text-blue-600"
-                          />
-                          <span className="text-sm font-medium">
-                            {mod.label}
-                          </span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Valor Plano Padrão (R$)
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={formData.valor_plano_padrao || ""}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          valor_plano_padrao: e.target.value
-                            ? parseFloat(e.target.value)
-                            : undefined,
-                        })
-                      }
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="150.00"
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Tab 5: Administração */}
-            {activeTab === 5 && (
               <div className="space-y-4">
                 <h3 className="text-lg font-medium text-gray-900">
                   Administração
@@ -1178,16 +801,12 @@ export default function UnidadeForm({
 
                   <div className="p-4 bg-yellow-50 rounded-lg border border-yellow-200">
                     <h4 className="font-medium text-yellow-900 mb-2 flex items-center gap-2">
-                      <Users className="h-5 w-5" />
+                      <FileText className="h-5 w-5" />
                       Requisitos
                     </h4>
                     <ul className="text-sm text-yellow-800 space-y-1">
                       <li>✓ CNPJ opcional (único se informado)</li>
                       <li>✓ Email único para cada unidade</li>
-                      <li>
-                        ✓ Pelo menos 1 instrutor faixa-preta cadastrado como
-                        responsável técnico
-                      </li>
                       <li>
                         ⚠️ Se a franquia for inativada, todas as unidades
                         vinculadas também serão inativadas

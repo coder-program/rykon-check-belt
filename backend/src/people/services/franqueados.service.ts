@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { ConflictException, Injectable } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { Franqueado } from '../entities/franqueado-simplified.entity';
 import {
@@ -20,7 +20,7 @@ export class FranqueadosService {
     const pageSize = Math.min(100, Math.max(1, Number(params.pageSize) || 20));
     const offset = (page - 1) * pageSize;
 
-    let whereConditions: string[] = [];
+    let whereConditions: string[] = ['f.ativo = true']; // ✅ Sempre filtrar apenas ativos
     let queryParams: any[] = [];
     let paramIndex = 1;
 
@@ -38,10 +38,7 @@ export class FranqueadosService {
       paramIndex++;
     }
 
-    const whereClause =
-      whereConditions.length > 0
-        ? `WHERE ${whereConditions.join(' AND ')}`
-        : '';
+    const whereClause = `WHERE ${whereConditions.join(' AND ')}`;
 
     // Query para buscar franqueados com informações do usuário
     const itemsQuery = `
@@ -118,6 +115,33 @@ export class FranqueadosService {
   }
 
   async create(body: CreateFranqueadoSimplifiedDto): Promise<Franqueado> {
+    // Validar CPF duplicado
+    if (body.cpf) {
+      const cpfLimpo = body.cpf.replace(/\D/g, '');
+      const existingCpf = await this.dataSource.query(
+        `SELECT id, nome FROM teamcruz.franqueados WHERE cpf = $1 AND ativo = true LIMIT 1`,
+        [cpfLimpo],
+      );
+      if (existingCpf && existingCpf.length > 0) {
+        throw new ConflictException(
+          `Já existe um franqueado cadastrado com este CPF: ${existingCpf[0].nome}`,
+        );
+      }
+    }
+
+    // Validar email duplicado
+    if (body.email) {
+      const existingEmail = await this.dataSource.query(
+        `SELECT id, nome FROM teamcruz.franqueados WHERE email = $1 AND ativo = true LIMIT 1`,
+        [body.email],
+      );
+      if (existingEmail && existingEmail.length > 0) {
+        throw new ConflictException(
+          `Já existe um franqueado cadastrado com este email: ${existingEmail[0].nome}`,
+        );
+      }
+    }
+
     const query = `
       INSERT INTO teamcruz.franqueados (
         nome, cpf, email, telefone, usuario_id,
@@ -138,12 +162,9 @@ export class FranqueadosService {
       body.usuario_id || null,
       body.endereco_id || null,
       body.unidades_gerencia || [],
-      body.situacao || 'EM_HOMOLOGACAO',
+      body.situacao || 'EM_HOMOLOGACAO', // Se não veio situacao, usa EM_HOMOLOGACAO
       body.ativo ?? true,
     ];
-
-    console.log('🔍 [Service] Executando query:', query);
-    console.log('🔍 [Service] Parâmetros:', params);
 
     const result = await this.dataSource.query(query, params);
 
@@ -152,10 +173,6 @@ export class FranqueadosService {
       await this.dataSource.query(
         `UPDATE teamcruz.usuarios SET cadastro_completo = true WHERE id = $1`,
         [body.usuario_id],
-      );
-      console.log(
-        '✅ [Service] Campo cadastro_completo atualizado para usuario_id:',
-        body.usuario_id,
       );
     }
 
@@ -166,6 +183,33 @@ export class FranqueadosService {
     id: string,
     body: UpdateFranqueadoSimplifiedDto,
   ): Promise<Franqueado> {
+    // Validar CPF duplicado (exceto o próprio registro)
+    if (body.cpf) {
+      const cpfLimpo = body.cpf.replace(/\D/g, '');
+      const existingCpf = await this.dataSource.query(
+        `SELECT id, nome FROM teamcruz.franqueados WHERE cpf = $1 AND id != $2 AND ativo = true LIMIT 1`,
+        [cpfLimpo, id],
+      );
+      if (existingCpf && existingCpf.length > 0) {
+        throw new ConflictException(
+          `Já existe outro franqueado cadastrado com este CPF: ${existingCpf[0].nome}`,
+        );
+      }
+    }
+
+    // Validar email duplicado (exceto o próprio registro)
+    if (body.email) {
+      const existingEmail = await this.dataSource.query(
+        `SELECT id, nome FROM teamcruz.franqueados WHERE email = $1 AND id != $2 AND ativo = true LIMIT 1`,
+        [body.email, id],
+      );
+      if (existingEmail && existingEmail.length > 0) {
+        throw new ConflictException(
+          `Já existe outro franqueado cadastrado com este email: ${existingEmail[0].nome}`,
+        );
+      }
+    }
+
     const fields: string[] = [];
     const params: any[] = [];
     let paramIndex = 1;
@@ -225,10 +269,6 @@ export class FranqueadosService {
         `UPDATE teamcruz.usuarios SET cadastro_completo = true WHERE id = $1`,
         [result[0].usuario_id],
       );
-      console.log(
-        '✅ [Service] Campo cadastro_completo atualizado para usuario_id:',
-        result[0].usuario_id,
-      );
     }
 
     return result[0];
@@ -240,8 +280,16 @@ export class FranqueadosService {
       UPDATE teamcruz.franqueados
       SET ativo = false, updated_at = NOW()
       WHERE id = $1
+      RETURNING id, nome, ativo
     `;
-    await this.dataSource.query(query, [id]);
+
+    const result = await this.dataSource.query(query, [id]);
+
+    if (!result || result.length === 0) {
+      console.warn(
+        '⚠️ [Service] Nenhum franqueado foi atualizado. ID não encontrado?',
+      );
+    }
   }
 
   // Método para vincular/desvincular unidades

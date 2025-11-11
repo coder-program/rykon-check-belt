@@ -13,6 +13,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/app/auth/AuthContext";
 
 interface PersonFormProps {
   onSuccess?: () => void;
@@ -29,6 +30,7 @@ export function PersonForm({
   isEdit = false,
   defaultTipo = "ALUNO",
 }: PersonFormProps) {
+  const { user } = useAuth();
   const [tipoCadastro, setTipoCadastro] = useState<"ALUNO" | "PROFESSOR">(
     defaultTipo
   );
@@ -62,12 +64,25 @@ export function PersonForm({
     observacoes: "",
   });
 
-  // Estado para unidades adicionais do professor
-  const [unidadesAdicionais, setUnidadesAdicionais] = useState<string[]>([]);
-
   const [isMinor, setIsMinor] = useState(false);
 
-  // Carregar unidades disponíveis
+  // Detectar perfil do usuário logado
+  const isGerente = user?.perfis?.some((perfil: any) => {
+    const perfilNome =
+      typeof perfil === "string" ? perfil : perfil.nome || perfil.perfil;
+    return (
+      perfilNome?.toLowerCase() === "gerente_unidade" ||
+      perfilNome?.toLowerCase() === "gerente"
+    );
+  });
+
+  const isFranqueado = user?.perfis?.some((perfil: any) => {
+    const perfilNome =
+      typeof perfil === "string" ? perfil : perfil.nome || perfil.perfil;
+    return perfilNome?.toLowerCase() === "franqueado";
+  });
+
+  // Carregar unidades disponíveis - a API já filtra por perfil
   const { data: unidadesData } = useQuery({
     queryKey: ["unidades"],
     queryFn: () => listUnidades({ page: 1, pageSize: 100 }),
@@ -75,17 +90,26 @@ export function PersonForm({
 
   const unidadesDisponiveis = unidadesData?.items || [];
 
+  // Se for gerente e está criando professor, setar unidade automaticamente
+  useEffect(() => {
+    if (
+      tipoCadastro === "PROFESSOR" &&
+      isGerente &&
+      !isEdit &&
+      unidadesDisponiveis.length > 0
+    ) {
+      // Gerente só tem 1 unidade, setar automaticamente
+      setFormData((prev) => ({
+        ...prev,
+        unidade_id: unidadesDisponiveis[0].id,
+      }));
+    }
+  }, [tipoCadastro, isGerente, isEdit, unidadesDisponiveis]);
+
   useEffect(() => {
     if (initialData) {
       setFormData(initialData);
       setTipoCadastro(initialData.tipo_cadastro || defaultTipo);
-      // Carregar unidades adicionais se for professor
-      if (initialData.unidades && Array.isArray(initialData.unidades)) {
-        const adiconais = initialData.unidades
-          .filter((u: any) => !u.is_principal)
-          .map((u: any) => u.id);
-        setUnidadesAdicionais(adiconais);
-      }
     } else {
       setTipoCadastro(defaultTipo);
       setFormData((prev) => ({ ...prev, tipo_cadastro: defaultTipo }));
@@ -267,10 +291,13 @@ export function PersonForm({
       return;
     }
 
-    // Validar unidade principal para professor
+    // Validar unidade para professor
     if (tipoCadastro === "PROFESSOR" && !formData.unidade_id) {
-      toast.error("Selecione a unidade principal do professor");
-      return;
+      // Se for gerente, unidade já está setada automaticamente
+      if (!isGerente) {
+        toast.error("Selecione a unidade do professor");
+        return;
+      }
     }
 
     // Preparar dados formatados (remover formatação de CPF/telefone)
@@ -303,11 +330,6 @@ export function PersonForm({
       registro_profissional: formData.registro_profissional || undefined,
     };
 
-    // Adicionar unidades adicionais se for professor
-    if (tipoCadastro === "PROFESSOR" && unidadesAdicionais.length > 0) {
-      dataToSend.unidades_adicionais = unidadesAdicionais;
-    }
-
     // Remover campos não necessários baseado no tipo
     if (tipoCadastro === "ALUNO") {
       delete dataToSend.faixa_ministrante;
@@ -321,7 +343,6 @@ export function PersonForm({
       delete dataToSend.responsavel_telefone;
     }
 
-    console.log("Enviando dados:", dataToSend);
     mutation.mutate(dataToSend);
   };
 
@@ -798,109 +819,56 @@ export function PersonForm({
               </div>
             </div>
 
-            {/* Seleção de Unidades */}
-            <div className="divider">Unidades</div>
-            <div className="grid grid-cols-1 gap-4">
-              <div className="form-control">
-                <label className="label">
-                  <span className="label-text">Unidade Principal *</span>
-                </label>
-                <select
-                  name="unidade_id"
-                  value={formData.unidade_id}
-                  onChange={handleChange}
-                  className="select select-bordered"
-                  required
-                >
-                  <option value="">Selecione a unidade principal</option>
-                  {unidadesDisponiveis.map((unidade: any) => (
-                    <option key={unidade.id} value={unidade.id}>
-                      {unidade.nome}
-                    </option>
-                  ))}
-                </select>
-                <label className="label">
-                  <span className="label-text-alt text-info">
-                    ℹ️ A unidade principal é onde o professor atua
-                    prioritariamente
-                  </span>
-                </label>
-              </div>
-
-              <div className="form-control">
-                <label className="label">
-                  <span className="label-text">
-                    Unidades Adicionais (Opcional)
-                  </span>
-                </label>
-                <div className="border border-base-300 rounded-lg p-4 space-y-2 max-h-48 overflow-y-auto">
-                  {unidadesDisponiveis
-                    .filter((u: any) => u.id !== formData.unidade_id)
-                    .map((unidade: any) => (
-                      <label
-                        key={unidade.id}
-                        className="label cursor-pointer justify-start gap-3"
-                      >
-                        <input
-                          type="checkbox"
-                          className="checkbox checkbox-sm"
-                          checked={unidadesAdicionais.includes(unidade.id)}
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              setUnidadesAdicionais([
-                                ...unidadesAdicionais,
-                                unidade.id,
-                              ]);
-                            } else {
-                              setUnidadesAdicionais(
-                                unidadesAdicionais.filter(
-                                  (id) => id !== unidade.id
-                                )
-                              );
-                            }
-                          }}
-                        />
-                        <span className="label-text">{unidade.nome}</span>
-                      </label>
-                    ))}
-                  {unidadesDisponiveis.filter(
-                    (u: any) => u.id !== formData.unidade_id
-                  ).length === 0 && (
-                    <p className="text-sm text-gray-500">
-                      Selecione uma unidade principal primeiro
-                    </p>
-                  )}
-                </div>
-                <label className="label">
-                  <span className="label-text-alt text-info">
-                    ℹ️ Selecione outras unidades onde o professor também pode
-                    dar aulas
-                  </span>
-                </label>
-              </div>
-
-              {unidadesAdicionais.length > 0 && (
-                <div className="alert alert-info">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    className="stroke-current shrink-0 w-6 h-6"
+            {/* Seleção de Unidades - REMOVIDA para Professor, automática baseada no perfil */}
+            {tipoCadastro === "PROFESSOR" && isFranqueado && (
+              <>
+                <div className="divider">Unidade</div>
+                <div className="form-control">
+                  <label className="label">
+                    <span className="label-text">Unidade *</span>
+                  </label>
+                  <select
+                    name="unidade_id"
+                    value={formData.unidade_id}
+                    onChange={handleChange}
+                    className="select select-bordered"
+                    required
                   >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                    ></path>
-                  </svg>
-                  <span>
-                    Professor vinculado a {unidadesAdicionais.length + 1}{" "}
-                    unidade(s) no total
-                  </span>
+                    <option value="">Selecione a unidade</option>
+                    {unidadesDisponiveis.map((unidade: any) => (
+                      <option key={unidade.id} value={unidade.id}>
+                        {unidade.nome}
+                      </option>
+                    ))}
+                  </select>
+                  <label className="label">
+                    <span className="label-text-alt text-info">
+                      ℹ️ Selecione a unidade onde o professor irá atuar
+                    </span>
+                  </label>
                 </div>
-              )}
-            </div>
+              </>
+            )}
+            {tipoCadastro === "PROFESSOR" && isGerente && (
+              <div className="alert alert-info mt-4">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  className="stroke-current shrink-0 w-6 h-6"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                  ></path>
+                </svg>
+                <span>
+                  O professor será automaticamente vinculado à sua unidade
+                </span>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}

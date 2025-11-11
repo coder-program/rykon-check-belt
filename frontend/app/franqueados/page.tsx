@@ -327,11 +327,6 @@ const FormularioFranqueado: React.FC<FormularioFranqueadoProps> = ({
         telefone: formData.telefone.replace(/\D/g, ""),
       };
 
-      // Debug: log dos dados que serão enviados
-      console.log("Dados sendo enviados para o backend:", dataToSubmit);
-      console.log("CPF length:", dataToSubmit.cpf.length);
-      console.log("Telefone length:", dataToSubmit.telefone.length);
-
       onSubmit(dataToSubmit);
     }
   };

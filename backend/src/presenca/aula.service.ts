@@ -178,12 +178,6 @@ export class AulaService {
 
     const count = await query.getCount();
 
-    console.log('📊 [AULAS HOJE]', {
-      unidade_id,
-      dia_semana: diaSemanaHoje,
-      count,
-    });
-
     return count;
   }
 }

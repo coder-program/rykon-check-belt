@@ -23,6 +23,7 @@ import {
   Star,
   Target,
   Building2,
+  CheckCircle,
 } from "lucide-react";
 
 interface InstrutorStats {
@@ -149,6 +150,13 @@ export default function InstrutorDashboard() {
       action: () => router.push("/presenca"),
       color: "bg-green-500",
       urgent: true,
+    },
+    {
+      title: "Aprovar Check-ins",
+      description: "Aprovar check-ins do tablet",
+      icon: CheckCircle,
+      action: () => router.push("/checkin/aprovacao"),
+      color: "bg-purple-500",
     },
     {
       title: "Meus Alunos",

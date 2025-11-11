@@ -10,20 +10,25 @@ import {
 } from 'typeorm';
 import { Person } from './person.entity';
 import { Unidade } from './unidade.entity';
+import { Usuario } from '../../usuarios/entities/usuario.entity';
 
 @Entity({ name: 'professor_unidades', schema: 'teamcruz' })
 @Index(['professor_id'])
 @Index(['unidade_id'])
+@Index(['usuario_id'])
 @Index(['ativo'])
 export class ProfessorUnidade {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ type: 'uuid' })
+  @Column({ type: 'uuid', nullable: true })
   professor_id: string;
 
   @Column({ type: 'uuid' })
   unidade_id: string;
+
+  @Column({ type: 'uuid', nullable: true })
+  usuario_id: string;
 
   @Column({ type: 'boolean', default: false })
   is_principal: boolean;
@@ -54,4 +59,8 @@ export class ProfessorUnidade {
   @ManyToOne(() => Unidade, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'unidade_id' })
   unidade: Unidade;
+
+  @ManyToOne(() => Usuario, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'usuario_id' })
+  usuario: Usuario;
 }

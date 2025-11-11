@@ -186,6 +186,13 @@ export default function GerenteDashboard() {
       color: "bg-orange-500",
     },
     {
+      title: "Aprovar Check-ins",
+      description: "Aprovar check-ins do tablet",
+      icon: UserCheck,
+      action: () => router.push("/checkin/aprovacao"),
+      color: "bg-purple-500",
+    },
+    {
       title: "Registrar Presença",
       description: "Marcar presença nas aulas",
       icon: CheckCircle,

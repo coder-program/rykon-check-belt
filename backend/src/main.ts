@@ -13,7 +13,14 @@ if (!globalThis.crypto) {
 async function bootstrap() {
   dotenv.config();
 
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, {
+    bodyParser: true,
+  });
+
+  // Aumentar limite de tamanho do body para 10MB (para upload de imagens)
+  app.use(require('express').json({ limit: '10mb' }));
+  app.use(require('express').urlencoded({ limit: '10mb', extended: true }));
+
   app.use(cookieParser());
 
   // Configuração CORS para produção
@@ -137,12 +144,10 @@ async function bootstrap() {
       tryItOutEnabled: true, // Habilita "Try it out" por padrão
       requestInterceptor: (req) => {
         // Log das requisições para debug
-        console.log('🚀 Swagger Request:', req.url);
         return req;
       },
       responseInterceptor: (res) => {
         // Log das respostas para debug
-        console.log('✅ Swagger Response:', res.status, res.url);
         return res;
       },
     },

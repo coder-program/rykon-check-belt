@@ -44,6 +44,9 @@ export class Usuario {
   @Column({ nullable: true })
   ultimo_login: Date;
 
+  @Column({ type: 'text', nullable: true })
+  foto: string;
+
   @ManyToMany(() => Perfil, (perfil) => perfil.usuarios)
   @JoinTable({
     name: 'usuario_perfis',

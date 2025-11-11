@@ -142,9 +142,6 @@ export class FranqueadosServiceSimplified {
       body.ativo ?? true,
     ];
 
-    console.log('🔍 [Service] Executando query:', query);
-    console.log('🔍 [Service] Parâmetros:', params);
-
     const result = await this.dataSource.query(query, params);
     return result[0];
   }

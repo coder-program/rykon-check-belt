@@ -14,6 +14,7 @@ import { Unidade } from './unidade.entity';
 import { AlunoFaixa } from '../../graduacao/entities/aluno-faixa.entity';
 import { AlunoGraduacao } from '../../graduacao/entities/aluno-graduacao.entity';
 import { AlunoUnidade } from './aluno-unidade.entity';
+import { AlunoModalidade } from './aluno-modalidade.entity';
 
 export enum Genero {
   MASCULINO = 'MASCULINO',
@@ -220,6 +221,10 @@ export class Aluno {
   @ManyToOne(() => Unidade, { eager: false })
   @JoinColumn({ name: 'unidade_id' })
   unidade: Unidade;
+
+  // Many-to-Many com Modalidades via tabela intermediária
+  @OneToMany(() => AlunoModalidade, (alunoModalidade) => alunoModalidade.aluno)
+  alunoModalidades: AlunoModalidade[];
 
   @OneToMany(() => AlunoFaixa, (alunoFaixa) => alunoFaixa.aluno)
   faixas: AlunoFaixa[];

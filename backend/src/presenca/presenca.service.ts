@@ -946,4 +946,355 @@ export class PresencaService {
 
     return sequencia;
   }
+
+  // ========== TABLET CHECK-IN METHODS ==========
+
+  async checkInTablet(
+    alunoId: string,
+    aulaId: string,
+    metodo: string,
+    user: any,
+  ) {
+    // Validar perfil TABLET_CHECKIN
+    if (!user?.perfis?.includes('TABLET_CHECKIN')) {
+      throw new ForbiddenException(
+        'Apenas perfil TABLET_CHECKIN pode fazer check-in via tablet',
+      );
+    }
+
+    // Buscar unidade do usuário tablet
+    const unidadeTablet = await this.getUnidadeTablet(user.id);
+    if (!unidadeTablet) {
+      throw new ForbiddenException(
+        'Usuário tablet não está vinculado a nenhuma unidade',
+      );
+    }
+
+    // Verificar se aluno existe
+    const aluno = await this.personRepository.findOne({
+      where: { id: alunoId, tipo_cadastro: 'ALUNO' as any },
+    });
+
+    if (!aluno) {
+      throw new NotFoundException('Aluno não encontrado');
+    }
+
+    // Verificar se o aluno pertence à mesma unidade do tablet
+    if (aluno.unidade_id !== unidadeTablet) {
+      throw new ForbiddenException(
+        'Você não pode fazer check-in de alunos de outra unidade',
+      );
+    }
+
+    // Verificar se aula existe e está ativa
+    const aula = await this.aulaRepository.findOne({
+      where: { id: aulaId, ativo: true },
+      relations: ['unidade'],
+    });
+
+    if (!aula) {
+      throw new NotFoundException('Aula não encontrada ou inativa');
+    }
+
+    // Verificar se já existe presença para esta aula hoje
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+    const amanha = new Date(hoje);
+    amanha.setDate(amanha.getDate() + 1);
+
+    const presencaExistente = await this.presencaRepository.findOne({
+      where: {
+        aluno_id: alunoId,
+        aula_id: aulaId,
+        created_at: Between(hoje, amanha),
+      },
+    });
+
+    if (presencaExistente) {
+      return {
+        message: 'Check-in já registrado para esta aula hoje',
+        presenca: presencaExistente,
+        status: presencaExistente.status_aprovacao || 'PENDENTE',
+      };
+    }
+
+    // Criar presença com status PENDENTE
+    const presenca = this.presencaRepository.create({
+      aluno_id: alunoId,
+      aula_id: aulaId,
+      metodo: metodo as PresencaMetodo,
+      status: PresencaStatus.PRESENTE,
+      status_aprovacao: 'PENDENTE',
+      data_presenca: new Date(),
+    });
+
+    await this.presencaRepository.save(presenca);
+
+    return {
+      message: 'Check-in registrado com sucesso. Aguardando aprovação.',
+      presenca,
+      aluno: {
+        id: aluno.id,
+        nome: aluno.nome_completo,
+        foto: null, // Foto será obtida do Aluno entity se necessário
+      },
+      aula: {
+        id: aula.id,
+        nome: aula.nome,
+        unidade: aula.unidade?.nome,
+      },
+    };
+  }
+
+  async getPresencasPendentes(user: any, data?: string, aulaId?: string) {
+    // Verificar permissão
+    const perfisPermitidos = ['RECEPCIONISTA', 'PROFESSOR', 'GERENTE_UNIDADE'];
+    const temPermissao = user?.perfis?.some((p) =>
+      perfisPermitidos.includes(p),
+    );
+
+    if (!temPermissao) {
+      throw new ForbiddenException(
+        'Apenas RECEPCIONISTA, PROFESSOR ou GERENTE pode visualizar presenças pendentes',
+      );
+    }
+
+    // Determinar unidade do usuário
+    const unidadeId = await this.getUnidadeUsuario(user);
+    if (!unidadeId) {
+      throw new ForbiddenException(
+        'Usuário não está vinculado a nenhuma unidade',
+      );
+    }
+
+    // Construir query
+    const where: any = {
+      status_aprovacao: 'PENDENTE',
+    };
+
+    if (data) {
+      const dataFiltro = new Date(data);
+      dataFiltro.setHours(0, 0, 0, 0);
+      const dataFim = new Date(dataFiltro);
+      dataFim.setDate(dataFim.getDate() + 1);
+      where.created_at = Between(dataFiltro, dataFim);
+    }
+
+    if (aulaId) {
+      where.aula_id = aulaId;
+    }
+
+    const presencas = await this.presencaRepository
+      .createQueryBuilder('p')
+      .leftJoinAndSelect('p.aluno', 'pessoa')
+      .leftJoinAndSelect('pessoa.aluno', 'aluno')
+      .leftJoinAndSelect('p.aula', 'aula')
+      .leftJoinAndSelect('aula.unidade', 'unidade')
+      .leftJoinAndSelect('aula.professor', 'professor')
+      .where('p.status_aprovacao = :status', { status: 'PENDENTE' })
+      .andWhere('unidade.id = :unidadeId', { unidadeId })
+      .andWhere(data ? 'DATE(p.created_at) = :data' : '1=1', {
+        data: data ? new Date(data) : undefined,
+      })
+      .andWhere(aulaId ? 'p.aula_id = :aulaId' : '1=1', { aulaId })
+      .orderBy('p.created_at', 'DESC')
+      .getMany();
+
+    return presencas.map((p) => ({
+      id: p.id,
+      aluno: {
+        id: p.aluno?.id,
+        nome: p.aluno?.nome_completo,
+        foto: null, // Foto será obtida do Aluno entity se necessário
+        cpf: p.aluno?.cpf,
+      },
+      aula: {
+        id: p.aula?.id,
+        nome: p.aula?.nome,
+        professor: p.aula?.professor?.nome_completo,
+        horario: `${p.aula?.hora_inicio} - ${p.aula?.hora_fim}`,
+      },
+      metodo: p.metodo,
+      dataCheckin: p.created_at,
+      status: p.status_aprovacao,
+    }));
+  }
+
+  async aprovarPresenca(id: string, user: any, observacao?: string) {
+    // Verificar permissão
+    const perfisPermitidos = ['RECEPCIONISTA', 'PROFESSOR', 'GERENTE_UNIDADE'];
+    const temPermissao = user?.perfis?.some((p) =>
+      perfisPermitidos.includes(p),
+    );
+
+    if (!temPermissao) {
+      throw new ForbiddenException(
+        'Apenas RECEPCIONISTA, PROFESSOR ou GERENTE pode aprovar presenças',
+      );
+    }
+
+    const presenca = await this.presencaRepository.findOne({
+      where: { id },
+      relations: ['aula', 'aula.unidade', 'aluno'],
+    });
+
+    if (!presenca) {
+      throw new NotFoundException('Presença não encontrada');
+    }
+
+    // Verificar se presença está pendente
+    if (presenca.status_aprovacao !== 'PENDENTE') {
+      throw new BadRequestException(
+        `Presença já foi ${presenca.status_aprovacao.toLowerCase()}`,
+      );
+    }
+
+    // Verificar se usuário pertence à mesma unidade
+    const unidadeId = await this.getUnidadeUsuario(user);
+    if (presenca.aula?.unidade?.id !== unidadeId) {
+      throw new ForbiddenException(
+        'Você não tem permissão para aprovar presenças de outra unidade',
+      );
+    }
+
+    // Aprovar presença
+    presenca.status_aprovacao = 'APROVADO';
+    presenca.aprovado_por_id = user.id;
+    presenca.aprovado_em = new Date();
+    if (observacao) {
+      presenca.observacao_aprovacao = observacao;
+    }
+
+    await this.presencaRepository.save(presenca);
+
+    return {
+      message: 'Presença aprovada com sucesso',
+      presenca: {
+        id: presenca.id,
+        status: presenca.status_aprovacao,
+        aprovadoPor: user.nome,
+        aprovadoEm: presenca.aprovado_em,
+      },
+    };
+  }
+
+  async rejeitarPresenca(id: string, user: any, observacao: string) {
+    // Verificar permissão
+    const perfisPermitidos = ['RECEPCIONISTA', 'PROFESSOR', 'GERENTE_UNIDADE'];
+    const temPermissao = user?.perfis?.some((p) =>
+      perfisPermitidos.includes(p),
+    );
+
+    if (!temPermissao) {
+      throw new ForbiddenException(
+        'Apenas RECEPCIONISTA, PROFESSOR ou GERENTE pode rejeitar presenças',
+      );
+    }
+
+    const presenca = await this.presencaRepository.findOne({
+      where: { id },
+      relations: ['aula', 'aula.unidade', 'aluno'],
+    });
+
+    if (!presenca) {
+      throw new NotFoundException('Presença não encontrada');
+    }
+
+    // Verificar se presença está pendente
+    if (presenca.status_aprovacao !== 'PENDENTE') {
+      throw new BadRequestException(
+        `Presença já foi ${presenca.status_aprovacao.toLowerCase()}`,
+      );
+    }
+
+    // Verificar se usuário pertence à mesma unidade
+    const unidadeId = await this.getUnidadeUsuario(user);
+    if (presenca.aula?.unidade?.id !== unidadeId) {
+      throw new ForbiddenException(
+        'Você não tem permissão para rejeitar presenças de outra unidade',
+      );
+    }
+
+    // Rejeitar presença
+    presenca.status_aprovacao = 'REJEITADO';
+    presenca.aprovado_por_id = user.id;
+    presenca.aprovado_em = new Date();
+    presenca.observacao_aprovacao = observacao;
+
+    await this.presencaRepository.save(presenca);
+
+    return {
+      message: 'Presença rejeitada com sucesso',
+      presenca: {
+        id: presenca.id,
+        status: presenca.status_aprovacao,
+        rejeitadoPor: user.nome,
+        rejeitadoEm: presenca.aprovado_em,
+        motivo: observacao,
+      },
+    };
+  }
+
+  private async getUnidadeUsuario(user: any): Promise<string | null> {
+    // Buscar unidade do usuário baseado no perfil
+    const perfil = user.perfis?.[0];
+
+    if (perfil === 'GERENTE_UNIDADE') {
+      // Buscar unidade onde é responsável
+      const result = await this.personRepository.query(
+        `
+        SELECT u.id
+        FROM teamcruz.unidades u
+        WHERE u.responsavel_cpf = (
+          SELECT cpf FROM teamcruz.usuarios WHERE id = $1
+        )
+        LIMIT 1
+      `,
+        [user.id],
+      );
+      return result[0]?.id || null;
+    }
+
+    if (perfil === 'RECEPCIONISTA') {
+      const result = await this.personRepository.query(
+        `
+        SELECT ru.unidade_id
+        FROM teamcruz.recepcionista_unidades ru
+        WHERE ru.recepcionista_id = $1
+        LIMIT 1
+      `,
+        [user.id],
+      );
+      return result[0]?.unidade_id || null;
+    }
+
+    if (perfil === 'PROFESSOR') {
+      const result = await this.personRepository.query(
+        `
+        SELECT pu.unidade_id
+        FROM teamcruz.professor_unidades pu
+        WHERE pu.professor_id = $1
+        LIMIT 1
+      `,
+        [user.id],
+      );
+      return result[0]?.unidade_id || null;
+    }
+
+    return null;
+  }
+
+  private async getUnidadeTablet(userId: string): Promise<string | null> {
+    // TABLET_CHECKIN usa a tabela tablet_unidades
+    const result = await this.personRepository.query(
+      `
+      SELECT tu.unidade_id
+      FROM teamcruz.tablet_unidades tu
+      WHERE tu.tablet_id = $1 AND tu.ativo = true
+      LIMIT 1
+    `,
+      [userId],
+    );
+    return result[0]?.unidade_id || null;
+  }
 }

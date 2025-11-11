@@ -80,10 +80,10 @@ export class Person {
   @Column({ type: 'varchar', length: 14, unique: true, nullable: true })
   cpf: string;
 
-  @Column({ type: 'date' })
+  @Column({ type: 'date', nullable: true })
   data_nascimento: Date;
 
-  @Column({ type: 'enum', enum: Genero })
+  @Column({ type: 'enum', enum: Genero, nullable: true })
   genero: Genero;
 
   @Column({ type: 'varchar', length: 20, nullable: true })

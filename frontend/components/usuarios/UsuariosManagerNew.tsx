@@ -32,15 +32,8 @@ const UsuariosManagerNew = () => {
   } = useQuery({
     queryKey: ["usuarios"],
     queryFn: () => {
-      console.log("Fazendo requisição para buscar usuários...");
       return getUsuarios();
     },
-  });
-
-  console.log("Estado da consulta:", {
-    usuarios: usuarios?.length || 0,
-    loadingUsuarios,
-    errorUsuarios: errorUsuarios?.message,
   });
 
   const {
