@@ -189,9 +189,15 @@ export default function UnidadeForm({
         const cepNumeros = cep.replace("-", "");
         console.log("📡 [FORM] Buscando CEP:", cepNumeros);
 
-        // Usar API proxy do Next.js ao invés de chamar ViaCEP diretamente
-        // Isso evita problemas de CORS e conexão bloqueada
-        const response = await fetch(`/api/cep/${cepNumeros}`);
+        // Chamar ViaCEP diretamente
+        const response = await fetch(
+          `https://viacep.com.br/ws/${cepNumeros}/json/`,
+          {
+            headers: {
+              Accept: "application/json",
+            },
+          }
+        );
         console.log("📡 [FORM] Resposta recebida - Status:", response.status);
 
         if (!response.ok) {
@@ -203,7 +209,7 @@ export default function UnidadeForm({
         const data = await response.json();
         console.log("✅ [FORM] Dados do CEP:", data);
 
-        if (data && !data.error) {
+        if (data && !data.erro) {
           console.log("✅ [FORM] Preenchendo endereço automaticamente");
           setFormData((prev) => ({
             ...prev,
@@ -214,7 +220,7 @@ export default function UnidadeForm({
             pais: "Brasil",
           }));
         } else {
-          console.log("⚠️ [FORM] Dados inválidos ou erro:", data);
+          console.log("⚠️ [FORM] CEP não encontrado");
         }
       } catch (error) {
         console.error("❌ [FORM] Erro ao buscar CEP:", error);

@@ -7,6 +7,14 @@ import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001";
 
+// Função para formatar CPF
+const formatCPF = (cpf: string): string => {
+  if (!cpf) return "";
+  const cleaned = cpf.replace(/\D/g, "");
+  if (cleaned.length !== 11) return cpf;
+  return cleaned.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
+};
+
 // Interface para unidade
 interface Unidade {
   id: string;
@@ -909,13 +917,14 @@ export default function MeuPerfilPage() {
                   type="text"
                   id="cpf"
                   name="cpf"
-                  value={formData.cpf}
+                  value={formatCPF(formData.cpf)}
                   onChange={handleChange}
                   className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                     errors.cpf ? "border-red-500" : "border-gray-300"
                   }`}
                   placeholder="000.000.000-00"
                   maxLength={14}
+                  readOnly
                 />
                 {errors.cpf && (
                   <p className="mt-1 text-sm text-red-600">{errors.cpf}</p>
