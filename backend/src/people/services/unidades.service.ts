@@ -128,9 +128,6 @@ export class UnidadesService {
       whereConditions.push(`u.status = $${paramIndex}`);
       queryParams.push(params.status);
       paramIndex++;
-    } else {
-      // Se não especificou status ou é 'todos', excluir apenas INATIVAS (mostrar ATIVA e HOMOLOGACAO)
-      whereConditions.push(`u.status != 'INATIVA'`);
     }
 
     // Filtrar por franqueado_id se fornecido explicitamente na query
@@ -138,6 +135,8 @@ export class UnidadesService {
       whereConditions.push(`u.franqueado_id = $${paramIndex}`);
       queryParams.push(params.franqueado_id);
       paramIndex++;
+      // Se o franqueado está filtrando suas unidades explicitamente, mostrar TODAS (incluindo inativas)
+      // Não adicionar filtro de status aqui
     }
     // Se gerente de unidade, filtra pela unidade que ele gerencia
     else if (user && this.isGerenteUnidade(user) && !this.isMaster(user)) {
@@ -181,7 +180,16 @@ export class UnidadesService {
         whereConditions.push(`u.franqueado_id = $${paramIndex}`);
         queryParams.push(franqueadoId);
         paramIndex++;
+        // Franqueado vendo suas próprias unidades: mostrar TODAS (incluindo inativas)
       }
+    }
+    // Se não foi especificado franqueado_id e não tem filtro de status,
+    // e não é franqueado logado, excluir inativas por padrão
+    else if (
+      !params.franqueado_id &&
+      (!params.status || params.status === 'todos')
+    ) {
+      whereConditions.push(`u.status != 'INATIVA'`);
     }
 
     const whereClause =

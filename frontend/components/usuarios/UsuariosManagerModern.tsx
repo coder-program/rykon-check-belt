@@ -114,6 +114,7 @@ interface ValidationErrors {
   telefone?: string;
   password?: string;
   username?: string;
+  perfil_ids?: string;
 }
 
 export default function UsuariosManagerNew() {
@@ -403,6 +404,11 @@ export default function UsuariosManagerNew() {
 
     if (formData.telefone && !isValidPhone(formData.telefone)) {
       errors.telefone = "Telefone deve ter 10 ou 11 dígitos";
+    }
+
+    // Validação obrigatória: pelo menos um perfil deve ser selecionado
+    if (formData.perfil_ids.length === 0) {
+      errors.perfil_ids = "Selecione pelo menos um perfil de acesso";
     }
 
     setValidationErrors(errors);
@@ -1190,11 +1196,17 @@ export default function UsuariosManagerNew() {
                       </label>
                     ))}
                   </div>
-                  {formData.perfil_ids.length === 0 && (
-                    <p className="text-amber-600 text-sm mt-2">
-                      ⚠️ Selecione um perfil de acesso
+                  {validationErrors.perfil_ids && (
+                    <p className="text-red-600 text-sm mt-2">
+                      {validationErrors.perfil_ids}
                     </p>
                   )}
+                  {!validationErrors.perfil_ids &&
+                    formData.perfil_ids.length === 0 && (
+                      <p className="text-amber-600 text-sm mt-2">
+                        ⚠️ Selecione um perfil de acesso
+                      </p>
+                    )}
                 </div>
 
                 {/* Unidade (para GERENTE_UNIDADE, RECEPCIONISTA, INSTRUTOR e TABLET_CHECKIN) */}

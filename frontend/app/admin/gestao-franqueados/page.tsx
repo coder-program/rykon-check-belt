@@ -590,7 +590,8 @@ export default function GestaoFranqueadosPage() {
                         </div>
                       )}
 
-                      <button
+                      {/* Botões comentados temporariamente */}
+                      {/* <button
                         onClick={() => abrirModalVincularUsuario(franqueado)}
                         className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-3 py-2 rounded-lg text-sm transition-colors whitespace-nowrap"
                         title="Vincular usuário a este franqueado"
@@ -605,7 +606,7 @@ export default function GestaoFranqueadosPage() {
                       >
                         <Settings className="h-4 w-4" />
                         Gerenciar Unidades
-                      </button>
+                      </button> */}
                     </div>
                   </div>
                 );

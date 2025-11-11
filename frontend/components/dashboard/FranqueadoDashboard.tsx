@@ -82,6 +82,11 @@ export default function FranqueadoDashboard() {
   const stats = {
     minhasUnidades: unidades.length,
     unidadesAtivas: unidades.filter((u: any) => u.status === "ATIVA").length,
+    unidadesHomologacao: unidades.filter(
+      (u: any) => u.status === "EM_HOMOLOGACAO"
+    ).length,
+    unidadesInativas: unidades.filter((u: any) => u.status === "INATIVA")
+      .length,
     totalAlunos: alunosDasFranquias.length,
     totalProfessores: unidades.reduce(
       (sum: number, u: any) => sum + (u.qtde_instrutores || 0),
@@ -297,8 +302,23 @@ export default function FranqueadoDashboard() {
             <CardContent>
               <div className="text-2xl font-bold">{stats.minhasUnidades}</div>
               <p className="text-xs text-muted-foreground">
-                {stats.unidadesAtivas} ativa
-                {stats.unidadesAtivas !== 1 ? "s" : ""}
+                {stats.unidadesAtivas > 0 &&
+                  `${stats.unidadesAtivas} ativa${
+                    stats.unidadesAtivas !== 1 ? "s" : ""
+                  }`}
+                {stats.unidadesAtivas > 0 &&
+                  (stats.unidadesHomologacao > 0 ||
+                    stats.unidadesInativas > 0) &&
+                  ", "}
+                {stats.unidadesHomologacao > 0 &&
+                  `${stats.unidadesHomologacao} em homologação`}
+                {stats.unidadesHomologacao > 0 &&
+                  stats.unidadesInativas > 0 &&
+                  ", "}
+                {stats.unidadesInativas > 0 &&
+                  `${stats.unidadesInativas} inativa${
+                    stats.unidadesInativas !== 1 ? "s" : ""
+                  }`}
               </p>
             </CardContent>
           </Card>
