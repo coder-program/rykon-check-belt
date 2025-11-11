@@ -285,9 +285,7 @@ export default function MinhaFranquiaPage() {
       if (response.ok) {
         // Se foi um novo cadastro, redirecionar para o dashboard após um breve delay
         if (!franquiaExistente) {
-          toast.success(
-            "Franquia cadastrada com sucesso! Redirecionando para o dashboard..."
-          );
+          toast.success("Franquia cadastrada com sucesso!");
 
           // Atualizar o estado do usuário para marcar cadastro como completo
           if (user && updateUser) {
