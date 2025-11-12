@@ -25,6 +25,9 @@ export class Responsavel {
   @Column({ length: 255 })
   nome_completo: string;
 
+  @Column({ type: 'uuid', nullable: true })
+  unidade_id: string;
+
   @Column({ length: 11, unique: true })
   cpf: string;
 

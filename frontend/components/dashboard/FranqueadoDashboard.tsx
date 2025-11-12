@@ -176,18 +176,45 @@ export default function FranqueadoDashboard() {
 
   if (!franqueado) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
+        <div className="max-w-md w-full text-center">
           <Building2 className="h-16 w-16 text-gray-400 mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-gray-900 mb-2">
-            Franqueado não encontrado
+            Cadastro de Franqueado Incompleto
           </h2>
           <p className="text-gray-600 mb-4">
-            Seu usuário não está vinculado a nenhum franqueado.
+            Seu usuário possui o perfil de FRANQUEADO, mas seu cadastro ainda
+            não foi completado.
           </p>
-          <p className="text-sm text-gray-500">
-            Entre em contato com o administrador do sistema.
-          </p>
+
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4 text-left">
+            <div className="flex items-start gap-2">
+              <AlertCircle className="h-5 w-5 text-yellow-600 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="text-sm font-medium text-yellow-800 mb-2">
+                  Para completar seu cadastro:
+                </p>
+                <ol className="text-sm text-yellow-700 space-y-1 list-decimal list-inside">
+                  <li>Entre em contato com o administrador do sistema</li>
+                  <li>
+                    Solicite que ele edite seu usuário em "Gerenciar Usuários"
+                  </li>
+                  <li>Peça para marcar a opção "Cadastro Completo"</li>
+                  <li>
+                    Preencher os dados adicionais de franqueado (CPF, telefone,
+                    etc)
+                  </li>
+                </ol>
+              </div>
+            </div>
+          </div>
+
+          <button
+            onClick={() => router.push("/meu-perfil")}
+            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            Ver Meu Perfil
+          </button>
         </div>
       </div>
     );

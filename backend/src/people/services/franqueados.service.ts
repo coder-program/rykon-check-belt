@@ -20,7 +20,7 @@ export class FranqueadosService {
     const pageSize = Math.min(100, Math.max(1, Number(params.pageSize) || 20));
     const offset = (page - 1) * pageSize;
 
-    let whereConditions: string[] = ['f.ativo = true']; // ✅ Sempre filtrar apenas ativos
+    let whereConditions: string[] = []; // Removido filtro fixo por ativo
     let queryParams: any[] = [];
     let paramIndex = 1;
 
@@ -38,7 +38,10 @@ export class FranqueadosService {
       paramIndex++;
     }
 
-    const whereClause = `WHERE ${whereConditions.join(' AND ')}`;
+    const whereClause =
+      whereConditions.length > 0
+        ? `WHERE ${whereConditions.join(' AND ')}`
+        : '';
 
     // Query para buscar franqueados com informações do usuário
     const itemsQuery = `
@@ -115,29 +118,31 @@ export class FranqueadosService {
   }
 
   async create(body: CreateFranqueadoSimplifiedDto): Promise<Franqueado> {
-    // Validar CPF duplicado
+    // Validar CPF duplicado (verificar TODOS os registros, não só os ativos)
     if (body.cpf) {
       const cpfLimpo = body.cpf.replace(/\D/g, '');
       const existingCpf = await this.dataSource.query(
-        `SELECT id, nome FROM teamcruz.franqueados WHERE cpf = $1 AND ativo = true LIMIT 1`,
+        `SELECT id, nome, ativo FROM teamcruz.franqueados WHERE cpf = $1 LIMIT 1`,
         [cpfLimpo],
       );
       if (existingCpf && existingCpf.length > 0) {
+        const status = existingCpf[0].ativo ? 'ativo' : 'inativo';
         throw new ConflictException(
-          `Já existe um franqueado cadastrado com este CPF: ${existingCpf[0].nome}`,
+          `Já existe um franqueado ${status} cadastrado com este CPF: ${existingCpf[0].nome}. ${!existingCpf[0].ativo ? 'Se desejar reativar este cadastro, entre em contato com o administrador.' : ''}`,
         );
       }
     }
 
-    // Validar email duplicado
+    // Validar email duplicado (verificar TODOS os registros, não só os ativos)
     if (body.email) {
       const existingEmail = await this.dataSource.query(
-        `SELECT id, nome FROM teamcruz.franqueados WHERE email = $1 AND ativo = true LIMIT 1`,
+        `SELECT id, nome, ativo FROM teamcruz.franqueados WHERE email = $1 LIMIT 1`,
         [body.email],
       );
       if (existingEmail && existingEmail.length > 0) {
+        const status = existingEmail[0].ativo ? 'ativo' : 'inativo';
         throw new ConflictException(
-          `Já existe um franqueado cadastrado com este email: ${existingEmail[0].nome}`,
+          `Já existe um franqueado ${status} cadastrado com este email: ${existingEmail[0].nome}. ${!existingEmail[0].ativo ? 'Se desejar reativar este cadastro, entre em contato com o administrador.' : ''}`,
         );
       }
     }
@@ -166,17 +171,39 @@ export class FranqueadosService {
       body.ativo ?? true,
     ];
 
-    const result = await this.dataSource.query(query, params);
+    try {
+      const result = await this.dataSource.query(query, params);
 
-    // Se tem usuario_id, atualizar o campo cadastro_completo do usuário
-    if (body.usuario_id) {
-      await this.dataSource.query(
-        `UPDATE teamcruz.usuarios SET cadastro_completo = true WHERE id = $1`,
-        [body.usuario_id],
-      );
+      // Se tem usuario_id, atualizar o campo cadastro_completo do usuário
+      if (body.usuario_id) {
+        await this.dataSource.query(
+          `UPDATE teamcruz.usuarios SET cadastro_completo = true WHERE id = $1`,
+          [body.usuario_id],
+        );
+      }
+
+      return result[0];
+    } catch (error) {
+      // Tratar erros de constraint do banco de dados
+      if (error.code === '23505') {
+        // Unique constraint violation
+        if (error.constraint === 'franqueados_cpf_unique') {
+          throw new ConflictException(
+            'Este CPF já está cadastrado no sistema. Verifique se o franqueado já existe ou se foi desativado.',
+          );
+        }
+        if (error.constraint === 'franqueados_email_unique') {
+          throw new ConflictException(
+            'Este email já está cadastrado no sistema. Verifique se o franqueado já existe ou se foi desativado.',
+          );
+        }
+        throw new ConflictException(
+          'Já existe um registro com estes dados no sistema.',
+        );
+      }
+      // Re-lançar outros erros
+      throw error;
     }
-
-    return result[0];
   }
 
   async update(

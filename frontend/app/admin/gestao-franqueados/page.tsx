@@ -246,19 +246,18 @@ export default function GestaoFranqueadosPage() {
       if (!matches) return false;
     }
 
-    // Filtro de situação
-    if (filtros.situacao && franqueado.situacao !== filtros.situacao) {
-      return false;
+    // Filtro de situação - se vazio, mostra todas
+    if (filtros.situacao && filtros.situacao !== "") {
+      if (franqueado.situacao !== filtros.situacao) {
+        return false;
+      }
     }
 
-    // Filtro de ativo
-    if (filtros.ativo) {
-      const isAtivo = filtros.ativo === "true";
-      if (franqueado.ativo !== isAtivo) return false;
-    }
+    // Filtro de ativo - REMOVIDO pois não está sendo usado nos selects
+    // A situação já controla o status ativo/inativo
 
     // Filtro de tem unidades
-    if (filtros.temUnidades) {
+    if (filtros.temUnidades && filtros.temUnidades !== "") {
       const temUnidades = todasUnidades.some(
         (u: Unidade) => u.franqueado_id === franqueado.id
       );
@@ -267,7 +266,7 @@ export default function GestaoFranqueadosPage() {
     }
 
     // Filtro de tem usuário vinculado
-    if (filtros.temUsuario) {
+    if (filtros.temUsuario && filtros.temUsuario !== "") {
       const temUsuario = !!franqueado.usuario_id;
       const filtroTemUsuario = filtros.temUsuario === "true";
       if (temUsuario !== filtroTemUsuario) return false;

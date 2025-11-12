@@ -634,21 +634,21 @@ export class AuthService {
             cpf: user.cpf,
             data_nascimento: user.data_nascimento || payload.data_nascimento,
             genero: payload.genero || 'OUTRO', // Default se não informado
-            
+
             // Contato
             email: user.email,
             telefone_whatsapp: user.telefone,
             telefone_emergencia: payload.telefone_emergencia || null,
             nome_contato_emergencia: payload.nome_contato_emergencia || null,
-            
+
             // Matrícula
             data_matricula: new Date().toISOString().split('T')[0],
             status: 'ATIVO', // Aluno ativo por padrão no auto-cadastro
-            
+
             // Graduação
             faixa_atual: payload.faixa_atual || 'BRANCA',
             graus: 0,
-            
+
             // Dados opcionais
             peso: payload.peso || null,
             altura: payload.altura || null,
@@ -657,20 +657,22 @@ export class AuthService {
             medicamentos_uso_continuo: payload.medicamentos || null,
             observacoes_medicas: payload.condicoes_medicas || null,
             plano_saude: payload.plano_saude || null,
-            
+
             // Responsável (para menores)
             responsavel_nome: payload.responsavel_nome || null,
             responsavel_cpf: payload.responsavel_cpf || null,
             responsavel_telefone: payload.responsavel_telefone || null,
             responsavel_parentesco: payload.responsavel_parentesco || null,
-            
+
             // LGPD
             consent_lgpd: payload.consent_lgpd || false,
             consent_imagem: payload.consent_imagem || false,
             consent_lgpd_date: payload.consent_lgpd ? new Date() : null,
           } as any);
-          
-          console.log(`✅ [registerAluno] Aluno ${user.nome} criado na unidade ${payload.unidade_id}`);
+
+          console.log(
+            `✅ [registerAluno] Aluno ${user.nome} criado na unidade ${payload.unidade_id}`,
+          );
         } catch (error) {
           console.error('❌ Erro ao criar registro de aluno:', error.message);
           console.error('Stack:', error.stack);
@@ -689,6 +691,7 @@ export class AuthService {
       try {
         await this.responsaveisService.create({
           usuario_id: user.id,
+          unidade_id: payload.unidade_id, // Vincular à unidade selecionada
           nome_completo: user.nome,
           cpf: user.cpf,
           email: user.email,

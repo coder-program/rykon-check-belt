@@ -223,6 +223,39 @@ export class UsuariosService {
       throw new ConflictException('Email já existe');
     }
 
+    // ⚠️ VALIDAÇÃO: Perfis que requerem cadastro completo
+    if (createUsuarioDto.perfil_ids && createUsuarioDto.perfil_ids.length > 0) {
+      const perfis = await this.perfilRepository.find({
+        where: createUsuarioDto.perfil_ids.map((id) => ({ id })),
+      });
+
+      const perfisQueRequeremCadastroCompleto = [
+        'FRANQUEADO',
+        'GERENTE_UNIDADE',
+        'RECEPCIONISTA',
+        'INSTRUTOR',
+      ];
+      const temPerfilQueRequerCadastroCompleto = perfis.some((p) =>
+        perfisQueRequeremCadastroCompleto.includes(p.nome?.toUpperCase()),
+      );
+
+      if (
+        temPerfilQueRequerCadastroCompleto &&
+        !createUsuarioDto.cadastro_completo
+      ) {
+        const perfisNomes = perfis
+          .filter((p) =>
+            perfisQueRequeremCadastroCompleto.includes(p.nome?.toUpperCase()),
+          )
+          .map((p) => p.nome)
+          .join(', ');
+
+        throw new BadRequestException(
+          `Os perfis ${perfisNomes} requerem cadastro completo. Marque a opção "Cadastro Completo" e preencha todos os dados necessários.`,
+        );
+      }
+    }
+
     // Verificar se CPF já existe para o MESMO PERFIL
     if (
       createUsuarioDto.cpf &&
@@ -463,7 +496,7 @@ export class UsuariosService {
       );
 
       // Buscar IDs de usuários das unidades do franqueado
-      // Inclui: alunos, professores, gerentes e recepcionistas das unidades
+      // Inclui: alunos, professores, gerentes, recepcionistas e responsáveis das unidades
       // EXCLUI: outros franqueados (que devem ver apenas suas próprias listas)
       const usuariosIds = await this.usuarioRepository.query(
         `
@@ -477,6 +510,7 @@ export class UsuariosService {
                  WHEN un_prof.franqueado_id = $1 THEN 'professor_da_unidade'
                  WHEN un_gerente.franqueado_id = $1 THEN 'gerente_da_unidade'
                  WHEN un_recep.franqueado_id = $1 THEN 'recepcionista_da_unidade'
+                 WHEN perfil.nome = 'RESPONSAVEL' THEN 'responsavel'
                  ELSE 'outro'
                END as motivo_inclusao
         FROM teamcruz.usuarios u
@@ -496,6 +530,7 @@ export class UsuariosService {
           (un_aluno.franqueado_id = $1 OR un_prof.franqueado_id = $1 OR un_gerente.franqueado_id = $1 OR un_recep.franqueado_id = $1)
           OR f.id = $1
           OR u.id = $2
+          OR UPPER(perfil.nome) = 'RESPONSAVEL'
         )
         -- Excluir usuários que são FRANQUEADOS de outras franquias
         AND NOT EXISTS (
@@ -766,6 +801,13 @@ export class UsuariosService {
     id: string,
     updateData: Partial<CreateUsuarioDto>,
   ): Promise<Usuario> {
+    console.log('📸 [UPDATE] Dados recebidos:', {
+      id,
+      temFoto: !!updateData.foto,
+      tamanhoFoto: updateData.foto?.length,
+      primeiros50: updateData.foto?.substring(0, 50),
+    });
+
     const usuario = await this.findOne(id);
     if (updateData.password) {
       const saltRounds = 10;
@@ -1022,6 +1064,14 @@ export class UsuariosService {
   }
 
   async findPendingApproval(user?: any): Promise<any[]> {
+    console.log(
+      '🔍 [findPendingApproval] Iniciando busca de usuários pendentes...',
+    );
+    console.log(
+      '👤 [findPendingApproval] User logado:',
+      JSON.stringify(user, null, 2),
+    );
+
     // Detectar perfil do usuário logado
     const perfis =
       user?.perfis?.map((p: any) => (typeof p === 'string' ? p : p.nome)) || [];
@@ -1029,11 +1079,20 @@ export class UsuariosService {
     // Converter tudo para minúsculas para comparação case-insensitive
     const perfisLower = perfis.map((p: string) => p.toLowerCase());
 
+    console.log('📋 [findPendingApproval] Perfis detectados:', perfisLower);
+
     const isMaster =
       perfisLower.includes('master') || perfisLower.includes('admin');
     const isFranqueado = perfisLower.includes('franqueado');
     const isGerente = perfisLower.includes('gerente_unidade');
     const isRecepcionista = perfisLower.includes('recepcionista');
+
+    console.log('🎭 [findPendingApproval] Tipo de usuário:', {
+      isMaster,
+      isFranqueado,
+      isGerente,
+      isRecepcionista,
+    });
 
     // Buscar usuários que estão inativos (aguardando aprovação)
     let usuarios: any[] = [];
@@ -1062,22 +1121,34 @@ export class UsuariosService {
         },
       });
     } else if (isFranqueado) {
+      console.log('🏢 [findPendingApproval] Buscando franqueado_id...');
+
       const franqueadoData = await this.usuarioRepository.query(
         `SELECT id FROM teamcruz.franqueados WHERE usuario_id = $1`,
         [user.id],
       );
 
+      console.log('🏢 [findPendingApproval] Franqueado data:', franqueadoData);
+
       if (franqueadoData && franqueadoData.length > 0) {
         const franqueadoId = franqueadoData[0].id;
 
-        // Buscar GERENTES, ALUNOS, RECEPCIONISTAS e PROFESSORES pendentes das unidades do franqueado
+        console.log(
+          '✅ [findPendingApproval] Franqueado ID encontrado:',
+          franqueadoId,
+        );
+        console.log(
+          '🔍 [findPendingApproval] Executando query para buscar usuários pendentes...',
+        );
+
+        // Buscar GERENTES, ALUNOS, RECEPCIONISTAS, PROFESSORES e RESPONSAVEIS pendentes das unidades do franqueado
         const usuariosPendentes = await this.usuarioRepository.query(
           `
           SELECT DISTINCT u.id, u.username, u.email, u.nome, u.cpf, u.telefone,
                  u.ativo, u.cadastro_completo, u.created_at, u.updated_at,
-                 COALESCE(gu_un.id, a_un.id, rec_un.id, prof_un.id) as unidade_id,
-                 COALESCE(gu_un.nome, a_un.nome, rec_un.nome, prof_un.nome) as unidade_nome,
-                 COALESCE(gu_un.status, a_un.status, rec_un.status, prof_un.status) as unidade_status
+                 COALESCE(gu_un.id, a_un.id, rec_un.id, prof_un.id, resp_un.id) as unidade_id,
+                 COALESCE(gu_un.nome, a_un.nome, rec_un.nome, prof_un.nome, resp_un.nome) as unidade_nome,
+                 COALESCE(gu_un.status, a_un.status, rec_un.status, prof_un.status, resp_un.status) as unidade_status
           FROM teamcruz.usuarios u
           INNER JOIN teamcruz.usuario_perfis up ON u.id = up.usuario_id
           INNER JOIN teamcruz.perfis p ON up.perfil_id = p.id
@@ -1099,16 +1170,30 @@ export class UsuariosService {
           LEFT JOIN teamcruz.professor_unidades pu ON pu.professor_id = prof.id
           LEFT JOIN teamcruz.unidades prof_un ON prof_un.id = pu.unidade_id AND prof_un.franqueado_id = $1
 
+          -- Unidade do Responsavel
+          LEFT JOIN teamcruz.responsaveis resp ON resp.usuario_id = u.id
+          LEFT JOIN teamcruz.unidades resp_un ON resp_un.id = resp.unidade_id AND resp_un.franqueado_id = $1
+
           WHERE u.ativo = false
             AND (
               (UPPER(p.nome) = 'GERENTE_UNIDADE' AND gu_un.id IS NOT NULL)
               OR (UPPER(p.nome) = 'ALUNO' AND a_un.id IS NOT NULL)
               OR (UPPER(p.nome) = 'RECEPCIONISTA' AND rec_un.id IS NOT NULL)
               OR (UPPER(p.nome) IN ('PROFESSOR', 'INSTRUTOR') AND prof_un.id IS NOT NULL)
+              OR (UPPER(p.nome) = 'RESPONSAVEL' AND resp_un.id IS NOT NULL)
             )
           ORDER BY u.created_at DESC
           `,
           [franqueadoId],
+        );
+
+        console.log(
+          '📊 [findPendingApproval] Usuários pendentes encontrados:',
+          usuariosPendentes.length,
+        );
+        console.log(
+          '📋 [findPendingApproval] Dados brutos:',
+          JSON.stringify(usuariosPendentes, null, 2),
         );
 
         // Buscar perfis e unidade para cada usuário
@@ -1201,12 +1286,15 @@ export class UsuariosService {
           LEFT JOIN teamcruz.professores prof ON prof.usuario_id = u.id
           LEFT JOIN teamcruz.professor_unidades pu ON pu.professor_id = prof.id AND pu.unidade_id = $1
 
+          -- Responsaveis da unidade
+          LEFT JOIN teamcruz.responsaveis resp ON resp.usuario_id = u.id AND resp.unidade_id = $1
+
           WHERE u.ativo = false
             AND (
               (UPPER(p.nome) = 'ALUNO' AND a.id IS NOT NULL)
               OR (UPPER(p.nome) = 'RECEPCIONISTA' AND ru.id IS NOT NULL)
               OR (UPPER(p.nome) IN ('PROFESSOR', 'INSTRUTOR') AND pu.id IS NOT NULL)
-              OR (UPPER(p.nome) = 'RESPONSAVEL')
+              OR (UPPER(p.nome) = 'RESPONSAVEL' AND resp.id IS NOT NULL)
             )
           ORDER BY u.created_at DESC
           `,

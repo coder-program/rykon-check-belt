@@ -34,8 +34,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         if (tokenPayload && tokenPayload.exp) {
           const isExpired = Date.now() >= tokenPayload.exp * 1000;
           if (isExpired) {
-            console.warn('⚠️ Token expirado detectado no checkAuthStatus');
-            throw new Error('Token expirado');
+            console.warn("⚠️ Token expirado detectado no checkAuthStatus");
+            throw new Error("Token expirado");
           }
         }
 
@@ -59,13 +59,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   // Função auxiliar para decodificar JWT
   const parseJwt = (token: string) => {
     try {
-      const base64Url = token.split('.')[1];
-      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const base64Url = token.split(".")[1];
+      const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
       const jsonPayload = decodeURIComponent(
         atob(base64)
-          .split('')
-          .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
-          .join('')
+          .split("")
+          .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+          .join("")
       );
       return JSON.parse(jsonPayload);
     } catch (error) {

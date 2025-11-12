@@ -45,35 +45,67 @@ export async function http(path: string, opts: HttpOptions = {}) {
   });
 
   if (!res.ok) {
-    // Se o token expirou (401), fazer logout automático
-    if (res.status === 401 && typeof window !== "undefined") {
-      const data = await res.json().catch(() => ({}));
-      const isTokenExpired =
-        data?.message?.toLowerCase().includes("expired") ||
-        data?.message?.toLowerCase().includes("unauthorized") ||
-        data?.message?.toLowerCase().includes("invalid token");
-
-      if (isTokenExpired) {
-        console.warn("⚠️ Token expirado! Fazendo logout automático...");
-        localStorage.removeItem("token");
-        localStorage.removeItem("user");
-
-        // Redirecionar para login
-        if (window.location.pathname !== "/login") {
-          window.location.href = "/login?expired=true";
-        }
-        throw new Error("Sua sessão expirou. Por favor, faça login novamente.");
-      }
-    }
-
     let message = `HTTP ${res.status}`;
+    let data: any = {};
+
     try {
-      const data = await res.json();
+      data = await res.json();
       message = data?.message || message;
-      throw new Error(message);
     } catch (e) {
-      throw new Error(message);
+      // Se não conseguir parsear o JSON, usa a mensagem padrão
     }
+
+    // Tratamento especial para erro 401 (Não Autorizado)
+    if (res.status === 401) {
+      // Se o token expirou ou é inválido
+      if (typeof window !== "undefined") {
+        const isTokenExpired =
+          data?.message?.toLowerCase().includes("expired") ||
+          data?.message?.toLowerCase().includes("unauthorized") ||
+          data?.message?.toLowerCase().includes("invalid token");
+
+        if (isTokenExpired && window.location.pathname !== "/login") {
+          console.warn("⚠️ Token expirado! Fazendo logout automático...");
+          localStorage.removeItem("token");
+          localStorage.removeItem("user");
+          window.location.href = "/login?expired=true";
+          throw new Error(
+            "Sua sessão expirou. Por favor, faça login novamente."
+          );
+        }
+      }
+
+      // Se for erro de login (credenciais inválidas)
+      if (data?.message?.toLowerCase().includes("senha incorreta")) {
+        throw new Error(
+          "❌ Senha incorreta. Verifique sua senha e tente novamente."
+        );
+      }
+      if (
+        data?.message
+          ?.toLowerCase()
+          .includes("email ou username não encontrado") ||
+        data?.message?.toLowerCase().includes("usuário não encontrado")
+      ) {
+        throw new Error(
+          "❌ Usuário não encontrado. Verifique seu email/username."
+        );
+      }
+      if (
+        data?.message?.toLowerCase().includes("conta está inativa") ||
+        data?.message?.toLowerCase().includes("sua conta está inativa")
+      ) {
+        throw new Error(
+          "⚠️ Sua conta está inativa. Entre em contato com o administrador."
+        );
+      }
+
+      // Mensagem genérica para outros casos de 401
+      throw new Error(message || "❌ Email/username ou senha incorretos.");
+    }
+
+    // Outros erros HTTP
+    throw new Error(message);
   }
 
   // tenta json, se falhar retorna texto

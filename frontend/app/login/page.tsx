@@ -79,14 +79,11 @@ function LoginContent() {
     // ⏰ Verificar se o usuário foi redirecionado por token expirado
     const expired = searchParams.get("expired");
     if (expired === "true") {
-      toast.error(
-        "⏰ Sua sessão expirou! Por favor, faça login novamente.",
-        {
-          duration: 5000,
-          position: "top-center",
-          icon: "🔒",
-        }
-      );
+      toast.error("⏰ Sua sessão expirou! Por favor, faça login novamente.", {
+        duration: 5000,
+        position: "top-center",
+        icon: "🔒",
+      });
       // Limpar a query string da URL
       window.history.replaceState({}, document.title, "/login");
     }

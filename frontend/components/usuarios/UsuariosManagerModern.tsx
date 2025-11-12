@@ -138,6 +138,7 @@ export default function UsuariosManagerNew() {
   const [statusFilter, setStatusFilter] = useState<
     "todos" | "ativo" | "inativo"
   >("todos");
+  const [perfilFilter, setPerfilFilter] = useState<string>("todos");
   const [showModal, setShowModal] = useState(false);
   const [editingUser, setEditingUser] = useState<any>(null);
   const [showPassword, setShowPassword] = useState(false);
@@ -250,25 +251,20 @@ export default function UsuariosManagerNew() {
     }
 
     // FRANQUEADO pode criar apenas estes perfis:
+    // REMOVIDO: ALUNO e RESPONSAVEL (eles se cadastram pela tela pública)
     if (isFranqueado) {
       const permitido = [
         "GERENTE_UNIDADE",
         "RECEPCIONISTA",
-        "ALUNO",
-        "RESPONSAVEL",
         "INSTRUTOR",
       ].includes(nomePerfil);
       return permitido;
     }
 
     // GERENTE_UNIDADE pode criar apenas estes perfis:
+    // REMOVIDO: ALUNO e RESPONSAVEL (eles se cadastram pela tela pública)
     if (isGerenteUnidade) {
-      const permitido = [
-        "RECEPCIONISTA",
-        "ALUNO",
-        "RESPONSAVEL",
-        "INSTRUTOR",
-      ].includes(nomePerfil);
+      const permitido = ["RECEPCIONISTA", "INSTRUTOR"].includes(nomePerfil);
       return permitido;
     }
 
@@ -396,7 +392,9 @@ export default function UsuariosManagerNew() {
     // EMAIL: apenas letras, números, underline (_) e ponto (.)
     if (!formData.email.trim()) {
       errors.email = "Email é obrigatório";
-    } else if (!/^[a-zA-Z0-9_.]+@[a-zA-Z0-9_.]+\.[a-zA-Z]{2,}$/.test(formData.email)) {
+    } else if (
+      !/^[a-zA-Z0-9_.]+@[a-zA-Z0-9_.]+\.[a-zA-Z]{2,}$/.test(formData.email)
+    ) {
       errors.email = "Email inválido. Use apenas letras, números, _ e .";
     }
 
@@ -500,6 +498,12 @@ export default function UsuariosManagerNew() {
         if (formData.password.trim()) {
           updateData.password = formData.password;
         }
+
+        console.log("📸 [UPDATE] Enviando foto:", {
+          temFoto: !!formData.foto,
+          tamanhoBase64: formData.foto?.length,
+          primeiros50Chars: formData.foto?.substring(0, 50),
+        });
 
         await updateMutation.mutateAsync({
           id: editingUser.id,
@@ -607,7 +611,11 @@ export default function UsuariosManagerNew() {
       (statusFilter === "ativo" && usuario.ativo) ||
       (statusFilter === "inativo" && !usuario.ativo);
 
-    return matchesSearch && matchesStatus;
+    const matchesPerfil =
+      perfilFilter === "todos" ||
+      usuario.perfis?.some((perfil: any) => perfil.id === perfilFilter);
+
+    return matchesSearch && matchesStatus && matchesPerfil;
   });
 
   const stats = {
@@ -738,9 +746,22 @@ export default function UsuariosManagerNew() {
                   onChange={(e) => setStatusFilter(e.target.value as any)}
                   className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
-                  <option value="todos">Todos</option>
+                  <option value="todos">Todos Status</option>
                   <option value="ativo">Ativos</option>
                   <option value="inativo">Inativos</option>
+                </select>
+
+                <select
+                  value={perfilFilter}
+                  onChange={(e) => setPerfilFilter(e.target.value)}
+                  className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent min-w-[200px]"
+                >
+                  <option value="todos">Todos Perfis</option>
+                  {perfisDisponiveis.map((perfil: any) => (
+                    <option key={perfil.id} value={perfil.id}>
+                      {perfil.nome}
+                    </option>
+                  ))}
                 </select>
               </div>
             </div>
@@ -929,7 +950,10 @@ export default function UsuariosManagerNew() {
                       value={formData.nome}
                       onChange={(e) => {
                         // Permitir apenas letras, espaços, apóstrofos e hífens
-                        const value = e.target.value.replace(/[^a-zA-ZÀ-ÿ\s'-]/g, '');
+                        const value = e.target.value.replace(
+                          /[^a-zA-ZÀ-ÿ\s'-]/g,
+                          ""
+                        );
                         setFormData({ ...formData, nome: value });
                       }}
                       className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
@@ -1018,35 +1042,43 @@ export default function UsuariosManagerNew() {
                   </div>
 
                   {/* Username */}
-                  {!editingUser && (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Username * (máx. 15 caracteres)
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        maxLength={15}
-                        value={formData.username}
-                        onChange={(e) => {
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Username * (máx. 15 caracteres)
+                      {editingUser && (
+                        <span className="text-xs text-gray-500 ml-2">
+                          (não pode ser alterado)
+                        </span>
+                      )}
+                    </label>
+                    <input
+                      type="text"
+                      required={!editingUser}
+                      maxLength={15}
+                      value={formData.username}
+                      onChange={(e) => {
+                        if (!editingUser) {
                           // Limitar a 15 caracteres
                           const value = e.target.value.slice(0, 15);
                           setFormData({ ...formData, username: value });
-                        }}
-                        className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                          validationErrors.username
-                            ? "border-red-500"
-                            : "border-gray-300"
-                        }`}
-                        placeholder="Digite o username"
-                      />
-                      {validationErrors.username && (
-                        <p className="text-red-600 text-sm mt-1">
-                          {validationErrors.username}
-                        </p>
-                      )}
-                    </div>
-                  )}
+                        }
+                      }}
+                      disabled={editingUser}
+                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                        editingUser
+                          ? "bg-gray-100 cursor-not-allowed"
+                          : validationErrors.username
+                          ? "border-red-500"
+                          : "border-gray-300"
+                      }`}
+                      placeholder="Digite o username"
+                    />
+                    {validationErrors.username && (
+                      <p className="text-red-600 text-sm mt-1">
+                        {validationErrors.username}
+                      </p>
+                    )}
+                  </div>
 
                   {/* Email */}
                   <div>
@@ -1059,7 +1091,10 @@ export default function UsuariosManagerNew() {
                       value={formData.email}
                       onChange={(e) => {
                         // Permitir apenas letras, números, _, . e @
-                        const value = e.target.value.replace(/[^a-zA-Z0-9_.@]/g, '');
+                        const value = e.target.value.replace(
+                          /[^a-zA-Z0-9_.@]/g,
+                          ""
+                        );
                         setFormData({ ...formData, email: value });
                       }}
                       className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
@@ -1318,349 +1353,339 @@ export default function UsuariosManagerNew() {
                 )}
 
                 {/* Campos do Franqueado (condicional) */}
-                {isFranqueadoSelecionado &&
-                  !editingUser &&
-                  formData.cadastro_completo && (
-                    <div className="p-4 bg-blue-50 border-2 border-blue-300 rounded-lg space-y-4">
-                      <h3 className="text-lg font-semibold text-blue-900 mb-4">
-                        Dados do Franqueado
-                      </h3>
+                {isFranqueadoSelecionado && formData.cadastro_completo && (
+                  <div className="p-4 bg-blue-50 border-2 border-blue-300 rounded-lg space-y-4">
+                    <h3 className="text-lg font-semibold text-blue-900 mb-4">
+                      Dados do Franqueado
+                    </h3>
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Nome da Franquia *
-                          </label>
-                          <input
-                            type="text"
-                            value={formData.nome_franqueado || formData.nome}
-                            onChange={(e) =>
-                              setFormData({
-                                ...formData,
-                                nome_franqueado: e.target.value,
-                              })
-                            }
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                            placeholder="Nome completo"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            CPF do Franqueado *
-                          </label>
-                          <input
-                            type="text"
-                            value={formData.cpf_franqueado || formData.cpf}
-                            onChange={(e) =>
-                              setFormData({
-                                ...formData,
-                                cpf_franqueado: formatCPF(e.target.value),
-                              })
-                            }
-                            maxLength={14}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                            placeholder="000.000.000-00"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Email da Franquia *
-                          </label>
-                          <input
-                            type="email"
-                            value={formData.email_franqueado || formData.email}
-                            onChange={(e) =>
-                              setFormData({
-                                ...formData,
-                                email_franqueado: e.target.value,
-                              })
-                            }
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                            placeholder="email@exemplo.com"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Telefone da Franquia *
-                          </label>
-                          <input
-                            type="tel"
-                            value={
-                              formData.telefone_franqueado || formData.telefone
-                            }
-                            onChange={(e) =>
-                              setFormData({
-                                ...formData,
-                                telefone_franqueado: formatPhone(
-                                  e.target.value
-                                ),
-                              })
-                            }
-                            maxLength={15}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                            placeholder="(11) 99999-9999"
-                          />
-                        </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Nome da Franquia *
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.nome_franqueado || formData.nome}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              nome_franqueado: e.target.value,
+                            })
+                          }
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                          placeholder="Nome completo"
+                        />
                       </div>
 
-                      <div className="bg-blue-100 p-3 rounded-lg">
-                        <p className="text-sm text-blue-800">
-                          ℹ️ Ao marcar "Cadastro Completo" abaixo, será criado
-                          automaticamente um registro de franqueado vinculado a
-                          este usuário.
-                        </p>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          CPF do Franqueado *
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.cpf_franqueado || formData.cpf}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              cpf_franqueado: formatCPF(e.target.value),
+                            })
+                          }
+                          maxLength={14}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                          placeholder="000.000.000-00"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Email da Franquia *
+                        </label>
+                        <input
+                          type="email"
+                          value={formData.email_franqueado || formData.email}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              email_franqueado: e.target.value,
+                            })
+                          }
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                          placeholder="email@exemplo.com"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Telefone da Franquia *
+                        </label>
+                        <input
+                          type="tel"
+                          value={
+                            formData.telefone_franqueado || formData.telefone
+                          }
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              telefone_franqueado: formatPhone(e.target.value),
+                            })
+                          }
+                          maxLength={15}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                          placeholder="(11) 99999-9999"
+                        />
                       </div>
                     </div>
-                  )}
+
+                    <div className="bg-blue-100 p-3 rounded-lg">
+                      <p className="text-sm text-blue-800">
+                        ℹ️ Ao marcar "Cadastro Completo" abaixo, será criado
+                        automaticamente um registro de franqueado vinculado a
+                        este usuário.
+                      </p>
+                    </div>
+                  </div>
+                )}
 
                 {/* Campos do Gerente de Unidade (condicional) */}
-                {isGerenteUnidadeSelecionado &&
-                  !editingUser &&
-                  formData.cadastro_completo && (
-                    <div className="p-4 bg-green-50 border-2 border-green-300 rounded-lg space-y-4">
-                      <h3 className="text-lg font-semibold text-green-900 mb-4">
-                        Dados do Gerente de Unidade
-                      </h3>
+                {isGerenteUnidadeSelecionado && formData.cadastro_completo && (
+                  <div className="p-4 bg-green-50 border-2 border-green-300 rounded-lg space-y-4">
+                    <h3 className="text-lg font-semibold text-green-900 mb-4">
+                      Dados do Gerente de Unidade
+                    </h3>
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Nome Completo *
-                          </label>
-                          <input
-                            type="text"
-                            value={formData.nome}
-                            onChange={(e) =>
-                              setFormData({
-                                ...formData,
-                                nome: e.target.value,
-                              })
-                            }
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
-                            placeholder="Nome completo do gerente"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            CPF *
-                          </label>
-                          <input
-                            type="text"
-                            value={formData.cpf}
-                            onChange={(e) =>
-                              setFormData({
-                                ...formData,
-                                cpf: formatCPF(e.target.value),
-                              })
-                            }
-                            maxLength={14}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
-                            placeholder="000.000.000-00"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Email *
-                          </label>
-                          <input
-                            type="email"
-                            value={formData.email}
-                            onChange={(e) =>
-                              setFormData({
-                                ...formData,
-                                email: e.target.value,
-                              })
-                            }
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
-                            placeholder="email@exemplo.com"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Telefone *
-                          </label>
-                          <input
-                            type="tel"
-                            value={formData.telefone}
-                            onChange={(e) =>
-                              setFormData({
-                                ...formData,
-                                telefone: formatPhone(e.target.value),
-                              })
-                            }
-                            maxLength={15}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
-                            placeholder="(11) 99999-9999"
-                          />
-                        </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Nome Completo *
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.nome}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              nome: e.target.value,
+                            })
+                          }
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                          placeholder="Nome completo do gerente"
+                        />
                       </div>
 
-                      <div className="bg-green-100 p-3 rounded-lg">
-                        <p className="text-sm text-green-800">
-                          ℹ️ O gerente será responsável por administrar a
-                          unidade selecionada acima.
-                        </p>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          CPF *
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.cpf}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              cpf: formatCPF(e.target.value),
+                            })
+                          }
+                          maxLength={14}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                          placeholder="000.000.000-00"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Email *
+                        </label>
+                        <input
+                          type="email"
+                          value={formData.email}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              email: e.target.value,
+                            })
+                          }
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                          placeholder="email@exemplo.com"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Telefone *
+                        </label>
+                        <input
+                          type="tel"
+                          value={formData.telefone}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              telefone: formatPhone(e.target.value),
+                            })
+                          }
+                          maxLength={15}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
+                          placeholder="(11) 99999-9999"
+                        />
                       </div>
                     </div>
-                  )}
+
+                    <div className="bg-green-100 p-3 rounded-lg">
+                      <p className="text-sm text-green-800">
+                        ℹ️ O gerente será responsável por administrar a unidade
+                        selecionada acima.
+                      </p>
+                    </div>
+                  </div>
+                )}
 
                 {/* Campos do Recepcionista (condicional) */}
-                {isRecepcionistaSelecionado &&
-                  !editingUser &&
-                  formData.cadastro_completo && (
-                    <div className="p-4 bg-purple-50 border-2 border-purple-300 rounded-lg space-y-4">
-                      <h3 className="text-lg font-semibold text-purple-900 mb-4">
-                        Dados do Recepcionista
-                      </h3>
+                {isRecepcionistaSelecionado && formData.cadastro_completo && (
+                  <div className="p-4 bg-purple-50 border-2 border-purple-300 rounded-lg space-y-4">
+                    <h3 className="text-lg font-semibold text-purple-900 mb-4">
+                      Dados do Recepcionista
+                    </h3>
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Nome Completo *
-                          </label>
-                          <input
-                            type="text"
-                            value={formData.nome}
-                            onChange={(e) =>
-                              setFormData({
-                                ...formData,
-                                nome: e.target.value,
-                              })
-                            }
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                            placeholder="Nome completo"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            CPF *
-                          </label>
-                          <input
-                            type="text"
-                            value={formData.cpf}
-                            onChange={(e) =>
-                              setFormData({
-                                ...formData,
-                                cpf: formatCPF(e.target.value),
-                              })
-                            }
-                            maxLength={14}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                            placeholder="000.000.000-00"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Telefone *
-                          </label>
-                          <input
-                            type="tel"
-                            value={formData.telefone}
-                            onChange={(e) =>
-                              setFormData({
-                                ...formData,
-                                telefone: formatPhone(e.target.value),
-                              })
-                            }
-                            maxLength={15}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                            placeholder="(11) 99999-9999"
-                          />
-                        </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Nome Completo *
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.nome}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              nome: e.target.value,
+                            })
+                          }
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                          placeholder="Nome completo"
+                        />
                       </div>
 
-                      <div className="bg-purple-100 p-3 rounded-lg">
-                        <p className="text-sm text-purple-800">
-                          ℹ️ O recepcionista terá acesso a cadastros básicos e
-                          atendimento.
-                        </p>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          CPF *
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.cpf}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              cpf: formatCPF(e.target.value),
+                            })
+                          }
+                          maxLength={14}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                          placeholder="000.000.000-00"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Telefone *
+                        </label>
+                        <input
+                          type="tel"
+                          value={formData.telefone}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              telefone: formatPhone(e.target.value),
+                            })
+                          }
+                          maxLength={15}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                          placeholder="(11) 99999-9999"
+                        />
                       </div>
                     </div>
-                  )}
+
+                    <div className="bg-purple-100 p-3 rounded-lg">
+                      <p className="text-sm text-purple-800">
+                        ℹ️ O recepcionista terá acesso a cadastros básicos e
+                        atendimento.
+                      </p>
+                    </div>
+                  </div>
+                )}
 
                 {/* Campos do Instrutor (condicional) */}
-                {isInstrutorSelecionado &&
-                  !editingUser &&
-                  formData.cadastro_completo && (
-                    <div className="p-4 bg-orange-50 border-2 border-orange-300 rounded-lg space-y-4">
-                      <h3 className="text-lg font-semibold text-orange-900 mb-4">
-                        Dados do Instrutor/Professor
-                      </h3>
+                {isInstrutorSelecionado && formData.cadastro_completo && (
+                  <div className="p-4 bg-orange-50 border-2 border-orange-300 rounded-lg space-y-4">
+                    <h3 className="text-lg font-semibold text-orange-900 mb-4">
+                      Dados do Instrutor/Professor
+                    </h3>
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Nome Completo *
-                          </label>
-                          <input
-                            type="text"
-                            value={formData.nome}
-                            onChange={(e) =>
-                              setFormData({
-                                ...formData,
-                                nome: e.target.value,
-                              })
-                            }
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
-                            placeholder="Nome completo"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            CPF *
-                          </label>
-                          <input
-                            type="text"
-                            value={formData.cpf}
-                            onChange={(e) =>
-                              setFormData({
-                                ...formData,
-                                cpf: formatCPF(e.target.value),
-                              })
-                            }
-                            maxLength={14}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
-                            placeholder="000.000.000-00"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Telefone *
-                          </label>
-                          <input
-                            type="tel"
-                            value={formData.telefone}
-                            onChange={(e) =>
-                              setFormData({
-                                ...formData,
-                                telefone: formatPhone(e.target.value),
-                              })
-                            }
-                            maxLength={15}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
-                            placeholder="(11) 99999-9999"
-                          />
-                        </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Nome Completo *
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.nome}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              nome: e.target.value,
+                            })
+                          }
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
+                          placeholder="Nome completo"
+                        />
                       </div>
 
-                      <div className="bg-orange-100 p-3 rounded-lg">
-                        <p className="text-sm text-orange-800">
-                          ℹ️ O instrutor poderá gerenciar aulas e alunos da
-                          unidade.
-                        </p>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          CPF *
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.cpf}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              cpf: formatCPF(e.target.value),
+                            })
+                          }
+                          maxLength={14}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
+                          placeholder="000.000.000-00"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Telefone *
+                        </label>
+                        <input
+                          type="tel"
+                          value={formData.telefone}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              telefone: formatPhone(e.target.value),
+                            })
+                          }
+                          maxLength={15}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500"
+                          placeholder="(11) 99999-9999"
+                        />
                       </div>
                     </div>
-                  )}
+
+                    <div className="bg-orange-100 p-3 rounded-lg">
+                      <p className="text-sm text-orange-800">
+                        ℹ️ O instrutor poderá gerenciar aulas e alunos da
+                        unidade.
+                      </p>
+                    </div>
+                  </div>
+                )}
 
                 {/* Status */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
