@@ -317,6 +317,21 @@ export default function UnidadeForm({
   const handleSubmitWithValidation = (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Validar CNPJ antes de submeter (se preenchido)
+    if (formData.cnpj) {
+      const cleanedCNPJ = formData.cnpj.replace(/\D/g, "");
+      if (cleanedCNPJ.length > 0 && cleanedCNPJ.length < 14) {
+        setCnpjError("CNPJ incompleto (14 dígitos necessários)");
+        setActiveTab(0); // Voltar para a aba de identificação
+        return;
+      }
+      if (cleanedCNPJ.length === 14 && !validateCNPJ(cleanedCNPJ)) {
+        setCnpjError("CNPJ inválido");
+        setActiveTab(0); // Voltar para a aba de identificação
+        return;
+      }
+    }
+
     // Validar telefone antes de submeter
     const cleanedPhone = formData.telefone_celular.replace(/\D/g, "");
     if (cleanedPhone.length > 0 && cleanedPhone.length < 10) {
@@ -450,11 +465,17 @@ export default function UnidadeForm({
                           cnpj: formatCNPJ(e.target.value),
                         })
                       }
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                        cnpjError ? "border-red-500" : "border-gray-300"
+                      }`}
                     />
-                    <p className="text-xs text-gray-500 mt-1">
-                      Deixe em branco para projetos sociais ou igrejas
-                    </p>
+                    {cnpjError ? (
+                      <p className="text-red-500 text-xs mt-1">{cnpjError}</p>
+                    ) : (
+                      <p className="text-xs text-gray-500 mt-1">
+                        Deixe em branco para projetos sociais ou igrejas
+                      </p>
+                    )}
                   </div>
 
                   <div className="md:col-span-2">
