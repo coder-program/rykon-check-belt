@@ -332,12 +332,22 @@ export default function UnidadeForm({
       }
     }
 
-    // Validar telefone antes de submeter
+    // Validar telefone celular antes de submeter
     const cleanedPhone = formData.telefone_celular.replace(/\D/g, "");
     if (cleanedPhone.length > 0 && cleanedPhone.length < 10) {
       setPhoneError("Telefone inválido. Deve ter 10 ou 11 dígitos");
       setActiveTab(1); // Voltar para a aba de contato
       return;
+    }
+
+    // Validar telefone fixo antes de submeter (se preenchido)
+    if (formData.telefone_fixo) {
+      const cleanedFixo = formData.telefone_fixo.replace(/\D/g, "");
+      if (cleanedFixo.length > 0 && cleanedFixo.length < 10) {
+        setPhoneError("Telefone fixo incompleto. Deve ter 10 ou 11 dígitos (DDD + número)");
+        setActiveTab(1); // Voltar para a aba de contato
+        return;
+      }
     }
 
     // Se passou na validação, submeter
