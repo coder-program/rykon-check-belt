@@ -374,22 +374,27 @@ export default function UsuariosManagerNew() {
   const validateForm = (): boolean => {
     const errors: ValidationErrors = {};
 
+    // NOME COMPLETO: apenas letras, espaços, apóstrofos e hífens
     if (!formData.nome.trim()) {
       errors.nome = "Nome é obrigatório";
     } else if (!/^[a-zA-ZÀ-ÿ\s'-]+$/.test(formData.nome)) {
       errors.nome = "Nome deve conter apenas letras";
     }
 
+    // EMAIL: máximo 30 caracteres, apenas letras, números, underline (_) e ponto (.)
     if (!formData.email.trim()) {
       errors.email = "Email é obrigatório";
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      errors.email = "Email inválido";
+    } else if (formData.email.length > 30) {
+      errors.email = "Email deve ter no máximo 30 caracteres";
+    } else if (!/^[a-zA-Z0-9_.]+@[a-zA-Z0-9_.]+\.[a-zA-Z]{2,}$/.test(formData.email)) {
+      errors.email = "Email inválido. Use apenas letras, números, _ e .";
     }
 
+    // USERNAME: máximo 15 caracteres, letras, números e caracteres especiais
     if (!formData.username.trim()) {
       errors.username = "Username é obrigatório";
-    } else if (!/^[a-zA-Z0-9_-]+$/.test(formData.username)) {
-      errors.username = "Username deve conter apenas letras, números, _ ou -";
+    } else if (formData.username.length > 15) {
+      errors.username = "Username deve ter no máximo 15 caracteres";
     }
 
     if (!editingUser && !formData.password.trim()) {
@@ -912,9 +917,11 @@ export default function UsuariosManagerNew() {
                       type="text"
                       required
                       value={formData.nome}
-                      onChange={(e) =>
-                        setFormData({ ...formData, nome: e.target.value })
-                      }
+                      onChange={(e) => {
+                        // Permitir apenas letras, espaços, apóstrofos e hífens
+                        const value = e.target.value.replace(/[^a-zA-ZÀ-ÿ\s'-]/g, '');
+                        setFormData({ ...formData, nome: value });
+                      }}
                       className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                         validationErrors.nome
                           ? "border-red-500"
@@ -1004,15 +1011,18 @@ export default function UsuariosManagerNew() {
                   {!editingUser && (
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Username *
+                        Username * (máx. 15 caracteres)
                       </label>
                       <input
                         type="text"
                         required
+                        maxLength={15}
                         value={formData.username}
-                        onChange={(e) =>
-                          setFormData({ ...formData, username: e.target.value })
-                        }
+                        onChange={(e) => {
+                          // Limitar a 15 caracteres
+                          const value = e.target.value.slice(0, 15);
+                          setFormData({ ...formData, username: value });
+                        }}
                         className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                           validationErrors.username
                             ? "border-red-500"
@@ -1031,15 +1041,18 @@ export default function UsuariosManagerNew() {
                   {/* Email */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Email *
+                      Email * (máx. 30 caracteres)
                     </label>
                     <input
                       type="email"
                       required
+                      maxLength={30}
                       value={formData.email}
-                      onChange={(e) =>
-                        setFormData({ ...formData, email: e.target.value })
-                      }
+                      onChange={(e) => {
+                        // Limitar a 30 caracteres e permitir apenas letras, números, _, . e @
+                        const value = e.target.value.slice(0, 30).replace(/[^a-zA-Z0-9_.@]/g, '');
+                        setFormData({ ...formData, email: value });
+                      }}
                       className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                         validationErrors.email
                           ? "border-red-500"
