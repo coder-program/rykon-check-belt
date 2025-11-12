@@ -29,6 +29,17 @@ export class UsuariosService {
    * Retorna array serializado (plain objects) para preservar propriedades customizadas
    */
   private async enrichUsersWithUnidade(usuarios: any[]): Promise<any[]> {
+    console.log(
+      '🔧 [enrichUsersWithUnidade] Enriquecendo usuários com unidade:',
+      {
+        total: usuarios.length,
+        usuarios: usuarios.map((u) => ({
+          nome: u.nome,
+          perfis: u.perfis?.map((p: any) => p.nome),
+        })),
+      },
+    );
+
     if (!usuarios || usuarios.length === 0) {
       return [];
     }
@@ -46,12 +57,26 @@ export class UsuariosService {
         const isProfessor =
           perfisNomes.includes('PROFESSOR') ||
           perfisNomes.includes('INSTRUTOR');
+        const isAluno = perfisNomes.includes('ALUNO');
 
-        const needsUnidade = isGerente || isRecepcionista || isProfessor;
+        const needsUnidade =
+          isGerente || isRecepcionista || isProfessor || isAluno;
+
+        console.log(
+          `👤 [enrichUsersWithUnidade] Processando ${usuario.nome}:`,
+          {
+            perfis: perfisNomes,
+            needsUnidade,
+            isGerente,
+            isRecepcionista,
+            isProfessor,
+            isAluno,
+          },
+        );
 
         let unidade: any = null;
 
-        if (needsUnidade && usuario.cpf) {
+        if (needsUnidade) {
           if (isGerente) {
             // Gerente: buscar via tabela gerente_unidades
             const unidadeData = await this.usuarioRepository.query(
@@ -69,6 +94,14 @@ export class UsuariosService {
                 nome: unidadeData[0].nome,
                 status: unidadeData[0].status,
               };
+              console.log(
+                `✅ [enrichUsersWithUnidade] GERENTE ${usuario.nome} - Unidade encontrada:`,
+                unidade,
+              );
+            } else {
+              console.log(
+                `⚠️ [enrichUsersWithUnidade] GERENTE ${usuario.nome} - Nenhuma unidade encontrada`,
+              );
             }
           } else if (isRecepcionista) {
             // Recepcionista: buscar via tabela recepcionista_unidades
@@ -87,6 +120,14 @@ export class UsuariosService {
                 nome: unidadeData[0].nome,
                 status: unidadeData[0].status,
               };
+              console.log(
+                `✅ [enrichUsersWithUnidade] RECEPCIONISTA ${usuario.nome} - Unidade encontrada:`,
+                unidade,
+              );
+            } else {
+              console.log(
+                `⚠️ [enrichUsersWithUnidade] RECEPCIONISTA ${usuario.nome} - Nenhuma unidade encontrada`,
+              );
             }
           } else if (isProfessor) {
             // Professor: buscar via professor_unidades
@@ -108,9 +149,44 @@ export class UsuariosService {
                 nome: unidadeData[0].nome,
                 status: unidadeData[0].status,
               };
+              console.log(
+                `✅ [enrichUsersWithUnidade] PROFESSOR ${usuario.nome} - Unidade encontrada:`,
+                unidade,
+              );
+            } else {
+              console.log(
+                `⚠️ [enrichUsersWithUnidade] PROFESSOR ${usuario.nome} - Nenhuma unidade encontrada`,
+              );
+            }
+          } else if (isAluno) {
+            // Aluno: buscar via tabela alunos
+            const unidadeData = await this.usuarioRepository.query(
+              `SELECT u.id, u.nome, u.status
+               FROM teamcruz.alunos a
+               INNER JOIN teamcruz.unidades u ON u.id = a.unidade_id
+               WHERE a.usuario_id = $1
+               LIMIT 1`,
+              [usuario.id],
+            );
+
+            if (unidadeData && unidadeData.length > 0) {
+              unidade = {
+                id: unidadeData[0].id,
+                nome: unidadeData[0].nome,
+                status: unidadeData[0].status,
+              };
+              console.log(
+                `✅ [enrichUsersWithUnidade] ALUNO ${usuario.nome} - Unidade encontrada:`,
+                unidade,
+              );
+            } else {
+              console.log(
+                `⚠️ [enrichUsersWithUnidade] ALUNO ${usuario.nome} - Nenhuma unidade encontrada`,
+              );
             }
           }
         }
+
         return {
           ...usuario,
           unidade,
@@ -120,6 +196,13 @@ export class UsuariosService {
 
     // Serializar para plain objects
     const resultado = JSON.parse(JSON.stringify(usuariosEnriquecidos));
+
+    console.log('✅ [enrichUsersWithUnidade] Resultado final:', {
+      total: resultado.length,
+      comUnidade: resultado.filter((u: any) => u.unidade).length,
+      semUnidade: resultado.filter((u: any) => !u.unidade).length,
+    });
+
     return resultado;
   }
 
@@ -307,7 +390,19 @@ export class UsuariosService {
   }
 
   async findAllWithHierarchy(user?: any): Promise<Usuario[]> {
+    console.log('🔍 [findAllWithHierarchy] INÍCIO - Requisição recebida:', {
+      hasUser: !!user,
+      userId: user?.id,
+      userName: user?.nome,
+      perfis: user?.perfis?.map((p: any) =>
+        typeof p === 'string' ? p : p.nome,
+      ),
+    });
+
     if (!user || !user.perfis) {
+      console.log(
+        '⚠️ [findAllWithHierarchy] Sem usuário ou perfis, retornando todos',
+      );
       const usuarios = await this.findAll();
       return this.enrichUsersWithUnidade(usuarios);
     }
@@ -324,24 +419,49 @@ export class UsuariosService {
     const isGerente = perfisLower.includes('gerente_unidade');
     const isRecepcionista = perfisLower.includes('recepcionista');
 
+    console.log('🎯 [findAllWithHierarchy] Perfis detectados:', {
+      isMaster,
+      isFranqueado,
+      isGerente,
+      isRecepcionista,
+    });
+
     // Master vê todos
     if (isMaster) {
+      console.log(
+        '👑 [findAllWithHierarchy] MASTER detectado, retornando todos',
+      );
       const usuarios = await this.findAll();
       return this.enrichUsersWithUnidade(usuarios);
     }
 
     // Franqueado vê apenas usuários das suas unidades
     if (isFranqueado) {
+      console.log('🏢 [findAllWithHierarchy] FRANQUEADO detectado');
+
       const franqueadoData = await this.usuarioRepository.query(
         `SELECT id FROM teamcruz.franqueados WHERE usuario_id = $1`,
         [user.id],
       );
 
+      console.log(
+        '📋 [findAllWithHierarchy] Query franqueado result:',
+        franqueadoData,
+      );
+
       if (!franqueadoData || franqueadoData.length === 0) {
+        console.log(
+          '⚠️ [findAllWithHierarchy] Franqueado sem registro, retornando vazio',
+        );
         return [];
       }
 
       const franqueadoId = franqueadoData[0].id;
+      console.log(
+        '✅ [findAllWithHierarchy] Franqueado ID encontrado:',
+        franqueadoId,
+      );
+
       // Buscar IDs de usuários das unidades do franqueado
       // Inclui: alunos, professores, gerentes e recepcionistas das unidades
       // EXCLUI: outros franqueados (que devem ver apenas suas próprias listas)
@@ -356,6 +476,7 @@ export class UsuariosService {
                  WHEN un_aluno.franqueado_id = $1 THEN 'aluno_da_unidade'
                  WHEN un_prof.franqueado_id = $1 THEN 'professor_da_unidade'
                  WHEN un_gerente.franqueado_id = $1 THEN 'gerente_da_unidade'
+                 WHEN un_recep.franqueado_id = $1 THEN 'recepcionista_da_unidade'
                  ELSE 'outro'
                END as motivo_inclusao
         FROM teamcruz.usuarios u
@@ -366,11 +487,13 @@ export class UsuariosService {
         LEFT JOIN teamcruz.unidades un_prof ON un_prof.id = pu.unidade_id
         LEFT JOIN teamcruz.gerente_unidades gu ON gu.usuario_id = u.id AND gu.ativo = TRUE
         LEFT JOIN teamcruz.unidades un_gerente ON un_gerente.id = gu.unidade_id
+        LEFT JOIN teamcruz.recepcionista_unidades ru ON ru.usuario_id = u.id AND ru.ativo = TRUE
+        LEFT JOIN teamcruz.unidades un_recep ON un_recep.id = ru.unidade_id
         LEFT JOIN teamcruz.franqueados f ON f.usuario_id = u.id
         LEFT JOIN teamcruz.usuario_perfis up ON up.usuario_id = u.id
         LEFT JOIN teamcruz.perfis perfil ON perfil.id = up.perfil_id
         WHERE (
-          (un_aluno.franqueado_id = $1 OR un_prof.franqueado_id = $1 OR un_gerente.franqueado_id = $1)
+          (un_aluno.franqueado_id = $1 OR un_prof.franqueado_id = $1 OR un_gerente.franqueado_id = $1 OR un_recep.franqueado_id = $1)
           OR f.id = $1
           OR u.id = $2
         )
@@ -389,9 +512,21 @@ export class UsuariosService {
         [franqueadoId, user.id],
       );
 
+      console.log('👥 [findAllWithHierarchy] Usuários encontrados:', {
+        total: usuariosIds.length,
+        usuarios: usuariosIds.map((u: any) => ({
+          nome: u.nome,
+          email: u.email,
+          motivo: u.motivo_inclusao,
+        })),
+      });
+
       const ids = usuariosIds.map((row: any) => row.id);
 
       if (ids.length === 0) {
+        console.log(
+          '⚠️ [findAllWithHierarchy] Nenhum ID de usuário encontrado',
+        );
         return [];
       }
 
@@ -412,6 +547,18 @@ export class UsuariosService {
           updated_at: true,
         },
       });
+
+      console.log(
+        '✅ [findAllWithHierarchy] FRANQUEADO - Retornando usuários:',
+        {
+          total: resultado.length,
+          usuarios: resultado.map((u) => ({
+            nome: u.nome,
+            email: u.email,
+            perfis: u.perfis?.map((p: any) => p.nome),
+          })),
+        },
+      );
 
       return this.enrichUsersWithUnidade(resultado);
     }
@@ -483,30 +630,63 @@ export class UsuariosService {
 
     // Recepcionista vê apenas usuários da sua unidade
     if (isRecepcionista) {
+      console.log('🔍 [findAllWithHierarchy] RECEPCIONISTA DETECTADO:', {
+        userId: user.id,
+        userName: user.nome,
+      });
+
       const recepcionistaData = await this.usuarioRepository.query(
         `SELECT unidade_id FROM teamcruz.recepcionista_unidades WHERE usuario_id = $1 AND ativo = true`,
         [user.id],
       );
 
+      console.log(
+        '📍 [findAllWithHierarchy] Unidades do recepcionista:',
+        recepcionistaData,
+      );
+
       if (!recepcionistaData || recepcionistaData.length === 0) {
+        console.log(
+          '⚠️ [findAllWithHierarchy] Recepcionista SEM unidade vinculada!',
+        );
         return [];
       }
 
       const unidadeId = recepcionistaData[0].unidade_id;
+      console.log('🏢 [findAllWithHierarchy] Unidade ID:', unidadeId);
 
+      // Buscar TODOS os usuários relacionados à unidade (alunos, recepcionistas, gerentes, professores)
       const usuariosIds = await this.usuarioRepository.query(
         `
-        SELECT DISTINCT u.id
+        SELECT DISTINCT u.id, u.nome, u.email
         FROM teamcruz.usuarios u
         LEFT JOIN teamcruz.alunos a ON a.usuario_id = u.id
+        LEFT JOIN teamcruz.recepcionista_unidades ru ON ru.usuario_id = u.id
+        LEFT JOIN teamcruz.gerente_unidades gu ON gu.usuario_id = u.id
+        LEFT JOIN teamcruz.professor_unidades pu ON pu.usuario_id = u.id
         WHERE a.unidade_id = $1
+           OR ru.unidade_id = $1
+           OR gu.unidade_id = $1
+           OR pu.unidade_id = $1
         `,
         [unidadeId],
       );
 
+      console.log('👥 [findAllWithHierarchy] Usuários encontrados:', {
+        total: usuariosIds.length,
+        usuarios: usuariosIds.map((u: any) => ({
+          id: u.id,
+          nome: u.nome,
+          email: u.email,
+        })),
+      });
+
       const ids = usuariosIds.map((row: any) => row.id);
 
       if (ids.length === 0) {
+        console.log(
+          '⚠️ [findAllWithHierarchy] Nenhum usuário encontrado para a unidade',
+        );
         return [];
       }
 
@@ -526,6 +706,14 @@ export class UsuariosService {
           created_at: true,
           updated_at: true,
         },
+      });
+
+      console.log('✅ [findAllWithHierarchy] Retornando usuários:', {
+        total: usuarios.length,
+        usuarios: usuarios.map((u) => ({
+          nome: u.nome,
+          perfis: u.perfis?.map((p: any) => p.nome),
+        })),
       });
 
       return this.enrichUsersWithUnidade(usuarios);
