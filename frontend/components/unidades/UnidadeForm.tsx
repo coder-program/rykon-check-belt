@@ -91,6 +91,7 @@ export default function UnidadeForm({
   const { user } = useAuth();
   const [activeTab, setActiveTab] = React.useState(0);
   const [phoneError, setPhoneError] = React.useState<string>("");
+  const [fixoError, setFixoError] = React.useState<string>("");
   const [cnpjError, setCnpjError] = React.useState<string>("");
 
   // Verificar se usuário é franqueado - perfis pode ser array de strings ou objetos
@@ -317,6 +318,11 @@ export default function UnidadeForm({
   const handleSubmitWithValidation = (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Limpar erros anteriores
+    setPhoneError("");
+    setFixoError("");
+    setCnpjError("");
+
     // Validar CNPJ antes de submeter (se preenchido)
     if (formData.cnpj) {
       const cleanedCNPJ = formData.cnpj.replace(/\D/g, "");
@@ -344,7 +350,7 @@ export default function UnidadeForm({
     if (formData.telefone_fixo) {
       const cleanedFixo = formData.telefone_fixo.replace(/\D/g, "");
       if (cleanedFixo.length > 0 && cleanedFixo.length < 10) {
-        setPhoneError("Telefone fixo incompleto. Deve ter 10 ou 11 dígitos (DDD + número)");
+        setFixoError("Telefone fixo incompleto. Deve ter 10 ou 11 dígitos (DDD + número)");
         setActiveTab(1); // Voltar para a aba de contato
         return;
       }
@@ -624,8 +630,13 @@ export default function UnidadeForm({
                           telefone_fixo: formatPhoneFixo(e.target.value),
                         })
                       }
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                        fixoError ? "border-red-500" : "border-gray-300"
+                      }`}
                     />
+                    {fixoError && (
+                      <p className="text-red-500 text-xs mt-1">{fixoError}</p>
+                    )}
                   </div>
 
                   <div>
