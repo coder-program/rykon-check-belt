@@ -45,6 +45,27 @@ export async function http(path: string, opts: HttpOptions = {}) {
   });
 
   if (!res.ok) {
+    // Se o token expirou (401), fazer logout automático
+    if (res.status === 401 && typeof window !== "undefined") {
+      const data = await res.json().catch(() => ({}));
+      const isTokenExpired =
+        data?.message?.toLowerCase().includes("expired") ||
+        data?.message?.toLowerCase().includes("unauthorized") ||
+        data?.message?.toLowerCase().includes("invalid token");
+
+      if (isTokenExpired) {
+        console.warn("⚠️ Token expirado! Fazendo logout automático...");
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+
+        // Redirecionar para login
+        if (window.location.pathname !== "/login") {
+          window.location.href = "/login?expired=true";
+        }
+        throw new Error("Sua sessão expirou. Por favor, faça login novamente.");
+      }
+    }
+
     let message = `HTTP ${res.status}`;
     try {
       const data = await res.json();

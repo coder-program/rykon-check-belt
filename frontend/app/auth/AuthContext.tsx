@@ -29,15 +29,47 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
       if (token) {
+        // Verificar se o token está expirado antes de fazer a requisição
+        const tokenPayload = parseJwt(token);
+        if (tokenPayload && tokenPayload.exp) {
+          const isExpired = Date.now() >= tokenPayload.exp * 1000;
+          if (isExpired) {
+            console.warn('⚠️ Token expirado detectado no checkAuthStatus');
+            throw new Error('Token expirado');
+          }
+        }
+
         const userData = await authService.validateToken(token);
         setUser(userData);
         setIsAuthenticated(true);
       }
     } catch (error) {
       console.error("Erro ao verificar autenticação:", error);
-      if (typeof window !== "undefined") localStorage.removeItem("token");
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+      }
+      setUser(null);
+      setIsAuthenticated(false);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Função auxiliar para decodificar JWT
+  const parseJwt = (token: string) => {
+    try {
+      const base64Url = token.split('.')[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const jsonPayload = decodeURIComponent(
+        atob(base64)
+          .split('')
+          .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+          .join('')
+      );
+      return JSON.parse(jsonPayload);
+    } catch (error) {
+      return null;
     }
   };
 
@@ -66,7 +98,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const logout = () => {
-    if (typeof window !== "undefined") localStorage.removeItem("token");
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+    }
     setUser(null);
     setIsAuthenticated(false);
   };

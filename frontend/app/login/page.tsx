@@ -76,6 +76,21 @@ function LoginContent() {
       return;
     }
 
+    // ⏰ Verificar se o usuário foi redirecionado por token expirado
+    const expired = searchParams.get("expired");
+    if (expired === "true") {
+      toast.error(
+        "⏰ Sua sessão expirou! Por favor, faça login novamente.",
+        {
+          duration: 5000,
+          position: "top-center",
+          icon: "🔒",
+        }
+      );
+      // Limpar a query string da URL
+      window.history.replaceState({}, document.title, "/login");
+    }
+
     const message = searchParams.get("message");
     if (message === "registration-success") {
       toast.success(

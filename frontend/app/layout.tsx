@@ -6,6 +6,7 @@ import React from "react";
 import QueryProvider from "@/components/QueryProvider";
 import { Toaster } from "react-hot-toast";
 import { ProfileCompletionGuard } from "@/components/auth/ProfileCompletionGuard";
+import { TokenExpirationChecker } from "@/components/auth/TokenExpirationChecker";
 import LayoutContent from "@/components/layout/LayoutContent";
 
 const geistSans = Geist({
@@ -57,6 +58,7 @@ export default function RootLayout({
       >
         <QueryProvider>
           <AuthProvider>
+            <TokenExpirationChecker />
             <ProfileCompletionGuard>
               <LayoutContent>{children}</LayoutContent>
             </ProfileCompletionGuard>
