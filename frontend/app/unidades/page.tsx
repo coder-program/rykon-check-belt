@@ -202,6 +202,9 @@ export default function PageUnidades() {
       qc.invalidateQueries({ queryKey: ["unidades"] });
       toast.success("Unidade removida com sucesso!");
     },
+    onError: (error: any) => {
+      toast.error(error?.message || "Erro ao remover unidade");
+    },
   });
 
   const items = (query.data?.pages || []).flatMap((p) => p.items);
@@ -526,7 +529,7 @@ export default function PageUnidades() {
                         onClick={() => {
                           if (
                             confirm(
-                              `Tem certeza que deseja remover a unidade "${unidade.nome}"?`
+                              `Tem certeza que deseja remover a unidade "${unidade.nome}"?\n\nATENÇÃO: Não é possível remover unidades que possuam professores, alunos, recepcionistas ou gerentes vinculados. Remova os vínculos primeiro.`
                             )
                           ) {
                             deleteMutation.mutate(unidade.id);

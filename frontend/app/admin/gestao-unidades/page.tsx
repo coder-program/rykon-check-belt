@@ -465,6 +465,7 @@ export default function GestaoUnidadesPage() {
                   <option value="">Todos os status</option>
                   <option value="ATIVA">Ativa</option>
                   <option value="INATIVA">Inativa</option>
+                  <option value="EM_HOMOLOGACAO">Em homologação</option>
                 </select>
               </div>
 

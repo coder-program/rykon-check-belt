@@ -8,11 +8,97 @@ import {
   IsUrl,
   Length,
   Matches,
+  ValidateIf,
+  registerDecorator,
+  ValidationOptions,
+  ValidationArguments,
 } from 'class-validator';
 import {
   StatusUnidade,
   HorariosFuncionamento,
 } from '../entities/unidade.entity';
+
+// Função auxiliar para validar CNPJ
+function isValidCNPJ(cnpj: string): boolean {
+  // Remove formatação
+  const cleaned = cnpj.replace(/\D/g, '');
+
+  // CNPJ deve ter 14 dígitos
+  if (cleaned.length !== 14) {
+    return false;
+  }
+
+  // Elimina CNPJs inválidos conhecidos
+  if (/^(\d)\1+$/.test(cleaned)) {
+    return false;
+  }
+
+  // Valida DVs (dígitos verificadores)
+  let tamanho = cleaned.length - 2;
+  let numeros = cleaned.substring(0, tamanho);
+  const digitos = cleaned.substring(tamanho);
+  let soma = 0;
+  let pos = tamanho - 7;
+
+  for (let i = tamanho; i >= 1; i--) {
+    soma += parseInt(numeros.charAt(tamanho - i)) * pos--;
+    if (pos < 2) pos = 9;
+  }
+
+  let resultado = soma % 11 < 2 ? 0 : 11 - (soma % 11);
+  if (resultado !== parseInt(digitos.charAt(0))) {
+    return false;
+  }
+
+  tamanho = tamanho + 1;
+  numeros = cleaned.substring(0, tamanho);
+  soma = 0;
+  pos = tamanho - 7;
+
+  for (let i = tamanho; i >= 1; i--) {
+    soma += parseInt(numeros.charAt(tamanho - i)) * pos--;
+    if (pos < 2) pos = 9;
+  }
+
+  resultado = soma % 11 < 2 ? 0 : 11 - (soma % 11);
+  if (resultado !== parseInt(digitos.charAt(1))) {
+    return false;
+  }
+
+  return true;
+}
+
+// Decorador customizado para validar CNPJ
+function IsCNPJ(validationOptions?: ValidationOptions) {
+  return function (object: object, propertyName: string) {
+    registerDecorator({
+      name: 'isCNPJ',
+      target: object.constructor,
+      propertyName: propertyName,
+      options: validationOptions,
+      validator: {
+        validate(value: any, args: ValidationArguments) {
+          if (!value) return true; // Se vazio, deixa o IsOptional decidir
+          const cleaned = value.replace(/\D/g, '');
+          if (cleaned.length < 14) {
+            return false; // CNPJ incompleto
+          }
+          return isValidCNPJ(value);
+        },
+        defaultMessage(args: ValidationArguments) {
+          const value = args.value;
+          if (value) {
+            const cleaned = value.replace(/\D/g, '');
+            if (cleaned.length < 14) {
+              return 'CNPJ incompleto (14 dígitos necessários)';
+            }
+          }
+          return 'CNPJ inválido';
+        },
+      },
+    });
+  };
+}
 
 export class CreateUnidadeDto {
   @ApiProperty({ description: 'ID do franqueado responsável' })
@@ -30,6 +116,7 @@ export class CreateUnidadeDto {
   @ApiPropertyOptional({ example: '12.345.678/0001-90' })
   @IsOptional()
   @IsString()
+  @IsCNPJ({ message: 'CNPJ inválido ou incompleto' })
   cnpj?: string;
 
   @ApiProperty({ example: 'TeamCruz Barueri Ltda' })
@@ -67,16 +154,17 @@ export class CreateUnidadeDto {
   @ApiPropertyOptional({ example: '(11) 3456-7890' })
   @IsOptional()
   @IsString()
-  @Matches(/^\(\d{2}\)\s\d{4,5}-\d{4}$/, {
-    message: 'Telefone deve estar no formato (XX) XXXX-XXXX ou (XX) XXXXX-XXXX',
+  @Matches(/^(\(\d{2}\)\s?\d{4,5}-?\d{4}|\d{10,11})$/, {
+    message: 'Telefone fixo deve ter 10 ou 11 dígitos (com ou sem formatação)',
   })
   telefone_fixo?: string;
 
   @ApiProperty({ example: '(11) 98765-4321' })
   @IsString()
   @IsNotEmpty()
-  @Matches(/^\(\d{2}\)\s\d{5}-\d{4}$/, {
-    message: 'Telefone celular deve estar no formato (XX) XXXXX-XXXX',
+  @Matches(/^(\(\d{2}\)\s?\d{5}-?\d{4}|\d{10,11})$/, {
+    message:
+      'Telefone celular deve ter 10 ou 11 dígitos (com ou sem formatação)',
   })
   telefone_celular!: string;
 
@@ -138,6 +226,7 @@ export class UpdateUnidadeDto {
   @ApiPropertyOptional({ example: '12.345.678/0001-90' })
   @IsOptional()
   @IsString()
+  @IsCNPJ({ message: 'CNPJ inválido ou incompleto' })
   cnpj?: string;
 
   @ApiPropertyOptional({ example: 'TeamCruz Barueri Ltda' })

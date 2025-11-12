@@ -79,13 +79,25 @@ const formatCPF = (value: string): string => {
 
 // Função para formatar telefone
 const formatPhone = (value: string): string => {
+  // Remove tudo que não é dígito
   const cleaned = value.replace(/\D/g, "");
-  if (cleaned.length === 11) {
-    return cleaned.replace(/(\d{2})(\d{5})(\d{4})/, "($1) $2-$3");
-  } else if (cleaned.length === 10) {
-    return cleaned.replace(/(\d{2})(\d{4})(\d{4})/, "($1) $2-$3");
+
+  // Limita a 11 dígitos
+  const limited = cleaned.slice(0, 11);
+
+  // Formata conforme a quantidade de dígitos
+  if (limited.length === 11) {
+    return limited.replace(/(\d{2})(\d{5})(\d{4})/, "($1) $2-$3");
+  } else if (limited.length === 10) {
+    return limited.replace(/(\d{2})(\d{4})(\d{4})/, "($1) $2-$3");
+  } else if (limited.length >= 6) {
+    return limited.replace(/(\d{2})(\d{4})(\d{0,4})/, "($1) $2-$3");
+  } else if (limited.length >= 2) {
+    return limited.replace(/(\d{2})(\d{0,5})/, "($1) $2");
   }
-  return value;
+
+  // Retorna apenas os dígitos se ainda não tem 2 caracteres
+  return limited;
 };
 
 interface FormData {

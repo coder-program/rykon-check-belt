@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   Injectable,
@@ -332,6 +333,58 @@ export class UnidadesService {
       if (!current[0] || current[0].franqueado_id !== franqueadoId) {
         throw new ForbiddenException('Não é permitido remover esta unidade');
       }
+    }
+
+    // Verificar se há professores vinculados à unidade
+    const professoresVinculados = await this.dataSource.query(
+      `SELECT COUNT(*) as total FROM teamcruz.professor_unidades
+       WHERE unidade_id = $1 AND ativo = TRUE`,
+      [id],
+    );
+
+    if (professoresVinculados[0]?.total > 0) {
+      throw new BadRequestException(
+        `Não é possível excluir esta unidade pois há ${professoresVinculados[0].total} professor(es) vinculado(s). Remova os vínculos primeiro.`,
+      );
+    }
+
+    // Verificar se há alunos vinculados à unidade
+    const alunosVinculados = await this.dataSource.query(
+      `SELECT COUNT(*) as total FROM teamcruz.alunos
+       WHERE unidade_id = $1`,
+      [id],
+    );
+
+    if (alunosVinculados[0]?.total > 0) {
+      throw new BadRequestException(
+        `Não é possível excluir esta unidade pois há ${alunosVinculados[0].total} aluno(s) vinculado(s). Remova os vínculos primeiro.`,
+      );
+    }
+
+    // Verificar se há recepcionistas vinculados à unidade
+    const recepcionistasVinculados = await this.dataSource.query(
+      `SELECT COUNT(*) as total FROM teamcruz.recepcionista_unidades
+       WHERE unidade_id = $1 AND ativo = TRUE`,
+      [id],
+    );
+
+    if (recepcionistasVinculados[0]?.total > 0) {
+      throw new BadRequestException(
+        `Não é possível excluir esta unidade pois há ${recepcionistasVinculados[0].total} recepcionista(s) vinculado(s). Remova os vínculos primeiro.`,
+      );
+    }
+
+    // Verificar se há gerentes vinculados à unidade
+    const gerentesVinculados = await this.dataSource.query(
+      `SELECT COUNT(*) as total FROM teamcruz.gerente_unidades
+       WHERE unidade_id = $1 AND ativo = TRUE`,
+      [id],
+    );
+
+    if (gerentesVinculados[0]?.total > 0) {
+      throw new BadRequestException(
+        `Não é possível excluir esta unidade pois há ${gerentesVinculados[0].total} gerente(s) vinculado(s). Remova os vínculos primeiro.`,
+      );
     }
 
     // Soft delete - marca como INATIVA em vez de deletar
