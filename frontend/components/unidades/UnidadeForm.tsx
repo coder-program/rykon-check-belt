@@ -90,6 +90,8 @@ export default function UnidadeForm({
 }: UnidadeFormProps) {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = React.useState(0);
+  const [phoneError, setPhoneError] = React.useState<string>("");
+  const [cnpjError, setCnpjError] = React.useState<string>("");
 
   // Verificar se usuário é franqueado - perfis pode ser array de strings ou objetos
   const isFranqueado = user?.perfis?.some((perfil: any) => {
@@ -126,14 +128,78 @@ export default function UnidadeForm({
     { id: 3, label: "Administração", icon: FileText },
   ];
 
+  const validateCNPJ = (cnpj: string): boolean => {
+    // Remove formatação
+    const cleanedCNPJ = cnpj.replace(/\D/g, "");
+
+    // CNPJ deve ter 14 dígitos
+    if (cleanedCNPJ.length !== 14) {
+      return false;
+    }
+
+    // Elimina CNPJs inválidos conhecidos
+    if (/^(\d)\1+$/.test(cleanedCNPJ)) {
+      return false;
+    }
+
+    // Valida DVs (dígitos verificadores)
+    let tamanho = cleanedCNPJ.length - 2;
+    let numeros = cleanedCNPJ.substring(0, tamanho);
+    const digitos = cleanedCNPJ.substring(tamanho);
+    let soma = 0;
+    let pos = tamanho - 7;
+
+    for (let i = tamanho; i >= 1; i--) {
+      soma += parseInt(numeros.charAt(tamanho - i)) * pos--;
+      if (pos < 2) pos = 9;
+    }
+
+    let resultado = soma % 11 < 2 ? 0 : 11 - (soma % 11);
+    if (resultado !== parseInt(digitos.charAt(0))) {
+      return false;
+    }
+
+    tamanho = tamanho + 1;
+    numeros = cleanedCNPJ.substring(0, tamanho);
+    soma = 0;
+    pos = tamanho - 7;
+
+    for (let i = tamanho; i >= 1; i--) {
+      soma += parseInt(numeros.charAt(tamanho - i)) * pos--;
+      if (pos < 2) pos = 9;
+    }
+
+    resultado = soma % 11 < 2 ? 0 : 11 - (soma % 11);
+    if (resultado !== parseInt(digitos.charAt(1))) {
+      return false;
+    }
+
+    return true;
+  };
+
   const formatCNPJ = (value: string) => {
-    return value
-      .replace(/\D/g, "")
+    const cleaned = value.replace(/\D/g, "");
+    const limited = cleaned.slice(0, 14);
+
+    // Validar CNPJ se tiver conteúdo
+    if (limited.length > 0) {
+      if (limited.length < 14) {
+        setCnpjError("CNPJ incompleto (14 dígitos necessários)");
+      } else if (!validateCNPJ(limited)) {
+        setCnpjError("CNPJ inválido");
+      } else {
+        setCnpjError("");
+      }
+    } else {
+      setCnpjError(""); // Limpar erro se campo estiver vazio (opcional)
+    }
+
+    // Formatar
+    return limited
       .replace(/(\d{2})(\d)/, "$1.$2")
       .replace(/(\d{3})(\d)/, "$1.$2")
       .replace(/(\d{3})(\d)/, "$1/$2")
-      .replace(/(\d{4})(\d)/, "$1-$2")
-      .slice(0, 18);
+      .replace(/(\d{4})(\d)/, "$1-$2");
   };
 
   const formatCPF = (value: string) => {
@@ -152,11 +218,30 @@ export default function UnidadeForm({
   };
 
   const formatPhone = (value: string) => {
-    return value
-      .replace(/\D/g, "")
-      .replace(/(\d{2})(\d)/, "($1) $2")
-      .replace(/(\d{5})(\d)/, "$1-$2")
-      .slice(0, 15);
+    const cleaned = value.replace(/\D/g, "");
+
+    // Limita a 11 dígitos
+    const limited = cleaned.slice(0, 11);
+
+    // Valida o telefone
+    if (limited.length > 0 && limited.length < 10) {
+      setPhoneError("Telefone deve ter 10 ou 11 dígitos");
+    } else {
+      setPhoneError("");
+    }
+
+    // Formata conforme a quantidade de dígitos
+    if (limited.length === 11) {
+      return limited.replace(/(\d{2})(\d{5})(\d{4})/, "($1) $2-$3");
+    } else if (limited.length === 10) {
+      return limited.replace(/(\d{2})(\d{4})(\d{4})/, "($1) $2-$3");
+    } else if (limited.length >= 6) {
+      return limited.replace(/(\d{2})(\d{4})(\d{0,4})/, "($1) $2-$3");
+    } else if (limited.length >= 2) {
+      return limited.replace(/(\d{2})(\d{0,5})/, "($1) $2");
+    }
+
+    return limited;
   };
 
   const formatPhoneFixo = (value: string) => {
@@ -229,6 +314,21 @@ export default function UnidadeForm({
     }
   };
 
+  const handleSubmitWithValidation = (e: React.FormEvent) => {
+    e.preventDefault();
+
+    // Validar telefone antes de submeter
+    const cleanedPhone = formData.telefone_celular.replace(/\D/g, "");
+    if (cleanedPhone.length > 0 && cleanedPhone.length < 10) {
+      setPhoneError("Telefone inválido. Deve ter 10 ou 11 dígitos");
+      setActiveTab(1); // Voltar para a aba de contato
+      return;
+    }
+
+    // Se passou na validação, submeter
+    onSubmit(e);
+  };
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-5xl max-h-[90vh] flex flex-col">
@@ -270,7 +370,10 @@ export default function UnidadeForm({
         </div>
 
         {/* Form Content */}
-        <form onSubmit={onSubmit} className="flex-1 overflow-y-auto">
+        <form
+          onSubmit={handleSubmitWithValidation}
+          className="flex-1 overflow-y-auto"
+        >
           <div className="p-6 space-y-6">
             {/* Tab 0: Identificação */}
             {activeTab === 0 && (
@@ -468,8 +571,13 @@ export default function UnidadeForm({
                           telefone_celular: formatPhone(e.target.value),
                         })
                       }
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                        phoneError ? "border-red-500" : "border-gray-300"
+                      }`}
                     />
+                    {phoneError && (
+                      <p className="text-red-500 text-xs mt-1">{phoneError}</p>
+                    )}
                   </div>
 
                   <div>

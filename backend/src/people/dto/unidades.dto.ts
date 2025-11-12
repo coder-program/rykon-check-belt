@@ -67,16 +67,17 @@ export class CreateUnidadeDto {
   @ApiPropertyOptional({ example: '(11) 3456-7890' })
   @IsOptional()
   @IsString()
-  @Matches(/^\(\d{2}\)\s\d{4,5}-\d{4}$/, {
-    message: 'Telefone deve estar no formato (XX) XXXX-XXXX ou (XX) XXXXX-XXXX',
+  @Matches(/^(\(\d{2}\)\s?\d{4,5}-?\d{4}|\d{10,11})$/, {
+    message: 'Telefone fixo deve ter 10 ou 11 dígitos (com ou sem formatação)',
   })
   telefone_fixo?: string;
 
   @ApiProperty({ example: '(11) 98765-4321' })
   @IsString()
   @IsNotEmpty()
-  @Matches(/^\(\d{2}\)\s\d{5}-\d{4}$/, {
-    message: 'Telefone celular deve estar no formato (XX) XXXXX-XXXX',
+  @Matches(/^(\(\d{2}\)\s?\d{5}-?\d{4}|\d{10,11})$/, {
+    message:
+      'Telefone celular deve ter 10 ou 11 dígitos (com ou sem formatação)',
   })
   telefone_celular!: string;
 
