@@ -38,14 +38,17 @@ if (process.env.GOOGLE_CLIENT_ID) {
     PassportModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
-      useFactory: async (configService: ConfigService) => ({
-        secret:
-          configService.get<string>('JWT_SECRET') ||
-          'jwt_secret_muito_forte_para_producao_123456789',
-        signOptions: {
-          expiresIn: configService.get<string>('JWT_EXPIRES_IN') || '8h',
-        },
-      }),
+      useFactory: async (configService: ConfigService) => {
+        const expiresIn = configService.get<string>('JWT_EXPIRES_IN') || '8h';
+        return {
+          secret:
+            configService.get<string>('JWT_SECRET') ||
+            'jwt_secret_muito_forte_para_producao_123456789',
+          signOptions: {
+            expiresIn: expiresIn as any, // TypeScript workaround
+          },
+        };
+      },
       inject: [ConfigService],
     }),
     PeopleModule,
