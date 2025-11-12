@@ -393,11 +393,9 @@ export default function UsuariosManagerNew() {
       errors.nome = "Nome deve conter apenas letras";
     }
 
-    // EMAIL: máximo 30 caracteres, apenas letras, números, underline (_) e ponto (.)
+    // EMAIL: apenas letras, números, underline (_) e ponto (.)
     if (!formData.email.trim()) {
       errors.email = "Email é obrigatório";
-    } else if (formData.email.length > 30) {
-      errors.email = "Email deve ter no máximo 30 caracteres";
     } else if (!/^[a-zA-Z0-9_.]+@[a-zA-Z0-9_.]+\.[a-zA-Z]{2,}$/.test(formData.email)) {
       errors.email = "Email inválido. Use apenas letras, números, _ e .";
     }
@@ -1053,16 +1051,15 @@ export default function UsuariosManagerNew() {
                   {/* Email */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Email * (máx. 30 caracteres)
+                      Email *
                     </label>
                     <input
                       type="email"
                       required
-                      maxLength={30}
                       value={formData.email}
                       onChange={(e) => {
-                        // Limitar a 30 caracteres e permitir apenas letras, números, _, . e @
-                        const value = e.target.value.slice(0, 30).replace(/[^a-zA-Z0-9_.@]/g, '');
+                        // Permitir apenas letras, números, _, . e @
+                        const value = e.target.value.replace(/[^a-zA-Z0-9_.@]/g, '');
                         setFormData({ ...formData, email: value });
                       }}
                       className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
