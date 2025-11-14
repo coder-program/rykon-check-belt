@@ -579,7 +579,7 @@ export default function FranqueadoDashboard() {
                 <div className="text-2xl font-bold text-green-600 mt-2">
                   +{novosAlunosEsteMes}
                 </div>
-                <div className="text-xs text-gray-600">Este mês</div>
+                <div className="text-xs text-gray-600">Este mes</div>
               </div>
 
               <div className="p-4 bg-blue-50 rounded-lg">

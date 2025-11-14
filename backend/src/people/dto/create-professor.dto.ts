@@ -36,7 +36,9 @@ export class CreateProfessorDto {
 
   @IsDateString({}, { message: 'Data de nascimento inválida' })
   @IsOptional()
-  @IsMinimumAge(18, { message: 'Professor deve ter pelo menos 18 anos de idade' })
+  @IsMinimumAge(18, {
+    message: 'Professor deve ter pelo menos 18 anos de idade',
+  })
   data_nascimento?: string;
 
   @IsEnum(Genero, { message: 'Gênero inválido' })
@@ -117,6 +119,11 @@ export class CreateProfessorDto {
   @IsOptional()
   @Length(1, 100)
   registro_profissional?: string;
+
+  @IsString()
+  @IsOptional()
+  @Length(1, 255)
+  especialidades?: string;
 
   // ===== STATUS =====
   @IsEnum(StatusCadastro, { message: 'Status inválido' })

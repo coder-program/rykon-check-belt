@@ -251,7 +251,7 @@ export default function MasterDashboard() {
             <CardContent>
               <div className="text-2xl font-bold">{stats.totalUsuarios}</div>
               <p className="text-xs text-muted-foreground">
-                +{stats.usuariosEsteMes} novos este mês
+                +{stats.usuariosEsteMes} novos este mes
               </p>
             </CardContent>
           </Card>
@@ -297,7 +297,7 @@ export default function MasterDashboard() {
               </div>
               <p className="text-xs text-muted-foreground">
                 {stats.crescimentoAlunos > 0 ? "+" : ""}
-                {stats.crescimentoAlunos}% vs mês anterior
+                {stats.crescimentoAlunos}% vs mes anterior
               </p>
             </CardContent>
           </Card>

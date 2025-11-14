@@ -238,7 +238,7 @@ export default function UnidadeDetalhesPage() {
                   (stats?.alunosAtivos || 0) * (unidade.valor_plano_padrao || 0)
                 ).toLocaleString()}
               </div>
-              <p className="text-xs text-muted-foreground">Por mês</p>
+              <p className="text-xs text-muted-foreground">Por mes</p>
             </CardContent>
           </Card>
         </div>
@@ -471,7 +471,7 @@ export default function UnidadeDetalhesPage() {
                 <p className="text-3xl font-bold text-green-600">
                   R$ {(unidade.valor_plano_padrao || 0).toLocaleString()}
                 </p>
-                <p className="text-xs text-gray-600 mt-1">Por mês</p>
+                <p className="text-xs text-gray-600 mt-1">Por mes</p>
               </div>
               <div className="p-4 bg-blue-50 rounded-lg">
                 <label className="text-sm font-semibold text-blue-700">

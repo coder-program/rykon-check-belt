@@ -286,7 +286,7 @@ export default function ConfiguracoesModal({
                         </div>
                         <div>
                           <label className="text-xs text-gray-600">
-                            Tempo Mínimo (meses)
+                            Tempo Minimo (meses)
                           </label>
                           <input
                             type="number"

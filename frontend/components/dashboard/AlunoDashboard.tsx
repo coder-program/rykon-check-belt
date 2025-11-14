@@ -117,10 +117,10 @@ function formatarTempoNaFaixa(dias: number): string {
   }
 
   if (mesesRestantes > 0) {
-    partes.push(`${mesesRestantes} mês${mesesRestantes > 1 ? "es" : ""}`);
+    partes.push(`${mesesRestantes} mes${mesesRestantes > 1 ? "es" : ""}`);
   }
 
-  // Opcional: incluir dias restantes se for menos de 1 mês desde o último mês completo
+  // Opcional: incluir dias restantes se for menos de 1 mes desde o ultimo mes completo
   if (diasRestantes > 0 && anos === 0 && mesesRestantes === 0) {
     partes.push(`${diasRestantes} dia${diasRestantes > 1 ? "s" : ""}`);
   }
@@ -285,7 +285,7 @@ export default function AlunoDashboard() {
   if (presencaMensal === 100) {
     conquistas.push({
       titulo: "Assiduidade Perfeita!",
-      descricao: "100% de presença neste mês",
+      descricao: "100% de presença neste mes",
       data: new Date().toLocaleDateString("pt-BR"),
       icon: Star,
       color: "text-blue-600",
@@ -483,7 +483,7 @@ export default function AlunoDashboard() {
                                 : ""
                             } ${Math.ceil(
                               statusGraduacao.diasRestantes / 30
-                            )} mês${
+                            )} mes${
                               Math.ceil(statusGraduacao.diasRestantes / 30) !==
                               1
                                 ? "es"
@@ -510,7 +510,7 @@ export default function AlunoDashboard() {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">
-                  Aulas Este Mês
+                  Aulas Este Mes
                 </CardTitle>
                 <Calendar className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
@@ -556,7 +556,7 @@ export default function AlunoDashboard() {
                     </div>
                     <p className="text-xs text-muted-foreground">
                       {rankingData?.presencas || 0} aula
-                      {rankingData?.presencas === 1 ? "" : "s"} no mês
+                      {rankingData?.presencas === 1 ? "" : "s"} no mes
                     </p>
                     <p className="text-xs text-gray-400">
                       de {rankingData?.totalAlunos || 0} alunos
@@ -779,7 +779,7 @@ export default function AlunoDashboard() {
                 {rankingData.ano})
               </CardTitle>
               <CardDescription>
-                Os alunos mais frequentes da sua unidade este mês
+                Os alunos mais frequentes da sua unidade este mes
               </CardDescription>
             </CardHeader>
             <CardContent>

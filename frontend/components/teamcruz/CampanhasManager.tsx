@@ -52,7 +52,7 @@ const mockCampanhas: Campanha[] = [
   {
     id: "1",
     titulo: "Black Friday TeamCruz",
-    descricao: "50% OFF na matrícula + 1º mês grátis para novos alunos",
+    descricao: "50% OFF na matrícula + 1º mes grátis para novos alunos",
     tipo: "promocao",
     dataInicio: "2025-11-20",
     dataFim: "2025-11-30",

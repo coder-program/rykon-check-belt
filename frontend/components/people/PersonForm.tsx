@@ -67,6 +67,7 @@ export function PersonForm({
     faixa_ministrante: "",
     data_inicio_docencia: "",
     registro_profissional: "",
+    especialidades: "",
     observacoes: "",
   });
 
@@ -514,9 +515,9 @@ export function PersonForm({
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="form-control">
-              <label className="label">
-                <span className="label-text">Nome Completo *</span>
+            <div className="space-y-1">
+              <label className="block text-sm font-medium text-gray-700">
+                Nome Completo *
               </label>
               <input
                 type="text"
@@ -530,19 +531,14 @@ export function PersonForm({
                   }));
                 }}
                 maxLength={100}
-                className="input input-bordered"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
                 required
               />
-              <label className="label">
-                <span className="label-text-alt text-gray-500">
-                  Apenas letras, espaços e hífens (máx. 100 caracteres)
-                </span>
-              </label>
             </div>
 
-            <div className="form-control">
-              <label className="label">
-                <span className="label-text">CPF</span>
+            <div className="space-y-1">
+              <label className="block text-sm font-medium text-gray-700">
+                CPF
               </label>
               <InputCPF
                 value={formData.cpf}
@@ -552,36 +548,32 @@ export function PersonForm({
               />
             </div>
 
-            <div className="form-control">
-              <label className="label">
-                <span className="label-text">Data de Nascimento *</span>
+            <div className="space-y-1">
+              <label className="block text-sm font-medium text-gray-700">
+                Data de Nascimento *
               </label>
               <input
                 type="date"
                 name="data_nascimento"
                 value={formData.data_nascimento}
                 onChange={handleChange}
-                className="input input-bordered"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
                 min="1900-01-01"
                 max={new Date().toISOString().split("T")[0]}
                 required
               />
-              <label className="label">
-                <span className="label-text-alt text-gray-500">
-                  Data não pode ser futura
-                </span>
-              </label>
+              <p className="text-sm text-gray-500">Data não pode ser futura</p>
             </div>
 
-            <div className="form-control">
-              <label className="label">
-                <span className="label-text">Gênero *</span>
+            <div className="space-y-1">
+              <label className="block text-sm font-medium text-gray-700">
+                Gênero *
               </label>
               <select
                 name="genero"
                 value={formData.genero}
                 onChange={handleChange}
-                className="select select-bordered"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
                 required
               >
                 <option value="">Selecione</option>
@@ -591,9 +583,9 @@ export function PersonForm({
               </select>
             </div>
 
-            <div className="form-control">
-              <label className="label">
-                <span className="label-text">Telefone/WhatsApp</span>
+            <div className="space-y-1">
+              <label className="block text-sm font-medium text-gray-700">
+                Telefone/WhatsApp
               </label>
               <input
                 type="tel"
@@ -606,27 +598,22 @@ export function PersonForm({
                     telefone_whatsapp: formatted,
                   }));
                 }}
-                className="input input-bordered"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
                 placeholder="(99) 99999-9999"
                 maxLength={15}
               />
-              <label className="label">
-                <span className="label-text-alt text-gray-500">
-                  Apenas números (máx. 15 caracteres com formatação)
-                </span>
-              </label>
             </div>
 
-            <div className="form-control">
-              <label className="label">
-                <span className="label-text">E-mail</span>
+            <div className="space-y-1">
+              <label className="block text-sm font-medium text-gray-700">
+                E-mail
               </label>
               <input
                 type="email"
                 name="email"
                 value={formData.email || ""}
                 onChange={handleChange}
-                className="input input-bordered"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
               />
             </div>
           </div>
@@ -644,15 +631,15 @@ export function PersonForm({
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="form-control">
-                <label className="label">
-                  <span className="label-text">Faixa Atual *</span>
+              <div className="space-y-1">
+                <label className="block text-sm font-medium text-gray-700">
+                  Faixa Atual *
                 </label>
                 <select
                   name="faixa_atual"
                   value={formData.faixa_atual}
                   onChange={handleChange}
-                  className="select select-bordered"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
                   disabled={!formData.data_nascimento}
                   required
                 >
@@ -809,47 +796,39 @@ export function PersonForm({
                   )}
                 </select>
                 {!formData.data_nascimento && (
-                  <label className="label">
-                    <span className="label-text-alt text-info">
-                      ℹ️ Preencha a data de nascimento para liberar as opções de
-                      faixa
-                    </span>
-                  </label>
+                  <p className="text-sm text-blue-600 mt-1">
+                    ℹ️ Preencha a data de nascimento para liberar as opções de
+                    faixa
+                  </p>
                 )}
                 {isUnder16 && (
-                  <label className="label">
-                    <span className="label-text-alt text-warning">
-                      ⚠️ Menores de 16 anos: apenas faixas infantis (Branca,
-                      Cinza, Amarela, Laranja, Verde)
-                    </span>
-                  </label>
+                  <p className="text-sm text-yellow-600 mt-1">
+                    ⚠️ Menores de 16 anos: apenas faixas infantis (Branca,
+                    Cinza, Amarela, Laranja, Verde)
+                  </p>
                 )}
                 {is16to18 && (
-                  <label className="label">
-                    <span className="label-text-alt text-warning">
-                      ⚠️ De 16 a 17 anos: apenas Branca, Azul ou Roxa
-                    </span>
-                  </label>
+                  <p className="text-sm text-yellow-600 mt-1">
+                    ⚠️ De 16 a 17 anos: apenas Branca, Azul ou Roxa
+                  </p>
                 )}
                 {isOver18 && (
-                  <label className="label">
-                    <span className="label-text-alt text-info">
-                      ℹ️ Maiores de 18 anos: apenas faixas adultas (Branca,
-                      Azul, Roxa, Marrom, Preta)
-                    </span>
-                  </label>
+                  <p className="text-sm text-blue-600 mt-1">
+                    ℹ️ Maiores de 18 anos: apenas faixas adultas (Branca, Azul,
+                    Roxa, Marrom, Preta)
+                  </p>
                 )}
               </div>
 
-              <div className="form-control">
-                <label className="label">
-                  <span className="label-text">Grau</span>
+              <div className="space-y-1">
+                <label className="block text-sm font-medium text-gray-700">
+                  Grau
                 </label>
                 <select
                   name="grau_atual"
                   value={formData.grau_atual}
                   onChange={handleChange}
-                  className="select select-bordered"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
                 >
                   <option value="0">0</option>
                   <option value="1">1</option>
@@ -865,22 +844,22 @@ export function PersonForm({
               <>
                 <div className="divider">Dados do Responsável (opcional)</div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="form-control">
-                    <label className="label">
-                      <span className="label-text">Nome do Responsável</span>
+                  <div className="space-y-1">
+                    <label className="block text-sm font-medium text-gray-700">
+                      Nome do Responsável
                     </label>
                     <input
                       type="text"
                       name="responsavel_nome"
                       value={formData.responsavel_nome || ""}
                       onChange={handleChange}
-                      className="input input-bordered"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
                     />
                   </div>
 
-                  <div className="form-control">
-                    <label className="label">
-                      <span className="label-text">CPF do Responsável</span>
+                  <div className="space-y-1">
+                    <label className="block text-sm font-medium text-gray-700">
+                      CPF do Responsável
                     </label>
                     <InputCPF
                       value={formData.responsavel_cpf || ""}
@@ -893,11 +872,9 @@ export function PersonForm({
                     />
                   </div>
 
-                  <div className="form-control">
-                    <label className="label">
-                      <span className="label-text">
-                        Telefone do Responsável
-                      </span>
+                  <div className="space-y-1">
+                    <label className="block text-sm font-medium text-gray-700">
+                      Telefone do Responsável
                     </label>
                     <input
                       type="tel"
@@ -912,15 +889,13 @@ export function PersonForm({
                           responsavel_telefone: formatted,
                         }));
                       }}
-                      className="input input-bordered"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
                       placeholder="(99) 99999-9999"
                       maxLength={15}
                     />
-                    <label className="label">
-                      <span className="label-text-alt text-gray-500">
-                        Apenas números (máx. 15 caracteres)
-                      </span>
-                    </label>
+                    <p className="text-sm text-gray-500">
+                      Apenas números (máx. 15 caracteres)
+                    </p>
                   </div>
                 </div>
               </>
@@ -940,15 +915,15 @@ export function PersonForm({
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="form-control">
-                <label className="label">
-                  <span className="label-text">Faixa Ministrante *</span>
+              <div className="space-y-1">
+                <label className="block text-sm font-medium text-gray-700">
+                  Faixa Ministrante *
                 </label>
                 <select
                   name="faixa_ministrante"
                   value={formData.faixa_ministrante || ""}
                   onChange={handleChange}
-                  className="select select-bordered"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
                   required
                 >
                   <option value="">Selecione</option>
@@ -960,29 +935,24 @@ export function PersonForm({
                 </select>
               </div>
 
-              <div className="form-control">
-                <label className="label">
-                  <span className="label-text">Data de Início da Docência</span>
+              <div className="space-y-1">
+                <label className="block text-sm font-medium text-gray-700">
+                  Data de Início da Docência
                 </label>
                 <input
                   type="date"
                   name="data_inicio_docencia"
                   value={formData.data_inicio_docencia || ""}
                   onChange={handleChange}
-                  className="input input-bordered"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
                   min="1900-01-01"
                   max={new Date().toISOString().split("T")[0]}
                 />
-                <label className="label">
-                  <span className="label-text-alt text-gray-500">
-                    Data não pode ser futura
-                  </span>
-                </label>
               </div>
 
-              <div className="form-control">
-                <label className="label">
-                  <span className="label-text">Registro Profissional</span>
+              <div className="space-y-1">
+                <label className="block text-sm font-medium text-gray-700">
+                  Registro Profissional
                 </label>
                 <input
                   type="text"
@@ -990,30 +960,50 @@ export function PersonForm({
                   value={formData.registro_profissional || ""}
                   onChange={handleChange}
                   maxLength={100}
-                  className="input input-bordered"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
                   placeholder="Ex: CREF 123456-G/SP"
                 />
-                <label className="label">
-                  <span className="label-text-alt text-gray-500">
-                    Máximo 100 caracteres
-                  </span>
-                </label>
               </div>
+            </div>
+
+            {/* Especialidades */}
+            <div className="space-y-1">
+              <label className="block text-sm font-medium text-gray-700">
+                Especialidade
+              </label>
+              <select
+                name="especialidades"
+                value={formData.especialidades || ""}
+                onChange={handleChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+              >
+                <option value="">Selecione a especialidade</option>
+                <option value="Jiu-Jitsu">Jiu-Jitsu</option>
+                <option value="MMA">MMA</option>
+                <option value="Muay Thai">Muay Thai</option>
+                <option value="Boxe">Boxe</option>
+                <option value="Wrestling">Wrestling</option>
+                <option value="Judô">Judô</option>
+                <option value="Kids">Kids</option>
+              </select>
+              <p className="text-sm text-gray-500">
+                Selecione a especialidade principal do professor.
+              </p>
             </div>
 
             {/* Seleção de Unidades - REMOVIDA para Professor, automática baseada no perfil */}
             {tipoCadastro === "PROFESSOR" && isFranqueado && (
               <>
                 <div className="divider">Unidade</div>
-                <div className="form-control">
-                  <label className="label">
-                    <span className="label-text">Unidade *</span>
+                <div className="space-y-1">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Unidade *
                   </label>
                   <select
                     name="unidade_id"
                     value={formData.unidade_id}
                     onChange={handleChange}
-                    className="select select-bordered"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
                     required
                   >
                     <option value="">Selecione a unidade</option>
@@ -1023,11 +1013,9 @@ export function PersonForm({
                       </option>
                     ))}
                   </select>
-                  <label className="label">
-                    <span className="label-text-alt text-info">
-                      ℹ️ Selecione a unidade onde o professor irá atuar
-                    </span>
-                  </label>
+                  <p className="text-sm text-blue-600 mt-1">
+                    ℹ️ Selecione a unidade onde o professor irá atuar
+                  </p>
                 </div>
               </>
             )}
@@ -1062,12 +1050,15 @@ export function PersonForm({
           <CardDescription>Anotações adicionais</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="form-control">
+          <div className="space-y-1">
+            <label className="block text-sm font-medium text-gray-700">
+              Observações
+            </label>
             <textarea
               name="observacoes"
               value={formData.observacoes || ""}
               onChange={handleChange}
-              className="textarea textarea-bordered"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
               rows={3}
               placeholder="Observações adicionais..."
             />

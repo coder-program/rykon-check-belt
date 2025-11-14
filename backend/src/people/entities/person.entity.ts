@@ -142,6 +142,9 @@ export class Person {
   @Column({ type: 'varchar', length: 100, nullable: true })
   registro_profissional: string;
 
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  especialidades: string;
+
   // ===== CAMPOS DE CONTROLE =====
   @Column({ type: 'text', nullable: true })
   observacoes: string;

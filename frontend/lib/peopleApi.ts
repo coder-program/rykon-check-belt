@@ -78,6 +78,14 @@ export async function updateProfessor(id: string, data: any) {
   });
 }
 
+export async function updateProfessorStatus(id: string, status: string) {
+  return http(`/professores/${id}`, {
+    method: "PATCH",
+    body: { status },
+    auth: true,
+  });
+}
+
 export async function deleteProfessor(id: string) {
   return http(`/professores/${id}`, { method: "DELETE", auth: true });
 }

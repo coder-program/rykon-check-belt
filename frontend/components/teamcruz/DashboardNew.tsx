@@ -1281,7 +1281,7 @@ export default function DashboardNew() {
                         : statsQuery.data?.totalAlunos || 0}
                     </div>
                     <div className="stat-desc text-blue-200 mt-1">
-                      ↗︎ 12% vs último mês
+                      ↗︎ 12% vs ultimo mes
                     </div>
                   </div>
                 </div>
@@ -1321,7 +1321,7 @@ export default function DashboardNew() {
                         : statsQuery.data?.proximosGraduaveis || 0}
                     </div>
                     <div className="stat-desc text-yellow-200 mt-1">
-                      ↗︎ 5 novos este mês
+                      ↗︎ 5 novos este mes
                     </div>
                   </div>
                 </div>
@@ -3229,7 +3229,7 @@ export default function DashboardNew() {
                           </div>
                           <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
-                              Tempo Mínimo (meses)
+                              Tempo Minimo (meses)
                             </label>
                             <input
                               type="number"

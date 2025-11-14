@@ -8,7 +8,11 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
-import { listProfessores, deleteProfessor } from "@/lib/peopleApi";
+import {
+  listProfessores,
+  deleteProfessor,
+  updateProfessorStatus,
+} from "@/lib/peopleApi";
 import {
   Search,
   Plus,
@@ -18,6 +22,11 @@ import {
   Users,
   Award,
   ArrowLeft,
+  MoreVertical,
+  UserCheck,
+  UserX,
+  AlertTriangle,
+  Clock,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { http } from "@/lib/api";
@@ -102,10 +111,18 @@ export default function PageProfessores() {
     );
   });
 
-  // Temporariamente permitir para todos - ajustar depois
+  // Verificar se é franqueado
+  const isFranqueado = user?.perfis?.some((perfil: any) => {
+    const perfilNome =
+      typeof perfil === "string" ? perfil : perfil.nome || perfil.perfil;
+    return perfilNome?.toLowerCase() === "franqueado";
+  });
+
+  // Permissões
   const canCreate = true;
   const canEdit = true;
   const canDelete = isMaster; // Apenas MASTER pode excluir
+  const canChangeStatus = isMaster || isFranqueado || isGerenteUnidade; // MASTER, Franqueado e Gerente podem alterar status
 
   // Mutation para deletar professor
   const deleteMutation = useMutation({
@@ -119,6 +136,19 @@ export default function PageProfessores() {
     },
   });
 
+  // Mutation para alterar status
+  const statusMutation = useMutation({
+    mutationFn: ({ id, status }: { id: string; status: string }) =>
+      updateProfessorStatus(id, status),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["professores"] });
+      toast.success("Status do professor alterado com sucesso!");
+    },
+    onError: (error: any) => {
+      toast.error(error?.message || "Erro ao alterar status do professor");
+    },
+  });
+
   const handleDelete = (professor: Professor) => {
     if (
       confirm(
@@ -128,6 +158,27 @@ export default function PageProfessores() {
       )
     ) {
       deleteMutation.mutate(professor.id);
+    }
+  };
+
+  const handleStatusChange = (professor: Professor, newStatus: string) => {
+    const statusLabels: Record<string, string> = {
+      ATIVO: "ativar",
+      INATIVO: "inativar",
+      SUSPENSO: "suspender",
+      AFASTADO: "afastar",
+    };
+
+    const action = statusLabels[newStatus] || "alterar status";
+
+    if (
+      confirm(
+        `Tem certeza que deseja ${action} ${
+          professor.nome_completo || professor.nome
+        }?`
+      )
+    ) {
+      statusMutation.mutate({ id: professor.id, status: newStatus });
     }
   };
 
@@ -583,6 +634,84 @@ export default function PageProfessores() {
                               <Edit className="h-4 w-4" />
                             </Button>
                           )}
+
+                          {/* Menu de Status */}
+                          {canChangeStatus && (
+                            <div className="dropdown dropdown-end">
+                              <div
+                                tabIndex={0}
+                                role="button"
+                                className="btn btn-ghost btn-sm"
+                                title="Alterar Status"
+                              >
+                                <MoreVertical className="h-4 w-4" />
+                              </div>
+                              <ul
+                                tabIndex={0}
+                                className="dropdown-content z-[1] menu p-2 shadow bg-base-100 rounded-box w-52"
+                              >
+                                {professor.status !== "ATIVO" && (
+                                  <li>
+                                    <button
+                                      onClick={() =>
+                                        handleStatusChange(professor, "ATIVO")
+                                      }
+                                      className="flex items-center gap-2 text-green-600 hover:bg-green-50"
+                                    >
+                                      <UserCheck className="h-4 w-4" />
+                                      Ativar Professor
+                                    </button>
+                                  </li>
+                                )}
+                                {professor.status !== "INATIVO" && (
+                                  <li>
+                                    <button
+                                      onClick={() =>
+                                        handleStatusChange(professor, "INATIVO")
+                                      }
+                                      className="flex items-center gap-2 text-red-600 hover:bg-red-50"
+                                    >
+                                      <UserX className="h-4 w-4" />
+                                      Inativar Professor
+                                    </button>
+                                  </li>
+                                )}
+                                {professor.status !== "SUSPENSO" && (
+                                  <li>
+                                    <button
+                                      onClick={() =>
+                                        handleStatusChange(
+                                          professor,
+                                          "SUSPENSO"
+                                        )
+                                      }
+                                      className="flex items-center gap-2 text-yellow-600 hover:bg-yellow-50"
+                                    >
+                                      <AlertTriangle className="h-4 w-4" />
+                                      Suspender Professor
+                                    </button>
+                                  </li>
+                                )}
+                                {professor.status !== "AFASTADO" && (
+                                  <li>
+                                    <button
+                                      onClick={() =>
+                                        handleStatusChange(
+                                          professor,
+                                          "AFASTADO"
+                                        )
+                                      }
+                                      className="flex items-center gap-2 text-orange-600 hover:bg-orange-50"
+                                    >
+                                      <Clock className="h-4 w-4" />
+                                      Afastar Professor
+                                    </button>
+                                  </li>
+                                )}
+                              </ul>
+                            </div>
+                          )}
+
                           {canDelete && (
                             <Button
                               variant="ghost"

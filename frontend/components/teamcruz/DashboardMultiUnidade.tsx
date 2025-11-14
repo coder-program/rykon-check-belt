@@ -107,7 +107,7 @@ export default function DashboardMultiUnidade({ onSelectUnidade }: Props) {
         totalPresencas: 0,
         receitaTotal: 0,
         crescimentoMedio: 0,
-      },
+      }
     );
 
     totais.crescimentoMedio = totais.crescimentoMedio / unidadesData.length;
@@ -175,7 +175,9 @@ export default function DashboardMultiUnidade({ onSelectUnidade }: Props) {
                 {getUnidadeNome()}
               </span>
               <ChevronDown
-                className={`h-4 w-4 text-gray-600 transition-transform ${showDropdown ? "rotate-180" : ""}`}
+                className={`h-4 w-4 text-gray-600 transition-transform ${
+                  showDropdown ? "rotate-180" : ""
+                }`}
               />
             </button>
 
@@ -285,7 +287,11 @@ export default function DashboardMultiUnidade({ onSelectUnidade }: Props) {
         </Card>
 
         <Card
-          className={`${dadosExibicao.crescimento >= 0 ? "bg-gradient-to-br from-emerald-500 to-teal-600" : "bg-gradient-to-br from-red-500 to-red-600"} text-white`}
+          className={`${
+            dadosExibicao.crescimento >= 0
+              ? "bg-gradient-to-br from-emerald-500 to-teal-600"
+              : "bg-gradient-to-br from-red-500 to-red-600"
+          } text-white`}
         >
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
@@ -346,12 +352,16 @@ export default function DashboardMultiUnidade({ onSelectUnidade }: Props) {
                         <p className="text-xl font-bold text-yellow-600">
                           R$ {(unidade.receitaMes / 1000).toFixed(0)}k
                         </p>
-                        <p className="text-xs text-gray-500">Receita/mês</p>
+                        <p className="text-xs text-gray-500">Receita/mes</p>
                       </div>
 
                       <div className="text-center">
                         <p
-                          className={`text-xl font-bold ${unidade.crescimento >= 0 ? "text-emerald-600" : "text-red-600"}`}
+                          className={`text-xl font-bold ${
+                            unidade.crescimento >= 0
+                              ? "text-emerald-600"
+                              : "text-red-600"
+                          }`}
                         >
                           {unidade.crescimento > 0 ? "+" : ""}
                           {unidade.crescimento}%

@@ -20,7 +20,7 @@ interface ListProfessoresParams {
   pageSize?: number;
   search?: string;
   unidade_id?: string;
-  status?: StatusCadastro;
+  status?: StatusCadastro | 'todos';
   faixa_ministrante?: string;
   especialidades?: string;
 }
@@ -98,14 +98,15 @@ export class ProfessoresService {
       });
     }
     // Filtro por status
-    if (params.status) {
+    if (params.status && params.status !== 'todos') {
       query.andWhere('person.status = :status', { status: params.status });
-    } else {
+    } else if (!params.status) {
       // Se não especificou status, mostrar apenas ATIVOS (excluir deletados/inativos)
       query.andWhere('person.status = :status', {
         status: StatusCadastro.ATIVO,
       });
     }
+    // Se status === 'todos', não aplicar nenhum filtro de status
 
     // Filtro por faixa ministrante
     if (params.faixa_ministrante) {
@@ -241,6 +242,26 @@ export class ProfessoresService {
 
       if (existingPerson) {
         throw new ConflictException('CPF já cadastrado');
+      }
+
+      // 3. Verificar se registro profissional já existe (se informado e não vazio)
+      if (
+        dto.registro_profissional &&
+        dto.registro_profissional.trim() !== ''
+      ) {
+        const existingProfessionalRegister =
+          await this.personRepository.findOne({
+            where: {
+              registro_profissional: dto.registro_profissional.trim(),
+              tipo_cadastro: TipoCadastro.PROFESSOR,
+            },
+          });
+
+        if (existingProfessionalRegister) {
+          throw new ConflictException(
+            `Registro profissional "${dto.registro_profissional}" já está cadastrado para outro professor`,
+          );
+        }
       }
 
       // 3. Validar idade mínima de 18 anos
@@ -380,6 +401,30 @@ export class ProfessoresService {
 
         if (existingPerson) {
           throw new ConflictException('CPF já cadastrado');
+        }
+      }
+
+      // Verificar registro profissional único (se estiver sendo alterado e não vazio)
+      if (
+        dto.registro_profissional &&
+        dto.registro_profissional.trim() !== '' &&
+        dto.registro_profissional.trim() !== professor.registro_profissional
+      ) {
+        const existingProfessionalRegister =
+          await this.personRepository.findOne({
+            where: {
+              registro_profissional: dto.registro_profissional.trim(),
+              tipo_cadastro: TipoCadastro.PROFESSOR,
+            },
+          });
+
+        if (
+          existingProfessionalRegister &&
+          existingProfessionalRegister.id !== professor.id
+        ) {
+          throw new ConflictException(
+            `Registro profissional "${dto.registro_profissional}" já está cadastrado para outro professor`,
+          );
         }
       }
 
