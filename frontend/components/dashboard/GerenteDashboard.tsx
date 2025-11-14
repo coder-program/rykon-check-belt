@@ -22,7 +22,6 @@ import {
   TrendingUp,
   AlertCircle,
   Loader2,
-  CheckCircle,
   UserCheck,
   Clock,
 } from "lucide-react";
@@ -192,13 +191,14 @@ export default function GerenteDashboard() {
       action: () => router.push("/checkin/aprovacao"),
       color: "bg-purple-500",
     },
-    {
-      title: "Registrar Presença",
-      description: "Marcar presença nas aulas",
-      icon: CheckCircle,
-      action: () => router.push("/presenca"),
-      color: "bg-green-500",
-    },
+    // TODO: Implementar funcionalidade de registro de presença
+    // {
+    //   title: "Registrar Presença",
+    //   description: "Marcar presença nas aulas",
+    //   icon: CheckCircle,
+    //   action: () => router.push("/presenca"),
+    //   color: "bg-green-500",
+    // },
     {
       title: "Horários de Aulas",
       description: "Ver grade de horários",
@@ -214,13 +214,14 @@ export default function GerenteDashboard() {
       color: "bg-yellow-500",
       urgent: stats.graduacoesPendentes > 0,
     },
-    {
-      title: "Relatórios",
-      description: "Visualizar relatórios da unidade",
-      icon: BarChart3,
-      action: () => router.push("/relatorios"),
-      color: "bg-indigo-500",
-    },
+    // TODO: Implementar funcionalidade de relatórios
+    // {
+    //   title: "Relatórios",
+    //   description: "Visualizar relatórios da unidade",
+    //   icon: BarChart3,
+    //   action: () => router.push("/relatorios"),
+    //   color: "bg-indigo-500",
+    // },
     {
       title: "Minha Unidade",
       description: "Ver dados da unidade",
@@ -366,77 +367,106 @@ export default function GerenteDashboard() {
         <Card className="mb-8">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Building2 className="h-5 w-5" />
+              <Building2 className="h-5 w-5 text-blue-600" />
               Informações da Unidade
             </CardTitle>
+            <CardDescription>Dados completos da sua unidade</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <h3 className="font-semibold text-gray-700 mb-4">
-                  Dados Gerais
-                </h3>
-                <div className="space-y-3 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Nome:</span>
-                    <span className="font-medium">{unidade.nome}</span>
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-4">
+                <div>
+                  <label className="text-xs text-gray-500 uppercase tracking-wide">
+                    Nome
+                  </label>
+                  <p className="font-semibold text-gray-900 text-lg mt-1">
+                    {unidade.nome}
+                  </p>
+                </div>
+
+                {unidade.cnpj && (
+                  <div>
+                    <label className="text-xs text-gray-500 uppercase tracking-wide">
+                      CNPJ
+                    </label>
+                    <p className="font-medium text-gray-700 mt-1">
+                      {unidade.cnpj}
+                    </p>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">CNPJ:</span>
-                    <span className="font-medium">{unidade.cnpj}</span>
+                )}
+
+                {unidade.razao_social && (
+                  <div>
+                    <label className="text-xs text-gray-500 uppercase tracking-wide">
+                      Razão Social
+                    </label>
+                    <p className="font-medium text-gray-700 mt-1">
+                      {unidade.razao_social}
+                    </p>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Status:</span>
+                )}
+
+                {unidade.nome_fantasia && (
+                  <div>
+                    <label className="text-xs text-gray-500 uppercase tracking-wide">
+                      Nome Fantasia
+                    </label>
+                    <p className="font-medium text-gray-700 mt-1">
+                      {unidade.nome_fantasia}
+                    </p>
+                  </div>
+                )}
+
+                <div>
+                  <label className="text-xs text-gray-500 uppercase tracking-wide">
+                    Status
+                  </label>
+                  <div className="mt-1">
                     <span
-                      className={`px-2 py-1 rounded text-xs font-medium ${
+                      className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
                         unidade.status === "ATIVA"
                           ? "bg-green-100 text-green-700"
+                          : unidade.status === "INATIVA"
+                          ? "bg-red-100 text-red-700"
                           : "bg-yellow-100 text-yellow-700"
                       }`}
                     >
                       {unidade.status}
                     </span>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Responsável:</span>
-                    <span className="font-medium">
-                      {unidade.responsavel_nome}
-                    </span>
-                  </div>
                 </div>
               </div>
 
-              <div>
-                <h3 className="font-semibold text-gray-700 mb-4">Estrutura</h3>
-                <div className="space-y-3 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Tatames:</span>
-                    <span className="font-medium">
-                      {unidade.qtde_tatames || "-"}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Capacidade:</span>
-                    <span className="font-medium">
-                      {unidade.capacidade_max_alunos || "-"} alunos
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Área do Tatame:</span>
-                    <span className="font-medium">
-                      {unidade.area_tatame_m2
-                        ? `${unidade.area_tatame_m2} m²`
-                        : "-"}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Instrutores:</span>
-                    <span className="font-medium">
-                      {stats.totalProfessores}
-                    </span>
+              {/* Endereço */}
+              {unidade.endereco && (
+                <div className="pt-6 border-t">
+                  <label className="text-xs text-gray-500 uppercase tracking-wide">
+                    Endereço
+                  </label>
+                  <div className="bg-gray-50 rounded-lg p-4 mt-2">
+                    <p className="text-gray-900 font-medium">
+                      {unidade.endereco.logradouro &&
+                        `${unidade.endereco.logradouro}`}
+                      {unidade.endereco.numero &&
+                        `, ${unidade.endereco.numero}`}
+                      {unidade.endereco.complemento &&
+                        ` - ${unidade.endereco.complemento}`}
+                    </p>
+                    <p className="text-gray-700 mt-1">
+                      {unidade.endereco.bairro &&
+                        `${unidade.endereco.bairro}, `}
+                      {unidade.endereco.cidade && `${unidade.endereco.cidade}`}
+                      {unidade.endereco.estado &&
+                        ` - ${unidade.endereco.estado}`}
+                    </p>
+                    {unidade.endereco.cep && (
+                      <p className="text-gray-600 text-sm mt-1">
+                        CEP: {unidade.endereco.cep}
+                      </p>
+                    )}
                   </div>
                 </div>
-              </div>
+              )}
             </div>
           </CardContent>
         </Card>

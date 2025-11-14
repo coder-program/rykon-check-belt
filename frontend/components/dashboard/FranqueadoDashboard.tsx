@@ -383,13 +383,14 @@ export default function FranqueadoDashboard() {
       color: "bg-yellow-500",
       urgent: graduacoesEsteTrimestre > 0,
     },
-    {
-      title: "Relatórios",
-      description: "Visualizar relatórios das unidades",
-      icon: BarChart3,
-      action: () => router.push("/relatorios"),
-      color: "bg-purple-500",
-    },
+    // TODO: Implementar funcionalidade de relatórios
+    // {
+    //   title: "Relatórios",
+    //   description: "Visualizar relatórios das unidades",
+    //   icon: BarChart3,
+    //   action: () => router.push("/relatorios"),
+    //   color: "bg-purple-500",
+    // },
   ];
 
   return (

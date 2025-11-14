@@ -164,7 +164,10 @@ export default function PageUnidades() {
       return createUnidade(data);
     },
     onSuccess: async () => {
-      await qc.invalidateQueries({ queryKey: ["unidades"], refetchType: "all" });
+      await qc.invalidateQueries({
+        queryKey: ["unidades"],
+        refetchType: "all",
+      });
       await qc.invalidateQueries({
         queryKey: ["unidades-gestao"],
         refetchType: "all",
@@ -194,7 +197,10 @@ export default function PageUnidades() {
       return updateUnidade(id, data);
     },
     onSuccess: async () => {
-      await qc.invalidateQueries({ queryKey: ["unidades"], refetchType: "all" });
+      await qc.invalidateQueries({
+        queryKey: ["unidades"],
+        refetchType: "all",
+      });
       await qc.invalidateQueries({
         queryKey: ["unidades-gestao"],
         refetchType: "all",
@@ -217,7 +223,10 @@ export default function PageUnidades() {
   const deleteMutation = useMutation({
     mutationFn: deleteUnidade,
     onSuccess: async () => {
-      await qc.invalidateQueries({ queryKey: ["unidades"], refetchType: "all" });
+      await qc.invalidateQueries({
+        queryKey: ["unidades"],
+        refetchType: "all",
+      });
       await qc.invalidateQueries({
         queryKey: ["unidades-gestao"],
         refetchType: "all",
@@ -427,14 +436,14 @@ export default function PageUnidades() {
         {/* Botão Voltar */}
         <div className="flex items-center gap-2 mb-4">
           <button
-            onClick={() => router.push("/admin/gestao-unidades")}
+            onClick={() => router.push("/dashboard")}
             className="group flex items-center gap-2 text-sm text-gray-600 hover:text-blue-600 transition-colors duration-200"
-            title="Voltar para Gestão de Unidades"
+            title="Voltar para Dashboard"
           >
             <div className="p-1 rounded-full group-hover:bg-blue-100 transition-colors duration-200">
               <ArrowLeft className="h-4 w-4" />
             </div>
-            <span>Gestão de Unidades</span>
+            <span>Dashboard</span>
           </button>
           <span className="text-gray-400">/</span>
           <span className="text-gray-900 font-medium">Unidades</span>

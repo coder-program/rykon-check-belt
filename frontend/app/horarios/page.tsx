@@ -404,13 +404,14 @@ export default function HorariosPage() {
                             </Badge>
                           </div>
 
-                          <div className="flex items-center gap-2">
+                          {/* TODO: Implementar sistema de vagas */}
+                          {/* <div className="flex items-center gap-2">
                             <Users className="h-4 w-4 text-gray-500" />
                             <span className="text-sm">
                               {horario.vagasDisponiveis} vagas disponíveis de{" "}
                               {horario.vagasTotal}
                             </span>
-                          </div>
+                          </div> */}
 
                           {horario.observacoes && (
                             <div className="flex items-start gap-2 text-xs text-amber-700 bg-amber-50 p-2 rounded">
@@ -419,7 +420,8 @@ export default function HorariosPage() {
                             </div>
                           )}
 
-                          <div className="pt-2">
+                          {/* TODO: Implementar sistema de inscrições */}
+                          {/* <div className="pt-2">
                             {horario.inscrito ? (
                               <Button
                                 onClick={() => desinscreverAula(horario.id)}
@@ -439,7 +441,7 @@ export default function HorariosPage() {
                                   : "Inscrever-se"}
                               </Button>
                             )}
-                          </div>
+                          </div> */}
                         </CardContent>
                       </Card>
                     ))}
