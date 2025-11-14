@@ -223,14 +223,127 @@ export class AlunosService {
   }
 
   async create(dto: CreateAlunoDto): Promise<Aluno> {
+    console.log('🔍 [ALUNO CREATE] Iniciando criação de aluno:', {
+      nome: dto.nome_completo,
+      cpf: dto.cpf,
+      usuario_id_fornecido: dto.usuario_id,
+      unidade_id: dto.unidade_id,
+    });
+
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
 
     let savedAluno: any;
+    let usuario_id: string | undefined = dto.usuario_id;
 
     try {
-      // 1. Verificar se CPF já existe
+      // 1. Criar usuário se não foi fornecido usuario_id
+      if (!usuario_id) {
+        console.log(
+          '🔍 [ALUNO CREATE] Usuário não fornecido, criando automaticamente...',
+        );
+
+        // Buscar ID do perfil ALUNO
+        const perfilAluno = await queryRunner.manager.query(
+          `SELECT id FROM teamcruz.perfis WHERE UPPER(nome) = 'ALUNO' LIMIT 1`,
+        );
+
+        console.log('🔍 [ALUNO CREATE] Perfil ALUNO encontrado:', perfilAluno);
+
+        if (!perfilAluno || perfilAluno.length === 0) {
+          throw new BadRequestException(
+            'Perfil ALUNO não encontrado no sistema',
+          );
+        }
+
+        // Gerar username a partir do nome (remover espaços e caracteres especiais)
+        const baseUsername = dto.nome_completo
+          .toLowerCase()
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .replace(/[^a-z0-9]/g, '');
+
+        console.log('🔍 [ALUNO CREATE] Base username gerado:', baseUsername);
+
+        // Verificar se username já existe e adicionar número se necessário
+        let username = baseUsername;
+        let counter = 1;
+        let usernameExists = true;
+
+        while (usernameExists) {
+          const existing = await queryRunner.manager.query(
+            `SELECT id FROM teamcruz.usuarios WHERE username = $1`,
+            [username],
+          );
+          if (existing.length === 0) {
+            usernameExists = false;
+          } else {
+            username = `${baseUsername}${counter}`;
+            counter++;
+          }
+        }
+
+        console.log('🔍 [ALUNO CREATE] Username final:', username);
+
+        // Criar usuário com ativo = false (aguardando aprovação)
+        const usuarioData = {
+          username,
+          email: dto.email || `${username}@temp.local`,
+          nome: dto.nome_completo,
+          cpf: dto.cpf,
+          telefone: dto.telefone,
+          senha_hash: await import('bcrypt').then((bcrypt) =>
+            bcrypt.hash(dto.cpf.replace(/\D/g, ''), 10),
+          ), // Senha inicial = CPF
+          ativo: false, // Aguardando aprovação
+          cadastro_completo: false,
+        };
+
+        console.log('🔍 [ALUNO CREATE] Dados do usuário a ser criado:', {
+          username: usuarioData.username,
+          email: usuarioData.email,
+          ativo: usuarioData.ativo,
+          cadastro_completo: usuarioData.cadastro_completo,
+        });
+
+        const usuario = await queryRunner.manager.query(
+          `INSERT INTO teamcruz.usuarios
+           (username, email, nome, cpf, telefone, senha_hash, ativo, cadastro_completo, created_at, updated_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
+           RETURNING id`,
+          [
+            usuarioData.username,
+            usuarioData.email,
+            usuarioData.nome,
+            usuarioData.cpf,
+            usuarioData.telefone,
+            usuarioData.senha_hash,
+            usuarioData.ativo,
+            usuarioData.cadastro_completo,
+          ],
+        );
+
+        usuario_id = usuario[0].id;
+
+        console.log('🔍 [ALUNO CREATE] Usuário criado com ID:', usuario_id);
+
+        // Vincular perfil ALUNO ao usuário
+        await queryRunner.manager.query(
+          `INSERT INTO teamcruz.usuario_perfis (usuario_id, perfil_id, created_at, updated_at)
+           VALUES ($1, $2, NOW(), NOW())`,
+          [usuario_id, perfilAluno[0].id],
+        );
+
+        console.log('🔍 [ALUNO CREATE] Perfil ALUNO vinculado ao usuário');
+      } else {
+        console.log(
+          '🔍 [ALUNO CREATE] Usando usuario_id fornecido:',
+          usuario_id,
+        );
+      }
+
+      // 2. Verificar se CPF já existe
       const existingAluno = await this.alunoRepository.findOne({
         where: { cpf: dto.cpf },
       });
@@ -239,7 +352,7 @@ export class AlunosService {
         throw new ConflictException('CPF já cadastrado');
       }
 
-      // 2. Validar se é menor de idade e tem responsável
+      // 3. Validar se é menor de idade e tem responsável
       const dataNascimento = new Date(dto.data_nascimento);
       const idade = this.calcularIdade(dataNascimento);
 
@@ -255,9 +368,10 @@ export class AlunosService {
         }
       }
 
-      // 3. Preparar dados do aluno
+      // 4. Preparar dados do aluno (incluindo usuario_id se foi criado)
       const alunoData: any = {
         ...dto,
+        usuario_id, // Incluir o usuario_id criado automaticamente
         status: dto.status || StatusAluno.ATIVO,
         faixa_atual: dto.faixa_atual || FaixaEnum.BRANCA,
         graus: dto.graus || 0,
@@ -269,6 +383,13 @@ export class AlunosService {
           ? new Date(dto.data_ultima_graduacao)
           : undefined,
       };
+
+      console.log('🔍 [ALUNO CREATE] Dados do aluno preparados:', {
+        nome: alunoData.nome_completo,
+        usuario_id: alunoData.usuario_id,
+        unidade_id: alunoData.unidade_id,
+        status: alunoData.status,
+      });
 
       // Manter compatibilidade com sistema antigo (unidade_id único)
       if (dto.unidade_id) {
@@ -283,7 +404,14 @@ export class AlunosService {
       const aluno = queryRunner.manager.create(Aluno, alunoData);
       savedAluno = await queryRunner.manager.save(Aluno, aluno);
 
-      // 4. Buscar a definição da faixa
+      console.log('🔍 [ALUNO CREATE] Aluno salvo no banco:', {
+        id: savedAluno.id,
+        nome: savedAluno.nome_completo,
+        usuario_id: savedAluno.usuario_id,
+        unidade_id: savedAluno.unidade_id,
+      });
+
+      // 5. Buscar a definição da faixa
       let faixaDef = await this.buscarFaixaDef(
         dto.faixa_atual || FaixaEnum.BRANCA,
         idade,
@@ -398,8 +526,16 @@ export class AlunosService {
       }
 
       await queryRunner.commitTransaction();
+
+      console.log('🔍 [ALUNO CREATE] Transação commitada com sucesso!');
+      console.log('🔍 [ALUNO CREATE] Resumo final:', {
+        aluno_id: savedAluno.id,
+        usuario_id: savedAluno.usuario_id,
+        usuario_criado_automaticamente: !dto.usuario_id,
+      });
     } catch (error) {
       await queryRunner.rollbackTransaction();
+      console.error('❌ [ALUNO CREATE] Erro ao criar aluno:', error);
       throw error;
     }
 

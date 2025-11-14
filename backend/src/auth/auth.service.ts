@@ -610,8 +610,22 @@ export class AuthService {
       // Aluno: criar registro na tabela alunos
       if (perfilNome === 'aluno') {
         try {
+          console.log(
+            '🔍 [CREATE ALUNO] Iniciando criação do registro de aluno...',
+          );
+          console.log('🔍 [CREATE ALUNO] user.id:', user.id);
+          console.log('🔍 [CREATE ALUNO] unidade_id:', payload.unidade_id);
+          console.log('🔍 [CREATE ALUNO] nome:', user.nome);
+          console.log('🔍 [CREATE ALUNO] cpf:', user.cpf);
+          console.log(
+            '🔍 [CREATE ALUNO] data_nascimento:',
+            user.data_nascimento || payload.data_nascimento,
+          );
+          console.log('🔍 [CREATE ALUNO] genero:', payload.genero);
+          console.log('🔍 [CREATE ALUNO] telefone:', user.telefone);
+
           // Usar dados do usuário + dados adicionais do payload
-          await this.alunosService.create({
+          const alunoData = {
             // Dados obrigatórios
             usuario_id: user.id,
             unidade_id: payload.unidade_id,
@@ -622,7 +636,7 @@ export class AuthService {
 
             // Contato
             email: user.email,
-            telefone_whatsapp: user.telefone,
+            telefone: user.telefone, // ✅ FIX: Usar "telefone" em vez de "telefone_whatsapp"
             telefone_emergencia: payload.telefone_emergencia || null,
             nome_contato_emergencia: payload.nome_contato_emergencia || null,
 
@@ -653,11 +667,31 @@ export class AuthService {
             consent_lgpd: payload.consent_lgpd || false,
             consent_imagem: payload.consent_imagem || false,
             consent_lgpd_date: payload.consent_lgpd ? new Date() : null,
-          } as any);
+          };
+
+          console.log(
+            '🔍 [CREATE ALUNO] Chamando alunosService.create() com dados:',
+            JSON.stringify(alunoData, null, 2),
+          );
+
+          const alunoCriado = await this.alunosService.create(alunoData as any);
+
+          console.log(
+            '✅ [CREATE ALUNO] Registro de aluno criado com sucesso!',
+            alunoCriado.id,
+          );
         } catch (error) {
-          console.error('❌ Erro ao criar registro de aluno:', error.message);
-          console.error('Stack:', error.stack);
-          // Não lançar erro para não bloquear o cadastro do usuário
+          console.error(
+            '❌ [CREATE ALUNO] Erro ao criar registro de aluno:',
+            error.message,
+          );
+          console.error('❌ [CREATE ALUNO] Stack completo:', error.stack);
+          console.error(
+            '❌ [CREATE ALUNO] Detalhes do erro:',
+            JSON.stringify(error, null, 2),
+          );
+          // 🚨 LANÇAR ERRO para impedir cadastro incompleto
+          throw new Error(`Falha ao criar registro de aluno: ${error.message}`);
         }
       }
     } else if (perfilNome !== 'franqueado' && perfilNome !== 'master') {

@@ -60,6 +60,16 @@ export class AlunoUnidadeDto {
 }
 
 export class CreateAlunoDto {
+  // ===== ID DO USUÁRIO (OPCIONAL) =====
+  @ApiPropertyOptional({
+    description:
+      'ID do usuário associado ao aluno (opcional - será criado automaticamente se não fornecido)',
+    example: '123e4567-e89b-12d3-a456-426614174000',
+  })
+  @IsUUID('4', { message: 'ID de usuário inválido' })
+  @IsOptional()
+  usuario_id?: string;
+
   // ===== DADOS PESSOAIS =====
   @IsString()
   @IsNotEmpty({ message: 'Nome completo é obrigatório' })

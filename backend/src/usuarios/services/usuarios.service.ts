@@ -926,12 +926,19 @@ export class UsuariosService {
   }
 
   async findPendingApproval(user?: any): Promise<any[]> {
+    console.log('🔍 [PENDENTES] Buscando usuários pendentes para:', {
+      user_id: user?.id,
+      user_nome: user?.nome,
+    });
+
     // Detectar perfil do usuário logado
     const perfis =
       user?.perfis?.map((p: any) => (typeof p === 'string' ? p : p.nome)) || [];
 
     // Converter tudo para minúsculas para comparação case-insensitive
     const perfisLower = perfis.map((p: string) => p.toLowerCase());
+
+    console.log('🔍 [PENDENTES] Perfis do usuário:', perfisLower);
 
     const isMaster =
       perfisLower.includes('master') || perfisLower.includes('admin');
@@ -973,6 +980,58 @@ export class UsuariosService {
 
       if (franqueadoData && franqueadoData.length > 0) {
         const franqueadoId = franqueadoData[0].id;
+
+        console.log('🔍 [PENDENTES] Franqueado ID:', franqueadoId);
+
+        // DEBUG: Verificar usuários inativos no banco
+        const usuariosInativos = await this.usuarioRepository.query(
+          `SELECT u.id, u.nome, u.email, u.ativo, u.created_at
+           FROM teamcruz.usuarios u
+           WHERE u.ativo = false
+           ORDER BY u.created_at DESC
+           LIMIT 10`,
+        );
+        console.log(
+          '🔍 [PENDENTES DEBUG] Total de usuários inativos no banco:',
+          usuariosInativos.length,
+        );
+        console.log(
+          '🔍 [PENDENTES DEBUG] Usuários inativos:',
+          usuariosInativos,
+        );
+
+        // DEBUG: Verificar alunos vinculados a usuários inativos
+        const alunosInativos = await this.usuarioRepository.query(
+          `SELECT u.id as usuario_id, u.nome as usuario_nome, u.ativo as usuario_ativo,
+                  a.id as aluno_id, a.nome_completo as aluno_nome, a.unidade_id,
+                  un.nome as unidade_nome, un.franqueado_id
+           FROM teamcruz.usuarios u
+           INNER JOIN teamcruz.alunos a ON a.usuario_id = u.id
+           LEFT JOIN teamcruz.unidades un ON un.id = a.unidade_id
+           WHERE u.ativo = false
+           ORDER BY u.created_at DESC
+           LIMIT 10`,
+        );
+        console.log(
+          '🔍 [PENDENTES DEBUG] Alunos com usuário inativo:',
+          alunosInativos.length,
+        );
+        console.log('🔍 [PENDENTES DEBUG] Alunos:', alunosInativos);
+
+        // DEBUG: Verificar perfis dos usuários inativos
+        const perfisInativos = await this.usuarioRepository.query(
+          `SELECT u.id as usuario_id, u.nome as usuario_nome, p.nome as perfil_nome
+           FROM teamcruz.usuarios u
+           INNER JOIN teamcruz.usuario_perfis up ON up.usuario_id = u.id
+           INNER JOIN teamcruz.perfis p ON p.id = up.perfil_id
+           WHERE u.ativo = false
+           ORDER BY u.created_at DESC
+           LIMIT 20`,
+        );
+        console.log(
+          '🔍 [PENDENTES DEBUG] Perfis de usuários inativos:',
+          perfisInativos,
+        );
 
         // Buscar GERENTES, ALUNOS, RECEPCIONISTAS, PROFESSORES e RESPONSAVEIS pendentes das unidades do franqueado
         const usuariosPendentes = await this.usuarioRepository.query(
@@ -1018,6 +1077,22 @@ export class UsuariosService {
           ORDER BY u.created_at DESC
           `,
           [franqueadoId],
+        );
+
+        console.log(
+          '🔍 [PENDENTES] Usuários pendentes encontrados:',
+          usuariosPendentes.length,
+        );
+        console.log(
+          '🔍 [PENDENTES] Dados:',
+          usuariosPendentes.map((u: any) => ({
+            id: u.id,
+            nome: u.nome,
+            email: u.email,
+            ativo: u.ativo,
+            unidade_id: u.unidade_id,
+            unidade_nome: u.unidade_nome,
+          })),
         );
 
         // Buscar perfis e unidade para cada usuário
