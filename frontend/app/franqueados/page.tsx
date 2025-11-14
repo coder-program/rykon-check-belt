@@ -292,6 +292,10 @@ const FormularioFranqueado: React.FC<FormularioFranqueadoProps> = ({
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
 
+    if (!formData.usuario_id || !formData.usuario_id.trim()) {
+      newErrors.usuario_id = "Usuário é obrigatório";
+    }
+
     if (!formData.nome.trim()) {
       newErrors.nome = "Nome é obrigatório";
     }
@@ -325,6 +329,8 @@ const FormularioFranqueado: React.FC<FormularioFranqueadoProps> = ({
         ...formData,
         cpf: formData.cpf.replace(/\D/g, ""),
         telefone: formData.telefone.replace(/\D/g, ""),
+        // usuario_id agora é obrigatório
+        usuario_id: formData.usuario_id,
       };
 
       onSubmit(dataToSubmit);
@@ -457,12 +463,13 @@ const FormularioFranqueado: React.FC<FormularioFranqueadoProps> = ({
           {/* Usuário Vinculado */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Usuário do Sistema (Opcional)
+              Usuário do Sistema *
             </label>
             <div className="space-y-2 relative" ref={dropdownRef}>
               <div className="relative">
                 <input
                   type="text"
+                  required
                   value={searchUsuario}
                   onChange={(e) => {
                     setSearchUsuario(e.target.value);
@@ -472,7 +479,10 @@ const FormularioFranqueado: React.FC<FormularioFranqueadoProps> = ({
                     }
                   }}
                   onFocus={() => setShowUsuarioDropdown(true)}
-                  className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className={getFieldClassName(
+                    "w-full px-3 py-2 pr-10 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent",
+                    !!errors.usuario_id
+                  )}
                   placeholder="Digite para pesquisar usuário..."
                 />
 
@@ -527,7 +537,11 @@ const FormularioFranqueado: React.FC<FormularioFranqueadoProps> = ({
                   )}
               </div>
 
-              {formData.usuario_id && (
+              {errors.usuario_id && (
+                <p className="text-red-600 text-sm mt-1">{errors.usuario_id}</p>
+              )}
+
+              {formData.usuario_id && !errors.usuario_id && (
                 <p className="text-sm text-blue-600 flex items-center gap-1">
                   <UserCheck className="h-3 w-3" />
                   {dadosPreenchidosAutomaticamente
@@ -638,6 +652,25 @@ export default function FranqueadosPageSimplificada() {
       console.error("Erro detalhado:", error);
       const apiError = error as APIError;
 
+      // Verificar se é erro de CPF duplicado
+      const errorMessage = apiError?.message || "";
+      if (
+        errorMessage.includes("cpf") ||
+        errorMessage.includes("CPF") ||
+        errorMessage.includes("duplicate") ||
+        errorMessage.includes("duplicado") ||
+        errorMessage.includes("already exists") ||
+        errorMessage.includes("já existe")
+      ) {
+        toast.error(
+          "❌ CPF já cadastrado! Este CPF já está em uso por outro franqueado.",
+          {
+            duration: 5000,
+          }
+        );
+        return;
+      }
+
       // Se há erros de validação específicos, mostrar detalhes
       if (apiError?.errors && Array.isArray(apiError.errors)) {
         const validationErrors = apiError.errors
@@ -650,7 +683,9 @@ export default function FranqueadosPageSimplificada() {
             }`;
           })
           .join("\n");
-        toast.error(`Erro de validação:\n${validationErrors}`);
+        toast.error(`Erro de validação:\n${validationErrors}`, {
+          duration: 5000,
+        });
       } else {
         toast.error(apiError?.message || "Erro ao criar franqueado");
       }

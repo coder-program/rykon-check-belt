@@ -146,6 +146,10 @@ export default function UsuariosManagerNew() {
     {}
   );
 
+  // Paginação
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 20;
+
   const [formData, setFormData] = useState<FormData>({
     username: "",
     email: "",
@@ -233,7 +237,7 @@ export default function UsuariosManagerNew() {
     enabled: !!user && (isFranqueado || isGerenteUnidade), // Busca se for franqueado OU gerente
   });
 
-  // Filtrar perfis disponíveis baseado no perfil do usuário logado
+  // Filtrar perfis disponíveis baseado no perfil do usuário logado (para criação de usuários)
   const perfisDisponiveis = perfis.filter((perfil: any) => {
     const nomePerfil = perfil.nome?.toUpperCase();
 
@@ -266,6 +270,30 @@ export default function UsuariosManagerNew() {
     }
 
     // Se não for MASTER, FRANQUEADO nem GERENTE_UNIDADE, NÃO pode criar usuários
+    return false;
+  });
+
+  // Perfis para o filtro de visualização (adiciona ALUNO e INSTRUTOR aos perfis que o usuário pode criar)
+  const perfisParaFiltro = perfis.filter((perfil: any) => {
+    const nomePerfil = perfil.nome?.toUpperCase();
+
+    // Se for MASTER, mostra todos os perfis
+    if (isMaster) {
+      return true;
+    }
+
+    // Para FRANQUEADO e GERENTE_UNIDADE, mostra os perfis que podem criar + ALUNO + INSTRUTOR
+    if (isFranqueado || isGerenteUnidade) {
+      const perfisVisiveis = [
+        "GERENTE_UNIDADE",
+        "RECEPCIONISTA",
+        "INSTRUTOR",
+        "ALUNO",
+        "RESPONSAVEL",
+      ];
+      return perfisVisiveis.includes(nomePerfil);
+    }
+
     return false;
   });
 
@@ -631,6 +659,17 @@ export default function UsuariosManagerNew() {
     return matchesSearch && matchesStatus && matchesPerfil;
   });
 
+  // Paginação
+  const totalPages = Math.ceil(usuariosFiltrados.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const usuariosPaginados = usuariosFiltrados.slice(startIndex, endIndex);
+
+  // Reset para página 1 quando filtros mudam
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter, perfilFilter]);
+
   const stats = {
     total: usuarios.length,
     ativos: usuarios.filter((u: any) => u.ativo).length,
@@ -770,7 +809,7 @@ export default function UsuariosManagerNew() {
                   className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent min-w-[200px]"
                 >
                   <option value="todos">Todos Perfis</option>
-                  {perfisDisponiveis.map((perfil: any) => (
+                  {perfisParaFiltro.map((perfil: any) => (
                     <option key={perfil.id} value={perfil.id}>
                       {perfil.nome}
                     </option>
@@ -815,7 +854,7 @@ export default function UsuariosManagerNew() {
                       </td>
                     </tr>
                   ) : (
-                    usuariosFiltrados.map((usuario: any) => (
+                    usuariosPaginados.map((usuario: any) => (
                       <tr key={usuario.id} className="hover:bg-gray-50">
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center gap-3">
@@ -930,6 +969,77 @@ export default function UsuariosManagerNew() {
                 </tbody>
               </table>
             </div>
+
+            {/* Controles de Paginação */}
+            {totalPages > 1 && (
+              <div className="mt-6 flex items-center justify-between border-t pt-4">
+                <div className="text-sm text-gray-700">
+                  Mostrando{" "}
+                  <span className="font-medium">{startIndex + 1}</span> a{" "}
+                  <span className="font-medium">
+                    {Math.min(endIndex, usuariosFiltrados.length)}
+                  </span>{" "}
+                  de{" "}
+                  <span className="font-medium">
+                    {usuariosFiltrados.length}
+                  </span>{" "}
+                  usuários
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() =>
+                      setCurrentPage((prev) => Math.max(1, prev - 1))
+                    }
+                    disabled={currentPage === 1}
+                    className="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Anterior
+                  </button>
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: totalPages }, (_, i) => i + 1)
+                      .filter((page) => {
+                        // Mostra primeira, última e páginas próximas à atual
+                        return (
+                          page === 1 ||
+                          page === totalPages ||
+                          (page >= currentPage - 2 && page <= currentPage + 2)
+                        );
+                      })
+                      .map((page, index, array) => {
+                        // Adiciona "..." entre páginas não consecutivas
+                        const showEllipsis =
+                          index > 0 && page - array[index - 1] > 1;
+                        return (
+                          <React.Fragment key={page}>
+                            {showEllipsis && (
+                              <span className="px-2 text-gray-500">...</span>
+                            )}
+                            <button
+                              onClick={() => setCurrentPage(page)}
+                              className={`px-3 py-2 text-sm rounded-lg ${
+                                currentPage === page
+                                  ? "bg-blue-600 text-white"
+                                  : "border border-gray-300 hover:bg-gray-50"
+                              }`}
+                            >
+                              {page}
+                            </button>
+                          </React.Fragment>
+                        );
+                      })}
+                  </div>
+                  <button
+                    onClick={() =>
+                      setCurrentPage((prev) => Math.min(totalPages, prev + 1))
+                    }
+                    disabled={currentPage === totalPages}
+                    className="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Próxima
+                  </button>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
 

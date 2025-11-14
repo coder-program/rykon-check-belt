@@ -382,8 +382,9 @@ export default function PageAlunos() {
         </div>
 
         {/* Filtros */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
-          <div className="relative flex-1">
+        <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-end">
+          {/* Campo de busca - largura maior */}
+          <div className="flex-1 min-w-0">
             <label className="label">
               <span className="label-text">
                 Buscar por nome, CPF ou matrícula
@@ -400,90 +401,93 @@ export default function PageAlunos() {
             </div>
           </div>
 
-          <div>
-            <label className="label">
-              <span className="label-text">Categoria</span>
-            </label>
-            <select
-              className="select select-bordered w-full"
-              value={categoria}
-              onChange={(e) => setCategoria(e.target.value)}
-            >
-              <option value="todos">Todos</option>
-              <option value="kids">👶 Kids</option>
-              <option value="adulto">🥋 Adulto</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="label">
-              <span className="label-text">Status</span>
-            </label>
-            <select
-              className="select select-bordered w-full"
-              value={status}
-              onChange={(e) => setStatus(e.target.value)}
-            >
-              <option value="todos">Todos os Status</option>
-              <option value="ATIVO">Ativos</option>
-              <option value="INATIVO">Inativos</option>
-              <option value="SUSPENSO">Suspensos</option>
-              <option value="CANCELADO">Cancelados</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="label">
-              <span className="label-text">Unidade</span>
-            </label>
-            {isGerenteUnidade && minhaUnidade ? (
-              <div className="select select-bordered w-full bg-gray-100 cursor-not-allowed flex items-center">
-                {minhaUnidade.nome}
-              </div>
-            ) : (
+          {/* Filtros menores lado a lado */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 w-full lg:w-auto">
+            <div className="min-w-32">
+              <label className="label">
+                <span className="label-text">Categoria</span>
+              </label>
               <select
                 className="select select-bordered w-full"
-                value={unidadeId}
-                onChange={(e) => setUnidadeId(e.target.value)}
+                value={categoria}
+                onChange={(e) => setCategoria(e.target.value)}
               >
-                <option value="">Todas as Unidades</option>
-                {unidadesQuery.data?.items?.map((unidade) => (
-                  <option key={unidade.id} value={unidade.id}>
-                    {unidade.nome}
-                  </option>
-                ))}
+                <option value="todos">Todos</option>
+                <option value="kids">👶 Kids</option>
+                <option value="adulto">🥋 Adulto</option>
               </select>
-            )}
-          </div>
+            </div>
 
-          <div>
-            <label className="label">
-              <span className="label-text">Faixa</span>
-            </label>
-            <select
-              className="select select-bordered w-full"
-              value={faixa}
-              onChange={(e) => setFaixa(e.target.value)}
-            >
-              <option value="todos">Todas as Faixas</option>
-              <option value="BRANCA">Branca</option>
-              <option value="CINZA_BRANCA">Cinza Branca</option>
-              <option value="CINZA">Cinza</option>
-              <option value="CINZA_PRETA">Cinza Preta</option>
-              <option value="AMARELA_BRANCA">Amarela Branca</option>
-              <option value="AMARELA">Amarela</option>
-              <option value="AMARELA_PRETA">Amarela Preta</option>
-              <option value="LARANJA_BRANCA">Laranja Branca</option>
-              <option value="LARANJA">Laranja</option>
-              <option value="LARANJA_PRETA">Laranja Preta</option>
-              <option value="VERDE_BRANCA">Verde Branca</option>
-              <option value="VERDE">Verde</option>
-              <option value="VERDE_PRETA">Verde Preta</option>
-              <option value="AZUL">Azul</option>
-              <option value="ROXA">Roxa</option>
-              <option value="MARROM">Marrom</option>
-              <option value="PRETA">Preta</option>
-            </select>
+            <div className="min-w-32">
+              <label className="label">
+                <span className="label-text">Status</span>
+              </label>
+              <select
+                className="select select-bordered w-full"
+                value={status}
+                onChange={(e) => setStatus(e.target.value)}
+              >
+                <option value="todos">Todos os Status</option>
+                <option value="ATIVO">Ativos</option>
+                <option value="INATIVO">Inativos</option>
+                <option value="SUSPENSO">Suspensos</option>
+                <option value="CANCELADO">Cancelados</option>
+              </select>
+            </div>
+
+            <div className="min-w-40">
+              <label className="label">
+                <span className="label-text">Unidade</span>
+              </label>
+              {isGerenteUnidade && minhaUnidade ? (
+                <div className="select select-bordered w-full bg-gray-100 cursor-not-allowed flex items-center">
+                  {minhaUnidade.nome}
+                </div>
+              ) : (
+                <select
+                  className="select select-bordered w-full"
+                  value={unidadeId}
+                  onChange={(e) => setUnidadeId(e.target.value)}
+                >
+                  <option value="">Todas as Unidades</option>
+                  {unidadesQuery.data?.items?.map((unidade) => (
+                    <option key={unidade.id} value={unidade.id}>
+                      {unidade.nome}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+
+            <div className="min-w-32">
+              <label className="label">
+                <span className="label-text">Faixa</span>
+              </label>
+              <select
+                className="select select-bordered w-full"
+                value={faixa}
+                onChange={(e) => setFaixa(e.target.value)}
+              >
+                <option value="todos">Todas as Faixas</option>
+                <option value="BRANCA">Branca</option>
+                <option value="CINZA_BRANCA">Cinza Branca</option>
+                <option value="CINZA">Cinza</option>
+                <option value="CINZA_PRETA">Cinza Preta</option>
+                <option value="AMARELA_BRANCA">Amarela Branca</option>
+                <option value="AMARELA">Amarela</option>
+                <option value="AMARELA_PRETA">Amarela Preta</option>
+                <option value="LARANJA_BRANCA">Laranja Branca</option>
+                <option value="LARANJA">Laranja</option>
+                <option value="LARANJA_PRETA">Laranja Preta</option>
+                <option value="VERDE_BRANCA">Verde Branca</option>
+                <option value="VERDE">Verde</option>
+                <option value="VERDE_PRETA">Verde Preta</option>
+                <option value="AZUL">Azul</option>
+                <option value="ROXA">Roxa</option>
+                <option value="MARROM">Marrom</option>
+                <option value="PRETA">Preta</option>
+              </select>
+            </div>
           </div>
         </div>
 
@@ -544,6 +548,115 @@ export default function PageAlunos() {
             )}
           </div>
         )}
+
+        {/* Filtros */}
+        <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-end">
+          {/* Campo de busca - largura maior */}
+          <div className="flex-1 min-w-0">
+            <label className="label">
+              <span className="label-text">
+                Buscar por nome, CPF ou matrícula
+              </span>
+            </label>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <input
+                className="input input-bordered w-full pl-9"
+                placeholder="Digite para buscar..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+          </div>
+
+          {/* Filtros menores lado a lado */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 w-full lg:w-auto">
+            <div className="min-w-32">
+              <label className="label">
+                <span className="label-text">Categoria</span>
+              </label>
+              <select
+                className="select select-bordered w-full"
+                value={categoria}
+                onChange={(e) => setCategoria(e.target.value)}
+              >
+                <option value="todos">Todos</option>
+                <option value="kids">👶 Kids</option>
+                <option value="adulto">🥋 Adulto</option>
+              </select>
+            </div>
+
+            <div className="min-w-32">
+              <label className="label">
+                <span className="label-text">Status</span>
+              </label>
+              <select
+                className="select select-bordered w-full"
+                value={status}
+                onChange={(e) => setStatus(e.target.value)}
+              >
+                <option value="todos">Todos os Status</option>
+                <option value="ATIVO">Ativos</option>
+                <option value="INATIVO">Inativos</option>
+                <option value="SUSPENSO">Suspensos</option>
+                <option value="CANCELADO">Cancelados</option>
+              </select>
+            </div>
+
+            <div className="min-w-40">
+              <label className="label">
+                <span className="label-text">Unidade</span>
+              </label>
+              {isGerenteUnidade && minhaUnidade ? (
+                <div className="select select-bordered w-full bg-gray-100 cursor-not-allowed flex items-center">
+                  {minhaUnidade.nome}
+                </div>
+              ) : (
+                <select
+                  className="select select-bordered w-full"
+                  value={unidadeId}
+                  onChange={(e) => setUnidadeId(e.target.value)}
+                >
+                  <option value="">Todas as Unidades</option>
+                  {unidadesQuery.data?.items?.map((unidade) => (
+                    <option key={unidade.id} value={unidade.id}>
+                      {unidade.nome}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+
+            <div className="min-w-32">
+              <label className="label">
+                <span className="label-text">Faixa</span>
+              </label>
+              <select
+                className="select select-bordered w-full"
+                value={faixa}
+                onChange={(e) => setFaixa(e.target.value)}
+              >
+                <option value="todas">Todas as Faixas</option>
+                <option value="BRANCA">Branca</option>
+                <option value="CINZA">Cinza</option>
+                <option value="CINZA_BRANCA">Cinza Branca</option>
+                <option value="CINZA_PRETA">Cinza Preta</option>
+                <option value="AMARELA">Amarela</option>
+                <option value="AMARELA_BRANCA">Amarela Branca</option>
+                <option value="AMARELA_PRETA">Amarela Preta</option>
+                <option value="LARANJA">Laranja</option>
+                <option value="LARANJA_PRETA">Laranja Preta</option>
+                <option value="VERDE_BRANCA">Verde Branca</option>
+                <option value="VERDE">Verde</option>
+                <option value="VERDE_PRETA">Verde Preta</option>
+                <option value="AZUL">Azul</option>
+                <option value="ROXA">Roxa</option>
+                <option value="MARROM">Marrom</option>
+                <option value="PRETA">Preta</option>
+              </select>
+            </div>
+          </div>
+        </div>
 
         {/* Lista */}
         <div className="h-[600px] border rounded-lg">

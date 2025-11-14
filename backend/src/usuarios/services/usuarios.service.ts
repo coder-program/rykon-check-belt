@@ -415,6 +415,7 @@ export class UsuariosService {
       }
 
       const franqueadoId = franqueadoData[0].id;
+
       const usuariosIds = await this.usuarioRepository.query(
         `
         SELECT DISTINCT u.id,
@@ -425,6 +426,7 @@ export class UsuariosService {
                  WHEN u.id = $2 THEN 'usuario_autenticado'
                  WHEN un_aluno.franqueado_id = $1 THEN 'aluno_da_unidade'
                  WHEN un_prof.franqueado_id = $1 THEN 'professor_da_unidade'
+                 WHEN un_prof_pendente.franqueado_id = $1 THEN 'professor_pendente_da_unidade'
                  WHEN un_gerente.franqueado_id = $1 THEN 'gerente_da_unidade'
                  WHEN un_recep.franqueado_id = $1 THEN 'recepcionista_da_unidade'
                  WHEN perfil.nome = 'RESPONSAVEL' THEN 'responsavel'
@@ -434,8 +436,11 @@ export class UsuariosService {
         LEFT JOIN teamcruz.alunos a ON a.usuario_id = u.id
         LEFT JOIN teamcruz.professores p ON p.usuario_id = u.id
         LEFT JOIN teamcruz.professor_unidades pu ON pu.professor_id = p.id
+        -- ✅ JOIN para professores pendentes (sem registro em professores ainda)
+        LEFT JOIN teamcruz.professor_unidades pu_pendente ON pu_pendente.usuario_id = u.id AND pu_pendente.professor_id IS NULL
         LEFT JOIN teamcruz.unidades un_aluno ON un_aluno.id = a.unidade_id
         LEFT JOIN teamcruz.unidades un_prof ON un_prof.id = pu.unidade_id
+        LEFT JOIN teamcruz.unidades un_prof_pendente ON un_prof_pendente.id = pu_pendente.unidade_id
         LEFT JOIN teamcruz.gerente_unidades gu ON gu.usuario_id = u.id AND gu.ativo = TRUE
         LEFT JOIN teamcruz.unidades un_gerente ON un_gerente.id = gu.unidade_id
         LEFT JOIN teamcruz.recepcionista_unidades ru ON ru.usuario_id = u.id AND ru.ativo = TRUE
@@ -444,7 +449,7 @@ export class UsuariosService {
         LEFT JOIN teamcruz.usuario_perfis up ON up.usuario_id = u.id
         LEFT JOIN teamcruz.perfis perfil ON perfil.id = up.perfil_id
         WHERE (
-          (un_aluno.franqueado_id = $1 OR un_prof.franqueado_id = $1 OR un_gerente.franqueado_id = $1 OR un_recep.franqueado_id = $1)
+          (un_aluno.franqueado_id = $1 OR un_prof.franqueado_id = $1 OR un_prof_pendente.franqueado_id = $1 OR un_gerente.franqueado_id = $1 OR un_recep.franqueado_id = $1)
           OR f.id = $1
           OR u.id = $2
           OR UPPER(perfil.nome) = 'RESPONSAVEL'

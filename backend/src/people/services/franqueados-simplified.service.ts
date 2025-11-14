@@ -118,6 +118,23 @@ export class FranqueadosServiceSimplified {
   }
 
   async create(body: CreateFranqueadoSimplifiedDto): Promise<Franqueado> {
+    // Verificar se CPF já existe
+    const checkCpfQuery = `
+      SELECT id, nome FROM teamcruz.franqueados
+      WHERE cpf = $1
+      LIMIT 1
+    `;
+
+    const existingFranqueado = await this.dataSource.query(checkCpfQuery, [
+      body.cpf,
+    ]);
+
+    if (existingFranqueado && existingFranqueado.length > 0) {
+      throw new Error(
+        `CPF ${body.cpf} já está cadastrado para o franqueado "${existingFranqueado[0].nome}"`,
+      );
+    }
+
     const query = `
       INSERT INTO teamcruz.franqueados (
         nome, cpf, email, telefone, usuario_id,

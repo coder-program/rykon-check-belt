@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -29,6 +30,7 @@ import {
   User,
   Calendar,
   Filter,
+  ArrowLeft,
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -52,6 +54,7 @@ interface PresencaPendente {
 }
 
 export default function AprovacaoCheckinPage() {
+  const router = useRouter();
   const queryClient = useQueryClient();
 
   const [dialogAberto, setDialogAberto] = useState(false);
@@ -217,9 +220,20 @@ export default function AprovacaoCheckinPage() {
         <div className="max-w-7xl mx-auto">
           {/* Header */}
           <div className="mb-4 md:mb-6">
-            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-800 mb-1 sm:mb-2">
-              Aprovação de Check-ins
-            </h1>
+            <div className="flex items-center gap-3 mb-1 sm:mb-2">
+              <Button
+                onClick={() => router.back()}
+                variant="outline"
+                size="sm"
+                className="flex items-center gap-2"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                Voltar
+              </Button>
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-800">
+                Aprovação de Check-ins
+              </h1>
+            </div>
             <p className="text-sm sm:text-base text-gray-600">
               Aprove ou rejeite check-ins realizados via tablet
             </p>

@@ -51,7 +51,7 @@ export class AlunosService {
 
   async list(params: ListAlunosParams, user?: any) {
     const page = Math.max(1, Number(params.page) || 1);
-    const pageSize = Math.min(100, Math.max(1, Number(params.pageSize) || 20));
+    const pageSize = Math.min(5000, Math.max(1, Number(params.pageSize) || 20));
 
     const query = this.alunoRepository.createQueryBuilder('aluno');
 

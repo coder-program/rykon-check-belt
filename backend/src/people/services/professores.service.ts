@@ -37,7 +37,7 @@ export class ProfessoresService {
 
   async list(params: ListProfessoresParams, user?: any) {
     const page = Math.max(1, Number(params.page) || 1);
-    const pageSize = Math.min(100, Math.max(1, Number(params.pageSize) || 20));
+    const pageSize = Math.min(5000, Math.max(1, Number(params.pageSize) || 20));
 
     const query = this.personRepository.createQueryBuilder('person');
 
@@ -60,19 +60,31 @@ export class ProfessoresService {
       const franqueadoId = await this.getFranqueadoIdByUser(user);
 
       if (franqueadoId) {
-        // Se especificou unidade_id, validar que pertence ao franqueado
-        if (params.unidade_id) {
-          query.andWhere(
-            'person.unidade_id = :unidade AND person.unidade_id IN (SELECT id FROM teamcruz.unidades WHERE franqueado_id = :franqueadoId)',
-            { unidade: params.unidade_id, franqueadoId },
-          );
-        } else {
-          // Sem filtro de unidade: mostrar todas as unidades do franqueado
-          query.andWhere(
-            'person.unidade_id IN (SELECT id FROM teamcruz.unidades WHERE franqueado_id = :franqueadoId)',
-            { franqueadoId },
-          );
-        }
+        // Buscar professores vinculados a qualquer unidade do franqueado
+        // Inclui tanto professores com cadastro completo quanto pendentes
+        query.andWhere(
+          `(
+            person.id IN (
+              SELECT DISTINCT pu.professor_id
+              FROM teamcruz.professor_unidades pu
+              INNER JOIN teamcruz.unidades u ON u.id = pu.unidade_id
+              WHERE u.franqueado_id = :franqueadoId
+              AND pu.ativo = true
+              AND pu.professor_id IS NOT NULL
+            )
+            OR
+            person.usuario_id IN (
+              SELECT DISTINCT pu.usuario_id
+              FROM teamcruz.professor_unidades pu
+              INNER JOIN teamcruz.unidades u ON u.id = pu.unidade_id
+              WHERE u.franqueado_id = :franqueadoId
+              AND pu.ativo = true
+              AND pu.usuario_id IS NOT NULL
+              AND pu.professor_id IS NULL
+            )
+          )`,
+          { franqueadoId },
+        );
       } else {
         query.andWhere('1 = 0');
       }
