@@ -51,9 +51,6 @@ export class CreatePersonDto {
   genero?: Genero;
 
   @IsString()
-  @Matches(/^\(\d{2}\) \d{4,5}-\d{4}$/, {
-    message: 'Telefone deve estar no formato (99) 99999-9999',
-  })
   @IsNotEmpty()
   telefone_whatsapp: string;
 
@@ -145,9 +142,6 @@ export class CreatePersonDto {
     (o) => o.tipo_cadastro === TipoCadastro.ALUNO && isMinor(o.data_nascimento),
   )
   @IsString()
-  @Matches(/^\(\d{2}\) \d{4,5}-\d{4}$/, {
-    message: 'Telefone do responsável deve estar no formato (99) 99999-9999',
-  })
   @IsNotEmpty()
   responsavel_telefone?: string;
 

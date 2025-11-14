@@ -352,7 +352,7 @@ export default function DashboardMultiUnidade({ onSelectUnidade }: Props) {
                         <p className="text-xl font-bold text-yellow-600">
                           R$ {(unidade.receitaMes / 1000).toFixed(0)}k
                         </p>
-                        <p className="text-xs text-gray-500">Receita/mes</p>
+                        <p className="text-xs text-gray-500">Receita/mês</p>
                       </div>
 
                       <div className="text-center">

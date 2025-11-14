@@ -107,14 +107,14 @@ export async function http(path: string, opts: HttpOptions = {}) {
         );
       }
 
-      // Usuário não encontrado
+      // Usuário não encontrado ou senha incorreta
       if (
         msgLower.includes("email ou username não encontrado") ||
         msgLower.includes("usuário não encontrado") ||
         msgLower.includes("email não encontrado")
       ) {
         throw new Error(
-          "❌ Usuário não encontrado. Verifique seu email/username."
+          "❌ Email/username ou senha incorretos. Verifique suas credenciais e tente novamente."
         );
       }
 

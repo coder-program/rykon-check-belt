@@ -89,16 +89,10 @@ export class CreateAlunoDto {
 
   @IsString()
   @IsOptional()
-  @Matches(/^\(\d{2}\)\s?\d{4,5}-\d{4}$/, {
-    message: 'Telefone deve estar no formato (00) 00000-0000',
-  })
   telefone?: string;
 
   @IsString()
   @IsOptional()
-  @Matches(/^\(\d{2}\)\s?\d{4,5}-\d{4}$/, {
-    message: 'Telefone de emergência deve estar no formato (00) 00000-0000',
-  })
   telefone_emergencia?: string;
 
   @IsString()
@@ -212,9 +206,6 @@ export class CreateAlunoDto {
 
   @IsString()
   @IsOptional()
-  @Matches(/^\(\d{2}\)\s?\d{4,5}-\d{4}$/, {
-    message: 'Telefone do responsável deve estar no formato (00) 00000-0000',
-  })
   responsavel_telefone?: string;
 
   @IsString()

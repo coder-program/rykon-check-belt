@@ -175,10 +175,12 @@ export class UnidadesService {
       }
     }
     // Se não foi especificado franqueado_id e não tem filtro de status,
-    // e não é franqueado logado, excluir inativas por padrão
+    // e não é franqueado logado NEM master, excluir inativas por padrão
     else if (
       !params.franqueado_id &&
-      (!params.status || params.status === 'todos')
+      (!params.status || params.status === 'todos') &&
+      user &&
+      !this.isMaster(user)
     ) {
       whereConditions.push(`u.status != 'INATIVA'`);
     }

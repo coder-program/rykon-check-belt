@@ -371,6 +371,32 @@ export default function UsuariosManagerNew() {
     }
   }, [showModal, editingUser, isGerenteUnidade, user]);
 
+  // Validação em tempo real para CPF
+  const validateCPFRealTime = (cpf: string) => {
+    const newErrors = { ...validationErrors };
+
+    if (cpf && !isValidCPF(cpf)) {
+      newErrors.cpf = "CPF inválido";
+    } else {
+      delete newErrors.cpf;
+    }
+
+    setValidationErrors(newErrors);
+  };
+
+  // Validação em tempo real para telefone
+  const validatePhoneRealTime = (telefone: string) => {
+    const newErrors = { ...validationErrors };
+
+    if (telefone && !isValidPhone(telefone)) {
+      newErrors.telefone = "Telefone deve ter 10 ou 11 dígitos";
+    } else {
+      delete newErrors.telefone;
+    }
+
+    setValidationErrors(newErrors);
+  };
+
   // Validação do formulário
   const validateForm = (): boolean => {
     const errors: ValidationErrors = {};
@@ -1147,12 +1173,14 @@ export default function UsuariosManagerNew() {
                     <input
                       type="text"
                       value={formData.cpf}
-                      onChange={(e) =>
+                      onChange={(e) => {
+                        const newCPF = formatCPF(e.target.value);
                         setFormData({
                           ...formData,
-                          cpf: formatCPF(e.target.value),
-                        })
-                      }
+                          cpf: newCPF,
+                        });
+                        validateCPFRealTime(newCPF);
+                      }}
                       className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                         validationErrors.cpf
                           ? "border-red-500"
@@ -1176,12 +1204,14 @@ export default function UsuariosManagerNew() {
                     <input
                       type="text"
                       value={formData.telefone}
-                      onChange={(e) =>
+                      onChange={(e) => {
+                        const newTelefone = formatPhone(e.target.value);
                         setFormData({
                           ...formData,
-                          telefone: formatPhone(e.target.value),
-                        })
-                      }
+                          telefone: newTelefone,
+                        });
+                        validatePhoneRealTime(newTelefone);
+                      }}
                       className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                         validationErrors.telefone
                           ? "border-red-500"

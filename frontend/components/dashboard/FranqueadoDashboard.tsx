@@ -36,6 +36,22 @@ export default function FranqueadoDashboard() {
     null
   );
 
+  // Função para mapear status da unidade para texto legível
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case "ATIVA":
+        return "Ativa";
+      case "INATIVA":
+        return "Inativa";
+      case "HOMOLOGACAO":
+        return "Em Homologação";
+      case "EM_HOMOLOGACAO":
+        return "Em Homologação";
+      default:
+        return status;
+    }
+  };
+
   // Buscar franqueado do usuário logado
   const { data: franqueado, isLoading: loadingFranqueado } = useQuery({
     queryKey: ["franqueado-me", user?.id],
@@ -58,7 +74,26 @@ export default function FranqueadoDashboard() {
   });
 
   const unidades = unidadesData?.items || [];
-  const unidadeIds = unidades.map((u: any) => u.id);
+
+  // Remover duplicatas baseado no ID da unidade
+  const unidadesUnicas = unidades.filter(
+    (unidade: any, index: number, arr: any[]) =>
+      arr.findIndex((u: any) => u.id === unidade.id) === index
+  );
+
+  const unidadeIds = unidadesUnicas.map((u: any) => u.id);
+
+  // Debug temporário para verificar os status das unidades
+  console.log("🔍 Debug Unidades Originais:", unidades.length);
+  console.log("🔍 Debug Unidades Únicas:", unidadesUnicas.length);
+  console.log(
+    "🔍 Debug Unidades:",
+    unidadesUnicas.map((u: any) => ({
+      nome: u.nome,
+      status: u.status,
+      id: u.id,
+    }))
+  );
 
   // Buscar alunos das unidades do franqueado
   const { data: alunosData } = useQuery({
@@ -85,21 +120,24 @@ export default function FranqueadoDashboard() {
 
   // Calcular estatísticas baseadas nos dados reais
   const stats = {
-    minhasUnidades: unidades.length,
-    unidadesAtivas: unidades.filter((u: any) => u.status === "ATIVA").length,
-    unidadesHomologacao: unidades.filter(
-      (u: any) => u.status === "EM_HOMOLOGACAO"
+    minhasUnidades: unidadesUnicas.length,
+    unidadesAtivas: unidadesUnicas.filter((u: any) => u.status === "ATIVA")
+      .length,
+    unidadesHomologacao: unidadesUnicas.filter(
+      (u: any) => u.status === "HOMOLOGACAO" || u.status === "EM_HOMOLOGACAO"
     ).length,
-    unidadesInativas: unidades.filter((u: any) => u.status === "INATIVA")
+    unidadesInativas: unidadesUnicas.filter((u: any) => u.status === "INATIVA")
       .length,
     totalAlunos: alunosDasFranquias.length,
-    totalProfessores: unidades.reduce(
+    totalProfessores: unidadesUnicas.reduce(
       (sum: number, u: any) => sum + (u.qtde_instrutores || 0),
       0
     ),
     receitaMensal: alunosDasFranquias.reduce((sum: number, aluno: any) => {
       // Buscar valor do plano da unidade do aluno
-      const unidade = unidades.find((u: any) => u.id === aluno.unidade_id);
+      const unidade = unidadesUnicas.find(
+        (u: any) => u.id === aluno.unidade_id
+      );
       const valorPlano = unidade?.valor_plano_padrao || 350; // Default 350 se não tiver
       return sum + valorPlano;
     }, 0),
@@ -448,7 +486,7 @@ export default function FranqueadoDashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {unidades.length === 0 ? (
+            {unidadesUnicas.length === 0 ? (
               <div className="text-center py-8">
                 <Building2 className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                 <p className="text-gray-600 mb-4">
@@ -463,7 +501,7 @@ export default function FranqueadoDashboard() {
               </div>
             ) : (
               <div className="space-y-4">
-                {unidades.map((unidade: any) => (
+                {unidadesUnicas.map((unidade: any) => (
                   <div key={unidade.id} className="border rounded-lg">
                     {/* Header clicável da unidade */}
                     <div
@@ -493,7 +531,7 @@ export default function FranqueadoDashboard() {
                             {(unidade.valor_plano_padrao || 0).toLocaleString()}
                           </div>
                           <div className="text-sm text-gray-600">
-                            {unidade.status}
+                            {getStatusText(unidade.status)}
                           </div>
                         </div>
                         {expandedUnidadeId === unidade.id ? (

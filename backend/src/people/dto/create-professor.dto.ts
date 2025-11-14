@@ -52,9 +52,6 @@ export class CreateProfessorDto {
 
   @IsString()
   @IsOptional()
-  @Matches(/^\(\d{2}\)\s?\d{4,5}-\d{4}$/, {
-    message: 'Telefone deve estar no formato (00) 00000-0000',
-  })
   telefone_whatsapp?: string;
 
   // ===== ENDEREÇO =====

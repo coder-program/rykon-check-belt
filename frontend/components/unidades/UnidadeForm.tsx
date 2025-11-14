@@ -2,6 +2,7 @@
 
 import React from "react";
 import { useAuth } from "@/app/auth/AuthContext";
+import toast from "react-hot-toast";
 import {
   X,
   Building2,
@@ -90,6 +91,10 @@ export default function UnidadeForm({
 }: UnidadeFormProps) {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = React.useState(0);
+  // Estados de erro para validação visual
+  const [fieldErrors, setFieldErrors] = React.useState<Record<string, string>>(
+    {}
+  );
   const [phoneError, setPhoneError] = React.useState<string>("");
   const [fixoError, setFixoError] = React.useState<string>("");
   const [cnpjError, setCnpjError] = React.useState<string>("");
@@ -310,15 +315,69 @@ export default function UnidadeForm({
     }
   };
 
-  const handleSubmitWithValidation = (e: React.FormEvent) => {
-    e.preventDefault();
+  // Função utilitária para verificar se um campo tem erro
+  const hasFieldError = (fieldName: string) => {
+    return fieldErrors[fieldName] || false;
+  };
 
-    // Limpar erros anteriores
+  const handleSubmitWithValidation = (e: React.FormEvent) => {
+    console.log("🚀 SUBMIT INICIADO - handleSubmitWithValidation chamado");
+    console.log("📋 Dados do formulário:", formData);
+
+    e.preventDefault(); // Sempre prevenir o submit padrão
+
+    // Limpar todos os erros anteriores
+    setFieldErrors({});
     setPhoneError("");
     setFixoError("");
     setCnpjError("");
 
-    // Validar CNPJ antes de submeter (se preenchido)
+    // 1. Verificar campos obrigatórios manualmente (já que HTML5 validation não funciona com campos ocultos)
+    const requiredFields = [
+      { field: "franqueado_id", name: "Franquia", tab: 0 },
+      { field: "nome", name: "Nome da Unidade", tab: 0 },
+      { field: "razao_social", name: "Razão Social", tab: 0 },
+      { field: "email", name: "Email da Unidade", tab: 1 },
+      { field: "telefone_celular", name: "WhatsApp da Unidade", tab: 1 },
+      { field: "cep", name: "CEP", tab: 2 },
+      { field: "logradouro", name: "Logradouro", tab: 2 },
+      { field: "numero", name: "Número", tab: 2 },
+      { field: "bairro", name: "Bairro", tab: 2 },
+      { field: "cidade", name: "Cidade", tab: 2 },
+      { field: "estado", name: "Estado", tab: 2 },
+    ];
+
+    const emptyFields = requiredFields.filter(({ field }) => {
+      const value = formData[field as keyof typeof formData];
+      return !value || (typeof value === "string" && value.trim() === "");
+    });
+
+    if (emptyFields.length > 0) {
+      // Marcar campos com erro
+      const newErrors: Record<string, string> = {};
+      emptyFields.forEach(({ field, name }) => {
+        newErrors[field] = `${name} é obrigatório`;
+      });
+      setFieldErrors(newErrors);
+
+      // Navegar para a primeira aba com campo vazio
+      const firstEmptyField = emptyFields[0];
+      setActiveTab(firstEmptyField.tab);
+
+      // Mostrar erro
+      const missingFieldNames = emptyFields.map((f) => f.name).join(", ");
+      toast.error(
+        `Por favor, preencha os campos obrigatórios: ${missingFieldNames}`
+      );
+      console.log("❌ Campos obrigatórios vazios:", emptyFields);
+      return;
+    }
+
+    console.log(
+      "✅ Campos obrigatórios preenchidos, fazendo validações adicionais..."
+    );
+
+    // 2. Validar CNPJ antes de submeter (se preenchido)
     if (formData.cnpj) {
       const cleanedCNPJ = formData.cnpj.replace(/\D/g, "");
       if (cleanedCNPJ.length > 0 && cleanedCNPJ.length < 14) {
@@ -354,6 +413,7 @@ export default function UnidadeForm({
     }
 
     // Se passou na validação, submeter
+    console.log("🎯 Todas as validações passaram, submetendo formulário...");
     onSubmit(e);
   };
 
@@ -399,7 +459,10 @@ export default function UnidadeForm({
 
         {/* Form Content */}
         <form
-          onSubmit={handleSubmitWithValidation}
+          onSubmit={(e) => {
+            console.log("🔥 EVENTO FORM SUBMIT CAPTURADO!", e);
+            handleSubmitWithValidation(e);
+          }}
           className="flex-1 overflow-y-auto"
         >
           <div className="p-6 space-y-6">
@@ -416,46 +479,49 @@ export default function UnidadeForm({
                     </label>
                     {(() => {
                       return isFranqueado && myFranqueado ? (
-                        <div className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-700">
-                          {myFranqueado.nome}{" "}
-                          {myFranqueado.razao_social &&
-                            `- ${myFranqueado.razao_social}`}
-                          <input
-                            type="hidden"
-                            name="franqueado_id"
-                            value={myFranqueado.id}
-                          />
+                        <div>
+                          <div className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-700">
+                            {myFranqueado.nome}{" "}
+                            {myFranqueado.razao_social &&
+                              `- ${myFranqueado.razao_social}`}
+                            <input
+                              type="hidden"
+                              name="franqueado_id"
+                              value={myFranqueado.id}
+                            />
+                          </div>
                         </div>
                       ) : (
-                        <select
-                          required
-                          value={formData.franqueado_id}
-                          onChange={(e) =>
-                            setFormData({
-                              ...formData,
-                              franqueado_id: e.target.value,
-                            })
-                          }
-                          onInvalid={(e) => {
-                            e.preventDefault();
-                            (e.target as HTMLSelectElement).setCustomValidity(
-                              "Por favor, selecione uma franquia"
-                            );
-                          }}
-                          onInput={(e) => {
-                            (e.target as HTMLSelectElement).setCustomValidity(
-                              ""
-                            );
-                          }}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        >
-                          <option value="">Selecione uma franquia</option>
-                          {franqueados.map((f) => (
-                            <option key={f.id} value={f.id}>
-                              {f.nome} {f.razao_social && `- ${f.razao_social}`}
-                            </option>
-                          ))}
-                        </select>
+                        <div>
+                          <select
+                            required
+                            value={formData.franqueado_id}
+                            onChange={(e) => {
+                              setFormData({
+                                ...formData,
+                                franqueado_id: e.target.value,
+                              });
+                            }}
+                            className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                              hasFieldError("franqueado_id")
+                                ? "border-red-500"
+                                : "border-gray-300"
+                            }`}
+                          >
+                            <option value="">Selecione uma franquia</option>
+                            {franqueados.map((f) => (
+                              <option key={f.id} value={f.id}>
+                                {f.nome}{" "}
+                                {f.razao_social && `- ${f.razao_social}`}
+                              </option>
+                            ))}
+                          </select>
+                          {hasFieldError("franqueado_id") && (
+                            <p className="mt-1 text-sm text-red-600">
+                              {fieldErrors.franqueado_id}
+                            </p>
+                          )}
+                        </div>
                       );
                     })()}
                   </div>
@@ -468,27 +534,23 @@ export default function UnidadeForm({
                       type="text"
                       required
                       value={formData.nome}
-                      onChange={(e) =>
+                      onChange={(e) => {
                         setFormData({
                           ...formData,
                           nome: validateName(e.target.value),
-                        })
-                      }
-                      onInvalid={(e) => {
-                        e.preventDefault();
-                        (e.target as HTMLInputElement).setCustomValidity(
-                          "Por favor, informe o nome da unidade"
-                        );
+                        });
                       }}
-                      onInput={(e) => {
-                        (e.target as HTMLInputElement).setCustomValidity("");
-                      }}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="Ex: Academia Cruz Jiu-Jitsu"
+                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                        hasFieldError("nome")
+                          ? "border-red-500"
+                          : "border-gray-300"
+                      }`}
                     />
-                    <p className="text-xs text-gray-500 mt-1">
-                      Apenas letras, espaços e hífen são permitidos
-                    </p>
+                    {hasFieldError("nome") && (
+                      <p className="mt-1 text-sm text-red-600">
+                        {fieldErrors.nome}
+                      </p>
+                    )}
                   </div>
 
                   <div>
@@ -498,7 +560,7 @@ export default function UnidadeForm({
                     </label>
                     <input
                       type="text"
-                      value={formData.cnpj}
+                      value={formData.cnpj || ""}
                       onChange={(e) =>
                         setFormData({
                           ...formData,
@@ -509,12 +571,8 @@ export default function UnidadeForm({
                         cnpjError ? "border-red-500" : "border-gray-300"
                       }`}
                     />
-                    {cnpjError ? (
+                    {cnpjError && (
                       <p className="text-red-500 text-xs mt-1">{cnpjError}</p>
-                    ) : (
-                      <p className="text-xs text-gray-500 mt-1">
-                        Deixe em branco para projetos sociais ou igrejas
-                      </p>
                     )}
                   </div>
 
@@ -526,27 +584,23 @@ export default function UnidadeForm({
                       type="text"
                       required
                       value={formData.razao_social}
-                      onChange={(e) =>
+                      onChange={(e) => {
                         setFormData({
                           ...formData,
                           razao_social: validateName(e.target.value),
-                        })
-                      }
-                      onInvalid={(e) => {
-                        e.preventDefault();
-                        (e.target as HTMLInputElement).setCustomValidity(
-                          "Por favor, informe a razão social"
-                        );
+                        });
                       }}
-                      onInput={(e) => {
-                        (e.target as HTMLInputElement).setCustomValidity("");
-                      }}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="Ex: Cruz Jiu-Jitsu Academia LTDA"
+                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                        hasFieldError("razao_social")
+                          ? "border-red-500"
+                          : "border-gray-300"
+                      }`}
                     />
-                    <p className="text-xs text-gray-500 mt-1">
-                      Apenas letras, espaços e hífen são permitidos
-                    </p>
+                    {hasFieldError("razao_social") && (
+                      <p className="mt-1 text-sm text-red-600">
+                        {fieldErrors.razao_social}
+                      </p>
+                    )}
                   </div>
 
                   <div>
@@ -563,11 +617,7 @@ export default function UnidadeForm({
                         })
                       }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="Ex: Cruz Team"
                     />
-                    <p className="text-xs text-gray-500 mt-1">
-                      Apenas letras, espaços e hífen são permitidos
-                    </p>
                   </div>
 
                   <div>
@@ -628,28 +678,20 @@ export default function UnidadeForm({
                       type="email"
                       required
                       value={formData.email}
-                      onChange={(e) =>
-                        setFormData({ ...formData, email: e.target.value })
-                      }
-                      onInvalid={(e) => {
-                        e.preventDefault();
-                        const input = e.target as HTMLInputElement;
-                        if (input.validity.valueMissing) {
-                          input.setCustomValidity(
-                            "Por favor, informe o email da unidade"
-                          );
-                        } else if (input.validity.typeMismatch) {
-                          input.setCustomValidity(
-                            "Por favor, informe um email válido"
-                          );
-                        }
+                      onChange={(e) => {
+                        setFormData({ ...formData, email: e.target.value });
                       }}
-                      onInput={(e) => {
-                        (e.target as HTMLInputElement).setCustomValidity("");
-                      }}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="contato@academia.com.br"
+                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                        hasFieldError("email")
+                          ? "border-red-500"
+                          : "border-gray-300"
+                      }`}
                     />
+                    {hasFieldError("email") && (
+                      <p className="mt-1 text-sm text-red-600">
+                        {fieldErrors.email}
+                      </p>
+                    )}
                   </div>
 
                   <div>
@@ -660,28 +702,25 @@ export default function UnidadeForm({
                       type="text"
                       required
                       value={formData.telefone_celular}
-                      onChange={(e) =>
+                      onChange={(e) => {
                         setFormData({
                           ...formData,
                           telefone_celular: formatPhone(e.target.value),
-                        })
-                      }
-                      onInvalid={(e) => {
-                        e.preventDefault();
-                        (e.target as HTMLInputElement).setCustomValidity(
-                          "Por favor, informe o telefone celular/WhatsApp"
-                        );
-                      }}
-                      onInput={(e) => {
-                        (e.target as HTMLInputElement).setCustomValidity("");
+                        });
                       }}
                       className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                        phoneError ? "border-red-500" : "border-gray-300"
+                        phoneError || hasFieldError("telefone_celular")
+                          ? "border-red-500"
+                          : "border-gray-300"
                       }`}
-                      placeholder="(99) 99999-9999"
                     />
                     {phoneError && (
                       <p className="text-red-500 text-xs mt-1">{phoneError}</p>
+                    )}
+                    {hasFieldError("telefone_celular") && !phoneError && (
+                      <p className="mt-1 text-sm text-red-600">
+                        {fieldErrors.telefone_celular}
+                      </p>
                     )}
                   </div>
 
@@ -817,19 +856,18 @@ export default function UnidadeForm({
                       required
                       value={formData.cep || ""}
                       onChange={handleCEPChange}
-                      onInvalid={(e) => {
-                        e.preventDefault();
-                        (e.target as HTMLInputElement).setCustomValidity(
-                          "Por favor, informe o CEP"
-                        );
-                      }}
-                      onInput={(e) => {
-                        (e.target as HTMLInputElement).setCustomValidity("");
-                      }}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                        hasFieldError("cep")
+                          ? "border-red-500"
+                          : "border-gray-300"
+                      }`}
                       maxLength={9}
-                      placeholder="00000-000"
                     />
+                    {hasFieldError("cep") && (
+                      <p className="mt-1 text-sm text-red-600">
+                        {fieldErrors.cep}
+                      </p>
+                    )}
                   </div>
                   <div className="md:col-span-2">
                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -839,21 +877,23 @@ export default function UnidadeForm({
                       type="text"
                       required
                       value={formData.logradouro || ""}
-                      onChange={(e) =>
-                        setFormData({ ...formData, logradouro: e.target.value })
-                      }
-                      onInvalid={(e) => {
-                        e.preventDefault();
-                        (e.target as HTMLInputElement).setCustomValidity(
-                          "Por favor, informe o logradouro (rua, avenida, etc)"
-                        );
+                      onChange={(e) => {
+                        setFormData({
+                          ...formData,
+                          logradouro: e.target.value,
+                        });
                       }}
-                      onInput={(e) => {
-                        (e.target as HTMLInputElement).setCustomValidity("");
-                      }}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="Rua, Avenida, etc"
+                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                        hasFieldError("logradouro")
+                          ? "border-red-500"
+                          : "border-gray-300"
+                      }`}
                     />
+                    {hasFieldError("logradouro") && (
+                      <p className="mt-1 text-sm text-red-600">
+                        {fieldErrors.logradouro}
+                      </p>
+                    )}
                   </div>
                 </div>
 
@@ -866,21 +906,20 @@ export default function UnidadeForm({
                       type="text"
                       required
                       value={formData.numero || ""}
-                      onChange={(e) =>
-                        setFormData({ ...formData, numero: e.target.value })
-                      }
-                      onInvalid={(e) => {
-                        e.preventDefault();
-                        (e.target as HTMLInputElement).setCustomValidity(
-                          "Por favor, informe o número do endereço"
-                        );
+                      onChange={(e) => {
+                        setFormData({ ...formData, numero: e.target.value });
                       }}
-                      onInput={(e) => {
-                        (e.target as HTMLInputElement).setCustomValidity("");
-                      }}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="Nº"
+                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                        hasFieldError("numero")
+                          ? "border-red-500"
+                          : "border-gray-300"
+                      }`}
                     />
+                    {hasFieldError("numero") && (
+                      <p className="mt-1 text-sm text-red-600">
+                        {fieldErrors.numero}
+                      </p>
+                    )}
                   </div>
                   <div className="md:col-span-3">
                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -896,7 +935,6 @@ export default function UnidadeForm({
                         })
                       }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="Apto, Sala, Bloco, etc"
                     />
                   </div>
                 </div>
@@ -910,21 +948,20 @@ export default function UnidadeForm({
                       type="text"
                       required
                       value={formData.bairro || ""}
-                      onChange={(e) =>
-                        setFormData({ ...formData, bairro: e.target.value })
-                      }
-                      onInvalid={(e) => {
-                        e.preventDefault();
-                        (e.target as HTMLInputElement).setCustomValidity(
-                          "Por favor, informe o bairro"
-                        );
+                      onChange={(e) => {
+                        setFormData({ ...formData, bairro: e.target.value });
                       }}
-                      onInput={(e) => {
-                        (e.target as HTMLInputElement).setCustomValidity("");
-                      }}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="Nome do bairro"
+                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                        hasFieldError("bairro")
+                          ? "border-red-500"
+                          : "border-gray-300"
+                      }`}
                     />
+                    {hasFieldError("bairro") && (
+                      <p className="mt-1 text-sm text-red-600">
+                        {fieldErrors.bairro}
+                      </p>
+                    )}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -934,21 +971,20 @@ export default function UnidadeForm({
                       type="text"
                       required
                       value={formData.cidade || ""}
-                      onChange={(e) =>
-                        setFormData({ ...formData, cidade: e.target.value })
-                      }
-                      onInvalid={(e) => {
-                        e.preventDefault();
-                        (e.target as HTMLInputElement).setCustomValidity(
-                          "Por favor, informe a cidade"
-                        );
+                      onChange={(e) => {
+                        setFormData({ ...formData, cidade: e.target.value });
                       }}
-                      onInput={(e) => {
-                        (e.target as HTMLInputElement).setCustomValidity("");
-                      }}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="Nome da cidade"
+                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                        hasFieldError("cidade")
+                          ? "border-red-500"
+                          : "border-gray-300"
+                      }`}
                     />
+                    {hasFieldError("cidade") && (
+                      <p className="mt-1 text-sm text-red-600">
+                        {fieldErrors.cidade}
+                      </p>
+                    )}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -958,22 +994,24 @@ export default function UnidadeForm({
                       type="text"
                       required
                       value={formData.estado || ""}
-                      onChange={(e) =>
-                        setFormData({ ...formData, estado: e.target.value })
-                      }
-                      onInvalid={(e) => {
-                        e.preventDefault();
-                        (e.target as HTMLInputElement).setCustomValidity(
-                          "Por favor, informe o estado (UF)"
-                        );
+                      onChange={(e) => {
+                        setFormData({
+                          ...formData,
+                          estado: e.target.value.toUpperCase(),
+                        });
                       }}
-                      onInput={(e) => {
-                        (e.target as HTMLInputElement).setCustomValidity("");
-                      }}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                        hasFieldError("estado")
+                          ? "border-red-500"
+                          : "border-gray-300"
+                      }`}
                       maxLength={2}
-                      placeholder="SP"
                     />
+                    {hasFieldError("estado") && (
+                      <p className="mt-1 text-sm text-red-600">
+                        {fieldErrors.estado}
+                      </p>
+                    )}
                   </div>
                 </div>
 

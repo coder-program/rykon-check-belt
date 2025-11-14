@@ -317,8 +317,8 @@ export default function MeuPerfilPage() {
     mutationFn: async (data: Partial<ProfileData>) => {
       if (!user?.id) throw new Error("Usuário não encontrado");
 
-      // Validar senha se fornecida
-      if (data.nova_senha || data.confirmar_senha || data.senha_atual) {
+      // Validar senha se fornecida - só valida se o usuário realmente quer trocar a senha
+      if (data.nova_senha || data.confirmar_senha) {
         if (!data.senha_atual) {
           throw new Error("Informe a senha atual para alterar a senha");
         }
@@ -545,12 +545,44 @@ export default function MeuPerfilPage() {
       [name]: formattedValue,
     }));
 
-    // Limpar erro específico do campo
-    if (errors[name]) {
-      setErrors((prev) => ({
-        ...prev,
-        [name]: "",
-      }));
+    // Validação em tempo real para CPF e telefone
+    if (name === "cpf" || name === "telefone") {
+      const newErrors = { ...errors };
+
+      if (name === "cpf" && formattedValue) {
+        const cpfLimpo = formattedValue.replace(/\D/g, "");
+        const cpfFormatado = formatCPF(formattedValue);
+
+        if (
+          cpfLimpo.length === 11 ||
+          /^\d{3}\.\d{3}\.\d{3}-\d{2}$/.test(cpfFormatado)
+        ) {
+          delete newErrors.cpf; // Remove erro se CPF estiver válido
+        } else if (cpfLimpo.length > 0 && cpfLimpo.length < 11) {
+          newErrors.cpf = "CPF deve ter 11 dígitos";
+        }
+      }
+
+      if (name === "telefone" && formattedValue) {
+        if (/^\(\d{2}\) \d{4,5}-\d{4}$/.test(formattedValue)) {
+          delete newErrors.telefone; // Remove erro se telefone estiver válido
+        } else {
+          const numeros = formattedValue.replace(/\D/g, "");
+          if (numeros.length > 0 && numeros.length < 10) {
+            newErrors.telefone = "Telefone deve ter pelo menos 10 dígitos";
+          }
+        }
+      }
+
+      setErrors(newErrors);
+    } else {
+      // Limpar erro específico do campo para outros campos
+      if (errors[name]) {
+        setErrors((prev) => ({
+          ...prev,
+          [name]: "",
+        }));
+      }
     }
   };
 
@@ -569,15 +601,22 @@ export default function MeuPerfilPage() {
       newErrors.email = "Email inválido";
     }
 
-    if (
-      formData.telefone &&
-      !/^\(\d{2}\) \d{4,5}-\d{4}$/.test(formData.telefone)
-    ) {
-      newErrors.telefone = "Telefone deve estar no formato (xx) xxxxx-xxxx";
-    }
+    // REMOVIDA VALIDAÇÃO DE TELEFONE - aceita qualquer valor
 
-    if (formData.cpf && !/^\d{3}\.\d{3}\.\d{3}-\d{2}$/.test(formData.cpf)) {
-      newErrors.cpf = "CPF deve estar no formato xxx.xxx.xxx-xx";
+    // Validação mais flexível para CPF - aceita tanto formatado quanto só números
+    if (formData.cpf) {
+      const cpfLimpo = formData.cpf.replace(/\D/g, "");
+      const cpfFormatado = formatCPF(formData.cpf);
+
+      // Aceita CPF com 11 dígitos (limpo) ou no formato xxx.xxx.xxx-xx
+      if (
+        cpfLimpo.length === 11 ||
+        /^\d{3}\.\d{3}\.\d{3}-\d{2}$/.test(cpfFormatado)
+      ) {
+        // CPF válido - não adiciona erro
+      } else {
+        newErrors.cpf = "CPF deve ter 11 dígitos";
+      }
     }
 
     setErrors(newErrors);
@@ -605,8 +644,8 @@ export default function MeuPerfilPage() {
       dataToSubmit.username = formData.username.trim();
     }
 
-    // Incluir senha se foi fornecida
-    if (formData.senha_atual || formData.nova_senha) {
+    // Incluir senha apenas se o usuário realmente quer alterar a senha
+    if (formData.nova_senha || formData.confirmar_senha) {
       dataToSubmit.senha_atual = formData.senha_atual;
       dataToSubmit.nova_senha = formData.nova_senha;
       dataToSubmit.confirmar_senha = formData.confirmar_senha;
@@ -924,7 +963,6 @@ export default function MeuPerfilPage() {
                   }`}
                   placeholder="000.000.000-00"
                   maxLength={14}
-                  readOnly
                 />
                 {errors.cpf && (
                   <p className="mt-1 text-sm text-red-600">{errors.cpf}</p>

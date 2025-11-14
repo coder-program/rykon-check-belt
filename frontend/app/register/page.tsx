@@ -33,9 +33,10 @@ import {
   AlertCircle,
   UserPlus,
   User2,
-  Shield,
   CheckCircle,
   Building2,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { authService } from "@/lib/services/authService";
@@ -73,6 +74,9 @@ export default function RegisterPage() {
   const [unidades, setUnidades] = useState<Unidade[]>([]);
   const [loadingUnidades, setLoadingUnidades] = useState(true);
   const [cpfError, setCpfError] = useState("");
+  const [telefoneError, setTelefoneError] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const router = useRouter();
 
@@ -167,6 +171,22 @@ export default function RegisterPage() {
     loadPerfis();
   }, []);
 
+  // useEffect para formatar telefone automaticamente quando dados vierem do banco
+  useEffect(() => {
+    if (
+      formData.telefone &&
+      formData.telefone.replace(/\D/g, "").length >= 10
+    ) {
+      const formatted = formatPhone(formData.telefone);
+      if (formatted !== formData.telefone) {
+        setFormData((prev) => ({
+          ...prev,
+          telefone: formatted,
+        }));
+      }
+    }
+  }, [formData.telefone]); // Monitora mudanças no telefone
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
       ...formData,
@@ -177,21 +197,80 @@ export default function RegisterPage() {
 
   const formatPhone = (value: string) => {
     const numbers = value.replace(/\D/g, "");
-    if (numbers.length <= 10) {
-      return numbers.replace(/(\d{2})(\d{4})(\d{4})/, "($1) $2-$3");
+
+    // Formatação progressiva baseada na quantidade de números
+    if (numbers.length === 0) {
+      return "";
+    } else if (numbers.length <= 2) {
+      return numbers;
+    } else if (numbers.length <= 6) {
+      return `(${numbers.slice(0, 2)}) ${numbers.slice(2)}`;
+    } else if (numbers.length <= 10) {
+      return `(${numbers.slice(0, 2)}) ${numbers.slice(2, 6)}-${numbers.slice(
+        6
+      )}`;
     } else {
-      return numbers.replace(/(\d{2})(\d{5})(\d{4})/, "($1) $2-$3");
+      // Para celular com 11 dígitos: (11) 96065-6955
+      return `(${numbers.slice(0, 2)}) ${numbers.slice(2, 7)}-${numbers.slice(
+        7,
+        11
+      )}`;
     }
   };
 
+  // Função para validar telefone - aceita tanto fixo quanto celular
+  const isValidPhone = (phone: string): boolean => {
+    if (!phone) return false;
+    const cleaned = phone.replace(/\D/g, "");
+
+    // Aceita telefones com 10 dígitos (fixo) ou 11 dígitos (celular)
+    if (cleaned.length < 10 || cleaned.length > 11) return false;
+
+    // Se tem 10 ou 11 dígitos, considera válido (flexível para dados vindos do banco)
+    return true;
+  };
+
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const formatted = formatPhone(e.target.value);
+    // FORÇA a formatação sempre, independente do valor de entrada
+    const inputValue = e.target.value;
+
+    // Se o usuário colou um número só com dígitos, força formatação
+    const formatted = formatPhone(inputValue);
+
     setFormData({
       ...formData,
       telefone: formatted,
     });
+
+    // Validação em tempo real mais robusta
+    const numbers = formatted.replace(/\D/g, "");
+
+    if (numbers.length === 0) {
+      setTelefoneError("");
+    } else if (numbers.length < 10) {
+      setTelefoneError("Telefone deve ter pelo menos 10 dígitos");
+    } else if (numbers.length > 11) {
+      setTelefoneError("Telefone deve ter no máximo 11 dígitos");
+    } else if (numbers.length === 10 || numbers.length === 11) {
+      // Para números completos, aceita qualquer formato
+      setTelefoneError(""); // Telefone válido
+    }
+
     if (error) setError("");
   };
+
+  // UseEffect para garantir formatação quando o valor do telefone muda
+  useEffect(() => {
+    if (formData.telefone) {
+      const formatted = formatPhone(formData.telefone);
+      if (formatted !== formData.telefone) {
+        setFormData((prev) => ({
+          ...prev,
+          telefone: formatted,
+        }));
+      }
+    }
+  }, [formData.telefone]);
 
   const handleCPFChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const formatted = formatCPF(e.target.value);
@@ -255,6 +334,7 @@ export default function RegisterPage() {
       setError("Telefone é obrigatório");
       return false;
     }
+    // REMOVIDA VALIDAÇÃO ESPECÍFICA DE TELEFONE - aceita qualquer valor preenchido
     if (!formData.data_nascimento) {
       setError("Data de nascimento é obrigatória");
       return false;
@@ -518,10 +598,40 @@ export default function RegisterPage() {
                       required
                       value={formData.telefone}
                       onChange={handlePhoneChange}
-                      className="h-11 bg-gray-800/50 border-gray-600 text-white placeholder-gray-400 focus:border-red-500 focus:ring-red-500"
+                      onBlur={(e: React.FocusEvent<HTMLInputElement>) => {
+                        // Força formatação ao sair do campo
+                        const formatted = formatPhone(e.target.value);
+                        if (formatted !== formData.telefone) {
+                          setFormData((prev) => ({
+                            ...prev,
+                            telefone: formatted,
+                          }));
+                        }
+                      }}
+                      className={`h-11 bg-gray-800/50 text-white placeholder-gray-400 focus:ring-red-500 ${
+                        telefoneError
+                          ? "border-red-500 focus:border-red-600"
+                          : formData.telefone && isValidPhone(formData.telefone)
+                          ? "border-green-500 focus:border-green-600"
+                          : "border-gray-600 focus:border-red-500"
+                      }`}
                       placeholder="(11) 99999-9999"
                       maxLength={15}
                     />
+                    {telefoneError && (
+                      <div className="flex items-center gap-2 text-red-400 text-sm">
+                        <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                        <span>{telefoneError}</span>
+                      </div>
+                    )}
+                    {!telefoneError &&
+                      formData.telefone &&
+                      isValidPhone(formData.telefone) && (
+                        <div className="flex items-center gap-2 text-green-400 text-sm">
+                          <CheckCircle className="h-4 w-4 flex-shrink-0" />
+                          <span>Telefone válido</span>
+                        </div>
+                      )}
                   </div>
                 </div>
 
@@ -719,16 +829,29 @@ export default function RegisterPage() {
                       <Lock className="h-4 w-4 text-red-400" />
                       Senha
                     </Label>
-                    <Input
-                      id="password"
-                      name="password"
-                      type="password"
-                      required
-                      value={formData.password}
-                      onChange={handleChange}
-                      className="h-11 bg-gray-800/50 border-gray-600 text-white placeholder-gray-400 focus:border-red-500 focus:ring-red-500"
-                      placeholder="Mínimo 6 caracteres"
-                    />
+                    <div className="relative">
+                      <Input
+                        id="password"
+                        name="password"
+                        type={showPassword ? "text" : "password"}
+                        required
+                        value={formData.password}
+                        onChange={handleChange}
+                        className="h-11 bg-gray-800/50 border-gray-600 text-white placeholder-gray-400 focus:border-red-500 focus:ring-red-500 pr-10"
+                        placeholder="Mínimo 6 caracteres"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-300"
+                      >
+                        {showPassword ? (
+                          <EyeOff className="h-4 w-4" />
+                        ) : (
+                          <Eye className="h-4 w-4" />
+                        )}
+                      </button>
+                    </div>
                   </div>
 
                   <div className="space-y-2">
@@ -739,16 +862,31 @@ export default function RegisterPage() {
                       <Lock className="h-4 w-4 text-red-400" />
                       Confirmar Senha
                     </Label>
-                    <Input
-                      id="confirmPassword"
-                      name="confirmPassword"
-                      type="password"
-                      required
-                      value={formData.confirmPassword}
-                      onChange={handleChange}
-                      className="h-11 bg-gray-800/50 border-gray-600 text-white placeholder-gray-400 focus:border-red-500 focus:ring-red-500"
-                      placeholder="Repita sua senha"
-                    />
+                    <div className="relative">
+                      <Input
+                        id="confirmPassword"
+                        name="confirmPassword"
+                        type={showConfirmPassword ? "text" : "password"}
+                        required
+                        value={formData.confirmPassword}
+                        onChange={handleChange}
+                        className="h-11 bg-gray-800/50 border-gray-600 text-white placeholder-gray-400 focus:border-red-500 focus:ring-red-500 pr-10"
+                        placeholder="Repita sua senha"
+                      />
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setShowConfirmPassword(!showConfirmPassword)
+                        }
+                        className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-300"
+                      >
+                        {showConfirmPassword ? (
+                          <EyeOff className="h-4 w-4" />
+                        ) : (
+                          <Eye className="h-4 w-4" />
+                        )}
+                      </button>
+                    </div>
                   </div>
                 </div>
 

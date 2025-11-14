@@ -31,6 +31,8 @@ import {
   Search,
   Filter,
   ArrowLeft,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -76,6 +78,10 @@ export default function GestaoUnidadesPage() {
     franqueado: "",
     professores: "", // "com", "sem", ""
   });
+
+  // Estados de paginação
+  const [paginaAtual, setPaginaAtual] = useState(1);
+  const [itensPorPagina] = useState(10); // Pode ser configurável
 
   const [selectedUnidade, setSelectedUnidade] = useState<Unidade | null>(null);
   const [professoresDisponiveis, setProfessoresDisponiveis] = useState<
@@ -266,20 +272,6 @@ export default function GestaoUnidadesPage() {
   const franqueados = franqueadosQuery.data?.items || [];
   const professores = professoresQuery.data?.items || [];
 
-  // Funções auxiliares para filtros
-  const handleFiltroChange = (key: string, value: string) => {
-    setFiltros((prev) => ({ ...prev, [key]: value }));
-  };
-
-  const limparFiltros = () => {
-    setFiltros({
-      busca: "",
-      status: "",
-      franqueado: "",
-      professores: "",
-    });
-  };
-
   // Mapear dados para exibição
   const unidadesComDados = unidades.map((unidade: Unidade) => {
     const franqueado = franqueados.find(
@@ -307,8 +299,21 @@ export default function GestaoUnidadesPage() {
     }
 
     // Filtro por status
-    if (filtros.status && unidade.status !== filtros.status) {
-      return false;
+    if (filtros.status) {
+      // Para homologação, aceitar ambos os formatos
+      if (filtros.status === "HOMOLOGACAO") {
+        if (
+          unidade.status !== "HOMOLOGACAO" &&
+          unidade.status !== "EM_HOMOLOGACAO"
+        ) {
+          return false;
+        }
+      } else {
+        // Para outros status, comparação exata
+        if (unidade.status !== filtros.status) {
+          return false;
+        }
+      }
     }
 
     // Filtro por franqueado
@@ -334,6 +339,28 @@ export default function GestaoUnidadesPage() {
     return true;
   });
 
+  // Aplicar paginação
+  const totalPaginas = Math.ceil(unidadesFiltradas.length / itensPorPagina);
+  const indiceInicial = (paginaAtual - 1) * itensPorPagina;
+  const indiceFinal = indiceInicial + itensPorPagina;
+  const unidadesPaginadas = unidadesFiltradas.slice(indiceInicial, indiceFinal);
+
+  // Reset da página quando aplicar filtros
+  const handleFiltroChange = (key: string, value: string) => {
+    setFiltros((prev) => ({ ...prev, [key]: value }));
+    setPaginaAtual(1); // Reset para primeira página
+  };
+
+  const limparFiltros = () => {
+    setFiltros({
+      busca: "",
+      status: "",
+      franqueado: "",
+      professores: "",
+    });
+    setPaginaAtual(1);
+  };
+
   // Estatísticas
   const stats = {
     totalUnidades: unidades.length,
@@ -357,7 +384,7 @@ export default function GestaoUnidadesPage() {
             <div>
               <div className="flex items-center gap-3 mb-2">
                 <button
-                  onClick={() => router.back()}
+                  onClick={() => router.push("/dashboard")}
                   className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
                 >
                   <ArrowLeft className="h-5 w-5" />
@@ -511,7 +538,7 @@ export default function GestaoUnidadesPage() {
                   <option value="">Todos os status</option>
                   <option value="ATIVA">Ativa</option>
                   <option value="INATIVA">Inativa</option>
-                  <option value="EM_HOMOLOGACAO">Em homologação</option>
+                  <option value="HOMOLOGACAO">Em homologação</option>
                 </select>
               </div>
 
@@ -566,9 +593,39 @@ export default function GestaoUnidadesPage() {
 
             <div className="mt-4 flex items-center justify-between">
               <p className="text-sm text-gray-600">
-                Mostrando {unidadesFiltradas.length} de{" "}
-                {unidadesComDados.length} unidades
+                Mostrando {indiceInicial + 1} a{" "}
+                {Math.min(indiceFinal, unidadesFiltradas.length)} de{" "}
+                {unidadesFiltradas.length} unidades
+                {filtros.status ||
+                filtros.busca ||
+                filtros.franqueado ||
+                filtros.professores
+                  ? ` (filtradas de ${unidadesComDados.length})`
+                  : ""}
               </p>
+              {totalPaginas > 1 && (
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setPaginaAtual(paginaAtual - 1)}
+                    disabled={paginaAtual === 1}
+                    className="flex items-center gap-1 px-3 py-1 text-sm bg-white border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    Anterior
+                  </button>
+                  <span className="text-sm text-gray-600">
+                    Página {paginaAtual} de {totalPaginas}
+                  </span>
+                  <button
+                    onClick={() => setPaginaAtual(paginaAtual + 1)}
+                    disabled={paginaAtual === totalPaginas}
+                    className="flex items-center gap-1 px-3 py-1 text-sm bg-white border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Próxima
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -587,15 +644,38 @@ export default function GestaoUnidadesPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {unidadesFiltradas.length === 0 ? (
+              {unidadesPaginadas.length === 0 ? (
                 <div className="text-center py-8">
                   <Building2 className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-600">
-                    Nenhuma unidade encontrada com os filtros aplicados
-                  </p>
+                  {filtros.status ||
+                  filtros.busca ||
+                  filtros.franqueado ||
+                  filtros.professores ? (
+                    <div>
+                      <p className="text-gray-600 mb-2">
+                        Nenhuma unidade encontrada com os filtros aplicados
+                      </p>
+                      {filtros.status === "INATIVA" && (
+                        <p className="text-sm text-gray-500 mb-4">
+                          ℹ️ Não há unidades com status &quot;Inativa&quot; no
+                          sistema atualmente.
+                        </p>
+                      )}
+                      <button
+                        onClick={limparFiltros}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                      >
+                        Limpar Filtros
+                      </button>
+                    </div>
+                  ) : (
+                    <p className="text-gray-600">
+                      Nenhuma unidade cadastrada ainda
+                    </p>
+                  )}
                 </div>
               ) : (
-                unidadesFiltradas.map(
+                unidadesPaginadas.map(
                   (
                     unidade: Unidade & {
                       franqueado: Franqueado | null;
@@ -633,7 +713,8 @@ export default function GestaoUnidadesPage() {
 
                         <div className="flex items-center gap-3">
                           {/* Approve / Reject buttons for MASTER when unit is pending (HOMOLOGACAO) */}
-                          {unidade.status === "HOMOLOGACAO" &&
+                          {(unidade.status === "HOMOLOGACAO" ||
+                            unidade.status === "EM_HOMOLOGACAO") &&
                             hasPerfil("master") && (
                               <div className="flex items-center gap-2">
                                 <button
