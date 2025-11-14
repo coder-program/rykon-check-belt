@@ -83,6 +83,18 @@ export default function AulasPage() {
     ativo: true,
   });
 
+  // Validação para nome da aula
+  const validateNomeAula = (value: string): string => {
+    // Remove caracteres não permitidos: apenas letras, números, espaços, hífens e parênteses
+    return value.replace(/[^a-zA-ZÀ-ÿ\s\-\(\)0-9]/g, "");
+  };
+
+  // Validação para descrição
+  const validateDescricao = (value: string): string => {
+    // Remove caracteres não permitidos: apenas letras, números, espaços e pontuação básica
+    return value.replace(/[^a-zA-ZÀ-ÿ\s\-\(\)\.\,\;0-9]/g, "");
+  };
+
   const diasSemana = [
     { value: 0, label: "Domingo" },
     { value: 1, label: "Segunda-feira" },
@@ -181,6 +193,41 @@ export default function AulasPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Validações de frontend
+    if (formData.nome.length < 3) {
+      alert("Nome da aula deve ter pelo menos 3 caracteres");
+      return;
+    }
+
+    if (formData.nome.length > 80) {
+      alert("Nome da aula deve ter no máximo 80 caracteres");
+      return;
+    }
+
+    if (formData.descricao.length > 500) {
+      alert("Descrição deve ter no máximo 500 caracteres");
+      return;
+    }
+
+    // Verificar se contém apenas caracteres válidos
+    const nomeValido = /^[a-zA-ZÀ-ÿ\s\-\(\)0-9]+$/.test(formData.nome);
+    if (!nomeValido) {
+      alert(
+        "Nome da aula contém caracteres não permitidos. Use apenas letras, números, espaços, hífens e parênteses."
+      );
+      return;
+    }
+
+    const descricaoValida = /^[a-zA-ZÀ-ÿ\s\-\(\)\.\,\;0-9]*$/.test(
+      formData.descricao
+    );
+    if (!descricaoValida) {
+      alert(
+        "Descrição contém caracteres não permitidos. Use apenas letras, números, espaços e pontuação básica."
+      );
+      return;
+    }
 
     const token = localStorage.getItem("token");
     const headers = {
@@ -386,12 +433,21 @@ export default function AulasPage() {
                       type="text"
                       required
                       value={formData.nome}
-                      onChange={(e) =>
-                        setFormData({ ...formData, nome: e.target.value })
-                      }
-                      className="w-full px-3 py-2 border rounded-lg"
+                      onChange={(e) => {
+                        const validatedValue = validateNomeAula(e.target.value);
+                        if (validatedValue.length <= 80) {
+                          setFormData({ ...formData, nome: validatedValue });
+                        }
+                      }}
+                      className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       placeholder="Ex: Jiu-Jitsu Gi Fundamental"
+                      maxLength={80}
+                      minLength={3}
                     />
+                    <p className="text-sm text-gray-500 mt-1">
+                      {formData.nome.length}/80 caracteres - Apenas letras,
+                      números, espaços, hífens e parênteses
+                    </p>
                   </div>
 
                   {/* Tipo */}
@@ -579,13 +635,21 @@ export default function AulasPage() {
                   </label>
                   <textarea
                     value={formData.descricao}
-                    onChange={(e) =>
-                      setFormData({ ...formData, descricao: e.target.value })
-                    }
-                    className="w-full px-3 py-2 border rounded-lg"
+                    onChange={(e) => {
+                      const validatedValue = validateDescricao(e.target.value);
+                      if (validatedValue.length <= 500) {
+                        setFormData({ ...formData, descricao: validatedValue });
+                      }
+                    }}
+                    className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     rows={3}
                     placeholder="Descrição da aula (opcional)"
+                    maxLength={500}
                   />
+                  <p className="text-sm text-gray-500 mt-1">
+                    {formData.descricao.length}/500 caracteres - Apenas letras,
+                    números, espaços e pontuação básica
+                  </p>
                 </div>
 
                 {/* Botões */}

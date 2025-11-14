@@ -85,12 +85,48 @@ export default function PageProfessores() {
   const router = useRouter();
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  // Função para obter a cor do status
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "ATIVO":
+        return "bg-green-100 text-green-800 border-green-200";
+      case "INATIVO":
+        return "bg-red-100 text-red-800 border-red-200";
+      case "SUSPENSO":
+        return "bg-yellow-100 text-yellow-800 border-yellow-200";
+      case "AFASTADO":
+        return "bg-orange-100 text-orange-800 border-orange-200";
+      case "EM_AVALIACAO":
+        return "bg-blue-100 text-blue-800 border-blue-200";
+      default:
+        return "bg-gray-100 text-gray-800 border-gray-200";
+    }
+  };
+
+  // Função para formatar o texto do status
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case "ATIVO":
+        return "Ativo";
+      case "INATIVO":
+        return "Inativo";
+      case "SUSPENSO":
+        return "Suspenso";
+      case "AFASTADO":
+        return "Afastado";
+      case "EM_AVALIACAO":
+        return "Em Avaliação";
+      default:
+        return status || "Ativo";
+    }
+  };
+
   const [search, setSearch] = useState("");
   const [debounced, setDebounced] = useState("");
   const [unidadeId, setUnidadeId] = useState("");
   const [status, setStatus] = useState("todos");
   const [faixa, setFaixa] = useState("todos");
-  const [especialidade, setEspecialidade] = useState("todos");
+  // const [especialidade, setEspecialidade] = useState("todos"); // Temporariamente comentado
   const [showForm, setShowForm] = useState(false);
   const [editingPerson, setEditingPerson] = useState<unknown | null>(null);
 
@@ -219,7 +255,7 @@ export default function PageProfessores() {
       unidadeId,
       status,
       faixa,
-      especialidade,
+      // especialidade, // Temporariamente comentado
     ],
     initialPageParam: 1,
     getNextPageParam: (lastPage: PageData) =>
@@ -235,15 +271,15 @@ export default function PageProfessores() {
       if (unidadeId) {
         params.unidade_id = unidadeId;
       }
-      if (status !== "todos") {
-        params.status = status;
-      }
+      // Sempre enviar status, incluindo 'todos'
+      params.status = status;
       if (faixa !== "todos") {
         params.faixa_ministrante = faixa;
       }
-      if (especialidade !== "todos") {
-        params.especialidades = especialidade;
-      }
+      // Filtro de especialidade temporariamente comentado
+      // if (especialidade !== "todos") {
+      //   params.especialidades = especialidade;
+      // }
 
       return listProfessores(params);
     },
@@ -486,6 +522,8 @@ export default function PageProfessores() {
                   </select>
                 </div>
 
+                {/* Filtro de especialidade temporariamente comentado */}
+                {/*
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Especialidade
@@ -505,6 +543,7 @@ export default function PageProfessores() {
                     <option value="Kids">Kids</option>
                   </select>
                 </div>
+                */}
               </div>
             </CardContent>
           </Card>
@@ -554,18 +593,10 @@ export default function PageProfessores() {
                                 {professor.nome_completo}
                               </h3>
                               <Badge
-                                variant={
-                                  professor.status === "ATIVO"
-                                    ? "default"
-                                    : "secondary"
-                                }
-                                className={
-                                  professor.status === "ATIVO"
-                                    ? "bg-green-100 text-green-800"
-                                    : ""
-                                }
+                                variant="outline"
+                                className={getStatusColor(professor.status)}
                               >
-                                {professor.status || "Ativo"}
+                                {getStatusText(professor.status)}
                               </Badge>
                             </div>
 

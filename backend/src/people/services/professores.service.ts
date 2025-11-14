@@ -97,16 +97,16 @@ export class ProfessoresService {
         unidade: params.unidade_id,
       });
     }
-    // Filtro por status
+
     if (params.status && params.status !== 'todos') {
       query.andWhere('person.status = :status', { status: params.status });
     } else if (!params.status) {
-      // Se não especificou status, mostrar apenas ATIVOS (excluir deletados/inativos)
+      // Se não especificou status (undefined/null), mostrar apenas ATIVOS
       query.andWhere('person.status = :status', {
         status: StatusCadastro.ATIVO,
       });
     }
-    // Se status === 'todos', não aplicar nenhum filtro de status
+    // Se status === 'todos', não aplicar nenhum filtro de status (mostra todos)
 
     // Filtro por faixa ministrante
     if (params.faixa_ministrante) {

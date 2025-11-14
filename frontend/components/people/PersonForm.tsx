@@ -562,7 +562,6 @@ export function PersonForm({
                 max={new Date().toISOString().split("T")[0]}
                 required
               />
-              <p className="text-sm text-gray-500">Data não pode ser futura</p>
             </div>
 
             <div className="space-y-1">
