@@ -429,7 +429,7 @@ export class UsuariosService {
                  WHEN un_prof_pendente.franqueado_id = $1 THEN 'professor_pendente_da_unidade'
                  WHEN un_gerente.franqueado_id = $1 THEN 'gerente_da_unidade'
                  WHEN un_recep.franqueado_id = $1 THEN 'recepcionista_da_unidade'
-                 WHEN perfil.nome = 'RESPONSAVEL' THEN 'responsavel'
+                 WHEN perfil.nome = 'RESPONSAVEL' AND un_resp_aluno.franqueado_id = $1 THEN 'responsavel_da_unidade'
                  ELSE 'outro'
                END as motivo_inclusao
         FROM teamcruz.usuarios u
@@ -448,11 +448,16 @@ export class UsuariosService {
         LEFT JOIN teamcruz.franqueados f ON f.usuario_id = u.id
         LEFT JOIN teamcruz.usuario_perfis up ON up.usuario_id = u.id
         LEFT JOIN teamcruz.perfis perfil ON perfil.id = up.perfil_id
+        -- ✅ JOIN para verificar se responsável tem alunos na franquia
+        LEFT JOIN teamcruz.responsaveis resp ON resp.usuario_id = u.id
+        LEFT JOIN teamcruz.alunos aluno_resp ON aluno_resp.responsavel_id = resp.id
+        LEFT JOIN teamcruz.unidades un_resp_aluno ON un_resp_aluno.id = aluno_resp.unidade_id
         WHERE (
           (un_aluno.franqueado_id = $1 OR un_prof.franqueado_id = $1 OR un_prof_pendente.franqueado_id = $1 OR un_gerente.franqueado_id = $1 OR un_recep.franqueado_id = $1)
           OR f.id = $1
           OR u.id = $2
-          OR UPPER(perfil.nome) = 'RESPONSAVEL'
+          -- ✅ Responsáveis apenas se tiverem alunos nas unidades do franqueado
+          OR (UPPER(perfil.nome) = 'RESPONSAVEL' AND un_resp_aluno.franqueado_id = $1)
         )
         -- Excluir usuários que são FRANQUEADOS de outras franquias
         AND NOT EXISTS (
