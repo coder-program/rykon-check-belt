@@ -189,13 +189,6 @@ export default function RecepcionistaDashboard() {
       color: "bg-purple-500",
     },
     {
-      title: "Cadastrar Aluno",
-      description: "Novo aluno na unidade",
-      icon: Users,
-      action: () => router.push("/alunos/novo"),
-      color: "bg-blue-500",
-    },
-    {
       title: "Horários",
       description: "Ver horários das aulas",
       icon: Calendar,

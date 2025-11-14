@@ -29,17 +29,6 @@ export class UsuariosService {
    * Retorna array serializado (plain objects) para preservar propriedades customizadas
    */
   private async enrichUsersWithUnidade(usuarios: any[]): Promise<any[]> {
-    console.log(
-      '🔧 [enrichUsersWithUnidade] Enriquecendo usuários com unidade:',
-      {
-        total: usuarios.length,
-        usuarios: usuarios.map((u) => ({
-          nome: u.nome,
-          perfis: u.perfis?.map((p: any) => p.nome),
-        })),
-      },
-    );
-
     if (!usuarios || usuarios.length === 0) {
       return [];
     }
@@ -62,18 +51,6 @@ export class UsuariosService {
         const needsUnidade =
           isGerente || isRecepcionista || isProfessor || isAluno;
 
-        console.log(
-          `👤 [enrichUsersWithUnidade] Processando ${usuario.nome}:`,
-          {
-            perfis: perfisNomes,
-            needsUnidade,
-            isGerente,
-            isRecepcionista,
-            isProfessor,
-            isAluno,
-          },
-        );
-
         let unidade: any = null;
 
         if (needsUnidade) {
@@ -94,14 +71,6 @@ export class UsuariosService {
                 nome: unidadeData[0].nome,
                 status: unidadeData[0].status,
               };
-              console.log(
-                `✅ [enrichUsersWithUnidade] GERENTE ${usuario.nome} - Unidade encontrada:`,
-                unidade,
-              );
-            } else {
-              console.log(
-                `⚠️ [enrichUsersWithUnidade] GERENTE ${usuario.nome} - Nenhuma unidade encontrada`,
-              );
             }
           } else if (isRecepcionista) {
             // Recepcionista: buscar via tabela recepcionista_unidades
@@ -120,14 +89,6 @@ export class UsuariosService {
                 nome: unidadeData[0].nome,
                 status: unidadeData[0].status,
               };
-              console.log(
-                `✅ [enrichUsersWithUnidade] RECEPCIONISTA ${usuario.nome} - Unidade encontrada:`,
-                unidade,
-              );
-            } else {
-              console.log(
-                `⚠️ [enrichUsersWithUnidade] RECEPCIONISTA ${usuario.nome} - Nenhuma unidade encontrada`,
-              );
             }
           } else if (isProfessor) {
             // Professor: buscar via professor_unidades
@@ -149,14 +110,6 @@ export class UsuariosService {
                 nome: unidadeData[0].nome,
                 status: unidadeData[0].status,
               };
-              console.log(
-                `✅ [enrichUsersWithUnidade] PROFESSOR ${usuario.nome} - Unidade encontrada:`,
-                unidade,
-              );
-            } else {
-              console.log(
-                `⚠️ [enrichUsersWithUnidade] PROFESSOR ${usuario.nome} - Nenhuma unidade encontrada`,
-              );
             }
           } else if (isAluno) {
             // Aluno: buscar via tabela alunos
@@ -175,14 +128,6 @@ export class UsuariosService {
                 nome: unidadeData[0].nome,
                 status: unidadeData[0].status,
               };
-              console.log(
-                `✅ [enrichUsersWithUnidade] ALUNO ${usuario.nome} - Unidade encontrada:`,
-                unidade,
-              );
-            } else {
-              console.log(
-                `⚠️ [enrichUsersWithUnidade] ALUNO ${usuario.nome} - Nenhuma unidade encontrada`,
-              );
             }
           }
         }
@@ -196,12 +141,6 @@ export class UsuariosService {
 
     // Serializar para plain objects
     const resultado = JSON.parse(JSON.stringify(usuariosEnriquecidos));
-
-    console.log('✅ [enrichUsersWithUnidade] Resultado final:', {
-      total: resultado.length,
-      comUnidade: resultado.filter((u: any) => u.unidade).length,
-      semUnidade: resultado.filter((u: any) => !u.unidade).length,
-    });
 
     return resultado;
   }
@@ -223,14 +162,34 @@ export class UsuariosService {
       throw new ConflictException('Email já existe');
     }
 
+    // ✅ VALIDAÇÃO: Verificar se unidade está ativa (quando unidade_id for informada)
+    if (createUsuarioDto.unidade_id) {
+      const unidadeData = await this.dataSource.query(
+        `SELECT id, nome, status FROM teamcruz.unidades WHERE id = $1`,
+        [createUsuarioDto.unidade_id],
+      );
+
+      if (!unidadeData || unidadeData.length === 0) {
+        throw new BadRequestException(
+          'Unidade não encontrada. Verifique o ID informado.',
+        );
+      }
+
+      if (unidadeData[0].status !== 'ATIVA') {
+        throw new BadRequestException(
+          `Não é possível cadastrar usuário na unidade "${unidadeData[0].nome}" pois ela está com status "${unidadeData[0].status}". Apenas unidades ATIVAS podem receber novos cadastros.`,
+        );
+      }
+    }
+
     // ⚠️ VALIDAÇÃO: Perfis que requerem cadastro completo
+    // FRANQUEADO foi removido - pode ser criado sem cadastro completo
     if (createUsuarioDto.perfil_ids && createUsuarioDto.perfil_ids.length > 0) {
       const perfis = await this.perfilRepository.find({
         where: createUsuarioDto.perfil_ids.map((id) => ({ id })),
       });
 
       const perfisQueRequeremCadastroCompleto = [
-        'FRANQUEADO',
         'GERENTE_UNIDADE',
         'RECEPCIONISTA',
         'INSTRUTOR',
@@ -310,6 +269,11 @@ export class UsuariosService {
       createUsuarioDto.telefone?.replace(/\D/g, '') ||
       createUsuarioDto.telefone;
 
+    // ✅ Verificar se o perfil é FRANQUEADO para definir status ativo por padrão
+    const isFranqueado = perfis.some(
+      (p) => p.nome?.toUpperCase() === 'FRANQUEADO',
+    );
+
     const usuario = this.usuarioRepository.create({
       username: createUsuarioDto.username,
       email: createUsuarioDto.email,
@@ -322,8 +286,8 @@ export class UsuariosService {
         : undefined,
       foto: createUsuarioDto.foto || undefined,
       perfis,
-      // Admin pode definir o status, senão usa padrões
-      ativo: createUsuarioDto.ativo ?? true,
+      // Se for FRANQUEADO, sempre ativo = true, senão usa o valor informado ou true por padrão
+      ativo: isFranqueado ? true : (createUsuarioDto.ativo ?? true),
       cadastro_completo: createUsuarioDto.cadastro_completo ?? true, // Padrão TRUE - apenas ALUNO auto-registro usa false
     });
 
@@ -345,9 +309,6 @@ export class UsuariosService {
             usuarioSalvo.id,
             createUsuarioDto.unidade_id,
           );
-          console.log(
-            `✅ [createUsuario GERENTE] Gerente vinculado à unidade ${createUsuarioDto.unidade_id}`,
-          );
         }
 
         // PROFESSOR / INSTRUTOR: criar registro na professor_unidades
@@ -357,10 +318,6 @@ export class UsuariosService {
           (perfilNome === 'PROFESSOR' || perfilNome === 'INSTRUTOR') &&
           createUsuarioDto.unidade_id
         ) {
-          console.log(
-            `ℹ️ [createUsuario PROFESSOR] Vinculando à unidade ${createUsuarioDto.unidade_id}`,
-          );
-
           // Criar registro temporário na professor_unidades
           // professor_id será NULL até complete-profile
           await this.dataSource.query(
@@ -423,19 +380,7 @@ export class UsuariosService {
   }
 
   async findAllWithHierarchy(user?: any): Promise<Usuario[]> {
-    console.log('🔍 [findAllWithHierarchy] INÍCIO - Requisição recebida:', {
-      hasUser: !!user,
-      userId: user?.id,
-      userName: user?.nome,
-      perfis: user?.perfis?.map((p: any) =>
-        typeof p === 'string' ? p : p.nome,
-      ),
-    });
-
     if (!user || !user.perfis) {
-      console.log(
-        '⚠️ [findAllWithHierarchy] Sem usuário ou perfis, retornando todos',
-      );
       const usuarios = await this.findAll();
       return this.enrichUsersWithUnidade(usuarios);
     }
@@ -452,52 +397,24 @@ export class UsuariosService {
     const isGerente = perfisLower.includes('gerente_unidade');
     const isRecepcionista = perfisLower.includes('recepcionista');
 
-    console.log('🎯 [findAllWithHierarchy] Perfis detectados:', {
-      isMaster,
-      isFranqueado,
-      isGerente,
-      isRecepcionista,
-    });
-
     // Master vê todos
     if (isMaster) {
-      console.log(
-        '👑 [findAllWithHierarchy] MASTER detectado, retornando todos',
-      );
       const usuarios = await this.findAll();
       return this.enrichUsersWithUnidade(usuarios);
     }
 
     // Franqueado vê apenas usuários das suas unidades
     if (isFranqueado) {
-      console.log('🏢 [findAllWithHierarchy] FRANQUEADO detectado');
-
       const franqueadoData = await this.usuarioRepository.query(
         `SELECT id FROM teamcruz.franqueados WHERE usuario_id = $1`,
         [user.id],
       );
 
-      console.log(
-        '📋 [findAllWithHierarchy] Query franqueado result:',
-        franqueadoData,
-      );
-
       if (!franqueadoData || franqueadoData.length === 0) {
-        console.log(
-          '⚠️ [findAllWithHierarchy] Franqueado sem registro, retornando vazio',
-        );
         return [];
       }
 
       const franqueadoId = franqueadoData[0].id;
-      console.log(
-        '✅ [findAllWithHierarchy] Franqueado ID encontrado:',
-        franqueadoId,
-      );
-
-      // Buscar IDs de usuários das unidades do franqueado
-      // Inclui: alunos, professores, gerentes, recepcionistas e responsáveis das unidades
-      // EXCLUI: outros franqueados (que devem ver apenas suas próprias listas)
       const usuariosIds = await this.usuarioRepository.query(
         `
         SELECT DISTINCT u.id,
@@ -547,21 +464,9 @@ export class UsuariosService {
         [franqueadoId, user.id],
       );
 
-      console.log('👥 [findAllWithHierarchy] Usuários encontrados:', {
-        total: usuariosIds.length,
-        usuarios: usuariosIds.map((u: any) => ({
-          nome: u.nome,
-          email: u.email,
-          motivo: u.motivo_inclusao,
-        })),
-      });
-
       const ids = usuariosIds.map((row: any) => row.id);
 
       if (ids.length === 0) {
-        console.log(
-          '⚠️ [findAllWithHierarchy] Nenhum ID de usuário encontrado',
-        );
         return [];
       }
 
@@ -582,18 +487,6 @@ export class UsuariosService {
           updated_at: true,
         },
       });
-
-      console.log(
-        '✅ [findAllWithHierarchy] FRANQUEADO - Retornando usuários:',
-        {
-          total: resultado.length,
-          usuarios: resultado.map((u) => ({
-            nome: u.nome,
-            email: u.email,
-            perfis: u.perfis?.map((p: any) => p.nome),
-          })),
-        },
-      );
 
       return this.enrichUsersWithUnidade(resultado);
     }
@@ -665,30 +558,16 @@ export class UsuariosService {
 
     // Recepcionista vê apenas usuários da sua unidade
     if (isRecepcionista) {
-      console.log('🔍 [findAllWithHierarchy] RECEPCIONISTA DETECTADO:', {
-        userId: user.id,
-        userName: user.nome,
-      });
-
       const recepcionistaData = await this.usuarioRepository.query(
         `SELECT unidade_id FROM teamcruz.recepcionista_unidades WHERE usuario_id = $1 AND ativo = true`,
         [user.id],
       );
 
-      console.log(
-        '📍 [findAllWithHierarchy] Unidades do recepcionista:',
-        recepcionistaData,
-      );
-
       if (!recepcionistaData || recepcionistaData.length === 0) {
-        console.log(
-          '⚠️ [findAllWithHierarchy] Recepcionista SEM unidade vinculada!',
-        );
         return [];
       }
 
       const unidadeId = recepcionistaData[0].unidade_id;
-      console.log('🏢 [findAllWithHierarchy] Unidade ID:', unidadeId);
 
       // Buscar TODOS os usuários relacionados à unidade (alunos, recepcionistas, gerentes, professores)
       const usuariosIds = await this.usuarioRepository.query(
@@ -707,21 +586,9 @@ export class UsuariosService {
         [unidadeId],
       );
 
-      console.log('👥 [findAllWithHierarchy] Usuários encontrados:', {
-        total: usuariosIds.length,
-        usuarios: usuariosIds.map((u: any) => ({
-          id: u.id,
-          nome: u.nome,
-          email: u.email,
-        })),
-      });
-
       const ids = usuariosIds.map((row: any) => row.id);
 
       if (ids.length === 0) {
-        console.log(
-          '⚠️ [findAllWithHierarchy] Nenhum usuário encontrado para a unidade',
-        );
         return [];
       }
 
@@ -741,14 +608,6 @@ export class UsuariosService {
           created_at: true,
           updated_at: true,
         },
-      });
-
-      console.log('✅ [findAllWithHierarchy] Retornando usuários:', {
-        total: usuarios.length,
-        usuarios: usuarios.map((u) => ({
-          nome: u.nome,
-          perfis: u.perfis?.map((p: any) => p.nome),
-        })),
       });
 
       return this.enrichUsersWithUnidade(usuarios);
@@ -801,13 +660,6 @@ export class UsuariosService {
     id: string,
     updateData: Partial<CreateUsuarioDto>,
   ): Promise<Usuario> {
-    console.log('📸 [UPDATE] Dados recebidos:', {
-      id,
-      temFoto: !!updateData.foto,
-      tamanhoFoto: updateData.foto?.length,
-      primeiros50: updateData.foto?.substring(0, 50),
-    });
-
     const usuario = await this.findOne(id);
     if (updateData.password) {
       const saltRounds = 10;
@@ -1064,14 +916,6 @@ export class UsuariosService {
   }
 
   async findPendingApproval(user?: any): Promise<any[]> {
-    console.log(
-      '🔍 [findPendingApproval] Iniciando busca de usuários pendentes...',
-    );
-    console.log(
-      '👤 [findPendingApproval] User logado:',
-      JSON.stringify(user, null, 2),
-    );
-
     // Detectar perfil do usuário logado
     const perfis =
       user?.perfis?.map((p: any) => (typeof p === 'string' ? p : p.nome)) || [];
@@ -1079,20 +923,11 @@ export class UsuariosService {
     // Converter tudo para minúsculas para comparação case-insensitive
     const perfisLower = perfis.map((p: string) => p.toLowerCase());
 
-    console.log('📋 [findPendingApproval] Perfis detectados:', perfisLower);
-
     const isMaster =
       perfisLower.includes('master') || perfisLower.includes('admin');
     const isFranqueado = perfisLower.includes('franqueado');
     const isGerente = perfisLower.includes('gerente_unidade');
     const isRecepcionista = perfisLower.includes('recepcionista');
-
-    console.log('🎭 [findPendingApproval] Tipo de usuário:', {
-      isMaster,
-      isFranqueado,
-      isGerente,
-      isRecepcionista,
-    });
 
     // Buscar usuários que estão inativos (aguardando aprovação)
     let usuarios: any[] = [];
@@ -1121,25 +956,13 @@ export class UsuariosService {
         },
       });
     } else if (isFranqueado) {
-      console.log('🏢 [findPendingApproval] Buscando franqueado_id...');
-
       const franqueadoData = await this.usuarioRepository.query(
         `SELECT id FROM teamcruz.franqueados WHERE usuario_id = $1`,
         [user.id],
       );
 
-      console.log('🏢 [findPendingApproval] Franqueado data:', franqueadoData);
-
       if (franqueadoData && franqueadoData.length > 0) {
         const franqueadoId = franqueadoData[0].id;
-
-        console.log(
-          '✅ [findPendingApproval] Franqueado ID encontrado:',
-          franqueadoId,
-        );
-        console.log(
-          '🔍 [findPendingApproval] Executando query para buscar usuários pendentes...',
-        );
 
         // Buscar GERENTES, ALUNOS, RECEPCIONISTAS, PROFESSORES e RESPONSAVEIS pendentes das unidades do franqueado
         const usuariosPendentes = await this.usuarioRepository.query(
@@ -1185,15 +1008,6 @@ export class UsuariosService {
           ORDER BY u.created_at DESC
           `,
           [franqueadoId],
-        );
-
-        console.log(
-          '📊 [findPendingApproval] Usuários pendentes encontrados:',
-          usuariosPendentes.length,
-        );
-        console.log(
-          '📋 [findPendingApproval] Dados brutos:',
-          JSON.stringify(usuariosPendentes, null, 2),
         );
 
         // Buscar perfis e unidade para cada usuário

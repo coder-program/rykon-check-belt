@@ -205,7 +205,6 @@ export default function UsuariosManagerNew() {
   const { data: unidades = [], isLoading: isLoadingUnidades } = useQuery({
     queryKey: ["unidades-franqueado"],
     queryFn: async () => {
-      console.log("🔍 [UsuariosManager] Buscando unidades...");
       const response = await fetch(
         `${
           process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api"
@@ -224,13 +223,11 @@ export default function UsuariosManagerNew() {
         throw new Error("Erro ao buscar unidades");
       }
       const data = await response.json();
-      console.log("📦 [UsuariosManager] Dados recebidos:", data);
       // Filtrar apenas unidades ATIVAS
       const items = data.items || [];
       const unidadesAtivas = items.filter(
         (unidade: any) => unidade.status === "ATIVA"
       );
-      console.log("✅ [UsuariosManager] Unidades ATIVAS:", unidadesAtivas);
       return unidadesAtivas;
     },
     enabled: !!user && (isFranqueado || isGerenteUnidade), // Busca se for franqueado OU gerente
@@ -319,10 +316,6 @@ export default function UsuariosManagerNew() {
       !formData.unidade_id &&
       !editingUser
     ) {
-      console.log(
-        "✅ [UsuariosManager] Auto-preenchendo unidade do gerente:",
-        unidades[0]
-      );
       setFormData((prev) => ({ ...prev, unidade_id: unidades[0].id }));
     }
   }, [isGerenteUnidade, unidades, formData.unidade_id, editingUser]);
@@ -498,12 +491,6 @@ export default function UsuariosManagerNew() {
         if (formData.password.trim()) {
           updateData.password = formData.password;
         }
-
-        console.log("📸 [UPDATE] Enviando foto:", {
-          temFoto: !!formData.foto,
-          tamanhoBase64: formData.foto?.length,
-          primeiros50Chars: formData.foto?.substring(0, 50),
-        });
 
         await updateMutation.mutateAsync({
           id: editingUser.id,

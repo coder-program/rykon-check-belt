@@ -4,7 +4,7 @@ import { useAuth } from "@/app/auth/AuthContext";
 import Image from "next/image";
 
 export default function Footer() {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated } = useAuth();
   const currentYear = new Date().getFullYear();
 
   // Não mostrar footer nas páginas públicas
@@ -15,7 +15,7 @@ export default function Footer() {
   return (
     <footer className="bg-gray-900 text-white mt-auto">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           {/* TeamCruz Info */}
           <div className="space-y-4">
             <div className="flex items-center gap-3">
@@ -35,61 +35,17 @@ export default function Footer() {
             <p className="text-sm text-gray-400">
               Sistema de gestão completo para academias de Jiu-Jitsu.
             </p>
+            <p className="text-sm text-gray-400">
+              © {currentYear} TeamCruz Jiu-Jitsu. Todos os direitos reservados.
+            </p>
           </div>
 
-          {/* Links Rápidos */}
-          {/* <div className="space-y-4">
-            <h4 className="text-sm font-semibold text-gray-300 uppercase tracking-wider">
-              Links Rápidos
-            </h4>
-            {user && !user.cadastro_completo ? (
-              <div className="text-sm text-yellow-300">
-                Complete seu cadastro para acessar os links rápidos.
-              </div>
-            ) : (
-              <ul className="space-y-2 text-sm">
-                <li>
-                  <a
-                    href="/dashboard"
-                    className="text-gray-400 hover:text-white transition-colors"
-                  >
-                    Dashboard
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="/alunos"
-                    className="text-gray-400 hover:text-white transition-colors"
-                  >
-                    Alunos
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="/presenca"
-                    className="text-gray-400 hover:text-white transition-colors"
-                  >
-                    Presença
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="/graduacao"
-                    className="text-gray-400 hover:text-white transition-colors"
-                  >
-                    Graduação
-                  </a>
-                </li>
-              </ul>
-            )}
-          </div> */}
-
-          {/* Desenvolvido por Rykon */}
-          <div className="space-y-4">
+          {/* Desenvolvido por Rykon - Alinhado à direita */}
+          <div className="space-y-4 md:text-right md:ml-auto">
             <h4 className="text-sm font-semibold text-gray-300 uppercase tracking-wider">
               Desenvolvido por
             </h4>
-            <div className="space-y-3">
+            <div className="space-y-3 md:flex md:flex-col md:items-end">
               <div className="relative w-32 h-12">
                 <Image
                   src="/imgs/logorykonfooter.png"
@@ -98,10 +54,10 @@ export default function Footer() {
                   className="object-contain"
                 />
               </div>
-              <p className="text-sm text-gray-400">
+              <p className="text-sm text-gray-400 max-w-xs">
                 Soluções tecnológicas personalizadas para seu negócio.
               </p>
-              <div className="flex gap-2">
+              <div className="flex gap-2 md:justify-end">
                 <a
                   href="mailto:contato@rykon.com.br"
                   className="text-xs text-gray-400 hover:text-white transition-colors"
@@ -109,23 +65,11 @@ export default function Footer() {
                   contato@rykon.com.br
                 </a>
               </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Copyright */}
-        <div className="mt-8 pt-8 border-t border-gray-800">
-          <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-            <p className="text-sm text-gray-400">
-              © {currentYear} TeamCruz Jiu-Jitsu. Todos os direitos reservados.
-            </p>
-            <p className="text-xs text-gray-500 flex items-center gap-1">
-              Desenvolvido por{" "}
               <a
                 href="https://www.rykon.com.br"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center hover:opacity-80 transition-opacity"
+                className="inline-flex items-center gap-1 text-xs text-gray-500 hover:text-gray-300 transition-colors"
               >
                 <Image
                   src="/imgs/simbolorykon.png"
@@ -134,8 +78,9 @@ export default function Footer() {
                   height={20}
                   className="object-contain"
                 />
+                <span>www.rykon.com.br</span>
               </a>
-            </p>
+            </div>
           </div>
         </div>
       </div>

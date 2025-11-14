@@ -359,7 +359,7 @@ export default function PageProfessores() {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
                 <div className="relative flex-1">
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Buscar por nome, CPF ou email
+                    Buscar por nome ou CPF
                   </label>
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />

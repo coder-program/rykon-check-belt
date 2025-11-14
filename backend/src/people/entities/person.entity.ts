@@ -24,6 +24,8 @@ export enum StatusCadastro {
   ATIVO = 'ATIVO',
   INATIVO = 'INATIVO',
   EM_AVALIACAO = 'EM_AVALIACAO',
+  SUSPENSO = 'SUSPENSO',
+  AFASTADO = 'AFASTADO',
 }
 
 export enum Genero {

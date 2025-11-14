@@ -53,7 +53,5 @@ export class RemoverCamposEnderecoAlunos1756927700000
     await queryRunner.query(
       `ALTER TABLE alunos ADD COLUMN IF NOT EXISTS cidade_nome VARCHAR(100)`,
     );
-
-    console.log('Colunas de endereço restauradas na tabela alunos');
   }
 }

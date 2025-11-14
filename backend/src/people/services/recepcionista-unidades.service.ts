@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   ConflictException,
+  BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
@@ -26,6 +27,24 @@ export class RecepcionistaUnidadesService {
     dto: CreateRecepcionistaUnidadeDto,
     user?: any,
   ): Promise<RecepcionistaUnidade> {
+    // ✅ Verificar se a unidade existe e está ativa
+    const unidadeData = await this.dataSource.query(
+      `SELECT id, nome, status FROM teamcruz.unidades WHERE id = $1`,
+      [dto.unidade_id],
+    );
+
+    if (!unidadeData || unidadeData.length === 0) {
+      throw new NotFoundException(
+        'Unidade não encontrada. Verifique o ID informado.',
+      );
+    }
+
+    if (unidadeData[0].status !== 'ATIVA') {
+      throw new BadRequestException(
+        `Não é possível vincular recepcionista à unidade "${unidadeData[0].nome}" pois ela está com status "${unidadeData[0].status}". Apenas unidades ATIVAS podem receber novos vínculos.`,
+      );
+    }
+
     // Verificar se já existe vínculo ativo
     const existente = await this.recepcionistaUnidadeRepository.findOne({
       where: {

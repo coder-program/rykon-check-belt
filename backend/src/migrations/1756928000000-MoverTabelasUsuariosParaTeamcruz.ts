@@ -15,7 +15,6 @@ export class MoverTabelasUsuariosParaTeamcruz1756928000000
     `);
 
     if (result[0].count > 0) {
-      console.log('Tabelas já estão no schema teamcruz, pulando migration');
       // Apenas garantir que o search_path está configurado
       // await queryRunner.query(
       //   `ALTER DATABASE teamcruz SET search_path TO teamcruz, public`,

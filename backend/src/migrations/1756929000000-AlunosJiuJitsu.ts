@@ -116,7 +116,6 @@ export class AlunosJiuJitsu1756929000000 implements MigrationInterface {
       );
     } else {
       // Se a tabela já existe, apenas adicionar as colunas que não existem
-      console.log('Tabela alunos já existe, não recriando...');
     }
     await queryRunner.query(`
       CREATE OR REPLACE FUNCTION teamcruz.update_updated_at_column()

@@ -98,6 +98,9 @@ export default function GestaoUnidadesPage() {
     queryKey: ["unidades-gestao"],
     queryFn: () => listUnidades({ pageSize: 500 }),
     enabled: podeGerenciar,
+    staleTime: 0,
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
   });
 
   const franqueadosQuery = useQuery({
@@ -111,6 +114,9 @@ export default function GestaoUnidadesPage() {
     queryFn: () =>
       listProfessores({ pageSize: 500, tipo_cadastro: "PROFESSOR" }),
     enabled: podeGerenciar,
+    staleTime: 0,
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
   });
 
   const vincularProfessoresMutation = useMutation({
@@ -141,9 +147,25 @@ export default function GestaoUnidadesPage() {
 
       await Promise.all([...promises, ...promisesRemover]);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["professores-todos"] });
-      queryClient.invalidateQueries({ queryKey: ["unidades-gestao"] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: ["professores-todos"],
+        refetchType: "all",
+      });
+      await queryClient.invalidateQueries({
+        queryKey: ["unidades-gestao"],
+        refetchType: "all",
+      });
+      await queryClient.invalidateQueries({
+        queryKey: ["unidades"],
+        refetchType: "all",
+      });
+      await queryClient.invalidateQueries({
+        queryKey: ["unidades-franqueado"],
+        refetchType: "all",
+      });
+      await queryClient.refetchQueries({ queryKey: ["unidades-gestao"] });
+      await queryClient.refetchQueries({ queryKey: ["professores-todos"] });
       toast.success("Professores vinculados com sucesso!");
       setShowProfessoresModal(false);
       setSelectedUnidade(null);
@@ -157,8 +179,20 @@ export default function GestaoUnidadesPage() {
     mutationFn: async (unidadeId: string) => {
       return updateUnidade(unidadeId, { status: "ATIVA" });
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["unidades-gestao"] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: ["unidades-gestao"],
+        refetchType: "all",
+      });
+      await queryClient.invalidateQueries({
+        queryKey: ["unidades"],
+        refetchType: "all",
+      });
+      await queryClient.invalidateQueries({
+        queryKey: ["unidades-franqueado"],
+        refetchType: "all",
+      });
+      await queryClient.refetchQueries({ queryKey: ["unidades-gestao"] });
       toast.success("Unidade aprovada com sucesso!");
     },
     onError: (error: any) => {
@@ -170,8 +204,20 @@ export default function GestaoUnidadesPage() {
     mutationFn: async (unidadeId: string) => {
       return updateUnidade(unidadeId, { status: "INATIVA" });
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["unidades-gestao"] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: ["unidades-gestao"],
+        refetchType: "all",
+      });
+      await queryClient.invalidateQueries({
+        queryKey: ["unidades"],
+        refetchType: "all",
+      });
+      await queryClient.invalidateQueries({
+        queryKey: ["unidades-franqueado"],
+        refetchType: "all",
+      });
+      await queryClient.refetchQueries({ queryKey: ["unidades-gestao"] });
       toast.success("Unidade reprovada");
     },
     onError: (error: any) => {

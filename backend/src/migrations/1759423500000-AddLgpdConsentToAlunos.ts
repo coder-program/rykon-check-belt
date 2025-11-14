@@ -12,8 +12,6 @@ export class AddLgpdConsentToAlunos1759423500000 implements MigrationInterface {
       ADD COLUMN IF NOT EXISTS consent_lgpd_date TIMESTAMPTZ,
       ADD COLUMN IF NOT EXISTS consent_imagem BOOLEAN DEFAULT false;
     `);
-
-    console.log('✅ Campos LGPD adicionados à tabela alunos');
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {

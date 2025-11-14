@@ -77,22 +77,8 @@ export class UnidadesController {
   async listar(@Query() query: UnidadeQueryDto, @Request() req) {
     // usuário autenticado é obrigatório para filtrar corretamente
     const user = req.user;
-    console.log('🔍 [UnidadesController.listar] Requisição recebida:', {
-      userId: user?.id,
-      userName: user?.nome,
-      perfis: user?.perfis,
-      query,
-    });
     // Log incoming query and auth info for debugging responsavel_cpf flows
     const result = await this.unidadesService.listar(query, user);
-    console.log('✅ [UnidadesController.listar] Resultado:', {
-      totalItems: result.items?.length,
-      unidades: result.items?.map((u) => ({
-        id: u.id,
-        nome: u.nome,
-        status: u.status,
-      })),
-    });
     return result;
   }
 

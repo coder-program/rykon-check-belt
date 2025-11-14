@@ -28,6 +28,8 @@ export class ProfessoresController {
   @ApiQuery({ name: 'search', required: false })
   @ApiQuery({ name: 'unidade_id', required: false })
   @ApiQuery({ name: 'status', required: false })
+  @ApiQuery({ name: 'faixa_ministrante', required: false })
+  @ApiQuery({ name: 'especialidades', required: false })
   @ApiQuery({ name: 'page', required: false })
   @ApiQuery({ name: 'pageSize', required: false })
   list(@Query(ValidationPipe) query: any, @Request() req) {

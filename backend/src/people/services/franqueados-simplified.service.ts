@@ -139,7 +139,7 @@ export class FranqueadosServiceSimplified {
       body.endereco_id || null,
       body.unidades_gerencia || [],
       body.situacao || 'EM_HOMOLOGACAO',
-      body.ativo ?? true,
+      body.ativo ?? true, // ✅ Por padrão, franqueados são criados como ativos
     ];
 
     const result = await this.dataSource.query(query, params);

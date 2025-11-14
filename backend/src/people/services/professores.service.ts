@@ -21,6 +21,8 @@ interface ListProfessoresParams {
   search?: string;
   unidade_id?: string;
   status?: StatusCadastro;
+  faixa_ministrante?: string;
+  especialidades?: string;
 }
 
 @Injectable()
@@ -102,6 +104,20 @@ export class ProfessoresService {
       // Se não especificou status, mostrar apenas ATIVOS (excluir deletados/inativos)
       query.andWhere('person.status = :status', {
         status: StatusCadastro.ATIVO,
+      });
+    }
+
+    // Filtro por faixa ministrante
+    if (params.faixa_ministrante) {
+      query.andWhere('person.faixa_ministrante = :faixa', {
+        faixa: params.faixa_ministrante,
+      });
+    }
+
+    // Filtro por especialidades
+    if (params.especialidades) {
+      query.andWhere('person.especialidades LIKE :especialidade', {
+        especialidade: `%${params.especialidades}%`,
       });
     }
 
@@ -200,7 +216,25 @@ export class ProfessoresService {
     await queryRunner.startTransaction();
 
     try {
-      // 1. Verificar se CPF já existe
+      // 1. ✅ Verificar se a unidade existe e está ativa
+      const unidadeData = await queryRunner.manager.query(
+        `SELECT id, nome, status FROM teamcruz.unidades WHERE id = $1`,
+        [dto.unidade_id],
+      );
+
+      if (!unidadeData || unidadeData.length === 0) {
+        throw new NotFoundException(
+          'Unidade não encontrada. Verifique o ID informado.',
+        );
+      }
+
+      if (unidadeData[0].status !== 'ATIVA') {
+        throw new BadRequestException(
+          `Não é possível cadastrar professor na unidade "${unidadeData[0].nome}" pois ela está com status "${unidadeData[0].status}". Apenas unidades ATIVAS podem receber novos cadastros.`,
+        );
+      }
+
+      // 2. Verificar se CPF já existe
       const existingPerson = await this.personRepository.findOne({
         where: { cpf: dto.cpf },
       });
@@ -209,7 +243,28 @@ export class ProfessoresService {
         throw new ConflictException('CPF já cadastrado');
       }
 
-      // 2. Validar faixa (apenas AZUL, ROXA, MARROM, PRETA, CORAL, VERMELHA)
+      // 3. Validar idade mínima de 18 anos
+      if (dto.data_nascimento) {
+        const birthDate = new Date(dto.data_nascimento);
+        const today = new Date();
+        let age = today.getFullYear() - birthDate.getFullYear();
+        const monthDiff = today.getMonth() - birthDate.getMonth();
+
+        if (
+          monthDiff < 0 ||
+          (monthDiff === 0 && today.getDate() < birthDate.getDate())
+        ) {
+          age--;
+        }
+
+        if (age < 18) {
+          throw new BadRequestException(
+            'Professor deve ter pelo menos 18 anos de idade',
+          );
+        }
+      }
+
+      // 4. Validar faixa (apenas AZUL, ROXA, MARROM, PRETA, CORAL, VERMELHA)
       const faixasPermitidas = [
         'AZUL',
         'ROXA',
@@ -251,9 +306,6 @@ export class ProfessoresService {
 
       if (existingVinculo && existingVinculo.length > 0) {
         // Atualizar registro existente com professor_id
-        console.log(
-          `✅ [Professor Create] Atualizando vínculo existente para usuario_id ${dto.usuario_id}`,
-        );
         await queryRunner.manager.query(
           `UPDATE teamcruz.professor_unidades
            SET professor_id = $1, is_principal = true, ativo = true, updated_at = NOW()
@@ -262,9 +314,6 @@ export class ProfessoresService {
         );
       } else {
         // Criar novo vínculo na unidade principal
-        console.log(
-          `✅ [Professor Create] Criando novo vínculo para unidade ${dto.unidade_id}`,
-        );
         await queryRunner.manager.query(
           `INSERT INTO teamcruz.professor_unidades
            (professor_id, usuario_id, unidade_id, is_principal, ativo)
@@ -331,6 +380,27 @@ export class ProfessoresService {
 
         if (existingPerson) {
           throw new ConflictException('CPF já cadastrado');
+        }
+      }
+
+      // Validar idade mínima de 18 anos (se data de nascimento estiver sendo alterada)
+      if (dto.data_nascimento) {
+        const birthDate = new Date(dto.data_nascimento);
+        const today = new Date();
+        let age = today.getFullYear() - birthDate.getFullYear();
+        const monthDiff = today.getMonth() - birthDate.getMonth();
+
+        if (
+          monthDiff < 0 ||
+          (monthDiff === 0 && today.getDate() < birthDate.getDate())
+        ) {
+          age--;
+        }
+
+        if (age < 18) {
+          throw new BadRequestException(
+            'Professor deve ter pelo menos 18 anos de idade',
+          );
         }
       }
 

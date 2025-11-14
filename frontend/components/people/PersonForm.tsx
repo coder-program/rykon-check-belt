@@ -2,7 +2,13 @@
 
 import React, { useState, useEffect } from "react";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
-import { createAluno, createProfessor, listUnidades } from "@/lib/peopleApi";
+import {
+  createAluno,
+  createProfessor,
+  updateAluno,
+  updateProfessor,
+  listUnidades,
+} from "@/lib/peopleApi";
 import { InputCPF } from "@/components/form/InputCPF";
 import toast from "react-hot-toast";
 import {
@@ -209,7 +215,15 @@ export function PersonForm({
 
   const mutation = useMutation({
     mutationFn: (data: any) => {
-      // Usar a função correta baseada no tipo de cadastro
+      // Se estiver editando, usar funções de update
+      if (isEdit && initialData?.id) {
+        if (data.tipo_cadastro === "PROFESSOR") {
+          return updateProfessor(initialData.id, data);
+        }
+        return updateAluno(initialData.id, data);
+      }
+
+      // Se for criação, usar funções de create
       if (data.tipo_cadastro === "PROFESSOR") {
         return createProfessor(data);
       }
@@ -217,18 +231,20 @@ export function PersonForm({
     },
     onSuccess: () => {
       toast.success(
-        `${
-          tipoCadastro === "ALUNO" ? "Aluno" : "Professor"
-        } cadastrado com sucesso!`
+        `${tipoCadastro === "ALUNO" ? "Aluno" : "Professor"} ${
+          isEdit ? "atualizado" : "cadastrado"
+        } com sucesso!`
       );
       queryClient.invalidateQueries({ queryKey: ["alunos"] });
       queryClient.invalidateQueries({ queryKey: ["professores"] });
       if (onSuccess) onSuccess();
     },
     onError: (error: any) => {
-      console.error("Erro ao cadastrar:", error);
+      console.error(`Erro ao ${isEdit ? "atualizar" : "cadastrar"}:`, error);
       const message =
-        error?.message || error?.response?.data?.message || "Erro ao cadastrar";
+        error?.message ||
+        error?.response?.data?.message ||
+        `Erro ao ${isEdit ? "atualizar" : "cadastrar"}`;
       toast.error(message);
     },
   });
@@ -267,6 +283,29 @@ export function PersonForm({
         "Preencha todos os campos obrigatórios: Nome, Data de Nascimento e Gênero"
       );
       return;
+    }
+
+    // Validação de idade mínima para professores
+    if (tipoCadastro === "PROFESSOR" && formData.data_nascimento) {
+      const hoje = new Date();
+      const dataNascimento = new Date(formData.data_nascimento);
+      let idade = hoje.getFullYear() - dataNascimento.getFullYear();
+      const mesAtual = hoje.getMonth();
+      const mesNascimento = dataNascimento.getMonth();
+
+      // Ajustar idade se ainda não fez aniversário este ano
+      if (
+        mesAtual < mesNascimento ||
+        (mesAtual === mesNascimento &&
+          hoje.getDate() < dataNascimento.getDate())
+      ) {
+        idade--;
+      }
+
+      if (idade < 18) {
+        toast.error("Professor deve ter pelo menos 18 anos de idade");
+        return;
+      }
     }
 
     // Validar campos específicos por tipo
@@ -352,6 +391,66 @@ export function PersonForm({
     >
   ) => {
     const { name, value } = e.target;
+
+    // Validação de datas
+    if (name === "data_nascimento" || name === "data_inicio_docencia") {
+      if (value) {
+        const date = new Date(value);
+        const currentDate = new Date();
+
+        // Verificar se a data é válida
+        if (isNaN(date.getTime())) {
+          toast.error("Data inválida");
+          return;
+        }
+
+        // Verificar se a data não é futura
+        if (date > currentDate) {
+          toast.error("A data não pode ser futura");
+          return;
+        }
+
+        // Verificar se o ano é razoável (maior que 1900)
+        if (date.getFullYear() < 1900) {
+          toast.error("Ano deve ser maior que 1900");
+          return;
+        }
+
+        // Verificar se o ano não tem mais de 4 dígitos
+        if (date.getFullYear() > 9999) {
+          toast.error("Ano inválido");
+          return;
+        }
+
+        // Validação específica para data de nascimento
+        if (name === "data_nascimento") {
+          const hoje = new Date();
+          let idade = hoje.getFullYear() - date.getFullYear();
+          const mesAtual = hoje.getMonth();
+          const mesNascimento = date.getMonth();
+
+          // Ajustar idade se ainda não fez aniversário este ano
+          if (
+            mesAtual < mesNascimento ||
+            (mesAtual === mesNascimento && hoje.getDate() < date.getDate())
+          ) {
+            idade--;
+          }
+
+          if (idade > 120) {
+            toast.error("Data de nascimento inválida");
+            return;
+          }
+
+          // Validação: Professor deve ter pelo menos 18 anos
+          if (tipoCadastro === "PROFESSOR" && idade < 18) {
+            toast.error("Professor deve ter pelo menos 18 anos de idade");
+            return;
+          }
+        }
+      }
+    }
+
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
@@ -364,6 +463,42 @@ export function PersonForm({
       }
     }
     return value;
+  };
+
+  // Validação de nome: apenas letras, espaços, acentos e hífens
+  const validateName = (value: string): string => {
+    // Remove tudo exceto letras (incluindo acentuadas), espaços e hífens
+    return value.replace(/[^a-zA-ZÀ-ÿ\s-]/g, "");
+  };
+
+  // Validação de telefone: apenas números e formatação
+  const validateAndFormatPhone = (value: string): string => {
+    // Remove tudo exceto números
+    const numbers = value.replace(/\D/g, "");
+
+    // Limita a 11 dígitos (DDD + 9 dígitos)
+    const limited = numbers.slice(0, 11);
+
+    // Formata o telefone
+    if (limited.length <= 10) {
+      // Formato: (99) 9999-9999
+      const match = limited.match(/^(\d{0,2})(\d{0,4})(\d{0,4})$/);
+      if (match) {
+        let formatted = "";
+        if (match[1]) formatted += `(${match[1]}`;
+        if (match[2]) formatted += `) ${match[2]}`;
+        if (match[3]) formatted += `-${match[3]}`;
+        return formatted;
+      }
+    } else {
+      // Formato: (99) 99999-9999
+      const match = limited.match(/^(\d{2})(\d{5})(\d{4})$/);
+      if (match) {
+        return `(${match[1]}) ${match[2]}-${match[3]}`;
+      }
+    }
+
+    return limited;
   };
 
   return (
@@ -387,10 +522,22 @@ export function PersonForm({
                 type="text"
                 name="nome_completo"
                 value={formData.nome_completo}
-                onChange={handleChange}
+                onChange={(e) => {
+                  const validated = validateName(e.target.value);
+                  setFormData((prev) => ({
+                    ...prev,
+                    nome_completo: validated,
+                  }));
+                }}
+                maxLength={100}
                 className="input input-bordered"
                 required
               />
+              <label className="label">
+                <span className="label-text-alt text-gray-500">
+                  Apenas letras, espaços e hífens (máx. 100 caracteres)
+                </span>
+              </label>
             </div>
 
             <div className="form-control">
@@ -415,8 +562,15 @@ export function PersonForm({
                 value={formData.data_nascimento}
                 onChange={handleChange}
                 className="input input-bordered"
+                min="1900-01-01"
+                max={new Date().toISOString().split("T")[0]}
                 required
               />
+              <label className="label">
+                <span className="label-text-alt text-gray-500">
+                  Data não pode ser futura
+                </span>
+              </label>
             </div>
 
             <div className="form-control">
@@ -446,7 +600,7 @@ export function PersonForm({
                 name="telefone_whatsapp"
                 value={formData.telefone_whatsapp || ""}
                 onChange={(e) => {
-                  const formatted = formatPhone(e.target.value);
+                  const formatted = validateAndFormatPhone(e.target.value);
                   setFormData((prev) => ({
                     ...prev,
                     telefone_whatsapp: formatted,
@@ -454,7 +608,13 @@ export function PersonForm({
                 }}
                 className="input input-bordered"
                 placeholder="(99) 99999-9999"
+                maxLength={15}
               />
+              <label className="label">
+                <span className="label-text-alt text-gray-500">
+                  Apenas números (máx. 15 caracteres com formatação)
+                </span>
+              </label>
             </div>
 
             <div className="form-control">
@@ -744,7 +904,9 @@ export function PersonForm({
                       name="responsavel_telefone"
                       value={formData.responsavel_telefone || ""}
                       onChange={(e) => {
-                        const formatted = formatPhone(e.target.value);
+                        const formatted = validateAndFormatPhone(
+                          e.target.value
+                        );
                         setFormData((prev) => ({
                           ...prev,
                           responsavel_telefone: formatted,
@@ -752,7 +914,13 @@ export function PersonForm({
                       }}
                       className="input input-bordered"
                       placeholder="(99) 99999-9999"
+                      maxLength={15}
                     />
+                    <label className="label">
+                      <span className="label-text-alt text-gray-500">
+                        Apenas números (máx. 15 caracteres)
+                      </span>
+                    </label>
                   </div>
                 </div>
               </>
@@ -802,7 +970,14 @@ export function PersonForm({
                   value={formData.data_inicio_docencia || ""}
                   onChange={handleChange}
                   className="input input-bordered"
+                  min="1900-01-01"
+                  max={new Date().toISOString().split("T")[0]}
                 />
+                <label className="label">
+                  <span className="label-text-alt text-gray-500">
+                    Data não pode ser futura
+                  </span>
+                </label>
               </div>
 
               <div className="form-control">
@@ -814,8 +989,15 @@ export function PersonForm({
                   name="registro_profissional"
                   value={formData.registro_profissional || ""}
                   onChange={handleChange}
+                  maxLength={100}
                   className="input input-bordered"
+                  placeholder="Ex: CREF 123456-G/SP"
                 />
+                <label className="label">
+                  <span className="label-text-alt text-gray-500">
+                    Máximo 100 caracteres
+                  </span>
+                </label>
               </div>
             </div>
 

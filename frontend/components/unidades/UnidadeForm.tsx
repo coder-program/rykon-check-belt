@@ -129,6 +129,12 @@ export default function UnidadeForm({
     { id: 3, label: "Administração", icon: FileText },
   ];
 
+  // Validação para nomes - apenas letras, espaços e acentos
+  const validateName = (value: string): string => {
+    // Remove caracteres especiais, mantendo apenas letras, espaços, acentos e hífen
+    return value.replace(/[^a-zA-ZÀ-ÿ\s\-]/g, "");
+  };
+
   const validateCNPJ = (cnpj: string): boolean => {
     // Remove formatação
     const cleanedCNPJ = cnpj.replace(/\D/g, "");
@@ -267,14 +273,10 @@ export default function UnidadeForm({
     const cep = formatCEP(e.target.value);
     setFormData({ ...formData, cep });
 
-    console.log("🔍 [FORM] CEP digitado:", cep, "- Tamanho:", cep.length);
-
     // Se CEP tem 9 caracteres (formato 00000-000), buscar endereço
     if (cep.length === 9) {
       try {
         const cepNumeros = cep.replace("-", "");
-        console.log("📡 [FORM] Buscando CEP:", cepNumeros);
-
         // Chamar ViaCEP diretamente
         const response = await fetch(
           `https://viacep.com.br/ws/${cepNumeros}/json/`,
@@ -284,19 +286,14 @@ export default function UnidadeForm({
             },
           }
         );
-        console.log("📡 [FORM] Resposta recebida - Status:", response.status);
-
         if (!response.ok) {
-          console.log("❌ [FORM] Erro na resposta:", response.status);
           // Se der erro, não faz nada - usuário preenche manualmente
           return;
         }
 
         const data = await response.json();
-        console.log("✅ [FORM] Dados do CEP:", data);
 
         if (data && !data.erro) {
-          console.log("✅ [FORM] Preenchendo endereço automaticamente");
           setFormData((prev) => ({
             ...prev,
             logradouro: data.logradouro || prev.logradouro || "",
@@ -305,8 +302,6 @@ export default function UnidadeForm({
             estado: data.uf || prev.estado || "",
             pais: "Brasil",
           }));
-        } else {
-          console.log("⚠️ [FORM] CEP não encontrado");
         }
       } catch (error) {
         console.error("❌ [FORM] Erro ao buscar CEP:", error);
@@ -350,7 +345,9 @@ export default function UnidadeForm({
     if (formData.telefone_fixo) {
       const cleanedFixo = formData.telefone_fixo.replace(/\D/g, "");
       if (cleanedFixo.length > 0 && cleanedFixo.length < 10) {
-        setFixoError("Telefone fixo incompleto. Deve ter 10 ou 11 dígitos (DDD + número)");
+        setFixoError(
+          "Telefone fixo incompleto. Deve ter 10 ou 11 dígitos (DDD + número)"
+        );
         setActiveTab(1); // Voltar para a aba de contato
         return;
       }
@@ -439,6 +436,17 @@ export default function UnidadeForm({
                               franqueado_id: e.target.value,
                             })
                           }
+                          onInvalid={(e) => {
+                            e.preventDefault();
+                            (e.target as HTMLSelectElement).setCustomValidity(
+                              "Por favor, selecione uma franquia"
+                            );
+                          }}
+                          onInput={(e) => {
+                            (e.target as HTMLSelectElement).setCustomValidity(
+                              ""
+                            );
+                          }}
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         >
                           <option value="">Selecione uma franquia</option>
@@ -461,10 +469,26 @@ export default function UnidadeForm({
                       required
                       value={formData.nome}
                       onChange={(e) =>
-                        setFormData({ ...formData, nome: e.target.value })
+                        setFormData({
+                          ...formData,
+                          nome: validateName(e.target.value),
+                        })
                       }
+                      onInvalid={(e) => {
+                        e.preventDefault();
+                        (e.target as HTMLInputElement).setCustomValidity(
+                          "Por favor, informe o nome da unidade"
+                        );
+                      }}
+                      onInput={(e) => {
+                        (e.target as HTMLInputElement).setCustomValidity("");
+                      }}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Ex: Academia Cruz Jiu-Jitsu"
                     />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Apenas letras, espaços e hífen são permitidos
+                    </p>
                   </div>
 
                   <div>
@@ -505,11 +529,24 @@ export default function UnidadeForm({
                       onChange={(e) =>
                         setFormData({
                           ...formData,
-                          razao_social: e.target.value,
+                          razao_social: validateName(e.target.value),
                         })
                       }
+                      onInvalid={(e) => {
+                        e.preventDefault();
+                        (e.target as HTMLInputElement).setCustomValidity(
+                          "Por favor, informe a razão social"
+                        );
+                      }}
+                      onInput={(e) => {
+                        (e.target as HTMLInputElement).setCustomValidity("");
+                      }}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Ex: Cruz Jiu-Jitsu Academia LTDA"
                     />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Apenas letras, espaços e hífen são permitidos
+                    </p>
                   </div>
 
                   <div>
@@ -522,11 +559,15 @@ export default function UnidadeForm({
                       onChange={(e) =>
                         setFormData({
                           ...formData,
-                          nome_fantasia: e.target.value,
+                          nome_fantasia: validateName(e.target.value),
                         })
                       }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Ex: Cruz Team"
                     />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Apenas letras, espaços e hífen são permitidos
+                    </p>
                   </div>
 
                   <div>
@@ -590,7 +631,24 @@ export default function UnidadeForm({
                       onChange={(e) =>
                         setFormData({ ...formData, email: e.target.value })
                       }
+                      onInvalid={(e) => {
+                        e.preventDefault();
+                        const input = e.target as HTMLInputElement;
+                        if (input.validity.valueMissing) {
+                          input.setCustomValidity(
+                            "Por favor, informe o email da unidade"
+                          );
+                        } else if (input.validity.typeMismatch) {
+                          input.setCustomValidity(
+                            "Por favor, informe um email válido"
+                          );
+                        }
+                      }}
+                      onInput={(e) => {
+                        (e.target as HTMLInputElement).setCustomValidity("");
+                      }}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="contato@academia.com.br"
                     />
                   </div>
 
@@ -608,9 +666,19 @@ export default function UnidadeForm({
                           telefone_celular: formatPhone(e.target.value),
                         })
                       }
+                      onInvalid={(e) => {
+                        e.preventDefault();
+                        (e.target as HTMLInputElement).setCustomValidity(
+                          "Por favor, informe o telefone celular/WhatsApp"
+                        );
+                      }}
+                      onInput={(e) => {
+                        (e.target as HTMLInputElement).setCustomValidity("");
+                      }}
                       className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                         phoneError ? "border-red-500" : "border-gray-300"
                       }`}
+                      placeholder="(99) 99999-9999"
                     />
                     {phoneError && (
                       <p className="text-red-500 text-xs mt-1">{phoneError}</p>
@@ -746,10 +814,21 @@ export default function UnidadeForm({
                     </label>
                     <input
                       type="text"
+                      required
                       value={formData.cep || ""}
                       onChange={handleCEPChange}
+                      onInvalid={(e) => {
+                        e.preventDefault();
+                        (e.target as HTMLInputElement).setCustomValidity(
+                          "Por favor, informe o CEP"
+                        );
+                      }}
+                      onInput={(e) => {
+                        (e.target as HTMLInputElement).setCustomValidity("");
+                      }}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       maxLength={9}
+                      placeholder="00000-000"
                     />
                   </div>
                   <div className="md:col-span-2">
@@ -758,11 +837,22 @@ export default function UnidadeForm({
                     </label>
                     <input
                       type="text"
+                      required
                       value={formData.logradouro || ""}
                       onChange={(e) =>
                         setFormData({ ...formData, logradouro: e.target.value })
                       }
+                      onInvalid={(e) => {
+                        e.preventDefault();
+                        (e.target as HTMLInputElement).setCustomValidity(
+                          "Por favor, informe o logradouro (rua, avenida, etc)"
+                        );
+                      }}
+                      onInput={(e) => {
+                        (e.target as HTMLInputElement).setCustomValidity("");
+                      }}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Rua, Avenida, etc"
                     />
                   </div>
                 </div>
@@ -774,11 +864,22 @@ export default function UnidadeForm({
                     </label>
                     <input
                       type="text"
+                      required
                       value={formData.numero || ""}
                       onChange={(e) =>
                         setFormData({ ...formData, numero: e.target.value })
                       }
+                      onInvalid={(e) => {
+                        e.preventDefault();
+                        (e.target as HTMLInputElement).setCustomValidity(
+                          "Por favor, informe o número do endereço"
+                        );
+                      }}
+                      onInput={(e) => {
+                        (e.target as HTMLInputElement).setCustomValidity("");
+                      }}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Nº"
                     />
                   </div>
                   <div className="md:col-span-3">
@@ -795,6 +896,7 @@ export default function UnidadeForm({
                         })
                       }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Apto, Sala, Bloco, etc"
                     />
                   </div>
                 </div>
@@ -806,11 +908,22 @@ export default function UnidadeForm({
                     </label>
                     <input
                       type="text"
+                      required
                       value={formData.bairro || ""}
                       onChange={(e) =>
                         setFormData({ ...formData, bairro: e.target.value })
                       }
+                      onInvalid={(e) => {
+                        e.preventDefault();
+                        (e.target as HTMLInputElement).setCustomValidity(
+                          "Por favor, informe o bairro"
+                        );
+                      }}
+                      onInput={(e) => {
+                        (e.target as HTMLInputElement).setCustomValidity("");
+                      }}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Nome do bairro"
                     />
                   </div>
                   <div>
@@ -819,11 +932,22 @@ export default function UnidadeForm({
                     </label>
                     <input
                       type="text"
+                      required
                       value={formData.cidade || ""}
                       onChange={(e) =>
                         setFormData({ ...formData, cidade: e.target.value })
                       }
+                      onInvalid={(e) => {
+                        e.preventDefault();
+                        (e.target as HTMLInputElement).setCustomValidity(
+                          "Por favor, informe a cidade"
+                        );
+                      }}
+                      onInput={(e) => {
+                        (e.target as HTMLInputElement).setCustomValidity("");
+                      }}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Nome da cidade"
                     />
                   </div>
                   <div>
@@ -832,12 +956,23 @@ export default function UnidadeForm({
                     </label>
                     <input
                       type="text"
+                      required
                       value={formData.estado || ""}
                       onChange={(e) =>
                         setFormData({ ...formData, estado: e.target.value })
                       }
+                      onInvalid={(e) => {
+                        e.preventDefault();
+                        (e.target as HTMLInputElement).setCustomValidity(
+                          "Por favor, informe o estado (UF)"
+                        );
+                      }}
+                      onInput={(e) => {
+                        (e.target as HTMLInputElement).setCustomValidity("");
+                      }}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       maxLength={2}
+                      placeholder="SP"
                     />
                   </div>
                 </div>

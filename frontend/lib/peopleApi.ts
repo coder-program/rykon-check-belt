@@ -37,6 +37,14 @@ export async function createAluno(data: any) {
   return http("/alunos", { method: "POST", body: alunoData, auth: true });
 }
 
+export async function updateAluno(id: string, data: any) {
+  return http(`/alunos/${id}`, {
+    method: "PATCH",
+    body: data,
+    auth: true,
+  });
+}
+
 export async function listProfessores(params: any): Promise<PageResp<any>> {
   // Filtrar valores undefined/null antes de criar URLSearchParams
   const filteredParams = Object.fromEntries(
@@ -58,6 +66,14 @@ export async function createProfessor(data: any) {
   return http("/professores", {
     method: "POST",
     body: professorData,
+    auth: true,
+  });
+}
+
+export async function updateProfessor(id: string, data: any) {
+  return http(`/professores/${id}`, {
+    method: "PATCH",
+    body: data,
     auth: true,
   });
 }

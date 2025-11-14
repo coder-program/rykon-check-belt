@@ -168,9 +168,7 @@ export default function SistemaPresencaPage() {
             toast.error("Aluno não encontrado com este código QR");
           }
         },
-        (error) => {
-          console.log("QR Scan error:", error);
-        }
+        (error) => {}
       );
     }
 
@@ -178,9 +176,7 @@ export default function SistemaPresencaPage() {
       if (qrScannerRef.current) {
         try {
           qrScannerRef.current.clear();
-        } catch (e) {
-          console.log("Error clearing QR scanner:", e);
-        }
+        } catch (e) {}
       }
     };
   }, [showQrScanner, alunosQuery.data]);

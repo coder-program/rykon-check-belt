@@ -2,9 +2,10 @@ import {
   Injectable,
   NotFoundException,
   ConflictException,
+  BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, DataSource } from 'typeorm';
 import { GerenteUnidade } from '../entities/gerente-unidade.entity';
 
 @Injectable()
@@ -12,6 +13,7 @@ export class GerenteUnidadesService {
   constructor(
     @InjectRepository(GerenteUnidade)
     private readonly gerenteUnidadeRepository: Repository<GerenteUnidade>,
+    private readonly dataSource: DataSource,
   ) {}
 
   /**
@@ -21,6 +23,24 @@ export class GerenteUnidadesService {
     usuarioId: string,
     unidadeId: string,
   ): Promise<GerenteUnidade> {
+    // ✅ Verificar se a unidade existe e está ativa
+    const unidadeData = await this.dataSource.query(
+      `SELECT id, nome, status FROM teamcruz.unidades WHERE id = $1`,
+      [unidadeId],
+    );
+
+    if (!unidadeData || unidadeData.length === 0) {
+      throw new NotFoundException(
+        'Unidade não encontrada. Verifique o ID informado.',
+      );
+    }
+
+    if (unidadeData[0].status !== 'ATIVA') {
+      throw new BadRequestException(
+        `Não é possível vincular gerente à unidade "${unidadeData[0].nome}" pois ela está com status "${unidadeData[0].status}". Apenas unidades ATIVAS podem receber novos vínculos.`,
+      );
+    }
+
     // Verificar se já existe vínculo ativo
     const vinculoExistente = await this.gerenteUnidadeRepository.findOne({
       where: { usuario_id: usuarioId, ativo: true },

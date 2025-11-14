@@ -17,6 +17,7 @@ import {
   FaixaProfessor,
 } from '../entities/person.entity';
 import { IsValidName } from '../../common/decorators/is-valid-name.decorator';
+import { IsMinimumAge } from '../../common/decorators/is-minimum-age.decorator';
 
 export class CreateProfessorDto {
   // ===== DADOS PESSOAIS =====
@@ -35,6 +36,7 @@ export class CreateProfessorDto {
 
   @IsDateString({}, { message: 'Data de nascimento inválida' })
   @IsOptional()
+  @IsMinimumAge(18, { message: 'Professor deve ter pelo menos 18 anos de idade' })
   data_nascimento?: string;
 
   @IsEnum(Genero, { message: 'Gênero inválido' })

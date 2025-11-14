@@ -50,10 +50,19 @@ export async function http(path: string, opts: HttpOptions = {}) {
 
     try {
       data = await res.json();
-      message = data?.message || message;
+      // Capturar a mensagem do backend (pode estar em message ou error)
+      message = data?.message || data?.error || message;
     } catch (e) {
       // Se não conseguir parsear o JSON, usa a mensagem padrão
+      console.error("Erro ao parsear resposta JSON:", e);
     }
+
+    console.log("🔍 Debug API Error:", {
+      status: res.status,
+      data,
+      message,
+      url: res.url,
+    });
 
     // Tratamento especial para erro 401 (Não Autorizado)
     if (res.status === 401) {
@@ -75,28 +84,37 @@ export async function http(path: string, opts: HttpOptions = {}) {
         }
       }
 
-      // Se for erro de login (credenciais inválidas)
-      if (data?.message?.toLowerCase().includes("senha incorreta")) {
+      // Se for erro de login - verificar diferentes mensagens
+      const msgLower = (data?.message || message).toLowerCase();
+
+      // Conta inativa
+      if (
+        msgLower.includes("conta está inativa") ||
+        msgLower.includes("sua conta está inativa") ||
+        msgLower.includes("usuário inativo") ||
+        msgLower.includes("usuário está inativo") ||
+        msgLower.includes("entre em contato com o administrador")
+      ) {
+        throw new Error(
+          "⚠️ Usuário inativo – acesso negado. Entre em contato com o administrador."
+        );
+      }
+
+      // Senha incorreta
+      if (msgLower.includes("senha incorreta")) {
         throw new Error(
           "❌ Senha incorreta. Verifique sua senha e tente novamente."
         );
       }
+
+      // Usuário não encontrado
       if (
-        data?.message
-          ?.toLowerCase()
-          .includes("email ou username não encontrado") ||
-        data?.message?.toLowerCase().includes("usuário não encontrado")
+        msgLower.includes("email ou username não encontrado") ||
+        msgLower.includes("usuário não encontrado") ||
+        msgLower.includes("email não encontrado")
       ) {
         throw new Error(
           "❌ Usuário não encontrado. Verifique seu email/username."
-        );
-      }
-      if (
-        data?.message?.toLowerCase().includes("conta está inativa") ||
-        data?.message?.toLowerCase().includes("sua conta está inativa")
-      ) {
-        throw new Error(
-          "⚠️ Sua conta está inativa. Entre em contato com o administrador."
         );
       }
 

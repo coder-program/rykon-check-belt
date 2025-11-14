@@ -141,21 +141,11 @@ export class UnidadesService {
     }
     // Se gerente de unidade, filtra pela unidade que ele gerencia
     else if (user && this.isGerenteUnidade(user) && !this.isMaster(user)) {
-      console.log('🔍 [UnidadesService.listar] Gerente detectado:', {
-        userId: user.id,
-        userName: user.nome,
-        perfis: user.perfis,
-      });
       const unidadeId = await this.getUnidadeIdByGerente(user);
-      console.log('📍 [UnidadesService.listar] Unidade do gerente:', unidadeId);
       if (unidadeId) {
         whereConditions.push(`u.id = $${paramIndex}`);
         queryParams.push(unidadeId);
         paramIndex++;
-        console.log('✅ [UnidadesService.listar] Filtro aplicado:', {
-          whereCondition: `u.id = ${unidadeId}`,
-          paramIndex,
-        });
       } else {
         console.warn(
           '⚠️ [UnidadesService.listar] Gerente sem unidade vinculada!',
@@ -492,11 +482,6 @@ export class UnidadesService {
   private async getUnidadeIdByGerente(user: any): Promise<string | null> {
     if (!user?.id) return null;
 
-    console.log(
-      '🔍 [getUnidadeIdByGerente] Buscando unidade para gerente:',
-      user.id,
-    );
-
     // Buscar unidade vinculada ao gerente através da tabela gerente_unidades
     const result = await this.dataSource.query(
       `SELECT gu.unidade_id
@@ -508,8 +493,6 @@ export class UnidadesService {
     );
 
     const unidadeId = result.length > 0 ? result[0].unidade_id : null;
-    console.log('✅ [getUnidadeIdByGerente] Resultado:', unidadeId);
-
     return unidadeId;
   }
 

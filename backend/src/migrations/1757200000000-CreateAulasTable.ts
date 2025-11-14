@@ -33,11 +33,11 @@ export class CreateAulasTable1757200000000 implements MigrationInterface {
         configuracoes JSONB DEFAULT '{}'::jsonb,
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-        
+
         -- Foreign Keys
-        CONSTRAINT fk_aula_unidade FOREIGN KEY (unidade_id) 
+        CONSTRAINT fk_aula_unidade FOREIGN KEY (unidade_id)
           REFERENCES teamcruz.unidades(id) ON DELETE CASCADE,
-        CONSTRAINT fk_aula_professor FOREIGN KEY (professor_id) 
+        CONSTRAINT fk_aula_professor FOREIGN KEY (professor_id)
           REFERENCES teamcruz.pessoas(id) ON DELETE SET NULL
       )
     `);
@@ -60,7 +60,7 @@ export class CreateAulasTable1757200000000 implements MigrationInterface {
     `);
 
     await queryRunner.query(`
-      CREATE INDEX IF NOT EXISTS idx_aulas_unidade_dia_inicio 
+      CREATE INDEX IF NOT EXISTS idx_aulas_unidade_dia_inicio
       ON teamcruz.aulas(unidade_id, dia_semana, data_hora_inicio);
     `);
 
@@ -102,8 +102,6 @@ export class CreateAulasTable1757200000000 implements MigrationInterface {
       FOR EACH ROW
       EXECUTE FUNCTION update_aulas_updated_at();
     `);
-
-    console.log('✅ Tabela aulas criada com sucesso!');
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
@@ -117,11 +115,19 @@ export class CreateAulasTable1757200000000 implements MigrationInterface {
     `);
 
     // Remover índices
-    await queryRunner.query(`DROP INDEX IF EXISTS teamcruz.idx_aulas_unidade_dia_inicio`);
-    await queryRunner.query(`DROP INDEX IF EXISTS teamcruz.idx_aulas_dia_semana`);
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS teamcruz.idx_aulas_unidade_dia_inicio`,
+    );
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS teamcruz.idx_aulas_dia_semana`,
+    );
     await queryRunner.query(`DROP INDEX IF EXISTS teamcruz.idx_aulas_ativo`);
-    await queryRunner.query(`DROP INDEX IF EXISTS teamcruz.idx_aulas_professor_id`);
-    await queryRunner.query(`DROP INDEX IF EXISTS teamcruz.idx_aulas_unidade_id`);
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS teamcruz.idx_aulas_professor_id`,
+    );
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS teamcruz.idx_aulas_unidade_id`,
+    );
 
     // Remover tabela
     await queryRunner.query(`DROP TABLE IF EXISTS teamcruz.aulas`);
@@ -135,7 +141,5 @@ export class CreateAulasTable1757200000000 implements MigrationInterface {
         END IF;
       END$$;
     `);
-
-    console.log('✅ Tabela aulas removida!');
   }
 }

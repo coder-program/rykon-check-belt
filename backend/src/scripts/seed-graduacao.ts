@@ -26,7 +26,6 @@ async function bootstrap() {
     `);
 
     if (faixasExistentes.length === 0) {
-      console.log('   Inserindo definições de faixas...');
       // Se não houver faixas, tentar criar usando a migração existente
       await dataSource.query(`
         INSERT INTO teamcruz.faixa_def (codigo, nome_exibicao, cor_hex, ordem, categoria, graus_max, aulas_por_grau, ativo)
@@ -72,9 +71,6 @@ async function bootstrap() {
       );
 
       if (faixaResult.length === 0) {
-        console.log(
-          `   ⚠️  Faixa ${codigoFaixa} não encontrada, pulando ${aluno.nome_completo}`,
-        );
         continue;
       }
 
@@ -101,14 +97,9 @@ async function bootstrap() {
           Math.floor(Math.random() * 100), // Simula total de presenças
         ],
       );
-
-      console.log(
-        `   ✅ ${aluno.nome_completo} - Faixa: ${aluno.faixa_atual || 'Branca'}, Graus: ${aluno.grau_atual || 0}`,
-      );
     }
 
     // 4. Verificar resultado
-    console.log('\n📊 Verificando dados criados...\n');
     const resultado = await dataSource.query(`
       SELECT
         p.nome_completo,

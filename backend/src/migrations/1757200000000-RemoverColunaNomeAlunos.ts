@@ -1,6 +1,8 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class RemoverColunaNomeAlunos1757200000000 implements MigrationInterface {
+export class RemoverColunaNomeAlunos1757200000000
+  implements MigrationInterface
+{
   name = 'RemoverColunaNomeAlunos1757200000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -15,33 +17,30 @@ export class RemoverColunaNomeAlunos1757200000000 implements MigrationInterface 
 
     // Se a coluna existe, remover
     if (columnExists && columnExists.length > 0) {
-      console.log('Removendo coluna "nome" obsoleta da tabela alunos...');
-      
       // Remover a constraint NOT NULL se existir
-      await queryRunner.query(`
-        ALTER TABLE teamcruz.alunos 
+      await queryRunner
+        .query(
+          `
+        ALTER TABLE teamcruz.alunos
         ALTER COLUMN nome DROP NOT NULL
-      `).catch(() => {
-        // Ignorar erro se a constraint não existir
-        console.log('Coluna "nome" não tinha constraint NOT NULL');
-      });
+      `,
+        )
+        .catch(() => {
+          // Ignorar erro se a constraint não existir
+        });
 
       // Remover a coluna
       await queryRunner.query(`
-        ALTER TABLE teamcruz.alunos 
+        ALTER TABLE teamcruz.alunos
         DROP COLUMN IF EXISTS nome
       `);
-
-      console.log('Coluna "nome" removida com sucesso!');
-    } else {
-      console.log('Coluna "nome" não existe, nada a fazer.');
     }
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
     // Recriar a coluna caso seja necessário reverter
     await queryRunner.query(`
-      ALTER TABLE teamcruz.alunos 
+      ALTER TABLE teamcruz.alunos
       ADD COLUMN IF NOT EXISTS nome VARCHAR(255)
     `);
   }

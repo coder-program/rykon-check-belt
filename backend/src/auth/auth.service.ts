@@ -456,12 +456,6 @@ export class AuthService {
         perfilPrincipal === 'gerente_unidade' ||
         perfilPrincipal === 'gerente'
       ) {
-        console.log('🔍 [completeProfile] Processando gerente:', {
-          userId,
-          cpf: user.cpf,
-          unidadeId: profileData.unidade_id,
-        });
-
         // Verificar se gerente já está vinculado via tabela gerente_unidades
         const vinculoExistente = await this.dataSource.query(
           `SELECT unidade_id FROM teamcruz.gerente_unidades
@@ -469,12 +463,7 @@ export class AuthService {
           [userId],
         );
 
-        if (vinculoExistente && vinculoExistente[0]) {
-          console.log(
-            '✅ [completeProfile] Gerente já vinculado à unidade:',
-            vinculoExistente[0].unidade_id,
-          );
-        } else if (profileData.unidade_id) {
+        if (profileData.unidade_id) {
           console.warn(
             `⚠️ [completeProfile] Gerente não estava vinculado. Vinculando à unidade: ${profileData.unidade_id}`,
           );
@@ -610,10 +599,6 @@ export class AuthService {
              SET unidade_id = $2, ativo = true, updated_at = NOW()`,
             [user.id, payload.unidade_id],
           );
-
-          console.log(
-            `✅ [approveUser GERENTE] Gerente ${user.nome} vinculado à unidade ${payload.unidade_id}`,
-          );
         } catch (error) {
           console.error(
             '❌ Erro ao vincular gerente à unidade:',
@@ -669,10 +654,6 @@ export class AuthService {
             consent_imagem: payload.consent_imagem || false,
             consent_lgpd_date: payload.consent_lgpd ? new Date() : null,
           } as any);
-
-          console.log(
-            `✅ [registerAluno] Aluno ${user.nome} criado na unidade ${payload.unidade_id}`,
-          );
         } catch (error) {
           console.error('❌ Erro ao criar registro de aluno:', error.message);
           console.error('Stack:', error.stack);

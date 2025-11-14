@@ -228,28 +228,14 @@ export default function CompleteProfilePage() {
 
       const isGerente = perfis.includes("GERENTE_UNIDADE");
 
-      console.log("🔍 [loadUnidades] Debug completo:", {
-        perfis,
-        isGerente,
-        userId: user?.id,
-        userName: user?.nome,
-      });
-
       if (isGerente) {
         // GERENTE: Buscar apenas a unidade vinculada via gerente_unidades
-        console.log(
-          "🔍 [loadUnidades] Gerente detectado - buscando unidade vinculada"
-        );
         const token = localStorage.getItem("token");
-        console.log("🔑 [loadUnidades] Token presente:", !!token);
-
         const response = await fetch(`${apiUrl}/unidades`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
         });
-
-        console.log("📡 [loadUnidades] Response status:", response.status);
 
         if (!response.ok) {
           const errorText = await response.text();
@@ -258,22 +244,10 @@ export default function CompleteProfilePage() {
         }
 
         const data = await response.json();
-        console.log("📦 [loadUnidades] Dados recebidos:", data);
-
         const items = data.items || [];
-        console.log("📋 [loadUnidades] Items totais:", items.length, items);
-
         // Filtrar apenas unidades ATIVAS
         const unidadesAtivas = items.filter((u: any) => u.status === "ATIVA");
 
-        console.log("✅ [loadUnidades] Unidades ATIVAS do gerente:", {
-          total: unidadesAtivas.length,
-          unidades: unidadesAtivas.map((u: any) => ({
-            id: u.id,
-            nome: u.nome,
-            status: u.status,
-          })),
-        });
         setUnidades(unidadesAtivas);
 
         // Se só tem 1 unidade, preencher automaticamente

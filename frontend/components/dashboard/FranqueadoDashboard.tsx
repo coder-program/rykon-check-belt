@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { useAuth } from "@/app/auth/AuthContext";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
@@ -25,11 +25,16 @@ import {
   UserCheck,
   CheckCircle,
   Calendar,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
 
 export default function FranqueadoDashboard() {
   const { user } = useAuth();
   const router = useRouter();
+  const [expandedUnidadeId, setExpandedUnidadeId] = useState<string | null>(
+    null
+  );
 
   // Buscar franqueado do usuário logado
   const { data: franqueado, isLoading: loadingFranqueado } = useQuery({
@@ -264,8 +269,8 @@ export default function FranqueadoDashboard() {
       color: "bg-green-500",
     },
     {
-      title: "Aprovar Alunos",
-      description: "Aprovar cadastros de alunos",
+      title: "Aprovar Usuários",
+      description: "Aprovar cadastros de usuários",
       icon: UserCheck,
       action: () => router.push("/admin/usuarios-pendentes"),
       color: "bg-orange-500",
@@ -459,31 +464,96 @@ export default function FranqueadoDashboard() {
             ) : (
               <div className="space-y-4">
                 {unidades.map((unidade: any) => (
-                  <div
-                    key={unidade.id}
-                    className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 cursor-pointer transition-colors"
-                    onClick={() => router.push("/unidades")}
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                        <Building2 className="h-6 w-6 text-blue-600" />
+                  <div key={unidade.id} className="border rounded-lg">
+                    {/* Header clicável da unidade */}
+                    <div
+                      className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 cursor-pointer transition-colors"
+                      onClick={() =>
+                        setExpandedUnidadeId(
+                          expandedUnidadeId === unidade.id ? null : unidade.id
+                        )
+                      }
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                          <Building2 className="h-6 w-6 text-blue-600" />
+                        </div>
+                        <div>
+                          <h3 className="font-semibold">{unidade.nome}</h3>
+                          <p className="text-sm text-gray-600">
+                            {unidade.capacidade_max_alunos || 0} alunos •{" "}
+                            {unidade.qtde_instrutores || 0} professores
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <h3 className="font-semibold">{unidade.nome}</h3>
-                        <p className="text-sm text-gray-600">
-                          {unidade.capacidade_max_alunos || 0} alunos •{" "}
-                          {unidade.qtde_instrutores || 0} professores
-                        </p>
+                      <div className="flex items-center gap-4">
+                        <div className="text-right">
+                          <div className="font-semibold text-green-600">
+                            R${" "}
+                            {(unidade.valor_plano_padrao || 0).toLocaleString()}
+                          </div>
+                          <div className="text-sm text-gray-600">
+                            {unidade.status}
+                          </div>
+                        </div>
+                        {expandedUnidadeId === unidade.id ? (
+                          <ChevronDown className="h-5 w-5 text-gray-400" />
+                        ) : (
+                          <ChevronRight className="h-5 w-5 text-gray-400" />
+                        )}
                       </div>
                     </div>
-                    <div className="text-right">
-                      <div className="font-semibold text-green-600">
-                        R$ {(unidade.valor_plano_padrao || 0).toLocaleString()}
+
+                    {/* Detalhes expandidos da unidade */}
+                    {expandedUnidadeId === unidade.id && (
+                      <div className="p-4 bg-white border-t space-y-3">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <p className="text-sm font-medium text-gray-500">
+                              CNPJ
+                            </p>
+                            <p className="text-sm text-gray-900">
+                              {unidade.cnpj || "Não informado"}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-gray-500">
+                              Telefone
+                            </p>
+                            <p className="text-sm text-gray-900">
+                              {unidade.telefone_celular || "Não informado"}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-gray-500">
+                              Email
+                            </p>
+                            <p className="text-sm text-gray-900">
+                              {unidade.email || "Não informado"}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-gray-500">
+                              Cidade
+                            </p>
+                            <p className="text-sm text-gray-900">
+                              {unidade.cidade || "Não informado"}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex gap-2 pt-2">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              router.push(`/unidades`);
+                            }}
+                            className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                          >
+                            Ver Detalhes Completos
+                          </button>
+                        </div>
                       </div>
-                      <div className="text-sm text-gray-600">
-                        {unidade.status}
-                      </div>
-                    </div>
+                    )}
                   </div>
                 ))}
               </div>
