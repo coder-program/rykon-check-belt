@@ -355,7 +355,7 @@ function LoginContent() {
                       className="flex items-center gap-2 text-gray-200"
                     >
                       <Mail className="h-4 w-4 text-red-400" />
-                      Email ou Username
+                      E-mail ou Username
                     </Label>
                     <Input
                       type="text"
