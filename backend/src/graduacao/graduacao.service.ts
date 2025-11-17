@@ -59,10 +59,17 @@ export class GraduacaoService {
    * Obtém o status de graduação do aluno
    */
   async getStatusGraduacao(alunoId: string): Promise<StatusGraduacaoDto> {
-    // Buscar aluno pelo usuario_id (que é o que vem no JWT)
-    const aluno = await this.alunoRepository.findOne({
+    // Primeiro tenta buscar por usuario_id (para alunos com login)
+    let aluno = await this.alunoRepository.findOne({
       where: { usuario_id: alunoId },
     });
+
+    // Se não encontrar, tenta buscar diretamente pelo ID do aluno (para dependentes sem login)
+    if (!aluno) {
+      aluno = await this.alunoRepository.findOne({
+        where: { id: alunoId },
+      });
+    }
 
     if (!aluno) {
       throw new NotFoundException('Aluno não encontrado');

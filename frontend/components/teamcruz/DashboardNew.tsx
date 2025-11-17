@@ -5,6 +5,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { FixedSizeList as List } from "react-window";
 import { listAlunos } from "@/lib/peopleApi";
+import { getAulasHoje } from "@/lib/aulasApi";
+import { useAuth } from "@/app/auth/AuthContext";
 import {
   Card,
   CardContent,
@@ -526,9 +528,81 @@ function BeltTip({ faixa, graus }: { faixa: string; graus: number }) {
 }
 
 export default function DashboardNew() {
+  // Hook de autenticação
+  const { user } = useAuth();
+
+  // Verificar se é gerente de unidade
+  const isGerenteUnidade = React.useMemo(() => {
+    if (!user?.perfis) return false;
+    const resultado = user.perfis.some((perfil: any) => {
+      const perfilNome =
+        typeof perfil === "string" ? perfil : perfil.nome || perfil.perfil;
+      return (
+        perfilNome?.toLowerCase() === "gerente_unidade" ||
+        perfilNome?.toLowerCase() === "gerente"
+      );
+    });
+    console.log("🔍 [DASHBOARD] É gerente?", resultado, "Perfis:", user.perfis);
+    return resultado;
+  }, [user]);
+
+  // Verificar se é MASTER ou FRANQUEADO (para exibir aba Unidades)
+  const canViewUnidades = React.useMemo(() => {
+    if (!user?.perfis) return false;
+    return user.perfis.some((perfil: any) => {
+      const perfilNome =
+        typeof perfil === "string" ? perfil : perfil.nome || perfil.perfil;
+      return (
+        perfilNome?.toLowerCase() === "master" ||
+        perfilNome?.toLowerCase() === "franqueado"
+      );
+    });
+  }, [user]);
+
+  // Buscar unidade do gerente
+  const { data: userData, isLoading: isLoadingUserData } = useQuery({
+    queryKey: ["user-me"],
+    queryFn: async () => {
+      const token = localStorage.getItem("token");
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/usuarios/me`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      if (!response.ok) throw new Error("Erro ao buscar dados do usuário");
+      const data = await response.json();
+      console.log("🔍 [DASHBOARD] Dados do usuário:", data);
+      console.log("🔍 [DASHBOARD] Unidades:", data.unidades);
+      return data;
+    },
+    enabled: !!user && isGerenteUnidade,
+  });
+
+  // Extrair unidade_id e nome do gerente
+  const unidadeDoGerente = React.useMemo(() => {
+    if (!isGerenteUnidade || !userData) {
+      console.log("🔍 [DASHBOARD] Não é gerente ou userData vazio", {
+        isGerenteUnidade,
+        userData,
+      });
+      return null;
+    }
+    const unidade = {
+      id: userData.unidades?.[0]?.id || null,
+      nome: userData.unidades?.[0]?.nome || "Sua Unidade",
+    };
+    console.log("🔍 [DASHBOARD] Unidade do gerente:", unidade);
+    return unidade;
+  }, [isGerenteUnidade, userData]);
+
   // Estados
   const [selectedTab, setSelectedTab] = React.useState("overview");
   const [currentTime, setCurrentTime] = React.useState(new Date());
+  const [selectedUnidade, setSelectedUnidade] = React.useState<string>("todas");
   const [selectedAula, setSelectedAula] = React.useState<any | null>(null);
   const [searchTerm, setSearchTerm] = React.useState("");
   const [debouncedSearch, setDebouncedSearch] = React.useState("");
@@ -559,8 +633,52 @@ export default function DashboardNew() {
   );
   const [showLocationModal, setShowLocationModal] = React.useState(false);
 
-  // Estado do filtro de unidade - deve vir antes das queries
-  const [selectedUnidade, setSelectedUnidade] = React.useState<string>("todas");
+  // Query para buscar aulas de hoje
+  const aulasHojeQuery = useQuery({
+    queryKey: ["aulas-hoje", selectedUnidade],
+    queryFn: async () => {
+      console.log(
+        "🔥 [AULAS QUERY] Executando query com selectedUnidade:",
+        selectedUnidade
+      );
+      if (!selectedUnidade || selectedUnidade === "todas") {
+        console.log(
+          "🔥 [AULAS QUERY] Retornando array vazio (todas ou undefined)"
+        );
+        return [];
+      }
+      console.log(
+        "🔥 [AULAS QUERY] Chamando getAulasHoje com unidade:",
+        selectedUnidade
+      );
+      const result = await getAulasHoje(selectedUnidade);
+      console.log(
+        "🔥 [AULAS QUERY] Resultado recebido:",
+        result.length,
+        "aulas"
+      );
+      return result;
+    },
+    enabled: !!selectedUnidade && selectedUnidade !== "todas",
+    refetchOnMount: true,
+    refetchOnWindowFocus: false,
+  });
+
+  // useEffect para forçar unidade do gerente
+  React.useEffect(() => {
+    console.log("🔥 [EFFECT] useEffect rodando:", {
+      isGerenteUnidade,
+      unidadeDoGerente,
+      selectedUnidade,
+    });
+    if (isGerenteUnidade && unidadeDoGerente?.id) {
+      console.log(
+        "🔥 [EFFECT] Setando selectedUnidade para:",
+        unidadeDoGerente.id
+      );
+      setSelectedUnidade(unidadeDoGerente.id);
+    }
+  }, [isGerenteUnidade, unidadeDoGerente]);
 
   // Paginação e filtros
   const pageSize = 30; // quantidade por página para infinite scroll
@@ -639,6 +757,11 @@ export default function DashboardNew() {
           params.toString() ? `?${params.toString()}` : ""
         }`;
 
+        console.log("🔥 [STATS] Buscando estatísticas:", {
+          url,
+          selectedUnidade,
+        });
+
         const response = await fetch(url, {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -647,12 +770,15 @@ export default function DashboardNew() {
         });
 
         if (!response.ok) {
+          console.error("❌ [STATS] Erro na resposta:", response.status);
           throw new Error("Erro ao buscar estatísticas");
         }
 
         const data = await response.json();
 
-        return {
+        console.log("✅ [STATS] Dados recebidos:", data);
+
+        const stats = {
           totalAlunos: data.totalAlunos || 0,
           aulaHoje: data.aulasHoje || 0,
           proximosGraduaveis: data.proximosGraduaveis || 0,
@@ -662,8 +788,12 @@ export default function DashboardNew() {
           totalProfessores: data.totalProfessores || 0,
           totalUnidades: data.totalUnidades || 0,
         };
+
+        console.log("📊 [STATS] Stats formatadas:", stats);
+
+        return stats;
       } catch (error) {
-        console.error("Erro ao buscar estatísticas:", error);
+        console.error("❌ [STATS] Erro ao buscar estatísticas:", error);
         // Fallback para dados zerados em caso de erro
         return {
           totalAlunos: 0,
@@ -689,11 +819,19 @@ export default function DashboardNew() {
       lastPage.hasNextPage ? lastPage.page + 1 : undefined,
     queryFn: async ({ pageParam }) => {
       // Buscar dados reais do banco
+      // Não enviar faixa se for categoria (kids/adulto), apenas se for faixa real
+      const faixaParam =
+        filterFaixa === "todos" ||
+        filterFaixa === "kids" ||
+        filterFaixa === "adulto"
+          ? undefined
+          : filterFaixa;
+
       const response = await listAlunos({
         page: pageParam,
         pageSize: 30,
         search: debouncedSearch,
-        faixa: filterFaixa,
+        faixa: faixaParam,
       });
 
       // Adaptar os dados para o formato esperado pelo componente
@@ -725,11 +863,19 @@ export default function DashboardNew() {
     getNextPageParam: (lastPage) =>
       lastPage.hasNextPage ? lastPage.page + 1 : undefined,
     queryFn: async ({ pageParam }) => {
+      // Não enviar faixa se for categoria (kids/adulto), apenas se for faixa real
+      const faixaParam =
+        filterFaixa === "todos" ||
+        filterFaixa === "kids" ||
+        filterFaixa === "adulto"
+          ? undefined
+          : filterFaixa;
+
       const response = await listAlunos({
         page: pageParam,
         pageSize: 30,
         search: debouncedSearch,
-        faixa: filterFaixa,
+        faixa: faixaParam,
         tipo_cadastro: "PROFESSOR", // Filtrar apenas professores
       });
       return {
@@ -756,11 +902,19 @@ export default function DashboardNew() {
       lastPage.hasNextPage ? lastPage.page + 1 : undefined,
     queryFn: async ({ pageParam }) => {
       // Buscar dados reais do banco
+      // Não enviar faixa se for categoria (kids/adulto), apenas se for faixa real
+      const faixaParam =
+        filterFaixa === "todos" ||
+        filterFaixa === "kids" ||
+        filterFaixa === "adulto"
+          ? undefined
+          : filterFaixa;
+
       const response = await listAlunos({
         page: pageParam,
         pageSize: 30,
         search: debouncedSearch,
-        faixa: filterFaixa,
+        faixa: faixaParam,
       });
 
       // Adaptar os dados
@@ -821,11 +975,14 @@ export default function DashboardNew() {
     // { id: "checkin", label: "Check-in", icon: CheckCircle }, // Comentado temporariamente
     { id: "alunos", label: "Alunos", icon: Users },
     { id: "professores", label: "Professores", icon: GraduationCap },
-    { id: "unidades", label: "Unidades", icon: Building2 },
+    // Aba Unidades só para MASTER e FRANQUEADO
+    ...(canViewUnidades
+      ? [{ id: "unidades", label: "Unidades", icon: Building2 }]
+      : []),
     { id: "graduacoes", label: "Graduações", icon: Trophy },
     // { id: "aulas", label: "Aulas", icon: Calendar }, // Comentado temporariamente
     // { id: "social", label: "Comunidade", icon: Share2 }, // Comentado temporariamente
-    { id: "campanhas", label: "Campanhas", icon: Megaphone },
+    // { id: "campanhas", label: "Campanhas", icon: Megaphone }, // Comentado temporariamente
     { id: "loja", label: "Loja Virtual", icon: ShoppingBag },
   ];
 
@@ -1143,111 +1300,141 @@ export default function DashboardNew() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-white to-blue-50">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-gray-50">
       <Toaster position="top-right" />
 
-      <div className="navbar bg-white shadow-lg border-b-2 border-blue-100">
-        <div className="flex-1">
-          <div className="flex items-center gap-3 px-4">
-            <button
-              onClick={() => (window.location.href = "/dashboard")}
-              className="btn btn-primary gap-2 shadow-md"
-              title="Voltar ao Dashboard"
-            >
-              <ArrowLeftIcon className="h-5 w-5" />
-              Voltar
-            </button>
-            <div className="divider divider-horizontal mx-2"></div>
-            <div className="indicator">
-              <Shield className="h-10 w-10 text-red-600" />
-              <span className="indicator-item badge badge-warning badge-xs animate-pulse"></span>
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-red-600 via-red-700 to-black bg-clip-text text-transparent">
-                TeamCruz Jiu-Jitsu
-              </h1>
-              <p className="text-xs text-blue-600">
-                Sistema de Controle de Presença
-              </p>
-            </div>
-          </div>
-        </div>
-        <div className="flex-none gap-4 items-center">
-          <div className="text-right mr-4">
-            <p className="text-sm opacity-70">
-              {format(currentTime, "EEEE, d 'de' MMMM", { locale: ptBR })}
-            </p>
-            <p className="text-lg font-mono font-bold">
-              {format(currentTime, "HH:mm:ss")}
-            </p>
-          </div>
-          <button
-            onClick={() => setShowConfigModal(true)}
-            className="btn btn-ghost btn-circle"
-            title="Configurações"
-          >
-            <Settings className="h-5 w-5" />
-          </button>
-          <div className="indicator">
-            <Bell className="h-5 w-5" />
-            <span className="indicator-item badge badge-error badge-xs animate-pulse"></span>
-          </div>
-        </div>
-      </div>
-
-      {/* Nav Tabs - estilo pill sobre barra clara */}
-      <div className="bg-gradient-to-r from-white to-blue-50 border-y border-blue-100">
-        <div className="container mx-auto px-4 py-3">
+      {/* Header Moderno e Limpo */}
+      <div className="bg-white shadow-sm border-b border-gray-200">
+        <div className="container mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
-            <div className="flex gap-2 rounded-xl bg-white/90 backdrop-blur border border-blue-200 p-1 shadow-sm">
-              {tabs.map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setSelectedTab(tab.id)}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors text-sm font-medium ${
-                    selectedTab === tab.id
-                      ? "bg-blue-600 text-white shadow"
-                      : "text-blue-700 hover:bg-blue-50"
-                  }`}
-                >
-                  <tab.icon className="h-4 w-4" />
-                  {tab.label}
-                </button>
-              ))}
+            {/* Logo e Brand */}
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => (window.location.href = "/dashboard")}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg hover:bg-gray-100 transition-colors group"
+                title="Voltar"
+              >
+                <ArrowLeftIcon className="h-5 w-5 text-gray-600 group-hover:text-blue-600 transition-colors" />
+                <span className="text-sm font-medium text-gray-700 group-hover:text-blue-600 transition-colors">
+                  Voltar
+                </span>
+              </button>
+
+              <div className="h-8 w-px bg-gray-300"></div>
+
+              <div className="flex items-center gap-3">
+                <div className="relative">
+                  <Shield className="h-11 w-11 text-red-600" />
+                  <div className="absolute -top-1 -right-1 h-3.5 w-3.5 bg-green-500 rounded-full border-2 border-white"></div>
+                </div>
+                <div>
+                  <h1 className="text-2xl font-bold text-gray-900">
+                    TeamCruz Jiu-Jitsu
+                  </h1>
+                  <p className="text-xs text-gray-500">
+                    Sistema de Controle de Presença
+                  </p>
+                </div>
+              </div>
             </div>
 
-            {/* Filtro de Unidade - MELHORADO */}
-            <div className="flex items-center gap-3 bg-white backdrop-blur-sm border-2 border-blue-400 rounded-xl px-5 py-3 shadow-lg hover:shadow-xl transition-shadow">
-              <div className="bg-blue-100 p-2 rounded-lg">
-                <Building2 className="h-5 w-5 text-blue-600" />
+            {/* Right Section */}
+            <div className="flex items-center gap-6">
+              {/* Clock */}
+              <div className="text-right hidden md:block">
+                <p className="text-xs text-gray-500 capitalize">
+                  {format(currentTime, "EEEE, d 'de' MMMM", { locale: ptBR })}
+                </p>
+                <p className="text-base font-semibold text-gray-900 font-mono">
+                  {format(currentTime, "HH:mm:ss")}
+                </p>
               </div>
-              <div className="flex flex-col gap-1">
-                <span className="text-xs font-bold text-blue-700 uppercase tracking-wide">
-                  Filtrar Unidade
-                </span>
-                <select
-                  className="text-base font-semibold text-gray-800 bg-transparent border-none outline-none cursor-pointer w-56 hover:text-blue-600 transition-colors"
-                  value={selectedUnidade}
-                  onChange={(e) => setSelectedUnidade(e.target.value)}
-                  style={{
-                    WebkitAppearance: "none",
-                    MozAppearance: "none",
-                    appearance: "none",
-                    backgroundImage: `url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e")`,
-                    backgroundRepeat: "no-repeat",
-                    backgroundPosition: "right 0.5rem center",
-                    backgroundSize: "1.25rem",
-                    paddingRight: "2rem",
-                  }}
+
+              {/* Actions */}
+              <div className="flex items-center gap-2">
+                <button
+                  className="relative p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                  title="Notificações"
                 >
-                  <option value="todas">📍 Todas as Unidades</option>
-                  {Array.isArray(unidadesQuery.data) &&
-                    unidadesQuery.data?.map((unidade: any) => (
-                      <option key={unidade.id} value={unidade.id}>
-                        📍 {unidade.nome}
+                  <Bell className="h-5 w-5 text-gray-600" />
+                  <span className="absolute top-1 right-1 h-2 w-2 bg-red-500 rounded-full animate-pulse"></span>
+                </button>
+
+                <button
+                  onClick={() => setShowConfigModal(true)}
+                  className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                  title="Configurações"
+                >
+                  <Settings className="h-5 w-5 text-gray-600" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Navigation Bar - Moved inside header */}
+        <div className="border-t border-gray-100">
+          <div className="container mx-auto px-6 py-3">
+            <div className="flex items-center justify-between">
+              {/* Tabs */}
+              <div className="flex gap-1">
+                {tabs.map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setSelectedTab(tab.id)}
+                    className={`flex items-center gap-2 px-5 py-2.5 rounded-lg transition-all text-sm font-medium ${
+                      selectedTab === tab.id
+                        ? "bg-blue-600 text-white shadow-md shadow-blue-200"
+                        : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                    }`}
+                  >
+                    <tab.icon className="h-4 w-4" />
+                    <span>{tab.label}</span>
+                  </button>
+                ))}
+              </div>
+
+              {/* Unit Filter */}
+              <div className="flex items-center gap-3 bg-gray-50 border border-gray-200 rounded-lg px-4 py-2 hover:border-blue-300 transition-colors">
+                <Building2 className="h-4 w-4 text-gray-500" />
+                <div className="flex flex-col">
+                  <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                    {isGerenteUnidade ? "Sua Unidade" : "Unidade"}
+                  </span>
+                  <select
+                    className="text-sm font-semibold text-gray-900 bg-transparent border-none outline-none cursor-pointer hover:text-blue-600 transition-colors disabled:opacity-60 disabled:cursor-not-allowed mt-0.5"
+                    value={selectedUnidade}
+                    onChange={(e) => setSelectedUnidade(e.target.value)}
+                    disabled={isGerenteUnidade}
+                    style={{
+                      WebkitAppearance: "none",
+                      MozAppearance: "none",
+                      appearance: "none",
+                      backgroundImage: `url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23374151' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e")`,
+                      backgroundRepeat: "no-repeat",
+                      backgroundPosition: "right 0rem center",
+                      backgroundSize: "1rem",
+                      paddingRight: "1.5rem",
+                      minWidth: "180px",
+                    }}
+                  >
+                    {isGerenteUnidade && unidadeDoGerente ? (
+                      <option value={unidadeDoGerente.id}>
+                        {unidadeDoGerente.nome}
                       </option>
-                    ))}
-                </select>
+                    ) : (
+                      <>
+                        <option value="todas">Todas as Unidades</option>
+                        {Array.isArray(unidadesQuery.data) &&
+                          unidadesQuery.data?.map((unidade: any) => (
+                            <option key={unidade.id} value={unidade.id}>
+                              {unidade.nome}
+                            </option>
+                          ))}
+                      </>
+                    )}
+                  </select>
+                </div>
               </div>
             </div>
           </div>
@@ -1281,7 +1468,9 @@ export default function DashboardNew() {
                         : statsQuery.data?.totalAlunos || 0}
                     </div>
                     <div className="stat-desc text-blue-200 mt-1">
-                      ↗︎ 12% vs ultimo mês
+                      {selectedUnidade === "todas"
+                        ? "Todas as unidades"
+                        : "Unidade selecionada"}
                     </div>
                   </div>
                 </div>
@@ -1301,7 +1490,13 @@ export default function DashboardNew() {
                         : statsQuery.data?.aulaHoje || 0}
                     </div>
                     <div className="stat-desc text-green-200 mt-1">
-                      4 turmas agendadas
+                      {aulasHojeQuery.data && aulasHojeQuery.data.length > 0
+                        ? `${aulasHojeQuery.data.length} ${
+                            aulasHojeQuery.data.length === 1
+                              ? "aula agendada"
+                              : "aulas agendadas"
+                          }`
+                        : "Nenhuma aula agendada"}
                     </div>
                   </div>
                 </div>
@@ -1321,7 +1516,13 @@ export default function DashboardNew() {
                         : statsQuery.data?.proximosGraduaveis || 0}
                     </div>
                     <div className="stat-desc text-yellow-200 mt-1">
-                      ↗︎ 5 novos este mês
+                      {statsQuery.data?.proximosGraduaveis
+                        ? `${statsQuery.data.proximosGraduaveis} ${
+                            statsQuery.data.proximosGraduaveis === 1
+                              ? "aluno próximo"
+                              : "alunos próximos"
+                          }`
+                        : "Nenhum próximo ao grau"}
                     </div>
                   </div>
                 </div>
@@ -1341,7 +1542,13 @@ export default function DashboardNew() {
                         : statsQuery.data?.presencasHoje || 0}
                     </div>
                     <div className="stat-desc text-purple-200 mt-1">
-                      ↗︎ 18% vs média
+                      {statsQuery.data?.presencasHoje
+                        ? `${statsQuery.data.presencasHoje} ${
+                            statsQuery.data.presencasHoje === 1
+                              ? "presença registrada"
+                              : "presenças registradas"
+                          }`
+                        : "Nenhuma presença hoje"}
                     </div>
                   </div>
                 </div>
@@ -1349,52 +1556,56 @@ export default function DashboardNew() {
 
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Próximos a Graduar */}
-                <Card className="lg:col-span-2 bg-white border border-blue-200 shadow-lg">
-                  <CardHeader>
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                      <CardTitle className="flex items-center gap-2">
-                        <Star className="h-5 w-5 text-warning" />
+                <Card className="lg:col-span-2 bg-white border-0 shadow-lg">
+                  <CardHeader className="border-b border-gray-100 pb-4">
+                    <div className="flex flex-col gap-4">
+                      <CardTitle className="flex items-center gap-2 text-xl font-bold text-gray-900">
+                        <div className="p-2 bg-yellow-100 rounded-lg">
+                          <Star className="h-5 w-5 text-yellow-600" />
+                        </div>
                         Próximos a Receber Grau
                       </CardTitle>
-                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                        <div className="relative w-full sm:w-80">
-                          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-base-content/50" />
+
+                      {/* Filters */}
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                        <div className="relative flex-1">
+                          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                           <input
-                            className="input input-bordered w-full pl-9 input-sm"
-                            placeholder="Buscar por nome"
+                            className="w-full pl-10 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            placeholder="Buscar por nome..."
                             value={overviewSearch}
                             onChange={(e) => setOverviewSearch(e.target.value)}
                           />
                         </div>
-                        <select
-                          className="select select-bordered select-sm"
-                          value={overviewFilterFaixa}
-                          onChange={(e) =>
-                            setOverviewFilterFaixa(e.target.value as any)
-                          }
-                        >
-                          <option value="todos">Todos</option>
-                          <option value="kids">Kids</option>
-                          <option value="adulto">Adulto</option>
-                        </select>
-                        <select
-                          className="select select-bordered select-sm"
-                          value={overviewSort}
-                          onChange={(e) =>
-                            setOverviewSort(e.target.value as any)
-                          }
-                        >
-                          <option value="faltam-asc">
-                            Menos aulas primeiro
-                          </option>
-                          <option value="faltam-desc">
-                            Mais aulas primeiro
-                          </option>
-                        </select>
+
+                        <div className="flex gap-2">
+                          <select
+                            className="px-4 py-2 text-sm font-medium border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                            value={overviewFilterFaixa}
+                            onChange={(e) =>
+                              setOverviewFilterFaixa(e.target.value as any)
+                            }
+                          >
+                            <option value="todos">📊 Todos</option>
+                            <option value="kids">👶 Kids</option>
+                            <option value="adulto">👤 Adulto</option>
+                          </select>
+
+                          <select
+                            className="px-4 py-2 text-sm font-medium border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                            value={overviewSort}
+                            onChange={(e) =>
+                              setOverviewSort(e.target.value as any)
+                            }
+                          >
+                            <option value="faltam-asc">⬆️ Menos aulas</option>
+                            <option value="faltam-desc">⬇️ Mais aulas</option>
+                          </select>
+                        </div>
                       </div>
                     </div>
                   </CardHeader>
-                  <CardContent className="space-y-4">
+                  <CardContent className="p-0">
                     <div className="h-[420px]">
                       {(() => {
                         const items = proximosQuery.data?.items || [];
@@ -1421,50 +1632,53 @@ export default function DashboardNew() {
                               </div>
                             );
                           return (
-                            <div style={style}>
+                            <div style={style} className="px-6 py-2">
                               <motion.div
-                                whileHover={{ scale: 1.02 }}
-                                className="bg-white border-2 border-blue-200 rounded-lg shadow-sm hover:shadow-md transition-all"
+                                whileHover={{ scale: 1.01, y: -2 }}
+                                className="bg-gradient-to-r from-white to-gray-50 border border-gray-200 rounded-xl shadow-sm hover:shadow-md transition-all p-4"
                               >
-                                <div className="p-4">
-                                  <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-4">
-                                      {aluno.foto ? (
-                                        <img
-                                          src={aluno.foto}
-                                          alt={aluno.nome}
-                                          className="w-12 h-12 rounded-full object-cover"
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-4 flex-1">
+                                    {aluno.foto ? (
+                                      <img
+                                        src={aluno.foto}
+                                        alt={aluno.nome}
+                                        className="w-14 h-14 rounded-full object-cover border-2 border-blue-200"
+                                      />
+                                    ) : (
+                                      <div className="w-14 h-14 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-bold text-lg shadow-md">
+                                        {aluno.nome
+                                          .split(" ")
+                                          .map((n: string) => n[0])
+                                          .join("")
+                                          .substring(0, 2)}
+                                      </div>
+                                    )}
+                                    <div className="flex-1">
+                                      <p className="font-semibold text-gray-900 text-base">
+                                        {aluno.nome}
+                                      </p>
+                                      <div className="mt-1.5">
+                                        <BeltTip
+                                          faixa={aluno.faixa}
+                                          graus={aluno.graus}
                                         />
-                                      ) : (
-                                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-bold">
-                                          {aluno.nome
-                                            .split(" ")
-                                            .map((n: string) => n[0])
-                                            .join("")}
-                                        </div>
-                                      )}
-                                      <div>
-                                        <p className="font-semibold text-gray-900">
-                                          {aluno.nome}
-                                        </p>
-                                        <div className="mt-1">
-                                          <BeltTip
-                                            faixa={aluno.faixa}
-                                            graus={aluno.graus}
-                                          />
-                                        </div>
                                       </div>
                                     </div>
-                                    <div className="text-right">
-                                      <p className="text-sm text-gray-600">
-                                        Faltam
-                                      </p>
-                                      <p className="text-3xl font-bold text-blue-600">
+                                  </div>
+                                  <div className="text-right ml-4">
+                                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
+                                      Faltam
+                                    </p>
+                                    <div className="flex items-center gap-2">
+                                      <p className="text-4xl font-bold bg-gradient-to-br from-blue-600 to-blue-700 bg-clip-text text-transparent">
                                         {aluno.faltam}
                                       </p>
-                                      <p className="text-xs text-gray-600">
-                                        aulas
-                                      </p>
+                                      <div>
+                                        <p className="text-sm text-gray-600 font-medium">
+                                          aulas
+                                        </p>
+                                      </div>
                                     </div>
                                   </div>
                                 </div>
@@ -1570,69 +1784,67 @@ export default function DashboardNew() {
                     <Calendar className="h-5 w-5 text-info" />
                     Aulas de Hoje
                   </CardTitle>
-                  <Button
-                    className="btn btn-primary btn-sm"
-                    onClick={() => (window.location.href = "/aulas")}
-                  >
-                    + Nova Aula
-                  </Button>
+                  {!isGerenteUnidade && (
+                    <Button
+                      className="btn btn-primary btn-sm"
+                      onClick={() => (window.location.href = "/aulas")}
+                    >
+                      + Nova Aula
+                    </Button>
+                  )}
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                    {/* TODO: Implementar API de aulas quando disponível */}
-                    {(statsQuery.data ? [] : mockData.aulasHoje).map((aula) => (
-                      <motion.div
-                        key={aula.id}
-                        whileHover={{ scale: 1.03 }}
-                        className={`bg-white rounded-lg shadow-md p-4 border-2 ${
-                          aula.status === "concluída"
-                            ? "border-green-500"
-                            : aula.status === "em andamento"
-                            ? "border-blue-500 animate-pulse"
-                            : "border-gray-200"
-                        }`}
-                      >
-                        <div className="flex justify-between items-start mb-2">
-                          <h3 className="text-2xl font-bold text-gray-900">
-                            {aula.horario}
-                          </h3>
-                          <Clock className="h-4 w-4 text-gray-400" />
-                        </div>
-                        <p className="font-semibold text-gray-800">
-                          {aula.turma}
-                        </p>
-                        <p className="text-sm text-gray-600">
-                          Prof. {aula.instrutor}
-                        </p>
-                        <div className="flex justify-between items-center mt-3">
-                          <span
-                            className={`px-2 py-1 rounded-full text-xs font-medium ${
-                              aula.status === "concluída"
-                                ? "bg-green-100 text-green-800"
-                                : aula.status === "em andamento"
-                                ? "bg-blue-100 text-blue-800"
-                                : "bg-gray-100 text-gray-700"
-                            }`}
-                          >
-                            {aula.status}
-                          </span>
-                          {aula.alunos > 0 && (
-                            <span className="text-xs text-gray-600">
-                              {aula.alunos} alunos
-                            </span>
-                          )}
-                        </div>
-                      </motion.div>
-                    ))}
-                    {statsQuery.data &&
-                      (!mockData.aulasHoje ||
-                        mockData.aulasHoje.length === 0) && (
-                        <div className="col-span-full text-center py-12 text-gray-500">
-                          <Calendar className="h-16 w-16 mx-auto mb-4 opacity-30" />
-                          <p className="text-lg font-medium mb-2">
-                            Nenhuma aula agendada para hoje
+                  {aulasHojeQuery.isLoading ? (
+                    <div className="text-center py-8 text-gray-500">
+                      Carregando aulas...
+                    </div>
+                  ) : aulasHojeQuery.data && aulasHojeQuery.data.length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+                      {aulasHojeQuery.data.map((aula) => (
+                        <motion.div
+                          key={aula.id}
+                          whileHover={{ scale: 1.02 }}
+                          className={`bg-white rounded-lg shadow-sm p-3 border-l-4 ${
+                            aula.status === "em andamento"
+                              ? "border-blue-500 bg-blue-50"
+                              : "border-gray-300"
+                          }`}
+                        >
+                          <div className="flex justify-between items-center mb-1">
+                            <h3 className="text-xl font-bold text-gray-900">
+                              {aula.horario}
+                            </h3>
+                            {aula.status === "em andamento" && (
+                              <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-blue-500 text-white animate-pulse">
+                                Em andamento
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-sm font-medium text-gray-700 mb-0.5">
+                            {aula.turma}
                           </p>
-                          <p className="text-sm mb-4">
+                          <p className="text-xs text-gray-500">
+                            {aula.instrutor}
+                          </p>
+                          {aula.presencas && aula.presencas > 0 && (
+                            <p className="text-xs text-gray-600 mt-1">
+                              {aula.presencas} presenças
+                            </p>
+                          )}
+                        </motion.div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-12">
+                      <Calendar className="h-16 w-16 text-gray-300 mx-auto mb-4 opacity-30" />
+                      <p className="text-lg font-medium mb-2 text-gray-700">
+                        {selectedUnidade === "todas"
+                          ? "Selecione uma unidade para ver as aulas de hoje"
+                          : "Nenhuma aula cadastrada para hoje"}
+                      </p>
+                      {!isGerenteUnidade && selectedUnidade !== "todas" && (
+                        <>
+                          <p className="text-sm text-gray-500 mb-4">
                             Cadastre aulas para começar a gerenciar presenças
                           </p>
                           <Button
@@ -1641,9 +1853,10 @@ export default function DashboardNew() {
                           >
                             Cadastrar Primeira Aula
                           </Button>
-                        </div>
+                        </>
                       )}
-                  </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </motion.div>

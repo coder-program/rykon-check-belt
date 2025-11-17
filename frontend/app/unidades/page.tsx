@@ -82,6 +82,7 @@ interface UnidadeFormData {
   pais?: string;
   horarios_funcionamento?: HorariosFuncionamento;
   status: StatusUnidade;
+  requer_aprovacao_checkin?: boolean;
 }
 
 export default function PageUnidades() {
@@ -379,6 +380,7 @@ export default function PageUnidades() {
       pais: "Brasil",
       status: unidade.status || "HOMOLOGACAO",
       horarios_funcionamento: unidade.horarios_funcionamento || {},
+      requer_aprovacao_checkin: unidade.requer_aprovacao_checkin || false,
     };
 
     // Buscar dados do endereço se houver endereco_id

@@ -68,7 +68,7 @@ export class Aluno {
   @Column({ type: 'varchar', length: 255 })
   nome_completo: string;
 
-  @Column({ type: 'varchar', length: 14, unique: true })
+  @Column({ type: 'varchar', length: 14, unique: true, nullable: true })
   cpf: string;
 
   @Column({ type: 'date' })

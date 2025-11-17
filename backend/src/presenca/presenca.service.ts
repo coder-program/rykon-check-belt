@@ -3,6 +3,7 @@ import {
   NotFoundException,
   BadRequestException,
   ForbiddenException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import {
@@ -23,6 +24,7 @@ import {
 import { Aula } from './entities/aula.entity';
 import { Person, TipoCadastro } from '../people/entities/person.entity';
 import { Aluno, StatusAluno } from '../people/entities/aluno.entity';
+import { Responsavel } from '../people/entities/responsavel.entity';
 import { AlunoFaixa } from '../graduacao/entities/aluno-faixa.entity';
 import { Unidade } from '../people/entities/unidade.entity';
 import { GraduacaoService } from '../graduacao/graduacao.service';
@@ -55,8 +57,12 @@ export class PresencaService {
     private readonly aulaRepository: Repository<Aula>,
     @InjectRepository(Aluno)
     private readonly alunoRepository: Repository<Aluno>,
+    @InjectRepository(Responsavel)
+    private readonly responsavelRepository: Repository<Responsavel>,
     @InjectRepository(AlunoFaixa)
     private readonly alunoFaixaRepository: Repository<AlunoFaixa>,
+    @InjectRepository(Unidade)
+    private readonly unidadeRepository: Repository<Unidade>,
     private readonly graduacaoService: GraduacaoService,
   ) {}
 
@@ -274,6 +280,129 @@ export class PresencaService {
     return {
       success: true,
       message: 'Check-in manual realizado com sucesso!',
+      presenca: presencaSalva,
+    };
+  }
+
+  async checkInDependente(alunoId: string, aulaId: string, user: any) {
+    // Buscar o responsável
+    const responsavel = await this.responsavelRepository.findOne({
+      where: { usuario_id: user.id },
+    });
+
+    if (!responsavel) {
+      throw new UnauthorizedException('Usuário não é um responsável');
+    }
+
+    // Buscar aluno e verificar se é dependente do responsável
+    const aluno = await this.alunoRepository.findOne({
+      where: {
+        id: alunoId,
+        responsavel_id: responsavel.id,
+      },
+    });
+
+    if (!aluno) {
+      throw new NotFoundException(
+        'Dependente não encontrado ou não pertence a este responsável',
+      );
+    }
+
+    // Buscar aula
+    const aula = await this.aulaRepository.findOne({
+      where: { id: aulaId },
+      relations: ['unidade'],
+    });
+
+    if (!aula) {
+      throw new NotFoundException('Aula não encontrada');
+    }
+
+    // Buscar configuração da unidade para verificar se requer aprovação
+    const unidade = await this.unidadeRepository.findOne({
+      where: { id: aula.unidade_id },
+      select: ['id', 'nome', 'requer_aprovacao_checkin'],
+    });
+
+    if (!unidade) {
+      throw new NotFoundException('Unidade não encontrada');
+    }
+
+    // Verificar se já fez check-in hoje
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+    const amanha = new Date(hoje);
+    amanha.setDate(amanha.getDate() + 1);
+
+    const presencaHoje = await this.presencaRepository.findOne({
+      where: {
+        aluno_id: aluno.id,
+        created_at: Between(hoje, amanha),
+      },
+    });
+
+    if (presencaHoje) {
+      throw new BadRequestException(
+        `${aluno.nome_completo} já fez check-in hoje`,
+      );
+    }
+
+    // Definir status de aprovação baseado na configuração da unidade
+    const statusAprovacao = unidade.requer_aprovacao_checkin
+      ? 'PENDENTE'
+      : 'APROVADO';
+
+    // Registrar presença
+    const presenca = this.presencaRepository.create({
+      aluno_id: aluno.id,
+      aula_id: aula.id,
+      status: PresencaStatus.PRESENTE,
+      modo_registro: PresencaMetodo.MANUAL,
+      status_aprovacao: statusAprovacao,
+      hora_checkin: new Date(),
+      observacoes: `Check-in pelo responsável - Aula: ${aula.nome}`,
+      created_by: user.id,
+      // Se for aprovação automática, já preencher campos de aprovação
+      ...(statusAprovacao === 'APROVADO' && {
+        aprovado_por_id: user.id,
+        aprovado_em: new Date(),
+        observacao_aprovacao:
+          'Aprovado automaticamente (unidade não requer aprovação)',
+      }),
+    });
+
+    const presencaSalva = await this.presencaRepository.save(presenca);
+
+    // Incrementar contador de graduação apenas se aprovado automaticamente
+    if (statusAprovacao === 'APROVADO') {
+      try {
+        const alunoFaixaAtiva = await this.alunoFaixaRepository.findOne({
+          where: {
+            aluno_id: aluno.id,
+            ativa: true,
+          },
+        });
+
+        if (alunoFaixaAtiva) {
+          alunoFaixaAtiva.presencas_no_ciclo += 1;
+          alunoFaixaAtiva.presencas_total_fx += 1;
+          await this.alunoFaixaRepository.save(alunoFaixaAtiva);
+        }
+      } catch (error) {
+        console.error(
+          '❌ [checkInDependente] Erro ao incrementar graduação:',
+          error.message,
+        );
+      }
+    }
+
+    const mensagem = unidade.requer_aprovacao_checkin
+      ? `Check-in de ${aluno.nome_completo} registrado. Aguardando aprovação.`
+      : `Check-in de ${aluno.nome_completo} realizado e aprovado automaticamente!`;
+
+    return {
+      success: true,
+      message: mensagem,
       presenca: presencaSalva,
     };
   }
@@ -996,6 +1125,16 @@ export class PresencaService {
       throw new NotFoundException('Aula não encontrada ou inativa');
     }
 
+    // Buscar configuração da unidade para verificar se requer aprovação
+    const unidade = await this.unidadeRepository.findOne({
+      where: { id: aula.unidade_id },
+      select: ['id', 'nome', 'requer_aprovacao_checkin'],
+    });
+
+    if (!unidade) {
+      throw new NotFoundException('Unidade não encontrada');
+    }
+
     // Verificar se já existe presença para esta aula hoje
     const hoje = new Date();
     hoje.setHours(0, 0, 0, 0);
@@ -1018,20 +1157,36 @@ export class PresencaService {
       };
     }
 
-    // Criar presença com status PENDENTE
+    // Definir status de aprovação baseado na configuração da unidade
+    const statusAprovacao = unidade.requer_aprovacao_checkin
+      ? 'PENDENTE'
+      : 'APROVADO';
+
+    // Criar presença com status baseado na configuração da unidade
     const presenca = this.presencaRepository.create({
       aluno_id: alunoId,
       aula_id: aulaId,
       metodo: metodo as PresencaMetodo,
       status: PresencaStatus.PRESENTE,
-      status_aprovacao: 'PENDENTE',
+      status_aprovacao: statusAprovacao,
       data_presenca: new Date(),
+      // Se for aprovação automática, já preencher campos de aprovação
+      ...(statusAprovacao === 'APROVADO' && {
+        aprovado_por_id: user.id,
+        aprovado_em: new Date(),
+        observacao_aprovacao:
+          'Aprovado automaticamente (unidade não requer aprovação)',
+      }),
     });
 
     await this.presencaRepository.save(presenca);
 
+    const mensagem = unidade.requer_aprovacao_checkin
+      ? 'Check-in registrado com sucesso. Aguardando aprovação.'
+      : 'Check-in registrado e aprovado automaticamente!';
+
     return {
-      message: 'Check-in registrado com sucesso. Aguardando aprovação.',
+      message: mensagem,
       presenca,
       aluno: {
         id: aluno.id,
@@ -1166,6 +1321,27 @@ export class PresencaService {
     }
 
     await this.presencaRepository.save(presenca);
+
+    // Incrementar contador de graduação quando aprovar
+    try {
+      const alunoFaixaAtiva = await this.alunoFaixaRepository.findOne({
+        where: {
+          aluno_id: presenca.aluno_id,
+          ativa: true,
+        },
+      });
+
+      if (alunoFaixaAtiva) {
+        alunoFaixaAtiva.presencas_no_ciclo += 1;
+        alunoFaixaAtiva.presencas_total_fx += 1;
+        await this.alunoFaixaRepository.save(alunoFaixaAtiva);
+      }
+    } catch (error) {
+      console.error(
+        '❌ [aprovarPresenca] Erro ao incrementar graduação:',
+        error.message,
+      );
+    }
 
     return {
       message: 'Presença aprovada com sucesso',

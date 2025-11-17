@@ -104,6 +104,8 @@ export default function PresencaPage() {
   const [alunosEncontrados, setAlunosEncontrados] = useState<Aluno[]>([]);
   const [meusFilhos, setMeusFilhos] = useState<Aluno[]>([]);
   const [showResponsavelMode, setShowResponsavelMode] = useState(false);
+  const [filtroFaixa, setFiltroFaixa] = useState<"todas" | "branca" | "azul" | "roxa" | "marrom" | "preta">("todas");
+  const [buscaHistorico, setBuscaHistorico] = useState("");
 
   useEffect(() => {
     loadAulaAtiva();
@@ -744,77 +746,91 @@ export default function PresencaPage() {
           )}
 
           {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Presença Mensal
-                </CardTitle>
-                <TrendingUp className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-green-600">
-                  {statsLoading ? "..." : `${stats.presencaMensal}%`}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            <Card className="border-0 shadow-md bg-gradient-to-br from-green-50 to-green-100">
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="p-3 bg-green-500 rounded-xl shadow-lg">
+                    <TrendingUp className="h-6 w-6 text-white" />
+                  </div>
+                  <div className="text-right">
+                    <div className="text-3xl font-bold text-green-700">
+                      {statsLoading ? "..." : `${stats.presencaMensal}%`}
+                    </div>
+                  </div>
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  {stats.presencaMensal >= 80 ? "Excelente!" : "Pode melhorar"}
+                <h3 className="text-sm font-semibold text-green-900 mb-1">
+                  Presença Mensal
+                </h3>
+                <p className="text-xs text-green-700">
+                  {stats.presencaMensal >= 80 ? "🔥 Excelente!" : "📈 Pode melhorar"}
                 </p>
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Aulas Este Mês
-                </CardTitle>
-                <Calendar className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {statsLoading ? "..." : stats.aulasMes}
+            <Card className="border-0 shadow-md bg-gradient-to-br from-blue-50 to-blue-100">
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="p-3 bg-blue-500 rounded-xl shadow-lg">
+                    <Calendar className="h-6 w-6 text-white" />
+                  </div>
+                  <div className="text-right">
+                    <div className="text-3xl font-bold text-blue-700">
+                      {statsLoading ? "..." : stats.aulasMes}
+                    </div>
+                  </div>
                 </div>
-                <p className="text-xs text-muted-foreground">
+                <h3 className="text-sm font-semibold text-blue-900 mb-1">
+                  Aulas Este Mês
+                </h3>
+                <p className="text-xs text-blue-700">
                   Aulas frequentadas
                 </p>
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Sequência Atual
-                </CardTitle>
-                <Trophy className="h-4 w-4 text-yellow-600" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-yellow-600">
-                  {statsLoading ? "..." : stats.sequenciaAtual}
+            <Card className="border-0 shadow-md bg-gradient-to-br from-yellow-50 to-yellow-100">
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="p-3 bg-yellow-500 rounded-xl shadow-lg">
+                    <Trophy className="h-6 w-6 text-white" />
+                  </div>
+                  <div className="text-right">
+                    <div className="text-3xl font-bold text-yellow-700">
+                      {statsLoading ? "..." : stats.sequenciaAtual}
+                    </div>
+                  </div>
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  Dias consecutivos
+                <h3 className="text-sm font-semibold text-yellow-900 mb-1">
+                  Sequência Atual
+                </h3>
+                <p className="text-xs text-yellow-700">
+                  🔥 {stats.sequenciaAtual} dias consecutivos
                 </p>
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Última Presença
-                </CardTitle>
-                <History className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-sm font-bold">
-                  {statsLoading
-                    ? "..."
-                    : stats.ultimaPresenca
-                    ? formatDate(stats.ultimaPresenca).split(" ")[0]
-                    : "Nenhuma"}
+            <Card className="border-0 shadow-md bg-gradient-to-br from-purple-50 to-purple-100">
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="p-3 bg-purple-500 rounded-xl shadow-lg">
+                    <History className="h-6 w-6 text-white" />
+                  </div>
+                  <div className="text-right">
+                    <div className="text-lg font-bold text-purple-700">
+                      {statsLoading
+                        ? "..."
+                        : stats.ultimaPresenca
+                        ? formatDate(stats.ultimaPresenca).split(" ")[0]
+                        : "---"}
+                    </div>
+                  </div>
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  {stats.ultimaPresenca
-                    ? "Último check-in"
-                    : "Faça seu primeiro check-in!"}
+                <h3 className="text-sm font-semibold text-purple-900 mb-1">
+                  Última Presença
+                </h3>
+                <p className="text-xs text-purple-700">
+                  {stats.ultimaPresenca ? "Último check-in" : "Faça seu primeiro check-in!"}
                 </p>
               </CardContent>
             </Card>
@@ -1296,6 +1312,85 @@ export default function PresencaPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
+                {/* Filtros */}
+                <div className="space-y-3 mb-6">
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="🔍 Buscar no histórico..."
+                      value={buscaHistorico}
+                      onChange={(e) => setBuscaHistorico(e.target.value)}
+                      className="flex-1"
+                    />
+                  </div>
+
+                  {/* Filtro de Faixa com ícone de faixa */}
+                  <div className="flex gap-2 flex-wrap">
+                    <Button
+                      size="sm"
+                      variant={filtroFaixa === "todas" ? "default" : "outline"}
+                      onClick={() => setFiltroFaixa("todas")}
+                      className="text-xs"
+                    >
+                      Todas
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant={filtroFaixa === "branca" ? "default" : "outline"}
+                      onClick={() => setFiltroFaixa("branca")}
+                      className="text-xs"
+                    >
+                      <svg className="w-4 h-4 mr-1" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 14H4V6h16v12z" fill="#FFFFFF" stroke="#000" strokeWidth="0.5"/>
+                      </svg>
+                      Branca
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant={filtroFaixa === "azul" ? "default" : "outline"}
+                      onClick={() => setFiltroFaixa("azul")}
+                      className="text-xs"
+                    >
+                      <svg className="w-4 h-4 mr-1" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 14H4V6h16v12z" fill="#0066CC"/>
+                      </svg>
+                      Azul
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant={filtroFaixa === "roxa" ? "default" : "outline"}
+                      onClick={() => setFiltroFaixa("roxa")}
+                      className="text-xs"
+                    >
+                      <svg className="w-4 h-4 mr-1" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 14H4V6h16v12z" fill="#9933CC"/>
+                      </svg>
+                      Roxa
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant={filtroFaixa === "marrom" ? "default" : "outline"}
+                      onClick={() => setFiltroFaixa("marrom")}
+                      className="text-xs"
+                    >
+                      <svg className="w-4 h-4 mr-1" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 14H4V6h16v12z" fill="#8B4513"/>
+                      </svg>
+                      Marrom
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant={filtroFaixa === "preta" ? "default" : "outline"}
+                      onClick={() => setFiltroFaixa("preta")}
+                      className="text-xs"
+                    >
+                      <svg className="w-4 h-4 mr-1" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 14H4V6h16v12z" fill="#000000"/>
+                      </svg>
+                      Preta
+                    </Button>
+                  </div>
+                </div>
+
                 {presencas.length === 0 ? (
                   <div className="text-center text-gray-500 py-8">
                     <Clock className="h-12 w-12 mx-auto mb-3 text-gray-300" />
@@ -1304,10 +1399,23 @@ export default function PresencaPage() {
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    {presencas.map((presenca) => (
+                    {presencas
+                      .filter((p) => {
+                        // Filtro de busca
+                        if (buscaHistorico) {
+                          const termo = buscaHistorico.toLowerCase();
+                          return (
+                            p.aula.nome.toLowerCase().includes(termo) ||
+                            p.aula.professor.toLowerCase().includes(termo) ||
+                            p.aula.unidade.toLowerCase().includes(termo)
+                          );
+                        }
+                        return true;
+                      })
+                      .map((presenca) => (
                       <div
                         key={presenca.id}
-                        className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                        className="flex items-center justify-between p-3 bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg border border-gray-200 hover:shadow-md transition-shadow"
                       >
                         <div className="flex items-center gap-3">
                           <div className="p-2 bg-green-100 rounded-lg">

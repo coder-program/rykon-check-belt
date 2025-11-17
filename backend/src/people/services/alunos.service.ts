@@ -7,6 +7,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource, ILike } from 'typeorm';
 import { Aluno, StatusAluno, FaixaEnum } from '../entities/aluno.entity';
+import { Person } from '../entities/person.entity';
 import { CreateAlunoDto } from '../dto/create-aluno.dto';
 import { UpdateAlunoDto } from '../dto/update-aluno.dto';
 import {
@@ -36,6 +37,8 @@ export class AlunosService {
   constructor(
     @InjectRepository(Aluno)
     private readonly alunoRepository: Repository<Aluno>,
+    @InjectRepository(Person)
+    private readonly personRepository: Repository<Person>,
     @InjectRepository(FaixaDef)
     private readonly faixaDefRepository: Repository<FaixaDef>,
     @InjectRepository(AlunoFaixa)
@@ -138,8 +141,24 @@ export class AlunosService {
       query.andWhere('aluno.status = :status', { status: params.status });
     }
 
-    // Filtro por faixa
-    if (params.faixa && params.faixa !== 'todos') {
+    // Filtro por faixa (apenas valores válidos do enum)
+    // Ignorar valores de categoria como 'kids', 'adulto', 'todos'
+    const faixasValidas = [
+      'branca',
+      'cinza',
+      'amarela',
+      'laranja',
+      'verde',
+      'azul',
+      'roxa',
+      'marrom',
+      'preta',
+    ];
+    if (
+      params.faixa &&
+      params.faixa !== 'todos' &&
+      faixasValidas.includes(params.faixa.toLowerCase())
+    ) {
       query.andWhere('aluno.faixa_atual = :faixa', { faixa: params.faixa });
     }
 
@@ -222,13 +241,51 @@ export class AlunosService {
     return aluno || null;
   }
 
-  async create(dto: CreateAlunoDto): Promise<Aluno> {
+  async create(dto: CreateAlunoDto | any): Promise<Aluno> {
+    console.log('🔥🔥🔥 [ALUNO SERVICE CREATE] ===== INÍCIO ===== ');
+    console.log(
+      '🔥🔥🔥 [ALUNO SERVICE CREATE] DTO recebido:',
+      JSON.stringify(dto, null, 2),
+    );
+    console.log('🔥🔥🔥 [ALUNO SERVICE CREATE] CPF presente:', dto.cpf);
+    console.log(
+      '🔥🔥🔥 [ALUNO SERVICE CREATE] responsavel_id presente:',
+      dto.responsavel_id,
+    );
+
     console.log('🔍 [ALUNO CREATE] Iniciando criação de aluno:', {
       nome: dto.nome_completo,
       cpf: dto.cpf,
       usuario_id_fornecido: dto.usuario_id,
       unidade_id: dto.unidade_id,
+      responsavel_id: dto.responsavel_id,
     });
+
+    // Validar CPF obrigatório apenas se NÃO for dependente (não tem responsavel_id)
+    console.log('🔍 [ALUNO SERVICE] Verificando CPF obrigatório...');
+    console.log('🔍 [ALUNO SERVICE] dto.responsavel_id:', dto.responsavel_id);
+    console.log('🔍 [ALUNO SERVICE] dto.cpf:', dto.cpf);
+    console.log(
+      '🔍 [ALUNO SERVICE] is_dependente_cadastro:',
+      (dto as any).is_dependente_cadastro,
+    );
+
+    const isDependenteCadastro = (dto as any).is_dependente_cadastro || false;
+
+    // CPF é obrigatório APENAS se NÃO for cadastro de dependente
+    if (!isDependenteCadastro && !dto.cpf) {
+      console.log(
+        '❌❌❌ [ALUNO SERVICE] CPF É OBRIGATÓRIO (não é dependente) - lançando erro',
+      );
+      throw new BadRequestException('CPF é obrigatório');
+    } else {
+      console.log('✅ [ALUNO SERVICE] Validação de CPF passou!');
+      if (isDependenteCadastro) {
+        console.log('✅ [ALUNO SERVICE] CADASTRO DE DEPENDENTE - CPF opcional');
+      } else {
+        console.log('✅ [ALUNO SERVICE] Não é dependente mas tem CPF');
+      }
+    }
 
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
@@ -238,10 +295,10 @@ export class AlunosService {
     let usuario_id: string | undefined = dto.usuario_id;
 
     try {
-      // 1. Criar usuário se não foi fornecido usuario_id
-      if (!usuario_id) {
+      // 1. Criar usuário APENAS se NÃO for cadastro de dependente E não foi fornecido usuario_id
+      if (!usuario_id && !isDependenteCadastro) {
         console.log(
-          '🔍 [ALUNO CREATE] Usuário não fornecido, criando automaticamente...',
+          '🔍 [ALUNO CREATE] Não é dependente, criando usuário automaticamente...',
         );
 
         // Buscar ID do perfil ALUNO
@@ -293,9 +350,9 @@ export class AlunosService {
           nome: dto.nome_completo,
           cpf: dto.cpf,
           telefone: dto.telefone,
-          senha_hash: await import('bcrypt').then((bcrypt) =>
-            bcrypt.hash(dto.cpf.replace(/\D/g, ''), 10),
-          ), // Senha inicial = CPF
+          password: await import('bcrypt').then((bcrypt) =>
+            bcrypt.hash(dto.cpf?.replace(/\D/g, '') || 'temppass123', 10),
+          ), // Senha inicial = CPF ou senha temporária
           ativo: false, // Aguardando aprovação
           cadastro_completo: false,
         };
@@ -309,7 +366,7 @@ export class AlunosService {
 
         const usuario = await queryRunner.manager.query(
           `INSERT INTO teamcruz.usuarios
-           (username, email, nome, cpf, telefone, senha_hash, ativo, cadastro_completo, created_at, updated_at)
+           (username, email, nome, cpf, telefone, password, ativo, cadastro_completo, created_at, updated_at)
            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
            RETURNING id`,
           [
@@ -318,7 +375,7 @@ export class AlunosService {
             usuarioData.nome,
             usuarioData.cpf,
             usuarioData.telefone,
-            usuarioData.senha_hash,
+            usuarioData.password,
             usuarioData.ativo,
             usuarioData.cadastro_completo,
           ],
@@ -343,20 +400,30 @@ export class AlunosService {
         );
       }
 
-      // 2. Verificar se CPF já existe
-      const existingAluno = await this.alunoRepository.findOne({
-        where: { cpf: dto.cpf },
-      });
-
-      if (existingAluno) {
-        throw new ConflictException('CPF já cadastrado');
+      // Se for dependente, não precisa de usuario_id
+      if (dto.responsavel_id) {
+        console.log(
+          '🔍 [ALUNO CREATE] Cadastro de dependente - não criará usuário',
+        );
+        usuario_id = undefined; // Garante que dependente não tenha usuario_id
       }
 
-      // 3. Validar se é menor de idade e tem responsável
+      // 2. Verificar se CPF já existe (apenas se CPF foi fornecido)
+      if (dto.cpf) {
+        const existingAluno = await this.alunoRepository.findOne({
+          where: { cpf: dto.cpf },
+        });
+
+        if (existingAluno) {
+          throw new ConflictException('CPF já cadastrado');
+        }
+      }
+
+      // 3. Validar se é menor de idade e tem responsável (apenas se não for dependente)
       const dataNascimento = new Date(dto.data_nascimento);
       const idade = this.calcularIdade(dataNascimento);
 
-      if (idade < 18) {
+      if (!dto.responsavel_id && idade < 18) {
         if (
           !dto.responsavel_nome ||
           !dto.responsavel_cpf ||
@@ -371,6 +438,7 @@ export class AlunosService {
       // 4. Preparar dados do aluno (incluindo usuario_id se foi criado)
       const alunoData: any = {
         ...dto,
+        cpf: dto.cpf && dto.cpf.trim() !== '' ? dto.cpf : null, // Converter string vazia para null
         usuario_id, // Incluir o usuario_id criado automaticamente
         status: dto.status || StatusAluno.ATIVO,
         faixa_atual: dto.faixa_atual || FaixaEnum.BRANCA,
@@ -424,30 +492,66 @@ export class AlunosService {
           idade < 16 ? CategoriaFaixa.INFANTIL : CategoriaFaixa.ADULTO;
         const faixaDefRepository = queryRunner.manager.getRepository(FaixaDef);
 
+        // Buscar faixa sem restrição de categoria primeiro
         let tempFaixaDef = await faixaDefRepository.findOne({
           where: {
             codigo: dto.faixa_atual || FaixaEnum.BRANCA,
-            categoria,
             ativo: true,
           },
         });
 
+        // Se não encontrou, buscar qualquer faixa BRANCA ativa
+        if (
+          !tempFaixaDef &&
+          (dto.faixa_atual || FaixaEnum.BRANCA) === FaixaEnum.BRANCA
+        ) {
+          tempFaixaDef = await faixaDefRepository.findOne({
+            where: {
+              codigo: FaixaEnum.BRANCA,
+              ativo: true,
+            },
+          });
+        }
+
         // Se ainda não encontrou, criar uma entrada básica temporária
         if (!tempFaixaDef) {
-          const novaFaixaDef = faixaDefRepository.create({
-            codigo: dto.faixa_atual || FaixaEnum.BRANCA,
-            nome_exibicao: (dto.faixa_atual || FaixaEnum.BRANCA).replace(
-              '_',
-              ' ',
-            ),
-            categoria,
-            ordem: 1,
-            cor_hex: '#FFFFFF',
-            graus_max: 4,
-            aulas_por_grau: 40,
-            ativo: true,
-          });
-          tempFaixaDef = await faixaDefRepository.save(novaFaixaDef);
+          console.log(
+            '⚠️ [ALUNO CREATE] Criando definição de faixa temporária:',
+            dto.faixa_atual || FaixaEnum.BRANCA,
+          );
+          try {
+            const novaFaixaDef = faixaDefRepository.create({
+              codigo: dto.faixa_atual || FaixaEnum.BRANCA,
+              nome_exibicao: (dto.faixa_atual || FaixaEnum.BRANCA).replace(
+                '_',
+                ' ',
+              ),
+              categoria,
+              ordem: 1,
+              cor_hex: '#FFFFFF',
+              graus_max: 4,
+              aulas_por_grau: 40,
+              ativo: true,
+            });
+            tempFaixaDef = await faixaDefRepository.save(novaFaixaDef);
+          } catch (error) {
+            // Se falhar por já existir, buscar novamente
+            console.log(
+              '⚠️ [ALUNO CREATE] Erro ao criar faixa, tentando buscar novamente...',
+            );
+            tempFaixaDef = await faixaDefRepository.findOne({
+              where: {
+                codigo: dto.faixa_atual || FaixaEnum.BRANCA,
+                ativo: true,
+              },
+            });
+
+            if (!tempFaixaDef) {
+              throw new BadRequestException(
+                'Não foi possível encontrar ou criar definição de faixa',
+              );
+            }
+          }
         }
 
         // Assign the temporary faixa to the main variable
@@ -935,17 +1039,14 @@ export class AlunosService {
 
   private async getUnidadeIdByGerente(user: any): Promise<string | null> {
     if (!user?.id) return null;
-    // Buscar unidade onde o usuário é o responsável com papel GERENTE
+    // Buscar unidade do gerente através da tabela gerente_unidades
     const result = await this.dataSource.query(
-      `SELECT id FROM teamcruz.unidades
-       WHERE responsavel_cpf = (
-         SELECT cpf FROM teamcruz.usuarios WHERE id = $1
-       )
-       AND responsavel_papel = 'GERENTE'
+      `SELECT unidade_id FROM teamcruz.gerente_unidades
+       WHERE usuario_id = $1
        LIMIT 1`,
       [user.id],
     );
-    return result[0]?.id || null;
+    return result[0]?.unidade_id || null;
   }
 
   private isProfessor(user: any): boolean {
@@ -1048,5 +1149,143 @@ export class AlunosService {
       numeroMatricula: aluno.numero_matricula,
       unidade: aluno.unidade?.nome,
     }));
+  }
+
+  /**
+   * Busca alunos (dependentes) vinculados ao responsável logado
+   */
+  async getMeusDependentes(user: any): Promise<any[]> {
+    if (!user || !user.id) {
+      return [];
+    }
+
+    console.log(
+      '🔍 [GET MEUS DEPENDENTES] Buscando dependentes do responsável:',
+      user.id,
+    );
+
+    // Buscar responsável na tabela responsaveis
+    const responsavelData = await this.dataSource.query(
+      `SELECT id FROM teamcruz.responsaveis WHERE usuario_id = $1 LIMIT 1`,
+      [user.id],
+    );
+
+    if (!responsavelData || responsavelData.length === 0) {
+      console.warn(
+        '⚠️ [GET MEUS DEPENDENTES] Responsável não encontrado na tabela responsaveis',
+      );
+      return [];
+    }
+
+    const responsavelId = responsavelData[0].id;
+    console.log('🔍 [GET MEUS DEPENDENTES] Responsável ID:', responsavelId);
+
+    // Buscar alunos vinculados ao responsável
+    const query = this.alunoRepository.createQueryBuilder('aluno');
+
+    query.leftJoinAndSelect('aluno.unidade', 'unidade');
+    query.leftJoinAndSelect('aluno.faixas', 'faixas', 'faixas.ativa = :ativa', {
+      ativa: true,
+    });
+    query.leftJoinAndSelect('faixas.faixaDef', 'faixaDef');
+
+    query.where('aluno.responsavel_id = :responsavelId', { responsavelId });
+    query.orderBy('aluno.nome_completo', 'ASC');
+
+    const alunos = await query.getMany();
+
+    console.log(
+      '✅ [GET MEUS DEPENDENTES] Total de dependentes encontrados:',
+      alunos.length,
+    );
+
+    return alunos.map((aluno) => ({
+      id: aluno.id,
+      nome_completo: aluno.nome_completo,
+      data_nascimento: aluno.data_nascimento,
+      faixa_atual:
+        aluno.faixas?.[0]?.faixaDef?.nome_exibicao ||
+        aluno.faixa_atual ||
+        'Sem faixa',
+      graus: aluno.graus || 0,
+      status: aluno.status,
+      foto_url: aluno.foto_url,
+      unidade: aluno.unidade
+        ? {
+            id: aluno.unidade.id,
+            nome: aluno.unidade.nome,
+          }
+        : null,
+    }));
+  }
+
+  async responsavelViraAluno(user: any): Promise<any> {
+    if (!user || !user.id) {
+      throw new BadRequestException('Usuário não identificado');
+    }
+
+    console.log(
+      '🔄 [RESPONSAVEL VIRA ALUNO] Iniciando conversão para:',
+      user.id,
+    );
+
+    // Verificar se já é aluno
+    const alunoExistente = await this.alunoRepository.findOne({
+      where: { usuario_id: user.id },
+    });
+
+    if (alunoExistente) {
+      throw new BadRequestException('Você já é um aluno cadastrado');
+    }
+
+    // Buscar dados do usuário na tabela person
+    const pessoa = await this.personRepository.findOne({
+      where: { id: user.id },
+    });
+
+    if (!pessoa) {
+      throw new NotFoundException('Dados do usuário não encontrados');
+    }
+
+    // Buscar responsável para pegar a unidade
+    const responsavel = await this.dataSource.query(
+      `SELECT unidade_id FROM teamcruz.responsaveis WHERE usuario_id = $1 LIMIT 1`,
+      [user.id],
+    );
+
+    const unidadeId = responsavel?.[0]?.unidade_id || null;
+
+    // Criar registro de aluno
+    const novoAluno = this.alunoRepository.create({
+      nome_completo: pessoa.nome_completo,
+      email: pessoa.email,
+      cpf: pessoa.cpf,
+      data_nascimento: pessoa.data_nascimento,
+      telefone: pessoa.telefone_whatsapp || '',
+      unidade_id: unidadeId,
+      status: StatusAluno.ATIVO,
+      faixa_atual: FaixaEnum.BRANCA,
+      graus: 0,
+    });
+
+    // Atualizar usuario_id após criar
+    novoAluno.usuario_id = user.id;
+
+    await this.alunoRepository.save(novoAluno);
+
+    console.log(
+      '✅ [RESPONSAVEL VIRA ALUNO] Aluno criado com sucesso:',
+      novoAluno.id,
+    );
+
+    return {
+      success: true,
+      message: 'Agora você também é um aluno! Bem-vindo aos treinos!',
+      aluno: {
+        id: novoAluno.id,
+        nome: novoAluno.nome_completo,
+        faixa: novoAluno.faixa_atual,
+      },
+    };
   }
 }

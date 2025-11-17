@@ -304,6 +304,16 @@ export class UnidadesService {
       }
     }
 
+    // valida escopo quando for gerente de unidade (pode editar apenas SUA unidade)
+    if (user && this.isGerenteUnidade(user) && !this.isMaster(user)) {
+      const unidadeDoGerente = await this.getUnidadeIdByGerente(user);
+      if (!unidadeDoGerente || unidadeDoGerente !== id) {
+        throw new ForbiddenException(
+          'Gerente só pode editar sua própria unidade',
+        );
+      }
+    }
+
     if (!fields.length) return this.obter(id, user);
 
     values.push(id);
@@ -541,6 +551,7 @@ export class UnidadesService {
       redes_sociais: row.redes_sociais,
       // Status
       status: row.status,
+      requer_aprovacao_checkin: row.requer_aprovacao_checkin || false,
       // Dados estruturais
       horarios_funcionamento: row.horarios_funcionamento,
       // Endereço

@@ -72,17 +72,15 @@ export class CreateAlunoDto {
 
   // ===== DADOS PESSOAIS =====
   @IsString()
-  @IsNotEmpty({ message: 'Nome completo é obrigatório' })
-  @Length(3, 255, { message: 'Nome deve ter entre 3 e 255 caracteres' })
   @IsValidName()
   nome_completo: string;
 
   @IsString()
-  @IsNotEmpty({ message: 'CPF é obrigatório' })
+  @IsOptional()
   @Matches(/^\d{11}$/, {
     message: 'CPF deve conter exatamente 11 dígitos numéricos',
   })
-  cpf: string;
+  cpf?: string;
 
   @IsDateString({}, { message: 'Data de nascimento inválida' })
   @IsNotEmpty({ message: 'Data de nascimento é obrigatória' })
@@ -223,6 +221,14 @@ export class CreateAlunoDto {
   @Length(2, 50)
   responsavel_parentesco?: string;
 
+  @ApiPropertyOptional({
+    description: 'ID do responsável vinculado ao aluno',
+    example: '123e4567-e89b-12d3-a456-426614174000',
+  })
+  @IsUUID('4', { message: 'ID de responsável inválido' })
+  @IsOptional()
+  responsavel_id?: string;
+
   // ===== DADOS FINANCEIROS =====
   @IsInt({ message: 'Dia de vencimento deve ser um número inteiro' })
   @Min(1, { message: 'Dia de vencimento deve ser entre 1 e 31' })
@@ -248,6 +254,143 @@ export class CreateAlunoDto {
   @Transform(({ value }) =>
     value === '' || value === null ? 0 : parseFloat(value),
   )
+  desconto_percentual?: number;
+
+  // ===== METADADOS =====
+  @IsString()
+  @IsOptional()
+  observacoes?: string;
+
+  @IsString()
+  @IsOptional()
+  @Length(1, 500)
+  foto_url?: string;
+}
+
+// DTO para responsável cadastrando dependente (CPF opcional)
+export class CreateDependenteDto {
+  // ===== DADOS PESSOAIS =====
+  @IsString()
+  @IsNotEmpty({ message: 'Nome completo é obrigatório' })
+  @Length(3, 255, { message: 'Nome deve ter entre 3 e 255 caracteres' })
+  nome_completo: string;
+
+  @IsString()
+  @IsOptional()
+  @Matches(/^\d{11}$/, {
+    message: 'CPF deve conter exatamente 11 dígitos numéricos',
+  })
+  cpf?: string;
+
+  @IsDateString({}, { message: 'Data de nascimento inválida' })
+  @IsNotEmpty({ message: 'Data de nascimento é obrigatória' })
+  data_nascimento: string;
+
+  @IsEnum(Genero, { message: 'Gênero inválido' })
+  @IsNotEmpty({ message: 'Gênero é obrigatório' })
+  genero: Genero;
+
+  // ===== CONTATO =====
+  @IsEmail({}, { message: 'Email inválido' })
+  @IsOptional()
+  email?: string;
+
+  @IsString()
+  @IsOptional()
+  telefone?: string;
+
+  @IsString()
+  @IsOptional()
+  telefone_emergencia?: string;
+
+  @IsString()
+  @IsOptional()
+  nome_contato_emergencia?: string;
+
+  // ===== VÍNCULO ACADÊMICO =====
+  @IsUUID('4', { message: 'ID da unidade inválido' })
+  @IsNotEmpty({ message: 'Unidade é obrigatória' })
+  unidade_id: string;
+
+  @IsDateString({}, { message: 'Data de matrícula inválida' })
+  @IsOptional()
+  data_matricula?: string;
+
+  @IsString()
+  @IsOptional()
+  numero_matricula?: string;
+
+  @IsEnum(StatusAluno, { message: 'Status inválido' })
+  @IsOptional()
+  status?: StatusAluno;
+
+  // ===== GRADUAÇÃO =====
+  @IsEnum(FaixaEnum, { message: 'Faixa inválida' })
+  @IsOptional()
+  faixa_atual?: FaixaEnum;
+
+  @IsInt()
+  @Min(0, { message: 'Graus não pode ser negativo' })
+  @IsOptional()
+  graus?: number;
+
+  @IsDateString({}, { message: 'Data de última graduação inválida' })
+  @IsOptional()
+  data_ultima_graduacao?: string;
+
+  // ===== RESPONSÁVEL =====
+  @IsUUID('4', { message: 'ID do responsável inválido' })
+  @IsOptional()
+  responsavel_id?: string;
+
+  @IsString()
+  @IsOptional()
+  responsavel_nome?: string;
+
+  @IsString()
+  @IsOptional()
+  @Matches(/^\d{11}$/, {
+    message: 'CPF do responsável deve conter exatamente 11 dígitos numéricos',
+  })
+  responsavel_cpf?: string;
+
+  @IsString()
+  @IsOptional()
+  responsavel_telefone?: string;
+
+  @IsString()
+  @IsOptional()
+  responsavel_parentesco?: string;
+
+  // ===== INFORMAÇÕES MÉDICAS =====
+  @IsString()
+  @IsOptional()
+  observacoes_medicas?: string;
+
+  @IsString()
+  @IsOptional()
+  alergias?: string;
+
+  @IsString()
+  @IsOptional()
+  medicamentos_uso_continuo?: string;
+
+  // ===== FINANCEIRO =====
+  @IsInt()
+  @Min(1, { message: 'Dia de vencimento deve ser entre 1 e 31' })
+  @Max(31, { message: 'Dia de vencimento deve ser entre 1 e 31' })
+  @IsOptional()
+  dia_vencimento?: number;
+
+  @IsNumber()
+  @Min(0, { message: 'Valor da mensalidade deve ser positivo' })
+  @IsOptional()
+  valor_mensalidade?: number;
+
+  @IsNumber()
+  @Min(0, { message: 'Desconto não pode ser negativo' })
+  @Max(100, { message: 'Desconto não pode ser superior a 100%' })
+  @IsOptional()
   desconto_percentual?: number;
 
   // ===== METADADOS =====

@@ -9,6 +9,7 @@ import AlunoDashboard from "@/components/dashboard/AlunoDashboard";
 import InstrutorDashboard from "@/components/dashboard/InstrutorDashboard";
 import GerenteDashboard from "@/components/dashboard/GerenteDashboard";
 import RecepcionistaDashboard from "@/components/dashboard/RecepcionistaDashboard";
+import ResponsavelDashboard from "@/components/dashboard/ResponsavelDashboard";
 import { Loader2 } from "lucide-react";
 
 export default function DashboardPage() {
@@ -119,6 +120,11 @@ export default function DashboardPage() {
 
   if (hasPerfil("instrutor") || hasPerfil("professor")) {
     return <InstrutorDashboard />;
+  }
+
+  if (hasPerfil("responsavel")) {
+    // Responsável tem dashboard próprio para gerenciar filhos
+    return <ResponsavelDashboard />;
   }
 
   // Se chegou até aqui, o usuário tem perfis não reconhecidos

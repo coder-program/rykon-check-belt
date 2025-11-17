@@ -136,9 +136,34 @@ export default function AulasPage() {
         "Content-Type": "application/json",
       };
 
+      // Buscar dados do usuário para pegar a unidade
+      const userResponse = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/usuarios/me`,
+        { headers }
+      );
+      let unidadeDoUsuario = null;
+
+      if (userResponse.ok) {
+        const userData = await userResponse.json();
+
+        // Tentar pegar unidade do aluno
+        if (userData.aluno?.unidade_id) {
+          unidadeDoUsuario = userData.aluno.unidade_id;
+        }
+        // Se não for aluno, tentar pegar da primeira unidade como gerente
+        else if (userData.unidades?.length > 0) {
+          unidadeDoUsuario = userData.unidades[0].id;
+        }
+      }
+
+      // Carregar aulas FILTRADAS pela unidade do usuário
+      const aulasUrl = unidadeDoUsuario
+        ? `${process.env.NEXT_PUBLIC_API_URL}/aulas?unidade_id=${unidadeDoUsuario}`
+        : `${process.env.NEXT_PUBLIC_API_URL}/aulas`;
+
       // Carregar aulas, unidades e professores em paralelo
       const [aulasRes, unidadesRes, professoresRes] = await Promise.all([
-        fetch(`${process.env.NEXT_PUBLIC_API_URL}/aulas`, { headers }),
+        fetch(aulasUrl, { headers }),
         fetch(`${process.env.NEXT_PUBLIC_API_URL}/unidades`, { headers }),
         fetch(`${process.env.NEXT_PUBLIC_API_URL}/professores`, { headers }),
       ]);
@@ -150,7 +175,24 @@ export default function AulasPage() {
 
       if (unidadesRes.ok) {
         const data = await unidadesRes.json();
-        setUnidades(Array.isArray(data) ? data : data.items || []);
+        const unidadesArray = Array.isArray(data) ? data : data.items || [];
+
+        // Se tem unidade do usuário, filtrar para mostrar só ela no select
+        if (unidadeDoUsuario) {
+          const unidadesFiltradas = unidadesArray.filter(
+            (u: Unidade) => u.id === unidadeDoUsuario
+          );
+          setUnidades(unidadesFiltradas);
+          // Já preencher a unidade no form
+          if (unidadesFiltradas.length > 0) {
+            setFormData((prev) => ({
+              ...prev,
+              unidade_id: unidadesFiltradas[0].id,
+            }));
+          }
+        } else {
+          setUnidades(unidadesArray);
+        }
       }
 
       if (professoresRes.ok) {
@@ -235,16 +277,17 @@ export default function AulasPage() {
       "Content-Type": "application/json",
     };
 
-    // Construir data_hora_inicio e data_hora_fim
-    const hoje = new Date();
-    const dataBase = new Date(
-      hoje.getFullYear(),
-      hoje.getMonth(),
-      hoje.getDate() + (formData.dia_semana - hoje.getDay())
-    );
-
+    // Para aulas recorrentes, usamos apenas hora sem data específica
+    // O backend vai criar timestamps genéricos com o dia da semana
     const [horaInicio, minInicio] = formData.hora_inicio.split(":").map(Number);
     const [horaFim, minFim] = formData.hora_fim.split(":").map(Number);
+
+    // Usar uma data base qualquer (próximo dia da semana escolhido)
+    const hoje = new Date();
+    const diasAte = (formData.dia_semana - hoje.getDay() + 7) % 7;
+    const dataBase = new Date(hoje);
+    dataBase.setDate(hoje.getDate() + diasAte);
+    dataBase.setHours(0, 0, 0, 0);
 
     const data_hora_inicio = new Date(dataBase);
     data_hora_inicio.setHours(horaInicio, minInicio, 0, 0);
@@ -417,11 +460,21 @@ export default function AulasPage() {
           <Card className="mb-8">
             <CardHeader>
               <CardTitle>
-                {editingAula ? "Editar Aula" : "Cadastrar Nova Aula"}
+                {editingAula ? "Editar Aula" : "Cadastrar Nova Aula Recorrente"}
               </CardTitle>
-              <CardDescription>Preencha os dados da aula</CardDescription>
+              <CardDescription>
+                As aulas cadastradas se repetem automaticamente todas as semanas
+                no mesmo dia e horário
+              </CardDescription>
             </CardHeader>
             <CardContent>
+              <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <p className="text-sm text-blue-800">
+                  <strong>ℹ️ Aula Recorrente:</strong> Você cadastra a aula uma
+                  vez e ela aparecerá automaticamente toda semana no dia e
+                  horário escolhidos. Não precisa cadastrar novamente!
+                </p>
+              </div>
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* Nome */}

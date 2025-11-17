@@ -66,6 +66,22 @@ export class UsuariosController {
     return this.usuariosService.findAllWithHierarchy(req.user);
   }
 
+  @UseGuards(JwtAuthGuard)
+  @Get('responsavel/me')
+  @ApiOperation({
+    summary: '👤 Buscar dados do responsável logado',
+    description:
+      'Retorna os dados completos do responsável vinculado ao usuário autenticado',
+  })
+  @ApiResponse({
+    status: 200,
+    description: '✅ Dados do responsável retornados',
+  })
+  @ApiResponse({ status: 404, description: '❌ Responsável não encontrado' })
+  async getMyResponsavel(@Request() req) {
+    return this.usuariosService.findMyResponsavel(req.user.id);
+  }
+
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @Permissions('usuarios:aprovar')
   @Get('pendentes/list')
@@ -82,6 +98,22 @@ export class UsuariosController {
   @ApiOperation({ summary: 'Debug - Listar todos os usuários com seus status' })
   async getDebugAllStatus() {
     return this.usuariosService.findAll();
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('me')
+  @ApiOperation({
+    summary: '👤 Buscar dados do usuário autenticado',
+    description:
+      'Retorna os dados completos do usuário logado incluindo perfis, permissões e unidades',
+  })
+  @ApiResponse({
+    status: 200,
+    description: '✅ Dados do usuário retornados',
+  })
+  @ApiResponse({ status: 401, description: '❌ Token inválido ou expirado' })
+  async getMe(@Request() req) {
+    return this.usuariosService.findOne(req.user.id);
   }
 
   @Get(':id')

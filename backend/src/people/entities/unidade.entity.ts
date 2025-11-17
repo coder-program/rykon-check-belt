@@ -86,6 +86,14 @@ export class Unidade {
   })
   status: StatusUnidade;
 
+  // Parametrização de aprovação de check-ins
+  @Column({
+    type: 'boolean',
+    default: false,
+    name: 'requer_aprovacao_checkin',
+  })
+  requer_aprovacao_checkin: boolean;
+
   // Dados estruturais (JSONB)
   @Column({ type: 'jsonb', nullable: true })
   horarios_funcionamento: HorariosFuncionamento | null;

@@ -3,6 +3,8 @@
 import React, { useEffect, useState } from "react";
 import { useAuth } from "@/app/auth/AuthContext";
 import { useRouter } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
+import toast from "react-hot-toast";
 import {
   Card,
   CardContent,
@@ -10,6 +12,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import {
   GraduationCap,
   Calendar,
@@ -20,9 +23,37 @@ import {
   Target,
   Award,
   Building2,
+  Users,
+  UserPlus,
+  CheckCircle2,
 } from "lucide-react";
 import { getStatusGraduacao, StatusGraduacao } from "@/lib/graduacaoApi";
 import { http } from "@/lib/api";
+import DependenteForm from "@/components/alunos/DependenteForm";
+
+type Genero = "MASCULINO" | "FEMININO" | "OUTRO";
+
+interface DependenteFormData {
+  // Dados Pessoais
+  nome_completo: string;
+  cpf?: string;
+  data_nascimento: string;
+  genero: Genero;
+  email?: string;
+  telefone?: string;
+  telefone_emergencia?: string;
+  nome_contato_emergencia?: string;
+
+  // Matrícula
+  unidade_id: string;
+
+  // Dados Médicos
+  observacoes_medicas?: string;
+  alergias?: string;
+  medicamentos_uso_continuo?: string;
+
+  [key: string]: string | undefined;
+}
 
 interface EstatisticasPresenca {
   presencaMensal: number;
@@ -88,6 +119,18 @@ interface EstatisticasCompeticoes {
   aproveitamento: number;
 }
 
+interface Dependente {
+  id: string;
+  nome_completo: string;
+  faixa_atual: string;
+  graus: number;
+  status: string;
+  data_nascimento: string;
+  unidade?: {
+    nome: string;
+  };
+}
+
 // Interface para futura implementação
 // interface HistoricoPresenca {
 //   id: string;
@@ -128,9 +171,20 @@ function formatarTempoNaFaixa(dias: number): string {
   return partes.join(" e ");
 }
 
-export default function AlunoDashboard() {
+interface AlunoDashboardProps {
+  alunoId?: string; // ID do aluno para visualização (opcional, usa user.id se não fornecido)
+  showBackButton?: boolean; // Exibir botão de voltar
+}
+
+export default function AlunoDashboard({
+  alunoId,
+  showBackButton = false,
+}: AlunoDashboardProps = {}) {
   const { user } = useAuth();
   const router = useRouter();
+
+  // Determinar qual ID usar (prop ou user.id)
+  const targetAlunoId = alunoId || user?.id;
 
   // Estados para dados reais
   const [statusGraduacao, setStatusGraduacao] =
@@ -148,24 +202,75 @@ export default function AlunoDashboard() {
     id: string;
     nome: string;
   } | null>(null);
+  const [alunoNome, setAlunoNome] = useState<string | null>(null);
+  const [canAccess, setCanAccess] = useState(false);
+  const [dependentes, setDependentes] = useState<Dependente[]>([]);
+  const [showModal, setShowModal] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editingDependenteId, setEditingDependenteId] = useState<string | null>(
+    null
+  );
+  const [formData, setFormData] = useState<DependenteFormData>({
+    nome_completo: "",
+    cpf: "",
+    data_nascimento: "",
+    genero: "MASCULINO",
+    email: "",
+    telefone: "",
+    telefone_emergencia: "",
+    nome_contato_emergencia: "",
+    unidade_id: "",
+    observacoes_medicas: "",
+    alergias: "",
+    medicamentos_uso_continuo: "",
+  });
   // Histórico será implementado futuramente
   // const [historicoPresenca, setHistoricoPresenca] = useState<HistoricoPresenca[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [loadingCheckin, setLoadingCheckin] = useState<string | null>(null);
 
-  // Carregar dados do aluno logado
+  // Carregar dados do aluno logado ou do aluno especificado
   useEffect(() => {
-    if (user?.id) {
+    if (targetAlunoId) {
       loadDashboardData();
     }
-  }, [user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [targetAlunoId, alunoId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadDashboardData = async () => {
-    if (!user?.id) return;
+    if (!targetAlunoId) return;
 
     try {
       setLoading(true);
       setError(null);
+
+      // Se está visualizando outro aluno (não o próprio), verificar permissões
+      if (alunoId && alunoId !== user?.id) {
+        const alunoResponse = await http(`/alunos/${alunoId}`, { auth: true });
+
+        const userPerfis = user?.perfis || [];
+        const isResponsavel = userPerfis.some(
+          (p: any) => p === "responsavel" || p.nome === "responsavel"
+        );
+
+        if (isResponsavel) {
+          const responsavelResponse = await http("/usuarios/responsavel/me", {
+            auth: true,
+          });
+          const responsavelId = responsavelResponse.id;
+
+          if (alunoResponse.responsavel_id !== responsavelId) {
+            setError("Você não tem permissão para visualizar este aluno.");
+            setLoading(false);
+            return;
+          }
+        }
+
+        setAlunoNome(alunoResponse.nome_completo);
+        setCanAccess(true);
+      } else {
+        setCanAccess(true);
+      }
 
       // Carregar dados em paralelo
       const [
@@ -175,9 +280,10 @@ export default function AlunoDashboard() {
         rankingDataResult,
         competicoesData,
         alunoData,
+        dependentesData,
       ] = await Promise.allSettled([
         // 1. Status de Graduação
-        getStatusGraduacao(user.id),
+        getStatusGraduacao(targetAlunoId),
 
         // 2. Estatísticas de Presença
         http("/presenca/minhas-estatisticas", { auth: true }),
@@ -192,7 +298,13 @@ export default function AlunoDashboard() {
         http("/competicoes/meu-historico", { auth: true }),
 
         // 6. Dados do Aluno (inclui unidade)
-        http(`/alunos/usuario/${user.id}`, { auth: true }),
+        // Se alunoId foi passado como prop, busca direto por ID do aluno, senão busca por usuario_id
+        alunoId
+          ? http(`/alunos/${targetAlunoId}`, { auth: true })
+          : http(`/alunos/usuario/${targetAlunoId}`, { auth: true }),
+
+        // 7. Dependentes do aluno (se ele for responsável)
+        http("/alunos/meus-dependentes", { auth: true }),
       ]);
 
       // Processar resultados
@@ -234,6 +346,12 @@ export default function AlunoDashboard() {
 
       if (alunoData.status === "fulfilled") {
         const aluno = alunoData.value;
+
+        // Se estamos visualizando um dependente (alunoId passado como prop), pegar o nome
+        if (alunoId && aluno.nome_completo) {
+          setAlunoNome(aluno.nome_completo);
+        }
+
         if (aluno.unidade) {
           setUnidadeAluno({
             id: aluno.unidade.id || aluno.unidade_id,
@@ -242,6 +360,17 @@ export default function AlunoDashboard() {
         }
       } else {
         console.error("❌ Erro ao carregar dados do aluno:", alunoData.reason);
+      }
+
+      if (dependentesData.status === "fulfilled") {
+        setDependentes(
+          Array.isArray(dependentesData.value) ? dependentesData.value : []
+        );
+      } else {
+        console.log(
+          "ℹ️ Sem dependentes ou erro ao carregar:",
+          dependentesData.reason
+        );
       }
 
       // Histórico será implementado futuramente
@@ -253,6 +382,121 @@ export default function AlunoDashboard() {
       setError("Erro ao carregar dados do dashboard");
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Buscar unidades
+  const { data: unidades } = useQuery({
+    queryKey: ["unidades"],
+    queryFn: async () => {
+      const data = await http("/unidades", { auth: true });
+      return data.items || [];
+    },
+  });
+
+  const handleCheckin = async (alunoId: string) => {
+    setLoadingCheckin(alunoId);
+    try {
+      // Buscar aula ativa
+      const aulaAtiva = await http("/presenca/aula-ativa", { auth: true });
+
+      if (!aulaAtiva || !aulaAtiva.id) {
+        toast.error("Não há aula ativa no momento");
+        return;
+      }
+
+      // Fazer check-in
+      const result = await http("/presenca/check-in-dependente", {
+        method: "POST",
+        body: {
+          alunoId: alunoId,
+          aulaId: aulaAtiva.id,
+        },
+        auth: true,
+      });
+
+      toast.success(result.message || "Check-in realizado com sucesso!");
+      loadDashboardData();
+    } catch (error: any) {
+      console.error("Erro ao fazer check-in:", error);
+      toast.error(error.message || "Erro ao processar check-in");
+    } finally {
+      setLoadingCheckin(null);
+    }
+  };
+
+  const handleEditDependente = (dependente: Dependente) => {
+    setIsEditMode(true);
+    setEditingDependenteId(dependente.id);
+    setFormData({
+      nome_completo: dependente.nome_completo || "",
+      cpf: dependente.cpf || "",
+      data_nascimento: dependente.data_nascimento || "",
+      genero: dependente.genero || "MASCULINO",
+      email: dependente.email || "",
+      telefone: dependente.telefone || "",
+      telefone_emergencia: dependente.telefone_emergencia || "",
+      nome_contato_emergencia: dependente.nome_contato_emergencia || "",
+      unidade_id: dependente.unidade_id || "",
+      observacoes_medicas: dependente.observacoes_medicas || "",
+      alergias: dependente.alergias || "",
+      medicamentos_uso_continuo: dependente.medicamentos_uso_continuo || "",
+    });
+    setShowModal(true);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      if (isEditMode && editingDependenteId) {
+        // Editar dependente existente
+        const response = await http(`/alunos/${editingDependenteId}`, {
+          method: "PATCH",
+          body: formData as Record<string, unknown>,
+          auth: true,
+        });
+
+        if (response) {
+          toast.success("Dependente atualizado com sucesso!");
+        }
+      } else {
+        // Criar novo dependente
+        const response = await http("/alunos", {
+          method: "POST",
+          body: formData as Record<string, unknown>,
+          auth: true,
+        });
+
+        if (response) {
+          toast.success("Dependente cadastrado com sucesso!");
+        }
+      }
+
+      // Limpar e fechar modal
+      setShowModal(false);
+      setIsEditMode(false);
+      setEditingDependenteId(null);
+      setFormData({
+        nome_completo: "",
+        cpf: "",
+        data_nascimento: "",
+        genero: "MASCULINO",
+        email: "",
+        telefone: "",
+        telefone_emergencia: "",
+        nome_contato_emergencia: "",
+        unidade_id: "",
+        observacoes_medicas: "",
+        alergias: "",
+        medicamentos_uso_continuo: "",
+      });
+      loadDashboardData(); // Recarregar dados
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : `Erro ao ${isEditMode ? "atualizar" : "cadastrar"} dependente`;
+      toast.error(errorMessage);
     }
   };
 
@@ -349,6 +593,17 @@ export default function AlunoDashboard() {
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto">
+        {/* Botão Voltar (se habilitado) */}
+        {showBackButton && (
+          <button
+            onClick={() => router.back()}
+            className="mb-4 flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
+          >
+            <span>←</span>
+            Voltar
+          </button>
+        )}
+
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-4">
@@ -359,7 +614,10 @@ export default function AlunoDashboard() {
                   Meu Dashboard
                 </h1>
                 <p className="text-gray-600">
-                  Bem-vindo, <span className="font-semibold">{user?.nome}</span>
+                  Bem-vindo,{" "}
+                  <span className="font-semibold">
+                    {alunoNome || user?.nome}
+                  </span>
                   ! Acompanhe sua jornada no Jiu-Jitsu.
                 </p>
               </div>
@@ -846,7 +1104,210 @@ export default function AlunoDashboard() {
             </CardContent>
           </Card>
         )}
+
+        {/* Seção de Dependentes */}
+        {dependentes.length > 0 && (
+          <Card>
+            <CardHeader>
+              <div className="flex justify-between items-center">
+                <div>
+                  <CardTitle className="text-2xl flex items-center gap-2">
+                    <Users className="h-6 w-6 text-blue-600" />
+                    Meus Dependentes
+                  </CardTitle>
+                  <CardDescription>
+                    Gerencie e acompanhe os treinos dos seus dependentes
+                  </CardDescription>
+                </div>
+                <Button
+                  onClick={() => setShowModal(true)}
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  <UserPlus className="h-4 w-4 mr-2" />
+                  Adicionar Dependente
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {dependentes.map((dependente) => (
+                  <Card
+                    key={dependente.id}
+                    className="border-2 hover:border-blue-300 transition-colors"
+                  >
+                    <CardContent className="pt-6">
+                      <div className="flex justify-between items-start mb-4">
+                        <div
+                          className="flex-1 cursor-pointer"
+                          onClick={() =>
+                            router.push(`/alunos/${dependente.id}`)
+                          }
+                        >
+                          <h3 className="font-semibold text-lg">
+                            {dependente.nome_completo}
+                          </h3>
+                          <p className="text-sm text-gray-500">
+                            {new Date().getFullYear() -
+                              new Date(
+                                dependente.data_nascimento
+                              ).getFullYear()}{" "}
+                            anos
+                          </p>
+                          {dependente.unidade && (
+                            <p className="text-xs text-gray-400 mt-1">
+                              📍 {dependente.unidade.nome}
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex flex-col gap-2">
+                          <span
+                            className={`px-3 py-1 rounded-full text-xs font-medium ${
+                              dependente.status === "ATIVO"
+                                ? "bg-green-100 text-green-800"
+                                : "bg-gray-100 text-gray-800"
+                            }`}
+                          >
+                            {dependente.status}
+                          </span>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleEditDependente(dependente);
+                            }}
+                            className="h-8 px-2"
+                          >
+                            Editar
+                          </Button>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <div className="flex items-center text-sm">
+                          <Award className="h-4 w-4 mr-2 text-yellow-500" />
+                          <span>
+                            Faixa {dependente.faixa_atual} -{" "}
+                            {dependente.graus || 0} graus
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2 mt-4">
+                        <Button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleCheckin(dependente.id);
+                          }}
+                          className="flex-1 bg-green-600 hover:bg-green-700"
+                          disabled={
+                            dependente.status !== "ATIVO" ||
+                            loadingCheckin === dependente.id
+                          }
+                        >
+                          {loadingCheckin === dependente.id ? (
+                            <>
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                              Processando...
+                            </>
+                          ) : (
+                            <>
+                              <CheckCircle2 className="h-4 w-4 mr-2" />
+                              Check-in
+                            </>
+                          )}
+                        </Button>
+                        <Button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            router.push(`/alunos/${dependente.id}`);
+                          }}
+                          variant="outline"
+                          className="flex-1"
+                        >
+                          Ver Detalhes
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Botão para adicionar dependente se não tiver nenhum */}
+        {dependentes.length === 0 && (
+          <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center text-blue-800">
+                <Users className="h-5 w-5 mr-2" />
+                Cadastre seus Dependentes
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <p className="text-sm text-gray-700">
+                  Você pode cadastrar seus filhos ou dependentes menores de
+                  idade para que eles também possam treinar!
+                </p>
+                <ul className="space-y-2 text-sm text-gray-700">
+                  <li className="flex items-start">
+                    <CheckCircle2 className="h-4 w-4 mr-2 text-blue-600 mt-0.5 flex-shrink-0" />
+                    <span>Gerencie o treino de toda a família</span>
+                  </li>
+                  <li className="flex items-start">
+                    <CheckCircle2 className="h-4 w-4 mr-2 text-blue-600 mt-0.5 flex-shrink-0" />
+                    <span>Acompanhe a evolução de cada dependente</span>
+                  </li>
+                  <li className="flex items-start">
+                    <CheckCircle2 className="h-4 w-4 mr-2 text-blue-600 mt-0.5 flex-shrink-0" />
+                    <span>Realize check-in para seus dependentes</span>
+                  </li>
+                </ul>
+                <Button
+                  onClick={() => setShowModal(true)}
+                  className="w-full bg-blue-600 hover:bg-blue-700"
+                >
+                  <UserPlus className="h-4 w-4 mr-2" />
+                  Cadastrar Dependente
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
+
+      {/* Modal de Cadastro/Edição de Dependente */}
+      {showModal && (
+        <DependenteForm
+          formData={formData}
+          setFormData={(data) => setFormData(data)}
+          onSubmit={handleSubmit}
+          onClose={() => {
+            setShowModal(false);
+            setIsEditMode(false);
+            setEditingDependenteId(null);
+            setFormData({
+              nome_completo: "",
+              cpf: "",
+              data_nascimento: "",
+              genero: "MASCULINO",
+              email: "",
+              telefone: "",
+              telefone_emergencia: "",
+              nome_contato_emergencia: "",
+              unidade_id: "",
+              observacoes_medicas: "",
+              alergias: "",
+              medicamentos_uso_continuo: "",
+            });
+          }}
+          isLoading={false}
+          unidades={unidades || []}
+          isEditMode={isEditMode}
+        />
+      )}
     </div>
   );
 }

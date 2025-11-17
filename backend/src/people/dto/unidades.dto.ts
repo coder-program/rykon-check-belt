@@ -267,6 +267,13 @@ export class UpdateUnidadeDto {
   status?: StatusUnidade;
 
   @ApiPropertyOptional({
+    description: 'Define se check-ins da unidade precisam de aprovação',
+    default: false,
+  })
+  @IsOptional()
+  requer_aprovacao_checkin?: boolean;
+
+  @ApiPropertyOptional({
     example: { seg: '06:00-22:00', ter: '06:00-22:00', sab: '08:00-16:00' },
     description: 'Horários por dia da semana',
   })

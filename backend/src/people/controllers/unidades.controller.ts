@@ -92,7 +92,7 @@ export class UnidadesController {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('master', 'franqueado')
+  @Roles('master', 'franqueado', 'gerente_unidade')
   @Patch(':id')
   @ApiOperation({ summary: 'Atualizar unidade' })
   @ApiParam({ name: 'id', type: String })

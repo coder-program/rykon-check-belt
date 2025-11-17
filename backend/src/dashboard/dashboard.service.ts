@@ -24,6 +24,11 @@ export class DashboardService {
 
   async getStats(unidadeId?: string) {
     try {
+      console.log(
+        '🔥 [DASHBOARD SERVICE] getStats chamado com unidadeId:',
+        unidadeId,
+      );
+
       // Buscar usuários pendentes (inativos aguardando aprovação)
       const usuariosPendentes = await this.usuarioRepository.count({
         where: {
@@ -35,15 +40,27 @@ export class DashboardService {
       // Total de usuários
       const totalUsuarios = await this.usuarioRepository.count();
 
-      // Total de alunos (da tabela alunos específica)
+      // Total de alunos (FILTRADO POR UNIDADE se fornecido)
       const totalAlunos = await this.alunoRepository.count({
-        where: { status: StatusAluno.ATIVO },
+        where: unidadeId
+          ? { status: StatusAluno.ATIVO, unidade_id: unidadeId }
+          : { status: StatusAluno.ATIVO },
+      });
+      console.log(
+        '🔥 [DASHBOARD SERVICE] Total de alunos encontrados:',
+        totalAlunos,
+        'unidadeId:',
+        unidadeId,
+      );
+
+      // Total de professores (FILTRADO POR UNIDADE se fornecido)
+      const totalProfessores = await this.personRepository.count({
+        where: unidadeId
+          ? { tipo_cadastro: TipoCadastro.PROFESSOR, unidade_id: unidadeId }
+          : { tipo_cadastro: TipoCadastro.PROFESSOR },
       });
 
-      // Total de professores
-      const totalProfessores = await this.personRepository.count({
-        where: { tipo_cadastro: TipoCadastro.PROFESSOR },
-      }); // Total de unidades
+      // Total de unidades
       const totalUnidades = await this.unidadeRepository.count();
 
       // Total de franqueados

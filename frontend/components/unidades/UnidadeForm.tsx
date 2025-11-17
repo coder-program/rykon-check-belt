@@ -60,6 +60,7 @@ interface UnidadeFormData {
   pais?: string;
   horarios_funcionamento?: HorariosFuncionamento;
   status: StatusUnidade;
+  requer_aprovacao_checkin?: boolean;
 }
 
 interface Franqueado {
@@ -138,6 +139,17 @@ export default function UnidadeForm({
   const validateName = (value: string): string => {
     // Remove caracteres especiais, mantendo apenas letras, espaços, acentos e hífen
     return value.replace(/[^a-zA-ZÀ-ÿ\s\-]/g, "");
+  };
+
+  // Validação para endereços - permite letras, números, espaços, acentos e alguns caracteres comuns
+  const validateAddress = (value: string): string => {
+    // Remove caracteres especiais perigosos, mantendo apenas letras, números, espaços, acentos, hífen, vírgula e ponto
+    return value.replace(/[^a-zA-ZÀ-ÿ0-9\s\-\,\.º°ª]/g, "");
+  };
+
+  // Validação para número de endereço - apenas números e letras (para casos como "123A")
+  const validateAddressNumber = (value: string): string => {
+    return value.replace(/[^a-zA-Z0-9\s\-]/g, "");
   };
 
   const validateCNPJ = (cnpj: string): boolean => {
@@ -926,7 +938,7 @@ export default function UnidadeForm({
                       onChange={(e) => {
                         setFormData({
                           ...formData,
-                          logradouro: e.target.value,
+                          logradouro: validateAddress(e.target.value),
                         });
                       }}
                       className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
@@ -953,7 +965,10 @@ export default function UnidadeForm({
                       required
                       value={formData.numero || ""}
                       onChange={(e) => {
-                        setFormData({ ...formData, numero: e.target.value });
+                        setFormData({
+                          ...formData,
+                          numero: validateAddressNumber(e.target.value),
+                        });
                       }}
                       className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                         hasFieldError("numero")
@@ -977,7 +992,7 @@ export default function UnidadeForm({
                       onChange={(e) =>
                         setFormData({
                           ...formData,
-                          complemento: e.target.value,
+                          complemento: validateAddress(e.target.value),
                         })
                       }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -995,7 +1010,10 @@ export default function UnidadeForm({
                       required
                       value={formData.bairro || ""}
                       onChange={(e) => {
-                        setFormData({ ...formData, bairro: e.target.value });
+                        setFormData({
+                          ...formData,
+                          bairro: validateAddress(e.target.value),
+                        });
                       }}
                       className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                         hasFieldError("bairro")
@@ -1018,7 +1036,10 @@ export default function UnidadeForm({
                       required
                       value={formData.cidade || ""}
                       onChange={(e) => {
-                        setFormData({ ...formData, cidade: e.target.value });
+                        setFormData({
+                          ...formData,
+                          cidade: validateName(e.target.value),
+                        });
                       }}
                       className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                         hasFieldError("cidade")
@@ -1041,9 +1062,14 @@ export default function UnidadeForm({
                       required
                       value={formData.estado || ""}
                       onChange={(e) => {
+                        // Remove caracteres especiais e números, mantém apenas letras
+                        const cleanValue = e.target.value.replace(
+                          /[^a-zA-Z]/g,
+                          ""
+                        );
                         setFormData({
                           ...formData,
-                          estado: e.target.value.toUpperCase(),
+                          estado: cleanValue.toUpperCase(),
                         });
                       }}
                       className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
@@ -1070,7 +1096,10 @@ export default function UnidadeForm({
                       type="text"
                       value={formData.pais || "Brasil"}
                       onChange={(e) =>
-                        setFormData({ ...formData, pais: e.target.value })
+                        setFormData({
+                          ...formData,
+                          pais: validateName(e.target.value),
+                        })
                       }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
@@ -1153,6 +1182,33 @@ export default function UnidadeForm({
                         </p>
                       </div>
                     )}
+                  </div>
+
+                  {/* Configuração de Aprovação de Check-ins */}
+                  <div className="border-t pt-4">
+                    <label className="flex items-start gap-3 p-4 border-2 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={formData.requer_aprovacao_checkin || false}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            requer_aprovacao_checkin: e.target.checked,
+                          })
+                        }
+                        className="mt-1 w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                      />
+                      <div className="flex-1">
+                        <div className="font-medium text-gray-900">
+                          Requer aprovação de check-ins
+                        </div>
+                        <p className="text-sm text-gray-600 mt-1">
+                          {formData.requer_aprovacao_checkin
+                            ? "✓ Ativado: Todos os check-ins desta unidade precisarão ser aprovados por gerente, recepcionista ou professor na tela de aprovações."
+                            : "✗ Desativado: Check-ins são aprovados automaticamente assim que registrados."}
+                        </p>
+                      </div>
+                    </label>
                   </div>
 
                   <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">

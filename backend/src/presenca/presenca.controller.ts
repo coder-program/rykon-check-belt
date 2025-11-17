@@ -67,6 +67,29 @@ export class PresencaController {
     return this.presencaService.checkInManual(body.aulaId, req.user);
   }
 
+  @Post('check-in-dependente')
+  @ApiOperation({ summary: 'Check-in de dependente pelo responsável' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        alunoId: { type: 'string' },
+        aulaId: { type: 'string' },
+      },
+    },
+  })
+  @ApiResponse({ status: 200, description: 'Check-in realizado com sucesso' })
+  async checkInDependente(
+    @Body() body: { alunoId: string; aulaId: string },
+    @Request() req,
+  ) {
+    return this.presencaService.checkInDependente(
+      body.alunoId,
+      body.aulaId,
+      req.user,
+    );
+  }
+
   @Get('minhas-estatisticas')
   @ApiOperation({ summary: 'Estatísticas de presença do usuário logado' })
   @ApiResponse({ status: 200, description: 'Estatísticas de presença' })

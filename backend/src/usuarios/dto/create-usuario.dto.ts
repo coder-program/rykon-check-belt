@@ -100,6 +100,14 @@ export class CreateUsuarioDto {
   @IsEnum(FaixaMinistrante)
   faixa_ministrante?: FaixaMinistrante;
 
+  @IsOptional()
+  @IsString()
+  especialidades?: string;
+
+  @IsOptional()
+  @IsString()
+  observacoes?: string;
+
   // ===== Campos específicos para RECEPCIONISTA =====
   @IsOptional()
   @IsEnum(TurnoEnum)

@@ -47,9 +47,14 @@ export class UsuariosService {
           perfisNomes.includes('PROFESSOR') ||
           perfisNomes.includes('INSTRUTOR');
         const isAluno = perfisNomes.includes('ALUNO');
+        const isResponsavel = perfisNomes.includes('RESPONSAVEL');
 
         const needsUnidade =
-          isGerente || isRecepcionista || isProfessor || isAluno;
+          isGerente ||
+          isRecepcionista ||
+          isProfessor ||
+          isAluno ||
+          isResponsavel;
 
         let unidade: any = null;
 
@@ -129,12 +134,31 @@ export class UsuariosService {
                 status: unidadeData[0].status,
               };
             }
+          } else if (isResponsavel) {
+            // Responsável: buscar via tabela responsaveis
+            const unidadeData = await this.usuarioRepository.query(
+              `SELECT u.id, u.nome, u.status
+               FROM teamcruz.responsaveis r
+               INNER JOIN teamcruz.unidades u ON u.id = r.unidade_id
+               WHERE r.usuario_id = $1
+               LIMIT 1`,
+              [usuario.id],
+            );
+
+            if (unidadeData && unidadeData.length > 0) {
+              unidade = {
+                id: unidadeData[0].id,
+                nome: unidadeData[0].nome,
+                status: unidadeData[0].status,
+              };
+            }
           }
         }
 
         return {
           ...usuario,
           unidade,
+          unidades: unidade ? [unidade] : [], // Array para compatibilidade com frontend
         };
       }),
     );
@@ -311,22 +335,47 @@ export class UsuariosService {
           );
         }
 
-        // PROFESSOR / INSTRUTOR: criar registro na professor_unidades
-        // Registro na tabela professores será criado no complete-profile
-        // MAS professor_unidades precisa ser criado AGORA para aparecer na listagem do gerente
+        // PROFESSOR / INSTRUTOR: criar registro na tabela professores e professor_unidades
         if (
           (perfilNome === 'PROFESSOR' || perfilNome === 'INSTRUTOR') &&
           createUsuarioDto.unidade_id
         ) {
-          // Criar registro temporário na professor_unidades
-          // professor_id será NULL até complete-profile
+          // 1. Criar registro na tabela professores
+          const professorResult = await this.dataSource.query(
+            `
+            INSERT INTO teamcruz.professores
+            (usuario_id, tipo_cadastro, nome_completo, cpf, data_nascimento, genero,
+             telefone_whatsapp, email, unidade_id, especialidades, faixa_ministrante,
+             observacoes, created_at, updated_at)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW(), NOW())
+            RETURNING id
+            `,
+            [
+              usuarioSalvo.id,
+              'PROFESSOR', // tipo_cadastro obrigatório
+              usuarioSalvo.nome, // nome_completo obrigatório
+              cpfLimpo || null,
+              createUsuarioDto.data_nascimento || null,
+              createUsuarioDto.genero || 'MASCULINO', // genero obrigatório, padrão MASCULINO
+              telefoneLimpo || null,
+              usuarioSalvo.email || null,
+              createUsuarioDto.unidade_id,
+              createUsuarioDto.especialidades || null,
+              createUsuarioDto.faixa_ministrante || null,
+              createUsuarioDto.observacoes || null,
+            ],
+          );
+
+          const professorId = professorResult[0].id;
+
+          // 2. Criar registro na professor_unidades vinculando professor à unidade
           await this.dataSource.query(
             `
             INSERT INTO teamcruz.professor_unidades
-            (professor_id, unidade_id, usuario_id, ativo)
-            VALUES (NULL, $1, $2, true)
+            (professor_id, unidade_id, usuario_id, ativo, created_at, updated_at)
+            VALUES ($1, $2, $3, true, NOW(), NOW())
             `,
-            [createUsuarioDto.unidade_id, usuarioSalvo.id],
+            [professorId, createUsuarioDto.unidade_id, usuarioSalvo.id],
           );
         }
 
@@ -346,6 +395,56 @@ export class UsuariosService {
               createUsuarioDto.horario_saida || null,
               true,
             ],
+          );
+        }
+
+        // RESPONSAVEL: criar registro na tabela responsaveis
+        if (perfilNome === 'RESPONSAVEL' && createUsuarioDto.unidade_id) {
+          console.log(
+            '🔍 [CREATE RESPONSAVEL] Iniciando criação do registro de responsável...',
+          );
+          console.log('🔍 [CREATE RESPONSAVEL] usuario_id:', usuarioSalvo.id);
+          console.log(
+            '🔍 [CREATE RESPONSAVEL] unidade_id:',
+            createUsuarioDto.unidade_id,
+          );
+          console.log('🔍 [CREATE RESPONSAVEL] nome:', usuarioSalvo.nome);
+          console.log('🔍 [CREATE RESPONSAVEL] cpf:', cpfLimpo);
+          console.log('🔍 [CREATE RESPONSAVEL] email:', usuarioSalvo.email);
+          console.log('🔍 [CREATE RESPONSAVEL] telefone:', telefoneLimpo);
+          console.log(
+            '🔍 [CREATE RESPONSAVEL] data_nascimento:',
+            createUsuarioDto.data_nascimento,
+          );
+          console.log(
+            '🔍 [CREATE RESPONSAVEL] genero:',
+            createUsuarioDto.genero,
+          );
+
+          const responsavelResult = await this.dataSource.query(
+            `
+            INSERT INTO teamcruz.responsaveis
+            (usuario_id, unidade_id, nome_completo, cpf, email, telefone,
+             data_nascimento, genero, ativo, created_at, updated_at)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW())
+            RETURNING id
+            `,
+            [
+              usuarioSalvo.id,
+              createUsuarioDto.unidade_id,
+              usuarioSalvo.nome,
+              cpfLimpo || null,
+              usuarioSalvo.email || null,
+              telefoneLimpo || null,
+              createUsuarioDto.data_nascimento || null,
+              createUsuarioDto.genero || 'MASCULINO',
+              true, // Responsável ativo por padrão
+            ],
+          );
+
+          console.log(
+            '✅ [CREATE RESPONSAVEL] Registro de responsável criado com sucesso!',
+            responsavelResult[0].id,
           );
         }
       } catch (error) {
@@ -405,16 +504,25 @@ export class UsuariosService {
 
     // Franqueado vê apenas usuários das suas unidades
     if (isFranqueado) {
+      console.log(
+        '🔍 [FIND ALL HIERARCHY] Usuario logado como FRANQUEADO:',
+        user.id,
+      );
+
       const franqueadoData = await this.usuarioRepository.query(
         `SELECT id FROM teamcruz.franqueados WHERE usuario_id = $1`,
         [user.id],
       );
 
       if (!franqueadoData || franqueadoData.length === 0) {
+        console.log(
+          '❌ [FIND ALL HIERARCHY] Franqueado não encontrado na tabela franqueados',
+        );
         return [];
       }
 
       const franqueadoId = franqueadoData[0].id;
+      console.log('🔍 [FIND ALL HIERARCHY] Franqueado ID:', franqueadoId);
 
       const usuariosIds = await this.usuarioRepository.query(
         `
@@ -429,7 +537,8 @@ export class UsuariosService {
                  WHEN un_prof_pendente.franqueado_id = $1 THEN 'professor_pendente_da_unidade'
                  WHEN un_gerente.franqueado_id = $1 THEN 'gerente_da_unidade'
                  WHEN un_recep.franqueado_id = $1 THEN 'recepcionista_da_unidade'
-                 WHEN perfil.nome = 'RESPONSAVEL' AND un_resp_aluno.franqueado_id = $1 THEN 'responsavel_da_unidade'
+                 WHEN perfil.nome = 'RESPONSAVEL' AND resp.unidade_id IN (SELECT id FROM teamcruz.unidades WHERE franqueado_id = $1) THEN 'responsavel_da_unidade'
+                 WHEN perfil.nome = 'RESPONSAVEL' AND un_resp_aluno.franqueado_id = $1 THEN 'responsavel_com_aluno_na_unidade'
                  ELSE 'outro'
                END as motivo_inclusao
         FROM teamcruz.usuarios u
@@ -448,7 +557,7 @@ export class UsuariosService {
         LEFT JOIN teamcruz.franqueados f ON f.usuario_id = u.id
         LEFT JOIN teamcruz.usuario_perfis up ON up.usuario_id = u.id
         LEFT JOIN teamcruz.perfis perfil ON perfil.id = up.perfil_id
-        -- ✅ JOIN para verificar se responsável tem alunos na franquia
+        -- ✅ JOIN para responsáveis vinculados à unidade do franqueado
         LEFT JOIN teamcruz.responsaveis resp ON resp.usuario_id = u.id
         LEFT JOIN teamcruz.alunos aluno_resp ON aluno_resp.responsavel_id = resp.id
         LEFT JOIN teamcruz.unidades un_resp_aluno ON un_resp_aluno.id = aluno_resp.unidade_id
@@ -456,7 +565,9 @@ export class UsuariosService {
           (un_aluno.franqueado_id = $1 OR un_prof.franqueado_id = $1 OR un_prof_pendente.franqueado_id = $1 OR un_gerente.franqueado_id = $1 OR un_recep.franqueado_id = $1)
           OR f.id = $1
           OR u.id = $2
-          -- ✅ Responsáveis apenas se tiverem alunos nas unidades do franqueado
+          -- ✅ Incluir responsáveis vinculados às unidades do franqueado (mesmo sem alunos)
+          OR (UPPER(perfil.nome) = 'RESPONSAVEL' AND resp.unidade_id IN (SELECT id FROM teamcruz.unidades WHERE franqueado_id = $1))
+          -- ✅ Responsáveis que têm alunos nas unidades do franqueado
           OR (UPPER(perfil.nome) = 'RESPONSAVEL' AND un_resp_aluno.franqueado_id = $1)
         )
         -- Excluir usuários que são FRANQUEADOS de outras franquias
@@ -474,9 +585,24 @@ export class UsuariosService {
         [franqueadoId, user.id],
       );
 
+      console.log(
+        '🔍 [FIND ALL HIERARCHY] Total de usuários encontrados:',
+        usuariosIds.length,
+      );
+      console.log(
+        '🔍 [FIND ALL HIERARCHY] Motivos de inclusão:',
+        usuariosIds.map((u: any) => ({
+          nome: u.nome,
+          motivo: u.motivo_inclusao,
+        })),
+      );
+
       const ids = usuariosIds.map((row: any) => row.id);
 
       if (ids.length === 0) {
+        console.log(
+          '⚠️ [FIND ALL HIERARCHY] Nenhum usuário encontrado para este franqueado',
+        );
         return [];
       }
 
@@ -498,11 +624,22 @@ export class UsuariosService {
         },
       });
 
+      console.log(
+        '✅ [FIND ALL HIERARCHY] Retornando',
+        resultado.length,
+        'usuários',
+      );
+
       return this.enrichUsersWithUnidade(resultado);
     }
 
     // Gerente vê apenas usuários da sua unidade
     if (isGerente) {
+      console.log(
+        '🔍 [FIND ALL HIERARCHY] Usuario logado como GERENTE:',
+        user.id,
+      );
+
       // Buscar unidade do gerente via tabela gerente_unidades
       const gerenteUnidade = await this.usuarioRepository.query(
         `SELECT unidade_id FROM teamcruz.gerente_unidades
@@ -511,10 +648,15 @@ export class UsuariosService {
       );
 
       if (!gerenteUnidade || gerenteUnidade.length === 0) {
+        console.log(
+          '❌ [FIND ALL HIERARCHY] Gerente não vinculado a nenhuma unidade',
+        );
         return [];
       }
 
       const unidadeId = gerenteUnidade[0].unidade_id;
+      console.log('🔍 [FIND ALL HIERARCHY] Unidade do gerente:', unidadeId);
+
       // Buscar usuários relacionados à unidade do gerente
       // Incluindo o próprio gerente para que ele apareça na lista
       const usuariosIds = await this.usuarioRepository.query(
@@ -526,6 +668,7 @@ export class UsuariosService {
         LEFT JOIN teamcruz.professor_unidades pu ON (pu.professor_id = p.id OR pu.usuario_id = u.id)
         LEFT JOIN teamcruz.recepcionista_unidades ru ON ru.usuario_id = u.id AND ru.ativo = true
         LEFT JOIN teamcruz.gerente_unidades gu ON gu.usuario_id = u.id AND gu.ativo = true
+        LEFT JOIN teamcruz.responsaveis resp ON resp.usuario_id = u.id
         WHERE
           -- Alunos da unidade
           a.unidade_id = $1
@@ -535,13 +678,23 @@ export class UsuariosService {
           OR ru.unidade_id = $1
           -- Apenas o próprio gerente logado (não outros gerentes)
           OR (gu.unidade_id = $1 AND gu.usuario_id = $2)
+          -- Responsáveis vinculados à unidade
+          OR resp.unidade_id = $1
         `,
         [unidadeId, user.id],
+      );
+
+      console.log(
+        '🔍 [FIND ALL HIERARCHY] Total de usuários encontrados:',
+        usuariosIds.length,
       );
 
       const ids = usuariosIds.map((row: any) => row.id);
 
       if (ids.length === 0) {
+        console.log(
+          '⚠️ [FIND ALL HIERARCHY] Nenhum usuário encontrado para este gerente',
+        );
         return [];
       }
 
@@ -562,6 +715,12 @@ export class UsuariosService {
           updated_at: true,
         },
       });
+
+      console.log(
+        '✅ [FIND ALL HIERARCHY] Retornando',
+        usuarios.length,
+        'usuários',
+      );
 
       return this.enrichUsersWithUnidade(usuarios);
     }
@@ -1332,5 +1491,37 @@ export class UsuariosService {
     return {
       message: 'Cadastro rejeitado e usuário removido do sistema.',
     };
+  }
+
+  async findMyResponsavel(usuarioId: string): Promise<any> {
+    try {
+      const result = await this.dataSource.query(
+        `
+        SELECT
+          r.id,
+          r.usuario_id,
+          r.unidade_id,
+          r.nome_completo,
+          r.ativo,
+          u.nome as unidade_nome
+        FROM teamcruz.responsaveis r
+        LEFT JOIN teamcruz.unidades u ON u.id = r.unidade_id
+        WHERE r.usuario_id = $1
+        LIMIT 1
+        `,
+        [usuarioId],
+      );
+
+      if (!result || result.length === 0) {
+        throw new NotFoundException(
+          'Responsável não encontrado para este usuário',
+        );
+      }
+
+      return result[0];
+    } catch (error) {
+      console.error('[FIND MY RESPONSAVEL] Erro:', error);
+      throw error;
+    }
   }
 }

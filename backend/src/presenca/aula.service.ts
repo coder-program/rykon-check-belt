@@ -2,11 +2,13 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  ConflictException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Aula } from './entities/aula.entity';
 import { Turma } from './entities/turma.entity';
+import { Presenca } from './entities/presenca.entity';
 import { CreateAulaDto, UpdateAulaDto } from './dto/aula.dto';
 
 @Injectable()
@@ -16,6 +18,8 @@ export class AulaService {
     private readonly aulaRepository: Repository<Aula>,
     @InjectRepository(Turma)
     private readonly turmaRepository: Repository<Turma>,
+    @InjectRepository(Presenca)
+    private readonly presencaRepository: Repository<Presenca>,
   ) {}
 
   async create(createAulaDto: CreateAulaDto): Promise<Aula> {
@@ -36,16 +40,27 @@ export class AulaService {
       turma_id = savedTurma.id;
     }
 
+    // CONSTRAINT: chk_aulas_horario_completo
+    // Aula recorrente: dia_semana + data_hora_inicio + data_hora_fim (horários no dia da semana)
+    // Aula pontual: apenas data_hora_inicio + data_hora_fim (data/hora específica)
     const aula = this.aulaRepository.create({
-      ...createAulaDto,
+      nome: createAulaDto.nome,
+      descricao: createAulaDto.descricao,
+      unidade_id: createAulaDto.unidade_id,
       turma_id,
+      professor_id: createAulaDto.professor_id,
+      tipo: createAulaDto.tipo,
+      dia_semana: createAulaDto.dia_semana,
       data_hora_inicio: createAulaDto.data_hora_inicio
         ? new Date(createAulaDto.data_hora_inicio)
-        : undefined,
+        : null,
       data_hora_fim: createAulaDto.data_hora_fim
         ? new Date(createAulaDto.data_hora_fim)
-        : undefined,
-    });
+        : null,
+      capacidade_maxima: createAulaDto.capacidade_maxima,
+      ativo: createAulaDto.ativo ?? true,
+      configuracoes: createAulaDto.configuracoes,
+    } as Partial<Aula>);
 
     const saved = await this.aulaRepository.save(aula);
 
@@ -120,6 +135,20 @@ export class AulaService {
 
   async remove(id: string): Promise<void> {
     const aula = await this.findOne(id);
+
+    // Verificar se existem presenças registradas para esta aula
+    const presencasCount = await this.presencaRepository.count({
+      where: { aula_id: id },
+    });
+
+    if (presencasCount > 0) {
+      // Se existem presenças, desativa ao invés de deletar
+      aula.ativo = false;
+      await this.aulaRepository.save(aula);
+      return;
+    }
+
+    // Se não há presenças, pode deletar
     await this.aulaRepository.remove(aula);
   }
 
