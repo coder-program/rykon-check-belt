@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, Suspense } from "react";
 import {
   useInfiniteQuery,
   useMutation,
@@ -96,7 +96,7 @@ async function getAlunosStats(params: any) {
   return http(`/alunos/stats/counts?${qs}`, { auth: true });
 }
 
-export default function PageAlunos() {
+function AlunosContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user } = useAuth();
@@ -710,5 +710,13 @@ export default function PageAlunos() {
         )}
       </div>
     </ProtectedRoute>
+  );
+}
+
+export default function PageAlunos() {
+  return (
+    <Suspense fallback={<div className="p-6 text-center">Carregando...</div>}>
+      <AlunosContent />
+    </Suspense>
   );
 }
