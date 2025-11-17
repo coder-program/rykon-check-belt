@@ -702,6 +702,29 @@ export default function UnidadeForm({
                       type="text"
                       required
                       value={formData.telefone_celular}
+                      onKeyDown={(e) => {
+                        if (e.key === "Backspace") {
+                          const input = e.currentTarget;
+                          const cursorPos = input.selectionStart || 0;
+                          const value = input.value;
+                          
+                          // Se o cursor está logo após um caractere especial, remove-o também
+                          if (cursorPos > 0 && ["-", " ", "(", ")"].includes(value[cursorPos - 1])) {
+                            e.preventDefault();
+                            const newValue = value.slice(0, cursorPos - 1) + value.slice(cursorPos);
+                            const formatted = formatPhone(newValue);
+                            setFormData({
+                              ...formData,
+                              telefone_celular: formatted,
+                            });
+                            // Reposicionar cursor
+                            setTimeout(() => {
+                              const newPos = Math.max(0, cursorPos - 1);
+                              input.setSelectionRange(newPos, newPos);
+                            }, 0);
+                          }
+                        }
+                      }}
                       onChange={(e) => {
                         setFormData({
                           ...formData,
@@ -731,6 +754,29 @@ export default function UnidadeForm({
                     <input
                       type="text"
                       value={formData.telefone_fixo || ""}
+                      onKeyDown={(e) => {
+                        if (e.key === "Backspace") {
+                          const input = e.currentTarget;
+                          const cursorPos = input.selectionStart || 0;
+                          const value = input.value;
+                          
+                          // Se o cursor está logo após um caractere especial, remove-o também
+                          if (cursorPos > 0 && ["-", " ", "(", ")"].includes(value[cursorPos - 1])) {
+                            e.preventDefault();
+                            const newValue = value.slice(0, cursorPos - 1) + value.slice(cursorPos);
+                            const formatted = formatPhoneFixo(newValue);
+                            setFormData({
+                              ...formData,
+                              telefone_fixo: formatted,
+                            });
+                            // Reposicionar cursor
+                            setTimeout(() => {
+                              const newPos = Math.max(0, cursorPos - 1);
+                              input.setSelectionRange(newPos, newPos);
+                            }, 0);
+                          }
+                        }
+                      }}
                       onChange={(e) =>
                         setFormData({
                           ...formData,
