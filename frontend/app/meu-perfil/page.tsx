@@ -43,6 +43,11 @@ interface ProfileData {
   faixa_ministrante?: string;
   data_inicio_docencia?: string;
   registro_profissional?: string;
+  // Campos específicos de franqueado
+  nome_franquia?: string;
+  email_franquia?: string;
+  telefone_franquia?: string;
+  cpf_franquia?: string;
   // Endereço
   cep?: string;
   logradouro?: string;
@@ -102,15 +107,14 @@ export default function MeuPerfilPage() {
         if (response.status === 404) {
           return null; // Não é aluno
         }
-        const errorText = await response.text();
-        console.error("[DEBUG] Erro ao buscar aluno:", errorText);
-        throw new Error("Erro ao carregar dados do aluno");
+        return null; // Retorna null ao invés de lançar erro
       }
 
       const data = await response.json();
       return data;
     },
-    enabled: !!user?.id,
+    enabled: !!user?.id && user?.perfis?.includes("ALUNO"),
+    retry: false, // Não retentar se falhar
   });
 
   // Query para buscar dados específicos do professor
@@ -130,12 +134,13 @@ export default function MeuPerfilPage() {
 
       if (!response.ok) {
         if (response.status === 404) return null; // Não é professor
-        throw new Error("Erro ao carregar dados do professor");
+        return null;
       }
 
       return response.json();
     },
-    enabled: !!user?.id,
+    enabled: !!user?.id && user?.perfis?.includes("PROFESSOR"),
+    retry: false,
   });
 
   // Query para buscar dados específicos do franqueado
@@ -155,12 +160,38 @@ export default function MeuPerfilPage() {
 
       if (!response.ok) {
         if (response.status === 404) return null; // Não é franqueado
-        throw new Error("Erro ao carregar dados do franqueado");
+        return null;
       }
 
       return response.json();
     },
-    enabled: !!user?.id,
+    enabled: !!user?.id && user?.perfis?.includes("FRANQUEADO"),
+    retry: false,
+  });
+
+  // Query para buscar endereço do franqueado
+  const { data: enderecoFranqueado } = useQuery({
+    queryKey: ["endereco-franqueado", dadosFranqueado?.endereco_id],
+    queryFn: async () => {
+      if (!dadosFranqueado?.endereco_id) return null;
+
+      const response = await fetch(
+        `${API_URL}/enderecos/${dadosFranqueado.endereco_id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        return null;
+      }
+
+      return response.json();
+    },
+    enabled: !!dadosFranqueado?.endereco_id,
+    retry: false,
   });
 
   // Query para buscar unidades disponíveis
@@ -194,6 +225,17 @@ export default function MeuPerfilPage() {
   // Determinar tipo de usuário e preencher formulário
   useEffect(() => {
     if (user) {
+      console.log("[DEBUG] user:", user);
+      console.log("[DEBUG] user.perfis:", user.perfis);
+      console.log(
+        "[DEBUG] tem perfil FRANQUEADO?",
+        user?.perfis?.includes("FRANQUEADO")
+      );
+      console.log("[DEBUG] dadosAluno:", dadosAluno);
+      console.log("[DEBUG] dadosProfessor:", dadosProfessor);
+      console.log("[DEBUG] dadosFranqueado:", dadosFranqueado);
+      console.log("[DEBUG] enderecoFranqueado:", enderecoFranqueado);
+
       let dadosCompletos: ProfileData = {
         nome: user.nome || "",
         email: user.email || "",
@@ -245,10 +287,25 @@ export default function MeuPerfilPage() {
         setTipoUsuario("franqueado");
         dadosCompletos = {
           ...dadosCompletos,
-          nome: dadosFranqueado.nome || user.nome || "",
-          email: dadosFranqueado.email || user.email || "",
-          telefone: dadosFranqueado.telefone || user.telefone || "",
-          cpf: dadosFranqueado.cpf || user.cpf || "",
+          // Dados do usuário (mantém os originais de user)
+          nome: user.nome || "",
+          email: user.email || "",
+          telefone: user.telefone || "",
+          cpf: user.cpf || "",
+          data_nascimento: user.data_nascimento || "",
+          // Dados da franquia (vem de franqueado)
+          nome_franquia: dadosFranqueado.nome || "",
+          email_franquia: dadosFranqueado.email || "",
+          telefone_franquia: dadosFranqueado.telefone || "",
+          cpf_franquia: dadosFranqueado.cpf || "",
+          // Dados do endereço (vem de enderecoFranqueado)
+          cep: enderecoFranqueado?.cep || "",
+          logradouro: enderecoFranqueado?.logradouro || "",
+          numero: enderecoFranqueado?.numero || "",
+          complemento: enderecoFranqueado?.complemento || "",
+          bairro: enderecoFranqueado?.bairro || "",
+          cidade: enderecoFranqueado?.cidade || "",
+          uf: enderecoFranqueado?.estado || "",
         };
       }
       // Se não é aluno nem professor nem franqueado, usar apenas dados básicos do usuário
@@ -295,7 +352,7 @@ export default function MeuPerfilPage() {
 
       setFormData(dadosCompletos);
     }
-  }, [user, dadosAluno, dadosProfessor, dadosFranqueado]);
+  }, [user, dadosAluno, dadosProfessor, dadosFranqueado, enderecoFranqueado]);
 
   // Função para detectar mudança de unidade
   const handleUnidadeChange = (novaUnidadeId: string) => {
@@ -340,6 +397,7 @@ export default function MeuPerfilPage() {
         telefone: data.telefone,
         cpf: data.cpf,
         foto: data.foto,
+        data_nascimento: data.data_nascimento, // Adicionar data_nascimento na tabela usuarios
       };
 
       // Adicionar username se foi alterado
@@ -457,6 +515,90 @@ export default function MeuPerfilPage() {
         }
       }
 
+      // Se é franqueado e tem dados específicos para atualizar
+      if (tipoUsuario === "franqueado" && dadosFranqueado) {
+        let enderecoId = dadosFranqueado.endereco_id;
+
+        // Se tem dados de endereço, criar/atualizar o endereço primeiro
+        if (data.cep && data.logradouro) {
+          const enderecoData = {
+            cep: data.cep.replace(/\D/g, ""),
+            logradouro: data.logradouro,
+            numero: data.numero || "S/N",
+            complemento: data.complemento || null,
+            bairro: data.bairro || null,
+            cidade: data.cidade || null,
+            estado: data.uf || null,
+          };
+
+          if (enderecoId) {
+            // Atualizar endereço existente
+            const enderecoResponse = await fetch(
+              `${API_URL}/enderecos/${enderecoId}`,
+              {
+                method: "PATCH",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${localStorage.getItem("token")}`,
+                },
+                body: JSON.stringify(enderecoData),
+              }
+            );
+
+            if (!enderecoResponse.ok) {
+              const errorData = await enderecoResponse.json();
+              throw new Error(
+                errorData.message || "Erro ao atualizar endereço"
+              );
+            }
+          } else {
+            // Criar novo endereço
+            const enderecoResponse = await fetch(`${API_URL}/enderecos`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${localStorage.getItem("token")}`,
+              },
+              body: JSON.stringify(enderecoData),
+            });
+
+            if (!enderecoResponse.ok) {
+              const errorData = await enderecoResponse.json();
+              throw new Error(errorData.message || "Erro ao criar endereço");
+            }
+
+            const novoEndereco = await enderecoResponse.json();
+            enderecoId = novoEndereco.id;
+          }
+        }
+
+        const dadosFranqueadoUpdate = {
+          nome: data.nome_franquia,
+          email: data.email_franquia,
+          telefone: data.telefone_franquia,
+          endereco_id: enderecoId,
+        };
+
+        const franqueadoResponse = await fetch(
+          `${API_URL}/franqueados/minha-franquia/${dadosFranqueado.id}`,
+          {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+            body: JSON.stringify(dadosFranqueadoUpdate),
+          }
+        );
+
+        if (!franqueadoResponse.ok) {
+          const errorData = await franqueadoResponse.json();
+          throw new Error(
+            errorData.message || "Erro ao atualizar dados do franqueado"
+          );
+        }
+      }
+
       return await userResponse.json();
     },
     onSuccess: () => {
@@ -470,6 +612,9 @@ export default function MeuPerfilPage() {
       });
       queryClient.invalidateQueries({
         queryKey: ["professor-by-usuario", user?.id],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["franqueado-by-usuario", user?.id],
       });
 
       // Limpar campos de senha após sucesso
@@ -518,6 +663,55 @@ export default function MeuPerfilPage() {
     return value;
   };
 
+  // Função para formatar CEP
+  const formatCEP = (value: string): string => {
+    const numbers = value.replace(/\D/g, "");
+    if (numbers.length <= 8) {
+      return numbers.replace(/(\d{5})(\d)/, "$1-$2");
+    }
+    return value;
+  };
+
+  // Função para buscar endereço pelo CEP
+  const buscarCEP = async (cep: string) => {
+    const cepLimpo = cep.replace(/\D/g, "");
+
+    if (cepLimpo.length !== 8) {
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `https://viacep.com.br/ws/${cepLimpo}/json/`
+      );
+      const data = await response.json();
+
+      if (data.erro) {
+        setErrors((prev) => ({ ...prev, cep: "CEP não encontrado" }));
+        return;
+      }
+
+      // Preencher campos de endereço automaticamente
+      setFormData((prev) => ({
+        ...prev,
+        logradouro: data.logradouro || prev.logradouro,
+        bairro: data.bairro || prev.bairro,
+        cidade: data.localidade || prev.cidade,
+        uf: data.uf || prev.uf,
+      }));
+
+      // Limpar erro do CEP
+      setErrors((prev) => {
+        const newErrors = { ...prev };
+        delete newErrors.cep;
+        return newErrors;
+      });
+    } catch (error) {
+      console.error("Erro ao buscar CEP:", error);
+      setErrors((prev) => ({ ...prev, cep: "Erro ao buscar CEP" }));
+    }
+  };
+
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
@@ -534,6 +728,9 @@ export default function MeuPerfilPage() {
         break;
       case "cpf":
         formattedValue = formatCPF(value);
+        break;
+      case "cep":
+        formattedValue = formatCEP(value);
         break;
       case "email":
         // Email não precisa de formatação especial
@@ -664,6 +861,16 @@ export default function MeuPerfilPage() {
       dataToSubmit.responsavel_telefone = formData.responsavel_telefone
         ? formData.responsavel_telefone.replace(/\D/g, "")
         : "";
+      // Dados de endereço
+      dataToSubmit.cep = formData.cep ? formData.cep.replace(/\D/g, "") : "";
+      dataToSubmit.logradouro = formData.logradouro;
+      dataToSubmit.numero = formData.numero;
+      dataToSubmit.complemento = formData.complemento;
+      dataToSubmit.bairro = formData.bairro;
+      dataToSubmit.cidade = formData.cidade;
+      dataToSubmit.uf = formData.uf;
+      // Unidade
+      dataToSubmit.unidade_id = formData.unidade_id;
     }
 
     // Se é professor, incluir campos específicos
@@ -672,6 +879,34 @@ export default function MeuPerfilPage() {
       dataToSubmit.genero = formData.genero;
       dataToSubmit.data_inicio_docencia = formData.data_inicio_docencia;
       dataToSubmit.registro_profissional = formData.registro_profissional;
+      // Dados de endereço
+      dataToSubmit.cep = formData.cep ? formData.cep.replace(/\D/g, "") : "";
+      dataToSubmit.logradouro = formData.logradouro;
+      dataToSubmit.numero = formData.numero;
+      dataToSubmit.complemento = formData.complemento;
+      dataToSubmit.bairro = formData.bairro;
+      dataToSubmit.cidade = formData.cidade;
+      dataToSubmit.uf = formData.uf;
+      // Unidade
+      dataToSubmit.unidade_id = formData.unidade_id;
+    }
+
+    // Se é franqueado, incluir campos específicos (endereço e dados da franquia)
+    if (tipoUsuario === "franqueado") {
+      dataToSubmit.data_nascimento = formData.data_nascimento;
+      dataToSubmit.nome_franquia = formData.nome_franquia;
+      dataToSubmit.email_franquia = formData.email_franquia;
+      dataToSubmit.telefone_franquia = formData.telefone_franquia;
+      dataToSubmit.cpf_franquia = formData.cpf_franquia
+        ? formData.cpf_franquia.replace(/\D/g, "")
+        : "";
+      dataToSubmit.cep = formData.cep ? formData.cep.replace(/\D/g, "") : "";
+      dataToSubmit.logradouro = formData.logradouro;
+      dataToSubmit.numero = formData.numero;
+      dataToSubmit.complemento = formData.complemento;
+      dataToSubmit.bairro = formData.bairro;
+      dataToSubmit.cidade = formData.cidade;
+      dataToSubmit.uf = formData.uf;
     }
 
     // Remover campos vazios
@@ -844,129 +1079,156 @@ export default function MeuPerfilPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Username */}
-              <div className="md:col-span-2">
-                <label
-                  htmlFor="username"
-                  className="block text-sm font-medium text-gray-700 mb-2"
-                >
-                  Username
-                </label>
-                <input
-                  type="text"
-                  id="username"
-                  name="username"
-                  value={formData.username || ""}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="seu.username"
-                  minLength={3}
-                  pattern="^[a-zA-Z0-9.]+$"
-                />
-                <p className="mt-1 text-xs text-gray-500">
-                  Apenas letras, números e ponto. Mínimo 3 caracteres
-                </p>
-              </div>
+            {/* Seção de Dados do Usuário */}
+            <div className="border-t pt-6">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">
+                👤 Dados do Usuário
+              </h3>
 
-              {/* Nome Completo */}
-              <div className="md:col-span-2">
-                <label
-                  htmlFor="nome"
-                  className="block text-sm font-medium text-gray-700 mb-2"
-                >
-                  Nome Completo *
-                </label>
-                <input
-                  type="text"
-                  id="nome"
-                  name="nome"
-                  value={formData.nome}
-                  onChange={handleChange}
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                    errors.nome ? "border-red-500" : "border-gray-300"
-                  }`}
-                  placeholder="Digite seu nome completo"
-                  required
-                />
-                {errors.nome && (
-                  <p className="mt-1 text-sm text-red-600">{errors.nome}</p>
-                )}
-              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Username */}
+                <div className="md:col-span-2">
+                  <label
+                    htmlFor="username"
+                    className="block text-sm font-medium text-gray-700 mb-2"
+                  >
+                    Username
+                  </label>
+                  <input
+                    type="text"
+                    id="username"
+                    name="username"
+                    value={formData.username || ""}
+                    onChange={handleChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="seu.username"
+                    minLength={3}
+                    pattern="^[a-zA-Z0-9.]+$"
+                  />
+                  <p className="mt-1 text-xs text-gray-500">
+                    Apenas letras, números e ponto. Mínimo 3 caracteres
+                  </p>
+                </div>
 
-              {/* Email */}
-              <div className="md:col-span-2">
-                <label
-                  htmlFor="email"
-                  className="block text-sm font-medium text-gray-700 mb-2"
-                >
-                  Email *
-                </label>
-                <input
-                  type="email"
-                  id="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                    errors.email ? "border-red-500" : "border-gray-300"
-                  }`}
-                  placeholder="seuemail@exemplo.com"
-                  required
-                />
-                {errors.email && (
-                  <p className="mt-1 text-sm text-red-600">{errors.email}</p>
-                )}
-              </div>
+                {/* Nome Completo */}
+                <div className="md:col-span-2">
+                  <label
+                    htmlFor="nome"
+                    className="block text-sm font-medium text-gray-700 mb-2"
+                  >
+                    Nome Completo *
+                  </label>
+                  <input
+                    type="text"
+                    id="nome"
+                    name="nome"
+                    value={formData.nome}
+                    onChange={handleChange}
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                      errors.nome ? "border-red-500" : "border-gray-300"
+                    }`}
+                    placeholder="Digite seu nome completo"
+                    required
+                  />
+                  {errors.nome && (
+                    <p className="mt-1 text-sm text-red-600">{errors.nome}</p>
+                  )}
+                </div>
 
-              {/* Telefone */}
-              <div>
-                <label
-                  htmlFor="telefone"
-                  className="block text-sm font-medium text-gray-700 mb-2"
-                >
-                  Telefone
-                </label>
-                <input
-                  type="tel"
-                  id="telefone"
-                  name="telefone"
-                  value={formData.telefone}
-                  onChange={handleChange}
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                    errors.telefone ? "border-red-500" : "border-gray-300"
-                  }`}
-                  placeholder="(11) 99999-9999"
-                  maxLength={15}
-                />
-                {errors.telefone && (
-                  <p className="mt-1 text-sm text-red-600">{errors.telefone}</p>
-                )}
-              </div>
+                {/* Email */}
+                <div className="md:col-span-2">
+                  <label
+                    htmlFor="email"
+                    className="block text-sm font-medium text-gray-700 mb-2"
+                  >
+                    Email *
+                  </label>
+                  <input
+                    type="email"
+                    id="email"
+                    name="email"
+                    value={formData.email}
+                    onChange={handleChange}
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                      errors.email ? "border-red-500" : "border-gray-300"
+                    }`}
+                    placeholder="seuemail@exemplo.com"
+                    required
+                  />
+                  {errors.email && (
+                    <p className="mt-1 text-sm text-red-600">{errors.email}</p>
+                  )}
+                </div>
 
-              {/* CPF */}
-              <div>
-                <label
-                  htmlFor="cpf"
-                  className="block text-sm font-medium text-gray-700 mb-2"
-                >
-                  CPF
-                </label>
-                <input
-                  type="text"
-                  id="cpf"
-                  name="cpf"
-                  value={formatCPF(formData.cpf)}
-                  onChange={handleChange}
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                    errors.cpf ? "border-red-500" : "border-gray-300"
-                  }`}
-                  placeholder="000.000.000-00"
-                  maxLength={14}
-                />
-                {errors.cpf && (
-                  <p className="mt-1 text-sm text-red-600">{errors.cpf}</p>
-                )}
+                {/* Telefone */}
+                <div>
+                  <label
+                    htmlFor="telefone"
+                    className="block text-sm font-medium text-gray-700 mb-2"
+                  >
+                    Telefone
+                  </label>
+                  <input
+                    type="tel"
+                    id="telefone"
+                    name="telefone"
+                    value={formData.telefone}
+                    onChange={handleChange}
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                      errors.telefone ? "border-red-500" : "border-gray-300"
+                    }`}
+                    placeholder="(11) 99999-9999"
+                    maxLength={15}
+                  />
+                  {errors.telefone && (
+                    <p className="mt-1 text-sm text-red-600">
+                      {errors.telefone}
+                    </p>
+                  )}
+                </div>
+
+                {/* CPF */}
+                <div>
+                  <label
+                    htmlFor="cpf"
+                    className="block text-sm font-medium text-gray-700 mb-2"
+                  >
+                    CPF
+                  </label>
+                  <input
+                    type="text"
+                    id="cpf"
+                    name="cpf"
+                    value={formatCPF(formData.cpf)}
+                    onChange={handleChange}
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                      errors.cpf ? "border-red-500" : "border-gray-300"
+                    }`}
+                    placeholder="000.000.000-00"
+                    maxLength={14}
+                  />
+                  {errors.cpf && (
+                    <p className="mt-1 text-sm text-red-600">{errors.cpf}</p>
+                  )}
+                </div>
+
+                {/* Data de Nascimento */}
+                <div className="md:col-span-2">
+                  <label
+                    htmlFor="data_nascimento_usuario"
+                    className="block text-sm font-medium text-gray-700 mb-2"
+                  >
+                    Data de Nascimento
+                  </label>
+                  <input
+                    type="date"
+                    id="data_nascimento_usuario"
+                    name="data_nascimento"
+                    value={formData.data_nascimento || ""}
+                    onChange={handleChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
               </div>
             </div>
 
@@ -1179,12 +1441,68 @@ export default function MeuPerfilPage() {
                   🏢 Dados da Franquia
                 </h3>
 
-                <div className="bg-blue-50 p-4 rounded-lg">
-                  <p className="text-sm text-gray-700">
-                    ℹ️ Os dados da franquia (nome, email, telefone, CPF) são
-                    exibidos acima nos campos básicos.
-                  </p>
-                  <p className="text-sm text-gray-500 mt-2">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Nome da Franquia */}
+                  <div className="md:col-span-2">
+                    <label
+                      htmlFor="nome_franquia"
+                      className="block text-sm font-medium text-gray-700 mb-2"
+                    >
+                      Nome da Franquia *
+                    </label>
+                    <input
+                      type="text"
+                      id="nome_franquia"
+                      name="nome_franquia"
+                      value={formData.nome_franquia || ""}
+                      onChange={handleChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="Nome da franquia"
+                    />
+                  </div>
+
+                  {/* Email da Franquia */}
+                  <div className="md:col-span-2">
+                    <label
+                      htmlFor="email_franquia"
+                      className="block text-sm font-medium text-gray-700 mb-2"
+                    >
+                      Email da Franquia *
+                    </label>
+                    <input
+                      type="email"
+                      id="email_franquia"
+                      name="email_franquia"
+                      value={formData.email_franquia || ""}
+                      onChange={handleChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="email@franquia.com"
+                    />
+                  </div>
+
+                  {/* Telefone da Franquia */}
+                  <div>
+                    <label
+                      htmlFor="telefone_franquia"
+                      className="block text-sm font-medium text-gray-700 mb-2"
+                    >
+                      Telefone da Franquia
+                    </label>
+                    <input
+                      type="tel"
+                      id="telefone_franquia"
+                      name="telefone_franquia"
+                      value={formData.telefone_franquia || ""}
+                      onChange={handleChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="(11) 99999-9999"
+                      maxLength={15}
+                    />
+                  </div>
+                </div>
+
+                <div className="bg-blue-50 p-4 rounded-lg mt-4">
+                  <p className="text-sm text-gray-500">
                     Situação:{" "}
                     <strong>{dadosFranqueado?.situacao || "ATIVA"}</strong>
                   </p>
@@ -1213,12 +1531,18 @@ export default function MeuPerfilPage() {
                       type="text"
                       id="cep"
                       name="cep"
-                      value={formData.cep}
+                      value={formData.cep || ""}
                       onChange={handleChange}
+                      onBlur={(e) => buscarCEP(e.target.value)}
                       placeholder="00000-000"
                       maxLength={9}
-                      className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className={`w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                        errors.cep ? "border-red-500" : "border-gray-300"
+                      }`}
                     />
+                    {errors.cep && (
+                      <p className="mt-1 text-xs text-red-600">{errors.cep}</p>
+                    )}
                   </div>
 
                   <div className="md:col-span-2">
@@ -1434,15 +1758,33 @@ export default function MeuPerfilPage() {
                     Status da Conta
                   </label>
                   <p className="text-sm bg-gray-50 px-3 py-2 rounded-md">
-                    <span
-                      className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                        user?.ativo
-                          ? "bg-green-100 text-green-800"
-                          : "bg-red-100 text-red-800"
-                      }`}
-                    >
-                      {user?.ativo ? "✅ Ativo" : "❌ Inativo"}
-                    </span>
+                    {tipoUsuario === "franqueado" && dadosFranqueado ? (
+                      <span
+                        className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                          dadosFranqueado.situacao === "ATIVA"
+                            ? "bg-green-100 text-green-800"
+                            : dadosFranqueado.situacao === "EM_HOMOLOGACAO"
+                            ? "bg-yellow-100 text-yellow-800"
+                            : "bg-red-100 text-red-800"
+                        }`}
+                      >
+                        {dadosFranqueado.situacao === "ATIVA"
+                          ? "✅ Ativo"
+                          : dadosFranqueado.situacao === "EM_HOMOLOGACAO"
+                          ? "⏳ Em Homologação"
+                          : "❌ Inativo"}
+                      </span>
+                    ) : (
+                      <span
+                        className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                          user?.ativo
+                            ? "bg-green-100 text-green-800"
+                            : "bg-red-100 text-red-800"
+                        }`}
+                      >
+                        {user?.ativo ? "✅ Ativo" : "❌ Inativo"}
+                      </span>
+                    )}
                   </p>
                 </div>
               </div>

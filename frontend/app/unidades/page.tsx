@@ -272,6 +272,7 @@ export default function PageUnidades() {
       pais: "Brasil",
       status: "HOMOLOGACAO",
       horarios_funcionamento: {},
+      requer_aprovacao_checkin: false,
     });
   };
 
@@ -552,6 +553,23 @@ export default function PageUnidades() {
                           <span>
                             {unidade.endereco?.cidade || "Cidade não definida"}
                           </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {unidade.requer_aprovacao_checkin ? (
+                            <>
+                              <AlertCircle className="h-4 w-4 text-orange-500" />
+                              <span className="text-orange-600 font-medium">
+                                Aprovação Manual
+                              </span>
+                            </>
+                          ) : (
+                            <>
+                              <CheckCircle2 className="h-4 w-4 text-green-500" />
+                              <span className="text-green-600 font-medium">
+                                Aprovação Automática
+                              </span>
+                            </>
+                          )}
                         </div>
                       </div>
                     </div>

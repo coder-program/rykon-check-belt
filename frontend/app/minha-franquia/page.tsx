@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "@/app/auth/AuthContext";
 import { useRouter } from "next/navigation";
-import { Building2, Save, ArrowLeft } from "lucide-react";
+import { Building2, Save, ArrowLeft, Download } from "lucide-react";
 import toast, { Toaster } from "react-hot-toast";
 
 // Funções de validação e formatação
@@ -76,7 +76,110 @@ interface FranqueadoData {
   email: string;
   telefone: string;
   ativo: boolean;
+  contrato_aceito?: boolean;
+  contrato_aceito_em?: string;
+  contrato_versao?: string;
 }
+
+const CONTRATO_VERSAO = "v1.0";
+
+const CONTRATO_TEXT = `
+# CONTRATO DE FRANQUIA - TEAM CRUZ JIU-JITSU
+
+**Versão:** v1.0
+**Data:** Novembro de 2025
+
+---
+
+## 1. DAS PARTES
+
+**FRANQUEADORA:** Team Cruz Brazilian Jiu-Jitsu, inscrita no CNPJ XX.XXX.XXX/XXXX-XX, com sede na [ENDEREÇO COMPLETO].
+
+**FRANQUEADO:** A pessoa física ou jurídica que aceita este contrato através do sistema.
+
+---
+
+## 2. DO OBJETO
+
+O presente contrato tem por objeto a concessão de franquia para operação de unidade Team Cruz Jiu-Jitsu, incluindo:
+
+- Direito de uso da marca Team Cruz
+- Acesso ao sistema de gestão
+- Metodologia de ensino
+- Material didático e uniformes
+- Suporte operacional
+
+---
+
+## 3. DAS OBRIGAÇÕES DO FRANQUEADO
+
+O FRANQUEADO se compromete a:
+
+1. Manter os padrões de qualidade estabelecidos pela franqueadora
+2. Seguir as diretrizes pedagógicas e metodológicas
+3. Utilizar apenas uniformes e materiais aprovados
+4. Manter a unidade em bom estado de conservação
+5. Participar dos treinamentos oferecidos pela franqueadora
+6. Pagar as taxas e royalties conforme acordado
+7. Respeitar a exclusividade territorial concedida
+
+---
+
+## 4. DAS OBRIGAÇÕES DA FRANQUEADORA
+
+A FRANQUEADORA se compromete a:
+
+1. Fornecer treinamento inicial e contínuo
+2. Disponibilizar o sistema de gestão
+3. Fornecer material de marketing e divulgação
+4. Prestar suporte técnico e operacional
+5. Garantir exclusividade territorial
+6. Realizar auditorias periódicas de qualidade
+
+---
+
+## 5. DA VIGÊNCIA
+
+Este contrato terá vigência de **5 (cinco) anos**, podendo ser renovado mediante acordo entre as partes.
+
+---
+
+## 6. DO INVESTIMENTO E TAXAS
+
+- **Taxa de Franquia:** R$ [VALOR]
+- **Royalties:** [X]% do faturamento mensal
+- **Taxa de Marketing:** [X]% do faturamento mensal
+
+---
+
+## 7. DA RESCISÃO
+
+O contrato poderá ser rescindido nas seguintes hipóteses:
+
+1. Descumprimento de obrigações contratuais
+2. Uso indevido da marca
+3. Falência ou insolvência
+4. Acordo mútuo entre as partes
+
+---
+
+## 8. DAS DISPOSIÇÕES GERAIS
+
+1. Este contrato é regido pelas leis brasileiras
+2. Fica eleito o foro da comarca de [CIDADE/UF] para dirimir quaisquer dúvidas
+3. As partes poderão alterar este contrato mediante acordo formal
+
+---
+
+## ACEITE
+
+Ao clicar em "Aceito os termos" você declara:
+
+- Ter lido e compreendido todas as cláusulas deste contrato
+- Concordar integralmente com os termos apresentados
+- Estar ciente de seus direitos e obrigações
+- Aceitar vinculação legal a este documento
+`;
 
 export default function MinhaFranquiaPage() {
   const { user, updateUser } = useAuth();
@@ -85,6 +188,7 @@ export default function MinhaFranquiaPage() {
   const [franquiaExistente, setFranquiaExistente] =
     useState<FranqueadoData | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [contratoAceito, setContratoAceito] = useState(false);
 
   const [formData, setFormData] = useState<FranqueadoData>({
     nome: user?.nome || "",
@@ -93,6 +197,84 @@ export default function MinhaFranquiaPage() {
     telefone: user?.telefone || "",
     ativo: true,
   });
+
+  const baixarContratoPDF = () => {
+    // Criar conteúdo HTML para o PDF
+    const conteudoHTML = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <style>
+          body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+          }
+          h1 {
+            color: #1a1a1a;
+            text-align: center;
+            border-bottom: 3px solid #f59e0b;
+            padding-bottom: 10px;
+          }
+          h2 {
+            color: #1a1a1a;
+            margin-top: 30px;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 5px;
+          }
+          .versao {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+          }
+          hr {
+            border: none;
+            border-top: 2px solid #ddd;
+            margin: 20px 0;
+          }
+          ul {
+            margin-left: 20px;
+          }
+          li {
+            margin-bottom: 8px;
+          }
+          strong {
+            color: #1a1a1a;
+          }
+        </style>
+      </head>
+      <body>
+        ${CONTRATO_TEXT.replace(/\n/g, "<br>")
+          .replace(/#{1,2}\s/g, "<h2>")
+          .replace(/<h2>/g, "</p><h2>")
+          .replace(/<\/h2>/g, "</h2><p>")}
+      </body>
+      </html>
+    `;
+
+    // Criar um blob com o conteúdo
+    const blob = new Blob([conteudoHTML], { type: "text/html" });
+    const url = window.URL.createObjectURL(blob);
+
+    // Criar link de download
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `Contrato_Franquia_TeamCruz_${CONTRATO_VERSAO}.html`;
+    document.body.appendChild(a);
+    a.click();
+
+    // Limpar
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+
+    toast.success(
+      "Contrato baixado! Abra o arquivo HTML e use Ctrl+P para imprimir como PDF."
+    );
+  };
 
   // Verificar se usuário está autenticado e se cadastro já está completo
   useEffect(() => {
@@ -146,6 +328,10 @@ export default function MinhaFranquiaPage() {
             telefone: franquia.telefone || user?.telefone || "",
             ativo: franquia.ativo !== undefined ? franquia.ativo : true,
           });
+          // Se já aceitou o contrato, marcar o checkbox
+          if (franquia.contrato_aceito) {
+            setContratoAceito(true);
+          }
         }
       } else if (response.status === 404) {
         // Franquia não encontrada é normal para primeira vez
@@ -231,6 +417,12 @@ export default function MinhaFranquiaPage() {
     if (!formData.email) newErrors.email = "E-mail é obrigatório";
     if (!formData.telefone) newErrors.telefone = "Telefone é obrigatório";
 
+    // Validar contrato apenas para NOVO cadastro (não para atualização)
+    if (!franquiaExistente && !contratoAceito) {
+      toast.error("Você precisa aceitar o contrato para continuar");
+      return;
+    }
+
     // Validar formatos
     if (formData.cpf && !validateCPF(formData.cpf)) {
       newErrors.cpf = "CPF inválido";
@@ -271,6 +463,12 @@ export default function MinhaFranquiaPage() {
         telefone: formData.telefone.replace(/\D/g, ""), // Backend espera apenas números no telefone
         ativo: formData.ativo,
         ...(user?.id && { usuario_id: user.id }), // Adicionar usuario_id apenas se existir
+        // Se não é franquia existente, adicionar dados do contrato
+        ...(!franquiaExistente && {
+          contrato_aceito: true,
+          contrato_versao: CONTRATO_VERSAO,
+          contrato_ip: "client", // Será substituído pelo IP real no backend se implementado
+        }),
       };
 
       const response = await fetch(url, {
@@ -465,12 +663,89 @@ export default function MinhaFranquiaPage() {
             </div>
           </div>
 
+          {/* Contrato - Apenas para NOVO cadastro */}
+          {!franquiaExistente && (
+            <div className="bg-gray-800/50 backdrop-blur-sm rounded-xl p-6 border border-gray-700">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-semibold text-white flex items-center gap-2">
+                  <Building2 className="w-5 h-5" />
+                  Contrato de Franquia
+                </h2>
+                <button
+                  type="button"
+                  onClick={baixarContratoPDF}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
+                >
+                  <Download className="w-4 h-4" />
+                  Baixar PDF
+                </button>
+              </div>
+
+              <div className="bg-white rounded-lg p-6 max-h-96 overflow-y-auto border border-gray-600 mb-4">
+                <div className="text-gray-800 text-sm whitespace-pre-wrap leading-relaxed prose prose-sm max-w-none">
+                  {CONTRATO_TEXT}
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3 p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+                <input
+                  type="checkbox"
+                  id="contratoCheckbox"
+                  checked={contratoAceito}
+                  onChange={(e) => setContratoAceito(e.target.checked)}
+                  className="mt-1 w-5 h-5 rounded border-gray-600 bg-gray-700 text-yellow-500 focus:ring-yellow-500 focus:ring-offset-gray-900"
+                />
+                <label
+                  htmlFor="contratoCheckbox"
+                  className="text-sm text-gray-300 cursor-pointer select-none"
+                >
+                  Declaro que li e concordo com todos os termos do{" "}
+                  <span className="text-yellow-500 font-semibold">
+                    Contrato de Franquia Team Cruz - Versão {CONTRATO_VERSAO}
+                  </span>
+                  . Estou ciente de que este aceite possui validade legal
+                  conforme a Lei 14.063/2020.
+                </label>
+              </div>
+
+              {!contratoAceito && (
+                <p className="text-yellow-400 text-sm mt-2 flex items-center gap-2">
+                  <span className="text-yellow-500">⚠️</span>
+                  Você precisa aceitar o contrato para finalizar o cadastro
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Mostrar dados do contrato se já foi aceito */}
+          {franquiaExistente && franquiaExistente.contrato_aceito && (
+            <div className="bg-green-900/20 backdrop-blur-sm rounded-xl p-6 border border-green-700/50">
+              <h2 className="text-xl font-semibold text-green-400 mb-4 flex items-center gap-2">
+                ✅ Contrato Aceito
+              </h2>
+              <div className="text-gray-300 text-sm space-y-2">
+                <p>
+                  <span className="font-semibold">Versão:</span>{" "}
+                  {franquiaExistente.contrato_versao}
+                </p>
+                <p>
+                  <span className="font-semibold">Data de Aceite:</span>{" "}
+                  {franquiaExistente.contrato_aceito_em
+                    ? new Date(
+                        franquiaExistente.contrato_aceito_em
+                      ).toLocaleString("pt-BR")
+                    : "N/A"}
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Botão Submit */}
           <div className="flex justify-end">
             <button
               type="submit"
-              disabled={loading}
-              className="px-6 py-3 bg-yellow-500 hover:bg-yellow-600 disabled:opacity-50 text-black font-medium rounded-lg transition-colors flex items-center gap-2"
+              disabled={loading || (!franquiaExistente && !contratoAceito)}
+              className="px-6 py-3 bg-yellow-500 hover:bg-yellow-600 disabled:opacity-50 disabled:cursor-not-allowed text-black font-medium rounded-lg transition-colors flex items-center gap-2"
             >
               <Save className="w-5 h-5" />
               {loading

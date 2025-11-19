@@ -69,7 +69,7 @@ export class FranqueadosController {
     const dadosFranquia = {
       ...body,
       usuario_id: req.user.id,
-      situacao: 'EM_HOMOLOGACAO' as any, // Sempre começa em homologação
+      situacao: 'ATIVA' as any, // Franqueado que se auto-cadastra já fica ativo
       ativo: true,
     };
     return this.service.create(dadosFranquia);

@@ -149,6 +149,103 @@ export class EmailService {
   }
 
   /**
+   * Envia email com credenciais de acesso para novos usuários
+   */
+  async sendCredentialsEmail(
+    email: string,
+    nome: string,
+    username: string,
+    senha: string,
+    perfil: string,
+  ): Promise<boolean> {
+    try {
+      const frontendUrl = this.configService.get<string>(
+        'FRONTEND_URL',
+        'http://localhost:3000',
+      );
+      const loginLink = `${frontendUrl}/login`;
+
+      const perfilNomes: Record<string, string> = {
+        FRANQUEADO: 'Franqueado',
+        GERENTE_UNIDADE: 'Gerente de Unidade',
+        PROFESSOR: 'Instrutor/Professor',
+        RECEPCAO: 'Recepcionista',
+      };
+
+      const perfilNome = perfilNomes[perfil] || perfil;
+
+      await this.transporter.sendMail({
+        from: `"Team Cruz" <${this.configService.get<string>('SMTP_USER')}>`,
+        to: email,
+        subject: `Bem-vindo ao Team Cruz - Suas Credenciais de Acesso`,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <div style="background: linear-gradient(135deg, #1a1a1a 0%, #8B0000 100%); padding: 20px; text-align: center;">
+              <h1 style="color: #fff; margin: 0;">Team Cruz Brazilian Jiu-Jitsu</h1>
+              <p style="color: #f0f0f0; margin: 5px 0 0 0;">Bem-vindo ao Sistema</p>
+            </div>
+
+            <div style="background: #f9f9f9; padding: 30px; border: 1px solid #ddd;">
+              <h2 style="color: #8B0000; margin-top: 0;">Olá, ${nome}!</h2>
+
+              <p style="color: #333; line-height: 1.6;">
+                Sua conta foi criada com sucesso no sistema Team Cruz com o perfil de <strong>${perfilNome}</strong>.
+              </p>
+
+              <div style="background: white; padding: 20px; border-left: 4px solid #8B0000; margin: 20px 0;">
+                <h3 style="color: #8B0000; margin-top: 0;">Suas Credenciais de Acesso</h3>
+
+                <div style="margin: 15px 0;">
+                  <p style="margin: 5px 0; color: #666;"><strong>Usuário:</strong></p>
+                  <p style="margin: 5px 0; color: #333; font-size: 16px; background: #f5f5f5; padding: 8px; border-radius: 4px;">
+                    ${username}
+                  </p>
+                </div>
+
+                <div style="margin: 15px 0;">
+                  <p style="margin: 5px 0; color: #666;"><strong>Senha:</strong></p>
+                  <p style="margin: 5px 0; color: #333; font-size: 16px; background: #f5f5f5; padding: 8px; border-radius: 4px; font-family: monospace;">
+                    ${senha}
+                  </p>
+                </div>
+              </div>
+
+              <div style="text-align: center; margin: 30px 0;">
+                <a href="${loginLink}"
+                   style="display: inline-block; background: linear-gradient(135deg, #8B0000 0%, #DC143C 100%);
+                          color: white; padding: 15px 40px; text-decoration: none; border-radius: 5px;
+                          font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.2);">
+                  Acessar Sistema
+                </a>
+              </div>
+
+              <div style="background: #fff3cd; border: 1px solid #ffc107; padding: 15px; margin-top: 20px; border-radius: 5px;">
+                <p style="margin: 0; color: #856404; font-size: 14px;">
+                  🔒 <strong>Importante:</strong> Por motivos de segurança, recomendamos que você altere sua senha após o primeiro acesso.
+                </p>
+              </div>
+
+              <p style="color: #666; font-size: 12px; margin-top: 30px;">
+                Se você tiver dúvidas ou precisar de ajuda, entre em contato com o suporte.
+              </p>
+            </div>
+          </div>
+        `,
+      });
+
+      this.logger.log(
+        `Email de credenciais enviado para ${email} (${perfilNome})`,
+      );
+      return true;
+    } catch (error) {
+      this.logger.error(
+        `Erro ao enviar email de credenciais: ${error.message}`,
+      );
+      return false;
+    }
+  }
+
+  /**
    * Testa a conexão com o servidor SMTP
    */
   async testConnection(): Promise<boolean> {

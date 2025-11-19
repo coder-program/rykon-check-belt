@@ -112,6 +112,30 @@ export class CreateFranqueadoSimplifiedDto {
   @IsOptional()
   @IsBoolean({ message: 'ativo deve ser true ou false' })
   ativo?: boolean;
+
+  @ApiPropertyOptional({
+    description: 'Se o franqueado aceitou o contrato',
+    example: true,
+  })
+  @IsOptional()
+  @IsBoolean({ message: 'contrato_aceito deve ser true ou false' })
+  contrato_aceito?: boolean;
+
+  @ApiPropertyOptional({
+    description: 'Versão do contrato aceito',
+    example: 'v1.0',
+  })
+  @IsOptional()
+  @IsString()
+  contrato_versao?: string;
+
+  @ApiPropertyOptional({
+    description: 'IP de onde o contrato foi aceito',
+    example: '192.168.1.1',
+  })
+  @IsOptional()
+  @IsString()
+  contrato_ip?: string;
 }
 
 export class UpdateFranqueadoSimplifiedDto {
@@ -210,4 +234,28 @@ export class UpdateFranqueadoSimplifiedDto {
   @IsOptional()
   @IsBoolean({ message: 'ativo deve ser true ou false' })
   ativo?: boolean;
+
+  @ApiPropertyOptional({
+    description: 'Se o franqueado aceitou o contrato',
+    example: true,
+  })
+  @IsOptional()
+  @IsBoolean({ message: 'contrato_aceito deve ser true ou false' })
+  contrato_aceito?: boolean;
+
+  @ApiPropertyOptional({
+    description: 'Versão do contrato aceito',
+    example: 'v1.0',
+  })
+  @IsOptional()
+  @IsString()
+  contrato_versao?: string;
+
+  @ApiPropertyOptional({
+    description: 'IP de onde o contrato foi aceito',
+    example: '192.168.1.1',
+  })
+  @IsOptional()
+  @IsString()
+  contrato_ip?: string;
 }

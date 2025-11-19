@@ -11,6 +11,7 @@ import { Usuario } from '../entities/usuario.entity';
 import { Perfil } from '../entities/perfil.entity';
 import { CreateUsuarioDto } from '../dto/create-usuario.dto';
 import { GerenteUnidadesService } from '../../people/services/gerente-unidades.service';
+import { EmailService } from '../../email/email.service';
 
 @Injectable()
 export class UsuariosService {
@@ -21,6 +22,7 @@ export class UsuariosService {
     private perfilRepository: Repository<Perfil>,
     private dataSource: DataSource,
     private gerenteUnidadesService: GerenteUnidadesService,
+    private emailService: EmailService,
   ) {}
 
   /**
@@ -453,6 +455,66 @@ export class UsuariosService {
         throw new BadRequestException(
           `Erro ao vincular usuário: ${error.message}`,
         );
+      }
+    }
+
+    // Enviar email com credenciais para perfis específicos
+    const perfisQueRecebemEmail = [
+      'FRANQUEADO',
+      'GERENTE_UNIDADE',
+      'PROFESSOR',
+      'INSTRUTOR',
+      'RECEPCIONISTA',
+      'RECEPCAO',
+    ];
+
+    const perfisDoUsuario = perfis.map((p) => p.nome?.toUpperCase());
+    const deveEnviarEmail = perfisDoUsuario.some((perfil) =>
+      perfisQueRecebemEmail.includes(perfil),
+    );
+
+    console.log('📧 [EMAIL] Verificando envio de email...');
+    console.log('📧 [EMAIL] Perfis do usuário:', perfisDoUsuario);
+    console.log('📧 [EMAIL] Deve enviar email?', deveEnviarEmail);
+    console.log('📧 [EMAIL] Email do usuário:', usuarioSalvo.email);
+
+    if (deveEnviarEmail && usuarioSalvo.email) {
+      // Enviar email em background (não bloqueia a resposta)
+      const perfilPrincipal =
+        perfisDoUsuario.find((p) => perfisQueRecebemEmail.includes(p)) ||
+        'USUARIO';
+
+      console.log('📧 [EMAIL] Preparando envio para:', usuarioSalvo.email);
+      console.log('📧 [EMAIL] Perfil:', perfilPrincipal);
+      console.log('📧 [EMAIL] Username:', usuarioSalvo.username);
+
+      this.emailService
+        .sendCredentialsEmail(
+          usuarioSalvo.email,
+          usuarioSalvo.nome,
+          usuarioSalvo.username,
+          createUsuarioDto.password, // Senha em texto plano antes do hash
+          perfilPrincipal,
+        )
+        .then(() => {
+          console.log(
+            `✅ [EMAIL] Email de credenciais enviado com sucesso para ${usuarioSalvo.email}`,
+          );
+        })
+        .catch((error) => {
+          // Log do erro mas não falha a criação do usuário
+          console.error(
+            `❌ [EMAIL] Erro ao enviar email de credenciais para ${usuarioSalvo.email}:`,
+            error.message,
+          );
+        });
+    } else {
+      console.log('⚠️ [EMAIL] Email não será enviado');
+      if (!deveEnviarEmail) {
+        console.log('⚠️ [EMAIL] Motivo: Perfil não requer envio de email');
+      }
+      if (!usuarioSalvo.email) {
+        console.log('⚠️ [EMAIL] Motivo: Usuário não tem email cadastrado');
       }
     }
 

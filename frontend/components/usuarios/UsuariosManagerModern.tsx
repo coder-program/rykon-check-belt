@@ -1354,9 +1354,18 @@ export default function UsuariosManagerNew() {
                           onChange={(e) => {
                             if (e.target.checked) {
                               // Permite apenas UM perfil selecionado
+                              const isFranqueado =
+                                perfis
+                                  .find((p) => p.id === perfil.id)
+                                  ?.nome?.toUpperCase() === "FRANQUEADO";
+
                               setFormData({
                                 ...formData,
                                 perfil_ids: [perfil.id], // Substitui qualquer perfil anterior
+                                // Se for FRANQUEADO, sempre false (terá que completar depois)
+                                cadastro_completo: isFranqueado
+                                  ? false
+                                  : formData.cadastro_completo,
                               });
                             } else {
                               setFormData({
@@ -1832,24 +1841,27 @@ export default function UsuariosManagerNew() {
                     </label>
                   </div>
 
-                  <div>
-                    <label className="flex items-center">
-                      <input
-                        type="checkbox"
-                        checked={formData.cadastro_completo}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            cadastro_completo: e.target.checked,
-                          })
-                        }
-                        className="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
-                      />
-                      <span className="ml-2 text-sm text-gray-700">
-                        Cadastro completo
-                      </span>
-                    </label>
-                  </div>
+                  {/* Cadastro Completo - Oculto para FRANQUEADO */}
+                  {!isFranqueadoSelecionado && (
+                    <div>
+                      <label className="flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={formData.cadastro_completo}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              cadastro_completo: e.target.checked,
+                            })
+                          }
+                          className="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                        />
+                        <span className="ml-2 text-sm text-gray-700">
+                          Cadastro completo
+                        </span>
+                      </label>
+                    </div>
+                  )}
                 </div>
 
                 {/* Botões */}

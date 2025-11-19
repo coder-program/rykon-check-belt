@@ -151,10 +151,12 @@ export class FranqueadosService {
       INSERT INTO teamcruz.franqueados (
         nome, cpf, email, telefone, usuario_id,
         endereco_id, unidades_gerencia, situacao, ativo,
+        contrato_aceito, contrato_aceito_em, contrato_versao, contrato_ip,
         created_at, updated_at
       ) VALUES (
         $1, $2, $3, $4, $5,
         $6, $7, $8, $9,
+        $10, $11, $12, $13,
         NOW(), NOW()
       ) RETURNING *
     `;
@@ -169,6 +171,10 @@ export class FranqueadosService {
       body.unidades_gerencia || [],
       body.situacao || 'EM_HOMOLOGACAO', // Se não veio situacao, usa EM_HOMOLOGACAO
       body.ativo ?? true, // ✅ Por padrão, franqueados são criados como ativos
+      body.contrato_aceito ?? false,
+      body.contrato_aceito ? new Date() : null, // Timestamp se aceito
+      body.contrato_versao || null,
+      body.contrato_ip || null,
     ];
 
     try {
@@ -276,6 +282,22 @@ export class FranqueadosService {
     if (body.ativo !== undefined) {
       fields.push(`ativo = $${paramIndex++}`);
       params.push(body.ativo);
+    }
+    if (body.contrato_aceito !== undefined) {
+      fields.push(`contrato_aceito = $${paramIndex++}`);
+      params.push(body.contrato_aceito);
+    }
+    if (body.contrato_versao !== undefined) {
+      fields.push(`contrato_versao = $${paramIndex++}`);
+      params.push(body.contrato_versao);
+    }
+    if (body.contrato_ip !== undefined) {
+      fields.push(`contrato_ip = $${paramIndex++}`);
+      params.push(body.contrato_ip);
+    }
+    // Se está aceitando o contrato agora, registrar o timestamp
+    if (body.contrato_aceito === true) {
+      fields.push(`contrato_aceito_em = NOW()`);
     }
 
     fields.push(`updated_at = NOW()`);

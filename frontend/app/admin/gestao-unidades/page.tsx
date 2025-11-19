@@ -591,7 +591,7 @@ export default function GestaoUnidadesPage() {
               </div>
             </div>
 
-            <div className="mt-4 flex items-center justify-between">
+            <div className="mt-4">
               <p className="text-sm text-gray-600">
                 Mostrando {indiceInicial + 1} a{" "}
                 {Math.min(indiceFinal, unidadesFiltradas.length)} de{" "}
@@ -603,29 +603,6 @@ export default function GestaoUnidadesPage() {
                   ? ` (filtradas de ${unidadesComDados.length})`
                   : ""}
               </p>
-              {totalPaginas > 1 && (
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setPaginaAtual(paginaAtual - 1)}
-                    disabled={paginaAtual === 1}
-                    className="flex items-center gap-1 px-3 py-1 text-sm bg-white border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                    Anterior
-                  </button>
-                  <span className="text-sm text-gray-600">
-                    Página {paginaAtual} de {totalPaginas}
-                  </span>
-                  <button
-                    onClick={() => setPaginaAtual(paginaAtual + 1)}
-                    disabled={paginaAtual === totalPaginas}
-                    className="flex items-center gap-1 px-3 py-1 text-sm bg-white border border-gray-300 rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Próxima
-                    <ChevronRight className="h-4 w-4" />
-                  </button>
-                </div>
-              )}
             </div>
           </CardContent>
         </Card>
@@ -797,6 +774,77 @@ export default function GestaoUnidadesPage() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Paginação */}
+        {totalPaginas > 1 && (
+          <div className="mt-6 flex items-center justify-center gap-2">
+            <button
+              onClick={() => setPaginaAtual(1)}
+              disabled={paginaAtual === 1}
+              className="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              Primeira
+            </button>
+            <button
+              onClick={() => setPaginaAtual(paginaAtual - 1)}
+              disabled={paginaAtual === 1}
+              className="flex items-center gap-1 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              <ChevronLeft className="h-4 w-4" />
+              Anterior
+            </button>
+
+            <div className="flex items-center gap-1">
+              {Array.from({ length: totalPaginas }, (_, i) => i + 1)
+                .filter((page) => {
+                  // Mostra primeira, última, atual e 2 páginas antes/depois da atual
+                  return (
+                    page === 1 ||
+                    page === totalPaginas ||
+                    (page >= paginaAtual - 2 && page <= paginaAtual + 2)
+                  );
+                })
+                .map((page, index, array) => {
+                  // Adiciona "..." entre páginas não consecutivas
+                  const showEllipsis =
+                    index > 0 && array[index - 1] !== page - 1;
+                  return (
+                    <React.Fragment key={page}>
+                      {showEllipsis && (
+                        <span className="px-2 py-2 text-gray-500">...</span>
+                      )}
+                      <button
+                        onClick={() => setPaginaAtual(page)}
+                        className={`px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
+                          paginaAtual === page
+                            ? "bg-blue-600 text-white"
+                            : "text-gray-700 bg-white border border-gray-300 hover:bg-gray-50"
+                        }`}
+                      >
+                        {page}
+                      </button>
+                    </React.Fragment>
+                  );
+                })}
+            </div>
+
+            <button
+              onClick={() => setPaginaAtual(paginaAtual + 1)}
+              disabled={paginaAtual === totalPaginas}
+              className="flex items-center gap-1 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              Próxima
+              <ChevronRight className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => setPaginaAtual(totalPaginas)}
+              disabled={paginaAtual === totalPaginas}
+              className="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              Última
+            </button>
+          </div>
+        )}
 
         {/* Modal de Professores */}
         {showProfessoresModal && selectedUnidade && (

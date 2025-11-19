@@ -16,6 +16,7 @@ import { PermissoesController } from './controllers/permissoes.controller';
 import { TiposPermissaoController } from './controllers/tipos-permissao.controller';
 import { NiveisPermissaoController } from './controllers/niveis-permissao.controller';
 import { PeopleModule } from '../people/people.module';
+import { EmailModule } from '../email/email.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { PeopleModule } from '../people/people.module';
       NivelPermissao,
     ]),
     forwardRef(() => PeopleModule),
+    EmailModule,
   ],
   controllers: [
     UsuariosController,
