@@ -240,8 +240,9 @@ export class PresencaController {
     @Request() req,
     @Query('mes') mes?: number,
     @Query('ano') ano?: number,
+    @Query('alunoId') alunoId?: string,
   ) {
-    return this.presencaService.getRankingUnidade(req.user, mes, ano);
+    return this.presencaService.getRankingUnidade(req.user, mes, ano, alunoId);
   }
 
   // ========== TABLET CHECK-IN ENDPOINTS ==========

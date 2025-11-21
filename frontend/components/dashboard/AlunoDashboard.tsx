@@ -46,11 +46,36 @@ interface DependenteFormData {
 
   // Matrícula
   unidade_id: string;
+  numero_matricula?: string;
+  data_matricula?: string;
+  faixa_atual?: string;
+  graus?: string;
 
   // Dados Médicos
   observacoes_medicas?: string;
   alergias?: string;
   medicamentos_uso_continuo?: string;
+  plano_saude?: string;
+  atestado_medico_validade?: string;
+  restricoes_medicas?: string;
+
+  // Responsável (caso seja menor e precise outro responsável)
+  responsavel_nome?: string;
+  responsavel_cpf?: string;
+  responsavel_telefone?: string;
+  responsavel_parentesco?: string;
+
+  // Financeiro
+  dia_vencimento?: string;
+  valor_mensalidade?: string;
+  desconto_percentual?: string;
+
+  // Consentimentos
+  consent_lgpd?: string;
+  consent_imagem?: string;
+
+  // Outros
+  observacoes?: string;
 
   [key: string]: string | undefined;
 }
@@ -68,6 +93,7 @@ interface RankingData {
   totalAlunos: number;
   mes: number;
   ano: number;
+  categoria: "INFANTIL" | "ADULTO" | null;
   ranking: Array<{
     posicao: number;
     nome: string;
@@ -220,9 +246,26 @@ export default function AlunoDashboard({
     telefone_emergencia: "",
     nome_contato_emergencia: "",
     unidade_id: "",
+    numero_matricula: "",
+    data_matricula: "",
+    faixa_atual: "",
+    graus: "",
     observacoes_medicas: "",
     alergias: "",
     medicamentos_uso_continuo: "",
+    plano_saude: "",
+    atestado_medico_validade: "",
+    restricoes_medicas: "",
+    responsavel_nome: "",
+    responsavel_cpf: "",
+    responsavel_telefone: "",
+    responsavel_parentesco: "",
+    dia_vencimento: "",
+    valor_mensalidade: "",
+    desconto_percentual: "",
+    consent_lgpd: "",
+    consent_imagem: "",
+    observacoes: "",
   });
   // Histórico será implementado futuramente
   // const [historicoPresenca, setHistoricoPresenca] = useState<HistoricoPresenca[]>([]);
@@ -291,8 +334,11 @@ export default function AlunoDashboard({
         // 3. Próximas Aulas Disponíveis
         http("/presenca/aulas-disponiveis", { auth: true }),
 
-        // 4. Ranking da Unidade
-        http("/presenca/ranking-unidade", { auth: true }),
+        // 4. Ranking da Unidade - passar alunoId se estiver visualizando dependente
+        http(
+          `/presenca/ranking-unidade${alunoId ? `?alunoId=${alunoId}` : ""}`,
+          { auth: true }
+        ),
 
         // 5. Histórico de Competições
         http("/competicoes/meu-historico", { auth: true }),
@@ -363,9 +409,19 @@ export default function AlunoDashboard({
       }
 
       if (dependentesData.status === "fulfilled") {
-        setDependentes(
-          Array.isArray(dependentesData.value) ? dependentesData.value : []
+        console.log(
+          "🎯 [LOAD DASHBOARD] Dependentes recebidos do backend:",
+          dependentesData.value
         );
+        const dependentesArray = Array.isArray(dependentesData.value)
+          ? dependentesData.value
+          : [];
+        console.log(
+          "🎯 [LOAD DASHBOARD] Setando dependentes no estado:",
+          dependentesArray
+        );
+        setDependentes(dependentesArray);
+        console.log("✅ [LOAD DASHBOARD] Estado de dependentes atualizado!");
       } else {
         console.log(
           "ℹ️ Sem dependentes ou erro ao carregar:",
@@ -387,11 +443,13 @@ export default function AlunoDashboard({
 
   // Buscar unidades
   const { data: unidades } = useQuery({
-    queryKey: ["unidades"],
+    queryKey: ["unidades-publicas-ativas-aluno"],
     queryFn: async () => {
-      const data = await http("/unidades", { auth: true });
-      return data.items || [];
+      const data = await http("/unidades/public/ativas", { auth: false });
+      return data || [];
     },
+    staleTime: 0,
+    gcTime: 0,
   });
 
   const handleCheckin = async (alunoId: string) => {
@@ -425,36 +483,102 @@ export default function AlunoDashboard({
     }
   };
 
-  const handleEditDependente = (dependente: Dependente) => {
-    setIsEditMode(true);
-    setEditingDependenteId(dependente.id);
-    setFormData({
-      nome_completo: dependente.nome_completo || "",
-      cpf: dependente.cpf || "",
-      data_nascimento: dependente.data_nascimento || "",
-      genero: dependente.genero || "MASCULINO",
-      email: dependente.email || "",
-      telefone: dependente.telefone || "",
-      telefone_emergencia: dependente.telefone_emergencia || "",
-      nome_contato_emergencia: dependente.nome_contato_emergencia || "",
-      unidade_id: dependente.unidade_id || "",
-      observacoes_medicas: dependente.observacoes_medicas || "",
-      alergias: dependente.alergias || "",
-      medicamentos_uso_continuo: dependente.medicamentos_uso_continuo || "",
-    });
-    setShowModal(true);
+  const handleEditDependente = async (dependente: Dependente) => {
+    try {
+      // Buscar dados completos do dependente
+      const dadosCompletos = await http(`/alunos/${dependente.id}`, {
+        auth: true,
+      });
+
+      setIsEditMode(true);
+      setEditingDependenteId(dependente.id);
+      setFormData({
+        nome_completo: dadosCompletos.nome_completo || "",
+        cpf: dadosCompletos.cpf || "",
+        data_nascimento: dadosCompletos.data_nascimento || "",
+        genero: dadosCompletos.genero || "MASCULINO",
+        email: dadosCompletos.email || "",
+        telefone: dadosCompletos.telefone || "",
+        telefone_emergencia: dadosCompletos.telefone_emergencia || "",
+        nome_contato_emergencia: dadosCompletos.nome_contato_emergencia || "",
+        unidade_id:
+          dadosCompletos.unidade_id || dadosCompletos.unidade?.id || "",
+        numero_matricula: dadosCompletos.numero_matricula || "",
+        data_matricula: dadosCompletos.data_matricula || "",
+        faixa_atual: dadosCompletos.faixa_atual || "",
+        graus: dadosCompletos.graus?.toString() || "",
+        observacoes_medicas: dadosCompletos.observacoes_medicas || "",
+        alergias: dadosCompletos.alergias || "",
+        medicamentos_uso_continuo:
+          dadosCompletos.medicamentos_uso_continuo || "",
+        plano_saude: dadosCompletos.plano_saude || "",
+        atestado_medico_validade: dadosCompletos.atestado_medico_validade || "",
+        restricoes_medicas: dadosCompletos.restricoes_medicas || "",
+        responsavel_nome: dadosCompletos.responsavel_nome || "",
+        responsavel_cpf: dadosCompletos.responsavel_cpf || "",
+        responsavel_telefone: dadosCompletos.responsavel_telefone || "",
+        responsavel_parentesco: dadosCompletos.responsavel_parentesco || "",
+        dia_vencimento: dadosCompletos.dia_vencimento?.toString() || "",
+        valor_mensalidade: dadosCompletos.valor_mensalidade?.toString() || "",
+        desconto_percentual:
+          dadosCompletos.desconto_percentual?.toString() || "",
+        consent_lgpd: dadosCompletos.consent_lgpd?.toString() || "",
+        consent_imagem: dadosCompletos.consent_imagem?.toString() || "",
+        observacoes: dadosCompletos.observacoes || "",
+      });
+
+      setShowModal(true);
+    } catch (error) {
+      console.error("Erro ao carregar dados do dependente:", error);
+      toast.error("Erro ao carregar dados do dependente");
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    console.log("🚀 [SUBMIT] FormData completo antes de processar:", formData);
+    console.log("🏢 [SUBMIT] unidade_id no formData:", formData.unidade_id);
+
     try {
       if (isEditMode && editingDependenteId) {
-        // Editar dependente existente
+        // Editar dependente existente - remover campos vazios e limpar máscaras
+        const dataToSend = Object.entries(formData).reduce(
+          (acc, [key, value]) => {
+            // Apenas incluir campos que não são strings vazias
+            if (value !== "" && value !== null && value !== undefined) {
+              // Remover máscara de CPF (manter apenas números)
+              if (key === "cpf" || key === "responsavel_cpf") {
+                const cpfLimpo = String(value).replace(/\D/g, "");
+                // Só incluir CPF se tiver algum número (não vazio)
+                if (cpfLimpo.length > 0) {
+                  acc[key] = cpfLimpo;
+                }
+              } else {
+                acc[key] = value;
+              }
+            }
+            return acc;
+          },
+          {} as Record<string, unknown>
+        );
+
+        console.log(
+          "📦 [SUBMIT] Dados que serão enviados no PATCH:",
+          dataToSend
+        );
+        console.log(
+          "🏢 [SUBMIT] unidade_id nos dados enviados:",
+          dataToSend.unidade_id
+        );
+
         const response = await http(`/alunos/${editingDependenteId}`, {
           method: "PATCH",
-          body: formData as Record<string, unknown>,
+          body: dataToSend,
           auth: true,
         });
+
+        console.log("✅ [SUBMIT] Resposta do backend:", response);
 
         if (response) {
           toast.success("Dependente atualizado com sucesso!");
@@ -472,6 +596,11 @@ export default function AlunoDashboard({
         }
       }
 
+      // Recarregar dados ANTES de fechar modal
+      console.log("🔄 [SUBMIT] Iniciando loadDashboardData após salvar...");
+      await loadDashboardData();
+      console.log("✅ [SUBMIT] loadDashboardData concluído!");
+
       // Limpar e fechar modal
       setShowModal(false);
       setIsEditMode(false);
@@ -486,11 +615,27 @@ export default function AlunoDashboard({
         telefone_emergencia: "",
         nome_contato_emergencia: "",
         unidade_id: "",
+        numero_matricula: "",
+        data_matricula: "",
+        faixa_atual: "",
+        graus: "",
         observacoes_medicas: "",
         alergias: "",
         medicamentos_uso_continuo: "",
+        plano_saude: "",
+        atestado_medico_validade: "",
+        restricoes_medicas: "",
+        responsavel_nome: "",
+        responsavel_cpf: "",
+        responsavel_telefone: "",
+        responsavel_parentesco: "",
+        dia_vencimento: "",
+        valor_mensalidade: "",
+        desconto_percentual: "",
+        consent_lgpd: "",
+        consent_imagem: "",
+        observacoes: "",
       });
-      loadDashboardData(); // Recarregar dados
     } catch (error) {
       const errorMessage =
         error instanceof Error
@@ -593,8 +738,19 @@ export default function AlunoDashboard({
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto">
-        {/* Botão Voltar (se habilitado) */}
-        {showBackButton && (
+        {/* Botão Voltar para Meus Dados (se estiver visualizando dependente) */}
+        {alunoId && alunoId !== user?.id && (
+          <button
+            onClick={() => router.push("/dashboard")}
+            className="mb-4 flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-md"
+          >
+            <span>←</span>
+            Voltar para Meus Dados
+          </button>
+        )}
+
+        {/* Botão Voltar genérico (se habilitado via prop) */}
+        {showBackButton && !alunoId && (
           <button
             onClick={() => router.back()}
             className="mb-4 flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
@@ -750,7 +906,7 @@ export default function AlunoDashboard({
                           : "Tempo mínimo atingido ✓"}
                       </p>
                       <p className="text-xs text-blue-200 mt-1">
-                        Mínimo: {statusGraduacao.tempoMinimoAnos} ano
+                        Mínimo: aprox. {statusGraduacao.tempoMinimoAnos} ano
                         {statusGraduacao.tempoMinimoAnos > 1 ? "s" : ""} +{" "}
                         {statusGraduacao.grausMax} graus
                       </p>
@@ -1033,11 +1189,15 @@ export default function AlunoDashboard({
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Trophy className="h-5 w-5 text-yellow-600" />
-                Top 10 - Ranking de Frequência ({rankingData.mes}/
-                {rankingData.ano})
+                Top 10 - Ranking de Frequência
+                {rankingData.categoria ? ` ${rankingData.categoria}` : ""} (
+                {rankingData.mes}/{rankingData.ano})
               </CardTitle>
               <CardDescription>
                 Os alunos mais frequentes da sua unidade este mes
+                {rankingData.categoria
+                  ? ` - Categoria ${rankingData.categoria}`
+                  : ""}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -1282,7 +1442,10 @@ export default function AlunoDashboard({
       {showModal && (
         <DependenteForm
           formData={formData}
-          setFormData={(data) => setFormData(data)}
+          setFormData={(data) => {
+            console.log("📝 [ALUNO DASHBOARD] Atualizando formData:", data);
+            setFormData(data);
+          }}
           onSubmit={handleSubmit}
           onClose={() => {
             setShowModal(false);
@@ -1298,9 +1461,26 @@ export default function AlunoDashboard({
               telefone_emergencia: "",
               nome_contato_emergencia: "",
               unidade_id: "",
+              numero_matricula: "",
+              data_matricula: "",
+              faixa_atual: "",
+              graus: "",
               observacoes_medicas: "",
               alergias: "",
               medicamentos_uso_continuo: "",
+              plano_saude: "",
+              atestado_medico_validade: "",
+              restricoes_medicas: "",
+              responsavel_nome: "",
+              responsavel_cpf: "",
+              responsavel_telefone: "",
+              responsavel_parentesco: "",
+              dia_vencimento: "",
+              valor_mensalidade: "",
+              desconto_percentual: "",
+              consent_lgpd: "",
+              consent_imagem: "",
+              observacoes: "",
             });
           }}
           isLoading={false}

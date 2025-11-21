@@ -938,11 +938,17 @@ export class PresencaService {
     }));
   }
 
-  async getRankingUnidade(user: any, mes?: number, ano?: number) {
+  async getRankingUnidade(
+    user: any,
+    mes?: number,
+    ano?: number,
+    alunoId?: string,
+  ) {
     try {
       // Buscar unidade do aluno
+      // Se alunoId foi passado, buscar por ID direto, senão buscar por usuario_id
       const aluno = await this.alunoRepository.findOne({
-        where: { usuario_id: user.id },
+        where: alunoId ? { id: alunoId } : { usuario_id: user.id },
         relations: ['unidade'],
       });
 
@@ -951,6 +957,7 @@ export class PresencaService {
           posicao: null,
           totalAlunos: 0,
           ranking: [],
+          categoria: null,
         };
       }
 
@@ -971,11 +978,24 @@ export class PresencaService {
         },
       });
 
-      // Buscar presenças do mês para todos os alunos da unidade
+      // Determinar categoria do aluno atual (INFANTIL: até 15 anos no ano atual, ADULTO: 16+)
+      const anoNascimentoAluno = new Date(aluno.data_nascimento).getFullYear();
+      const idadeNoAnoAtual = anoRef - anoNascimentoAluno;
+      const categoriaAluno = idadeNoAnoAtual <= 15 ? 'INFANTIL' : 'ADULTO';
+
+      // Filtrar alunos da mesma categoria
+      const alunosMesmaCategoria = alunosDaUnidade.filter((alunoItem) => {
+        const anoNascimento = new Date(alunoItem.data_nascimento).getFullYear();
+        const idade = anoRef - anoNascimento;
+        const categoria = idade <= 15 ? 'INFANTIL' : 'ADULTO';
+        return categoria === categoriaAluno;
+      });
+
+      // Buscar presenças do mês para todos os alunos da mesma categoria
       const presencas = await this.presencaRepository
         .createQueryBuilder('presenca')
         .where('presenca.aluno_id IN (:...alunosIds)', {
-          alunosIds: alunosDaUnidade.map((a) => a.id),
+          alunosIds: alunosMesmaCategoria.map((a) => a.id),
         })
         .andWhere('presenca.created_at >= :inicio', { inicio: primeiroDia })
         .andWhere('presenca.created_at <= :fim', { fim: ultimoDia })
@@ -990,7 +1010,7 @@ export class PresencaService {
       }
 
       // Criar ranking com informações dos alunos
-      const rankingComDetalhes = alunosDaUnidade.map((alunoItem) => ({
+      const rankingComDetalhes = alunosMesmaCategoria.map((alunoItem) => ({
         alunoId: alunoItem.id,
         nome: alunoItem.nome_completo,
         faixa: alunoItem.faixa_atual,
@@ -1022,9 +1042,10 @@ export class PresencaService {
       return {
         posicao,
         presencas: presencasDoAluno,
-        totalAlunos: alunosDaUnidade.length,
+        totalAlunos: alunosMesmaCategoria.length,
         mes: mesRef,
         ano: anoRef,
+        categoria: categoriaAluno,
         ranking: top10,
       };
     } catch (error) {
@@ -1033,6 +1054,7 @@ export class PresencaService {
         posicao: null,
         totalAlunos: 0,
         ranking: [],
+        categoria: null,
       };
     }
   }

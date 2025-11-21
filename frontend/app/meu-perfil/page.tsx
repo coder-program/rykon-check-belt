@@ -7,6 +7,32 @@ import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5001";
 
+// Função para formatar data para input type="date" (YYYY-MM-DD)
+const formatDateForInput = (dateString: string | undefined | null): string => {
+  if (!dateString) return "";
+
+  try {
+    // Se já está no formato YYYY-MM-DD, retornar direto
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+      return dateString;
+    }
+
+    // Tentar parsear a data
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return "";
+
+    // Formatar para YYYY-MM-DD
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+
+    return `${year}-${month}-${day}`;
+  } catch (error) {
+    console.error("Erro ao formatar data:", error);
+    return "";
+  }
+};
+
 // Função para formatar CPF
 const formatCPF = (cpf: string): string => {
   if (!cpf) return "";
@@ -40,9 +66,27 @@ interface ProfileData {
   responsavel_nome?: string;
   responsavel_cpf?: string;
   responsavel_telefone?: string;
+  responsavel_parentesco?: string;
   faixa_ministrante?: string;
   data_inicio_docencia?: string;
   registro_profissional?: string;
+  // Dados médicos
+  observacoes_medicas?: string;
+  alergias?: string;
+  medicamentos_uso_continuo?: string;
+  plano_saude?: string;
+  atestado_medico_validade?: string;
+  restricoes_medicas?: string;
+  // Dados financeiros
+  dia_vencimento?: number;
+  valor_mensalidade?: number;
+  desconto_percentual?: number;
+  // Graduação
+  data_ultima_graduacao?: string;
+  // Observações e LGPD
+  observacoes?: string;
+  consent_lgpd?: boolean;
+  consent_imagem?: boolean;
   // Campos específicos de franqueado
   nome_franquia?: string;
   email_franquia?: string;
@@ -86,6 +130,11 @@ export default function MeuPerfilPage() {
   >(null);
   const [unidadeOriginal, setUnidadeOriginal] = useState<string | null>(null);
   const [unidadeMudou, setUnidadeMudou] = useState(false);
+
+  // Estados para controlar visibilidade das senhas
+  const [showSenhaAtual, setShowSenhaAtual] = useState(false);
+  const [showNovaSenha, setShowNovaSenha] = useState(false);
+  const [showConfirmarSenha, setShowConfirmarSenha] = useState(false);
 
   // Query para buscar dados específicos do aluno
   const {
@@ -166,6 +215,32 @@ export default function MeuPerfilPage() {
       return response.json();
     },
     enabled: !!user?.id && user?.perfis?.includes("FRANQUEADO"),
+    retry: false,
+  });
+
+  // Query para buscar dados específicos do gerente de unidade
+  const { data: dadosGerente } = useQuery({
+    queryKey: ["gerente-by-usuario", user?.id],
+    queryFn: async () => {
+      if (!user?.id) return null;
+
+      const response = await fetch(
+        `${API_URL}/gerente-unidades/usuario/${user.id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        if (response.status === 404) return null; // Não é gerente
+        return null;
+      }
+
+      return response.json();
+    },
+    enabled: !!user?.id && user?.perfis?.includes("GERENTE_UNIDADE"),
     retry: false,
   });
 
@@ -253,7 +328,7 @@ export default function MeuPerfilPage() {
           cpf: dadosAluno.cpf || user.cpf || "",
           email: dadosAluno.email || user.email || "",
           telefone: dadosAluno.telefone || user.telefone || "",
-          data_nascimento: dadosAluno.data_nascimento || "",
+          data_nascimento: formatDateForInput(dadosAluno.data_nascimento),
           genero: dadosAluno.genero || "",
           numero_matricula: dadosAluno.numero_matricula || "",
           data_matricula: dadosAluno.data_matricula || "",
@@ -264,6 +339,28 @@ export default function MeuPerfilPage() {
           responsavel_nome: dadosAluno.responsavel_nome || "",
           responsavel_cpf: dadosAluno.responsavel_cpf || "",
           responsavel_telefone: dadosAluno.responsavel_telefone || "",
+          responsavel_parentesco: dadosAluno.responsavel_parentesco || "",
+          // Dados médicos
+          observacoes_medicas: dadosAluno.observacoes_medicas || "",
+          alergias: dadosAluno.alergias || "",
+          medicamentos_uso_continuo: dadosAluno.medicamentos_uso_continuo || "",
+          plano_saude: dadosAluno.plano_saude || "",
+          atestado_medico_validade: formatDateForInput(
+            dadosAluno.atestado_medico_validade
+          ),
+          restricoes_medicas: dadosAluno.restricoes_medicas || "",
+          // Dados financeiros
+          dia_vencimento: dadosAluno.dia_vencimento || undefined,
+          valor_mensalidade: dadosAluno.valor_mensalidade || undefined,
+          desconto_percentual: dadosAluno.desconto_percentual || 0,
+          // Graduação
+          data_ultima_graduacao: formatDateForInput(
+            dadosAluno.data_ultima_graduacao
+          ),
+          // Observações e LGPD
+          observacoes: dadosAluno.observacoes || "",
+          consent_lgpd: dadosAluno.consent_lgpd || false,
+          consent_imagem: dadosAluno.consent_imagem || false,
         };
       }
       // Se é professor, usar dados da entidade professor
@@ -275,10 +372,12 @@ export default function MeuPerfilPage() {
           cpf: dadosProfessor.cpf || user.cpf || "",
           email: dadosProfessor.email || user.email || "",
           telefone: dadosProfessor.telefone_whatsapp || user.telefone || "",
-          data_nascimento: dadosProfessor.data_nascimento || "",
+          data_nascimento: formatDateForInput(dadosProfessor.data_nascimento),
           genero: dadosProfessor.genero || "",
           faixa_ministrante: dadosProfessor.faixa_ministrante || "",
-          data_inicio_docencia: dadosProfessor.data_inicio_docencia || "",
+          data_inicio_docencia: formatDateForInput(
+            dadosProfessor.data_inicio_docencia
+          ),
           registro_profissional: dadosProfessor.registro_profissional || "",
         };
       }
@@ -292,7 +391,7 @@ export default function MeuPerfilPage() {
           email: user.email || "",
           telefone: user.telefone || "",
           cpf: user.cpf || "",
-          data_nascimento: user.data_nascimento || "",
+          data_nascimento: formatDateForInput(user.data_nascimento),
           // Dados da franquia (vem de franqueado)
           nome_franquia: dadosFranqueado.nome || "",
           email_franquia: dadosFranqueado.email || "",
@@ -311,12 +410,21 @@ export default function MeuPerfilPage() {
       // Se não é aluno nem professor nem franqueado, usar apenas dados básicos do usuário
       else {
         setTipoUsuario("usuario");
+        // Incluir data_nascimento para todos os tipos de usuário
+        dadosCompletos.data_nascimento = formatDateForInput(
+          user.data_nascimento
+        );
       }
 
       // Adicionar username de todos os usuários
       dadosCompletos.username = user.username || "";
 
-      // Adicionar dados de endereço e unidade se existirem
+      // Garantir que data_nascimento sempre seja incluída se existir no user
+      if (!dadosCompletos.data_nascimento && user.data_nascimento) {
+        dadosCompletos.data_nascimento = formatDateForInput(
+          user.data_nascimento
+        );
+      } // Adicionar dados de endereço e unidade se existirem
       if (dadosAluno || dadosProfessor) {
         const entidadeData = dadosAluno || dadosProfessor;
         dadosCompletos = {
@@ -834,6 +942,7 @@ export default function MeuPerfilPage() {
       telefone: formData.telefone ? formData.telefone.replace(/\D/g, "") : "",
       cpf: formData.cpf ? formData.cpf.replace(/\D/g, "") : "",
       foto: formData.foto,
+      data_nascimento: formData.data_nascimento || undefined, // Incluir data_nascimento para todos os usuários
     };
 
     // Incluir username se foi fornecido
@@ -861,6 +970,25 @@ export default function MeuPerfilPage() {
       dataToSubmit.responsavel_telefone = formData.responsavel_telefone
         ? formData.responsavel_telefone.replace(/\D/g, "")
         : "";
+      dataToSubmit.responsavel_parentesco = formData.responsavel_parentesco;
+      // Dados médicos
+      dataToSubmit.observacoes_medicas = formData.observacoes_medicas;
+      dataToSubmit.alergias = formData.alergias;
+      dataToSubmit.medicamentos_uso_continuo =
+        formData.medicamentos_uso_continuo;
+      dataToSubmit.plano_saude = formData.plano_saude;
+      dataToSubmit.atestado_medico_validade = formData.atestado_medico_validade;
+      dataToSubmit.restricoes_medicas = formData.restricoes_medicas;
+      // Dados financeiros
+      dataToSubmit.dia_vencimento = formData.dia_vencimento;
+      dataToSubmit.valor_mensalidade = formData.valor_mensalidade;
+      dataToSubmit.desconto_percentual = formData.desconto_percentual;
+      // Graduação
+      dataToSubmit.data_ultima_graduacao = formData.data_ultima_graduacao;
+      // Observações e LGPD
+      dataToSubmit.observacoes = formData.observacoes;
+      dataToSubmit.consent_lgpd = formData.consent_lgpd;
+      dataToSubmit.consent_imagem = formData.consent_imagem;
       // Dados de endereço
       dataToSubmit.cep = formData.cep ? formData.cep.replace(/\D/g, "") : "";
       dataToSubmit.logradouro = formData.logradouro;
@@ -1428,9 +1556,316 @@ export default function MeuPerfilPage() {
                           maxLength={15}
                         />
                       </div>
+
+                      <div>
+                        <label
+                          htmlFor="responsavel_parentesco"
+                          className="block text-sm font-medium text-gray-700 mb-2"
+                        >
+                          Parentesco
+                        </label>
+                        <input
+                          type="text"
+                          id="responsavel_parentesco"
+                          name="responsavel_parentesco"
+                          value={formData.responsavel_parentesco || ""}
+                          onChange={handleChange}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="Ex: Pai, Mãe, Tio(a), etc."
+                        />
+                      </div>
                     </div>
                   </div>
                 )}
+
+                {/* Data da Última Graduação */}
+                <div className="mt-6 bg-purple-50 p-4 rounded-lg">
+                  <h4 className="text-md font-medium text-gray-900 mb-3">
+                    🏆 Graduação
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label
+                        htmlFor="data_ultima_graduacao"
+                        className="block text-sm font-medium text-gray-700 mb-2"
+                      >
+                        Data da Última Graduação
+                      </label>
+                      <input
+                        type="date"
+                        id="data_ultima_graduacao"
+                        name="data_ultima_graduacao"
+                        value={formData.data_ultima_graduacao || ""}
+                        onChange={handleChange}
+                        max={new Date().toISOString().split("T")[0]}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        Data que você recebeu sua faixa atual
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Dados Médicos */}
+                <div className="mt-6 bg-red-50 p-4 rounded-lg">
+                  <h4 className="text-md font-medium text-gray-900 mb-3">
+                    🏥 Dados Médicos
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label
+                        htmlFor="plano_saude"
+                        className="block text-sm font-medium text-gray-700 mb-2"
+                      >
+                        Plano de Saúde
+                      </label>
+                      <input
+                        type="text"
+                        id="plano_saude"
+                        name="plano_saude"
+                        value={formData.plano_saude || ""}
+                        onChange={handleChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Nome do plano de saúde"
+                      />
+                    </div>
+
+                    <div>
+                      <label
+                        htmlFor="atestado_medico_validade"
+                        className="block text-sm font-medium text-gray-700 mb-2"
+                      >
+                        Validade do Atestado Médico
+                      </label>
+                      <input
+                        type="date"
+                        id="atestado_medico_validade"
+                        name="atestado_medico_validade"
+                        value={formData.atestado_medico_validade || ""}
+                        onChange={handleChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+
+                    <div className="md:col-span-2">
+                      <label
+                        htmlFor="alergias"
+                        className="block text-sm font-medium text-gray-700 mb-2"
+                      >
+                        Alergias
+                      </label>
+                      <textarea
+                        id="alergias"
+                        name="alergias"
+                        value={formData.alergias || ""}
+                        onChange={handleChange}
+                        rows={2}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Descreva alergias conhecidas"
+                      />
+                    </div>
+
+                    <div className="md:col-span-2">
+                      <label
+                        htmlFor="medicamentos_uso_continuo"
+                        className="block text-sm font-medium text-gray-700 mb-2"
+                      >
+                        Medicamentos de Uso Contínuo
+                      </label>
+                      <textarea
+                        id="medicamentos_uso_continuo"
+                        name="medicamentos_uso_continuo"
+                        value={formData.medicamentos_uso_continuo || ""}
+                        onChange={handleChange}
+                        rows={2}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Liste medicamentos de uso contínuo"
+                      />
+                    </div>
+
+                    <div className="md:col-span-2">
+                      <label
+                        htmlFor="restricoes_medicas"
+                        className="block text-sm font-medium text-gray-700 mb-2"
+                      >
+                        Restrições Médicas
+                      </label>
+                      <textarea
+                        id="restricoes_medicas"
+                        name="restricoes_medicas"
+                        value={formData.restricoes_medicas || ""}
+                        onChange={handleChange}
+                        rows={2}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Descreva restrições médicas para atividades físicas"
+                      />
+                    </div>
+
+                    <div className="md:col-span-2">
+                      <label
+                        htmlFor="observacoes_medicas"
+                        className="block text-sm font-medium text-gray-700 mb-2"
+                      >
+                        Observações Médicas
+                      </label>
+                      <textarea
+                        id="observacoes_medicas"
+                        name="observacoes_medicas"
+                        value={formData.observacoes_medicas || ""}
+                        onChange={handleChange}
+                        rows={3}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Outras observações médicas relevantes"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Dados Financeiros */}
+                <div className="mt-6 bg-green-50 p-4 rounded-lg">
+                  <h4 className="text-md font-medium text-gray-900 mb-3">
+                    💰 Dados Financeiros
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label
+                        htmlFor="dia_vencimento"
+                        className="block text-sm font-medium text-gray-700 mb-2"
+                      >
+                        Dia de Vencimento
+                      </label>
+                      <input
+                        type="number"
+                        id="dia_vencimento"
+                        name="dia_vencimento"
+                        value={formData.dia_vencimento || ""}
+                        onChange={handleChange}
+                        min="1"
+                        max="31"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Ex: 10"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        Dia do mês para vencimento
+                      </p>
+                    </div>
+
+                    <div>
+                      <label
+                        htmlFor="valor_mensalidade"
+                        className="block text-sm font-medium text-gray-700 mb-2"
+                      >
+                        Valor da Mensalidade
+                      </label>
+                      <input
+                        type="number"
+                        id="valor_mensalidade"
+                        name="valor_mensalidade"
+                        value={formData.valor_mensalidade || ""}
+                        onChange={handleChange}
+                        step="0.01"
+                        min="0"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Ex: 150.00"
+                      />
+                    </div>
+
+                    <div>
+                      <label
+                        htmlFor="desconto_percentual"
+                        className="block text-sm font-medium text-gray-700 mb-2"
+                      >
+                        Desconto (%)
+                      </label>
+                      <input
+                        type="number"
+                        id="desconto_percentual"
+                        name="desconto_percentual"
+                        value={formData.desconto_percentual || 0}
+                        onChange={handleChange}
+                        step="0.01"
+                        min="0"
+                        max="100"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Ex: 10"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Observações Gerais */}
+                <div className="mt-6">
+                  <label
+                    htmlFor="observacoes"
+                    className="block text-sm font-medium text-gray-700 mb-2"
+                  >
+                    📝 Observações Gerais
+                  </label>
+                  <textarea
+                    id="observacoes"
+                    name="observacoes"
+                    value={formData.observacoes || ""}
+                    onChange={handleChange}
+                    rows={4}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Observações adicionais sobre o aluno"
+                  />
+                </div>
+
+                {/* LGPD */}
+                <div className="mt-6 bg-gray-50 p-4 rounded-lg">
+                  <h4 className="text-md font-medium text-gray-900 mb-3">
+                    🔒 Consentimentos LGPD
+                  </h4>
+                  <div className="space-y-3">
+                    <div className="flex items-start">
+                      <input
+                        type="checkbox"
+                        id="consent_lgpd"
+                        name="consent_lgpd"
+                        checked={formData.consent_lgpd || false}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            consent_lgpd: e.target.checked,
+                          })
+                        }
+                        className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                      />
+                      <label
+                        htmlFor="consent_lgpd"
+                        className="ml-3 text-sm text-gray-700"
+                      >
+                        Autorizo o uso dos meus dados pessoais conforme a LGPD
+                        (Lei Geral de Proteção de Dados)
+                      </label>
+                    </div>
+
+                    <div className="flex items-start">
+                      <input
+                        type="checkbox"
+                        id="consent_imagem"
+                        name="consent_imagem"
+                        checked={formData.consent_imagem || false}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            consent_imagem: e.target.checked,
+                          })
+                        }
+                        className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                      />
+                      <label
+                        htmlFor="consent_imagem"
+                        className="ml-3 text-sm text-gray-700"
+                      >
+                        Autorizo o uso de imagem para divulgação nas redes
+                        sociais e materiais de marketing
+                      </label>
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
 
@@ -1774,6 +2209,19 @@ export default function MeuPerfilPage() {
                           ? "⏳ Em Homologação"
                           : "❌ Inativo"}
                       </span>
+                    ) : user?.perfis?.includes("GERENTE_UNIDADE") &&
+                      dadosGerente ? (
+                      <span
+                        className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                          dadosGerente.ativo && user?.ativo
+                            ? "bg-green-100 text-green-800"
+                            : "bg-red-100 text-red-800"
+                        }`}
+                      >
+                        {dadosGerente.ativo && user?.ativo
+                          ? "✅ Ativo"
+                          : "❌ Inativo"}
+                      </span>
                     ) : (
                       <span
                         className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
@@ -1804,16 +2252,61 @@ export default function MeuPerfilPage() {
                   >
                     Senha Atual
                   </label>
-                  <input
-                    type="password"
-                    id="senha_atual"
-                    name="senha_atual"
-                    value={formData.senha_atual || ""}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Digite sua senha atual"
-                    autoComplete="current-password"
-                  />
+                  <div className="relative">
+                    <input
+                      type={showSenhaAtual ? "text" : "password"}
+                      id="senha_atual"
+                      name="senha_atual"
+                      value={formData.senha_atual || ""}
+                      onChange={handleChange}
+                      className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="Digite sua senha atual"
+                      autoComplete="current-password"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowSenhaAtual(!showSenhaAtual)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
+                      tabIndex={-1}
+                    >
+                      {showSenhaAtual ? (
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          strokeWidth={1.5}
+                          stroke="currentColor"
+                          className="w-5 h-5"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88"
+                          />
+                        </svg>
+                      ) : (
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          strokeWidth={1.5}
+                          stroke="currentColor"
+                          className="w-5 h-5"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z"
+                          />
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                          />
+                        </svg>
+                      )}
+                    </button>
+                  </div>
                 </div>
 
                 <div>
@@ -1823,17 +2316,62 @@ export default function MeuPerfilPage() {
                   >
                     Nova Senha
                   </label>
-                  <input
-                    type="password"
-                    id="nova_senha"
-                    name="nova_senha"
-                    value={formData.nova_senha || ""}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Digite a nova senha"
-                    autoComplete="new-password"
-                    minLength={6}
-                  />
+                  <div className="relative">
+                    <input
+                      type={showNovaSenha ? "text" : "password"}
+                      id="nova_senha"
+                      name="nova_senha"
+                      value={formData.nova_senha || ""}
+                      onChange={handleChange}
+                      className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="Digite a nova senha"
+                      autoComplete="new-password"
+                      minLength={6}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowNovaSenha(!showNovaSenha)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
+                      tabIndex={-1}
+                    >
+                      {showNovaSenha ? (
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          strokeWidth={1.5}
+                          stroke="currentColor"
+                          className="w-5 h-5"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88"
+                          />
+                        </svg>
+                      ) : (
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          strokeWidth={1.5}
+                          stroke="currentColor"
+                          className="w-5 h-5"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z"
+                          />
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                          />
+                        </svg>
+                      )}
+                    </button>
+                  </div>
                 </div>
 
                 <div>
@@ -1843,17 +2381,62 @@ export default function MeuPerfilPage() {
                   >
                     Confirmar Nova Senha
                   </label>
-                  <input
-                    type="password"
-                    id="confirmar_senha"
-                    name="confirmar_senha"
-                    value={formData.confirmar_senha || ""}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Confirme a nova senha"
-                    autoComplete="new-password"
-                    minLength={6}
-                  />
+                  <div className="relative">
+                    <input
+                      type={showConfirmarSenha ? "text" : "password"}
+                      id="confirmar_senha"
+                      name="confirmar_senha"
+                      value={formData.confirmar_senha || ""}
+                      onChange={handleChange}
+                      className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="Confirme a nova senha"
+                      autoComplete="new-password"
+                      minLength={6}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmarSenha(!showConfirmarSenha)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
+                      tabIndex={-1}
+                    >
+                      {showConfirmarSenha ? (
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          strokeWidth={1.5}
+                          stroke="currentColor"
+                          className="w-5 h-5"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88"
+                          />
+                        </svg>
+                      ) : (
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          strokeWidth={1.5}
+                          stroke="currentColor"
+                          className="w-5 h-5"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z"
+                          />
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                          />
+                        </svg>
+                      )}
+                    </button>
+                  </div>
                 </div>
 
                 <p className="text-xs text-gray-500">

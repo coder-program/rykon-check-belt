@@ -4,7 +4,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource } from 'typeorm';
+import { Repository, DataSource, EntityManager, In } from 'typeorm';
 import { FaixaDef } from './entities/faixa-def.entity';
 import { AlunoFaixa } from './entities/aluno-faixa.entity';
 import { AlunoFaixaGrau, OrigemGrau } from './entities/aluno-faixa-grau.entity';
@@ -108,11 +108,24 @@ export class GraduacaoService {
     const proximaFaixa = await this.getProximaFaixa(faixaAtiva.faixaDef.id);
 
     // Calcular tempo na faixa
+    // Prioridade: data_ultima_graduacao > dt_inicio da faixa ativa
     const agora = new Date();
-    const dataInicio =
-      faixaAtiva.dt_inicio instanceof Date
-        ? faixaAtiva.dt_inicio
-        : new Date(faixaAtiva.dt_inicio);
+    let dataInicio: Date;
+
+    if (aluno.data_ultima_graduacao) {
+      // Se tem data_ultima_graduacao, usar ela como referência
+      dataInicio =
+        aluno.data_ultima_graduacao instanceof Date
+          ? aluno.data_ultima_graduacao
+          : new Date(aluno.data_ultima_graduacao);
+    } else {
+      // Caso contrário, usar dt_inicio da faixa ativa
+      dataInicio =
+        faixaAtiva.dt_inicio instanceof Date
+          ? faixaAtiva.dt_inicio
+          : new Date(faixaAtiva.dt_inicio);
+    }
+
     const tempoNaFaixa = agora.getTime() - dataInicio.getTime();
     const diasNaFaixa = Math.floor(tempoNaFaixa / (1000 * 60 * 60 * 24));
 
@@ -244,38 +257,47 @@ export class GraduacaoService {
 
     // Usar transação para garantir consistência
     return await this.dataSource.transaction(async (manager) => {
-      // 1. Finalizar faixa atual
-      faixaAtiva.ativa = false;
-      faixaAtiva.dt_fim = new Date();
-      await manager.save(faixaAtiva);
+      const aprovado = dto.aprovarDireto || false;
 
-      // 2. Criar nova faixa ativa
-      const novaFaixa = manager.create(AlunoFaixa, {
-        aluno_id: alunoId,
-        faixa_def_id: dto.faixaDestinoId,
-        ativa: true,
-        dt_inicio: new Date(),
-        graus_atual: 0,
-        presencas_no_ciclo: 0,
-        presencas_total_fx: 0,
-      });
-      await manager.save(novaFaixa);
+      // 1. Registrar graduação PRIMEIRO (antes de mexer nas faixas)
+      const graduacao = new AlunoGraduacao();
+      graduacao.aluno_id = alunoId;
+      graduacao.faixa_origem_id = faixaAtiva.faixa_def_id;
+      graduacao.faixa_destino_id = dto.faixaDestinoId;
+      graduacao.observacao = dto.observacao || null;
+      graduacao.tamanho_faixa = dto.tamanhoFaixa || null;
+      graduacao.concedido_por = dto.concedidoPor || null;
+      graduacao.aprovado = aprovado;
+      graduacao.dt_aprovacao = aprovado ? new Date() : null;
+      graduacao.aprovado_por = aprovado ? dto.concedidoPor || null : null;
 
-      // 3. Registrar graduação
-      const graduacao = manager.create(AlunoGraduacao, {
-        aluno_id: alunoId,
-        faixa_origem_id: faixaAtiva.faixa_def_id,
-        faixa_destino_id: dto.faixaDestinoId,
-        observacao: dto.observacao,
-        concedido_por: dto.concedidoPor,
-      });
       const graduacaoSalva = await manager.save(graduacao);
 
-      // 4. Atualizar campos na tabela Person (compatibilidade)
-      await manager.update(Person, alunoId, {
-        faixa_atual: faixaDestino.codigo,
-        grau_atual: 0,
-      });
+      // 2. SOMENTE se aprovado direto: trocar as faixas e atualizar Person
+      if (aprovado) {
+        // Finalizar faixa atual
+        faixaAtiva.ativa = false;
+        faixaAtiva.dt_fim = new Date();
+        await manager.save(faixaAtiva);
+
+        // Criar nova faixa ativa
+        const novaFaixa = manager.create(AlunoFaixa, {
+          aluno_id: alunoId,
+          faixa_def_id: dto.faixaDestinoId,
+          ativa: true,
+          dt_inicio: new Date(),
+          graus_atual: 0,
+          presencas_no_ciclo: 0,
+          presencas_total_fx: 0,
+        });
+        await manager.save(novaFaixa);
+
+        // Atualizar campos na tabela Person (compatibilidade)
+        await manager.update(Person, alunoId, {
+          faixa_atual: faixaDestino.codigo,
+          grau_atual: 0,
+        });
+      }
 
       return graduacaoSalva;
     });
@@ -425,6 +447,113 @@ export class GraduacaoService {
     query.orderBy('fd.ordem', 'ASC');
 
     return await query.getMany();
+  }
+
+  /**
+   * Lista apenas a próxima faixa válida para o aluno graduar
+   */
+  async listarProximaFaixaValida(alunoId: string): Promise<FaixaDef[]> {
+    // Buscar aluno e faixa atual
+    const aluno = await this.alunoRepository.findOne({
+      where: { id: alunoId },
+    });
+
+    if (!aluno) {
+      throw new NotFoundException('Aluno não encontrado');
+    }
+
+    const faixaAtiva = await this.getFaixaAtivaAluno(alunoId);
+
+    if (!faixaAtiva || !faixaAtiva.faixaDef) {
+      throw new NotFoundException('Aluno não possui faixa ativa');
+    }
+
+    const faixaAtual = faixaAtiva.faixaDef;
+    const grausAtuais = faixaAtiva.graus?.length || 0;
+
+    console.log('🔥 [BACKEND] Faixa atual:', {
+      nome: faixaAtual.nome_exibicao,
+      categoria: faixaAtual.categoria,
+      ordem: faixaAtual.ordem,
+      grausAtuais,
+    });
+
+    // Se tem menos de 4 graus, não pode graduar para próxima faixa
+    // Retorna array vazio
+    if (grausAtuais < 4) {
+      console.log('🔥 [BACKEND] Aluno tem menos de 4 graus - retornando vazio');
+      return [];
+    }
+
+    // Buscar a próxima faixa (ordem imediatamente superior)
+    const proximaFaixa = await this.faixaDefRepository.findOne({
+      where: {
+        categoria: faixaAtual.categoria,
+        ordem: faixaAtual.ordem + 1,
+        ativo: true,
+      },
+    });
+
+    console.log('🔥 [BACKEND] Busca próxima faixa:', {
+      categoria: faixaAtual.categoria,
+      ordemBuscada: faixaAtual.ordem + 1,
+      encontrou: !!proximaFaixa,
+      proximaFaixa: proximaFaixa
+        ? { nome: proximaFaixa.nome_exibicao, ordem: proximaFaixa.ordem }
+        : null,
+    });
+
+    return proximaFaixa ? [proximaFaixa] : [];
+  }
+
+  /**
+   * Listar próxima faixa válida para GRADUAÇÃO MANUAL
+   * NÃO valida quantidade de graus (permite graduar com menos de 4 graus)
+   */
+  async listarProximaFaixaValidaManual(alunoId: string): Promise<FaixaDef[]> {
+    // Buscar aluno e faixa atual
+    const aluno = await this.alunoRepository.findOne({
+      where: { id: alunoId },
+    });
+
+    if (!aluno) {
+      throw new NotFoundException('Aluno não encontrado');
+    }
+
+    const faixaAtiva = await this.getFaixaAtivaAluno(alunoId);
+
+    if (!faixaAtiva || !faixaAtiva.faixaDef) {
+      throw new NotFoundException('Aluno não possui faixa ativa');
+    }
+
+    const faixaAtual = faixaAtiva.faixaDef;
+
+    console.log('🔥 [BACKEND MANUAL] Faixa atual:', {
+      nome: faixaAtual.nome_exibicao,
+      categoria: faixaAtual.categoria,
+      ordem: faixaAtual.ordem,
+    });
+
+    // Buscar a próxima faixa (ordem imediatamente superior)
+    // SEM validar graus (graduação manual)
+    const proximaFaixa = await this.faixaDefRepository.findOne({
+      where: {
+        categoria: faixaAtual.categoria,
+        ordem: faixaAtual.ordem + 1,
+        ativo: true,
+      },
+    });
+
+    console.log('🔥 [BACKEND MANUAL] Busca próxima faixa:', {
+      categoria: faixaAtual.categoria,
+      ordemBuscada: faixaAtual.ordem + 1,
+      encontrou: !!proximaFaixa,
+      proximaFaixa: proximaFaixa
+        ? { nome: proximaFaixa.nome_exibicao, ordem: proximaFaixa.ordem }
+        : null,
+    });
+
+    return proximaFaixa ? [proximaFaixa] : [];
   }
 
   /**
@@ -1021,5 +1150,110 @@ export class GraduacaoService {
       tempoMinimo,
       faixaAtual: faixaAtiva.faixaDef.nome_exibicao,
     };
+  }
+
+  /**
+   * Lista graduações pendentes de aprovação
+   */
+  async listarGraduacoesPendentes() {
+    const graduacoes = await this.alunoGraduacaoRepository.find({
+      where: { aprovado: false },
+      relations: ['aluno', 'faixaOrigem', 'faixaDestino'],
+      order: { created_at: 'DESC' },
+    });
+
+    return graduacoes;
+  }
+
+  /**
+   * Lista graduações aprovadas
+   */
+  async listarGraduacoesAprovadas() {
+    const graduacoes = await this.alunoGraduacaoRepository.find({
+      where: { aprovado: true },
+      relations: ['aluno', 'faixaOrigem', 'faixaDestino'],
+      order: { dt_aprovacao: 'DESC' },
+    });
+
+    return graduacoes;
+  }
+
+  /**
+   * Aprova múltiplas graduações em massa
+   */
+  async aprovarGraduacoesEmMassa(graduacaoIds: string[], aprovadorId: string) {
+    return await this.dataSource.transaction(async (manager: EntityManager) => {
+      let aprovadorNome = 'Sistema';
+
+      // Só busca aprovador se for um UUID válido (não "sistema")
+      if (aprovadorId && aprovadorId !== 'sistema') {
+        const aprovador = await manager.findOne(Person, {
+          where: { id: aprovadorId },
+        });
+
+        if (aprovador) {
+          aprovadorNome = aprovador.nome_completo || 'Sistema';
+        }
+      }
+
+      const graduacoes = await manager.find(AlunoGraduacao, {
+        where: { id: In(graduacaoIds), aprovado: false },
+        relations: ['aluno', 'faixaDestino'],
+      });
+
+      if (graduacoes.length === 0) {
+        throw new NotFoundException('Nenhuma graduação pendente encontrada');
+      }
+
+      const now = new Date();
+
+      for (const graduacao of graduacoes) {
+        // Buscar a faixa ativa do aluno
+        const faixaAtiva = await manager.findOne(AlunoFaixa, {
+          where: { aluno_id: graduacao.aluno_id, ativa: true },
+        });
+
+        if (faixaAtiva) {
+          // Finalizar faixa atual
+          faixaAtiva.ativa = false;
+          faixaAtiva.dt_fim = now;
+          await manager.save(faixaAtiva);
+
+          // Criar nova faixa ativa
+          const novaFaixa = manager.create(AlunoFaixa, {
+            aluno_id: graduacao.aluno_id,
+            faixa_def_id: graduacao.faixa_destino_id,
+            ativa: true,
+            dt_inicio: now,
+            graus_atual: 0,
+            presencas_no_ciclo: 0,
+            presencas_total_fx: 0,
+          });
+          await manager.save(novaFaixa);
+        }
+
+        // Atualiza a graduação
+        await manager.update(AlunoGraduacao, graduacao.id, {
+          aprovado: true,
+          dt_aprovacao: now,
+          aprovado_por: aprovadorNome,
+        });
+
+        // Atualiza a faixa do aluno na tabela Person
+        await manager.update(Person, graduacao.aluno_id, {
+          faixa_atual: graduacao.faixaDestino.codigo,
+          grau_atual: 0,
+        });
+      }
+
+      return {
+        aprovadas: graduacoes.length,
+        graduacoes: graduacoes.map((g) => ({
+          id: g.id,
+          alunoId: g.aluno_id,
+          nomeAluno: g.aluno?.nome_completo,
+        })),
+      };
+    });
   }
 }

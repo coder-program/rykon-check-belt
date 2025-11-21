@@ -29,7 +29,6 @@ import {
   Clock,
   User,
   Calendar,
-  Filter,
   ArrowLeft,
 } from "lucide-react";
 import toast from "react-hot-toast";
@@ -62,17 +61,13 @@ export default function AprovacaoCheckinPage() {
     useState<PresencaPendente | null>(null);
   const [acao, setAcao] = useState<"aprovar" | "rejeitar" | null>(null);
   const [observacao, setObservacao] = useState("");
-  const [filtroData, setFiltroData] = useState("");
 
   // Query para buscar presenças pendentes
   const { data: presencasPendentes = [], isLoading } = useQuery({
-    queryKey: ["presencas-pendentes", filtroData],
+    queryKey: ["presencas-pendentes"],
     queryFn: async () => {
-      const params = new URLSearchParams();
-      if (filtroData) params.append("data", filtroData);
-
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/presenca/pendentes?${params}`,
+        `${process.env.NEXT_PUBLIC_API_URL}/presenca/pendentes`,
         {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -238,40 +233,6 @@ export default function AprovacaoCheckinPage() {
               Aprove ou rejeite check-ins realizados via tablet
             </p>
           </div>
-
-          {/* Filtros */}
-          <Card className="mb-4 md:mb-6">
-            <CardHeader className="pb-3 sm:pb-6">
-              <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
-                <Filter className="w-4 h-4 sm:w-5 sm:h-5" />
-                Filtros
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 items-stretch sm:items-end">
-                <div className="flex-1">
-                  <label className="text-xs sm:text-sm font-medium text-gray-700 mb-1 sm:mb-2 block">
-                    Data
-                  </label>
-                  <Input
-                    type="date"
-                    value={filtroData}
-                    onChange={(e) => setFiltroData(e.target.value)}
-                    className="w-full h-10 sm:h-10"
-                  />
-                </div>
-                {filtroData && (
-                  <Button
-                    variant="outline"
-                    onClick={() => setFiltroData("")}
-                    className="w-full sm:w-auto h-10 sm:h-10"
-                  >
-                    Limpar
-                  </Button>
-                )}
-              </div>
-            </CardContent>
-          </Card>
 
           {/* Stats Card */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-4 md:mb-6">

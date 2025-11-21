@@ -128,11 +128,19 @@ export default function ResponsavelDashboard() {
 
   // Buscar unidades
   const { data: unidades } = useQuery({
-    queryKey: ["unidades"],
+    queryKey: ["unidades-publicas-ativas-v2"],
     queryFn: async () => {
-      const data = await http("/unidades", { auth: true });
-      return data.items || [];
+      console.log("🔍 [RESPONSAVEL DASHBOARD] Buscando unidades ativas...");
+      const data = await http("/unidades/public/ativas", { auth: false });
+      console.log("✅ [RESPONSAVEL DASHBOARD] Unidades recebidas:", data);
+      console.log(
+        "📊 [RESPONSAVEL DASHBOARD] Total de unidades:",
+        data?.length || 0
+      );
+      return data || [];
     },
+    staleTime: 0,
+    gcTime: 0,
   });
 
   console.log("[RESPONSAVEL DASHBOARD] Estado:", {
@@ -670,7 +678,13 @@ export default function ResponsavelDashboard() {
       {showModal && (
         <DependenteForm
           formData={formData}
-          setFormData={(data) => setFormData(data)}
+          setFormData={(data) => {
+            console.log(
+              "📝 [RESPONSAVEL DASHBOARD] Atualizando formData:",
+              data
+            );
+            setFormData(data);
+          }}
           onSubmit={handleSubmit}
           onClose={() => {
             setShowModal(false);
@@ -692,7 +706,16 @@ export default function ResponsavelDashboard() {
             });
           }}
           isLoading={false}
-          unidades={unidades || []}
+          unidades={(() => {
+            console.log(
+              "🎯 [RESPONSAVEL DASHBOARD] Passando unidades para DependenteForm:",
+              {
+                total: unidades?.length || 0,
+                unidades: unidades,
+              }
+            );
+            return unidades || [];
+          })()}
           isEditMode={isEditMode}
         />
       )}

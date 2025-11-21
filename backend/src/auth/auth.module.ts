@@ -15,6 +15,7 @@ import { PeopleModule } from '../people/people.module';
 import { AuditModule } from '../audit/audit.module';
 import { EmailModule } from '../email/email.module';
 import { JwtAuthGuardAllowInactive } from './guards/jwt-auth-allow-inactive.guard';
+import { forwardRef } from '@nestjs/common';
 
 const controllers: any[] = [AuthController];
 if (process.env.GOOGLE_CLIENT_ID) {
@@ -51,7 +52,7 @@ if (process.env.GOOGLE_CLIENT_ID) {
       },
       inject: [ConfigService],
     }),
-    PeopleModule,
+    forwardRef(() => PeopleModule),
     AuditModule,
     EmailModule,
   ],

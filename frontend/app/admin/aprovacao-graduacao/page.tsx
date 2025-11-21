@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useAuth } from "@/app/auth/AuthContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
@@ -9,9 +9,12 @@ import {
   listarAlunosAptos,
   aprovarGraduacao,
   graduarAlunoManual,
-  listarFaixas,
-  listarFaixasValidasParaGraduacao,
+  listarFaixasValidasParaGraduacaoManual,
+  listarGraduacoesPendentes,
+  listarGraduacoesAprovadas,
+  aprovarGraduacoesEmMassa,
   type AlunoAptoGraduacao,
+  type GraduacaoDetalhada,
 } from "@/lib/graduacaoParametrosApi";
 import { listAlunos } from "@/lib/peopleApi";
 import {
@@ -51,10 +54,14 @@ export default function AprovacaoGraduacaoPage() {
   const [showAprovarModal, setShowAprovarModal] = useState(false);
   const [observacao, setObservacao] = useState("");
   // Estados para graduação manual
-  const [activeTab, setActiveTab] = useState<"automatica" | "manual">(
-    "automatica"
-  );
+  const [activeTab, setActiveTab] = useState<
+    "automatica" | "manual" | "pendentes" | "aprovados"
+  >("manual");
   const [searchAlunoManual, setSearchAlunoManual] = useState("");
+  const [filtroCategoria, setFiltroCategoria] = useState<
+    "todos" | "kids" | "adulto"
+  >("todos");
+  const [filtroFaixa, setFiltroFaixa] = useState<string>("todas");
   const [selectedAlunoManual, setSelectedAlunoManual] = useState<{
     id: string;
     nome: string;
@@ -68,6 +75,11 @@ export default function AprovacaoGraduacaoPage() {
 
   const [faixaDestinoId, setFaixaDestinoId] = useState("");
   const [observacaoManual, setObservacaoManual] = useState("");
+  const [tamanhoFaixa, setTamanhoFaixa] = useState("");
+  const [aprovarDireto, setAprovarDireto] = useState(false);
+  const [graduacoesSelecionadas, setGraduacoesSelecionadas] = useState<
+    string[]
+  >([]);
 
   // Verificar permissões
   const hasPerfil = (p: string) =>
@@ -97,36 +109,64 @@ export default function AprovacaoGraduacaoPage() {
   // Query para buscar todos os alunos (graduação manual)
   const todosAlunosQuery = useQuery({
     queryKey: ["todos-alunos-graduacao"],
-    queryFn: () => listAlunos({ pageSize: 1000, status: "ATIVO" }),
+    queryFn: async () => {
+      // Se for franqueado, buscar alunos de todas as unidades
+      // Se for gerente/professor, buscar apenas da unidade dele
+      const params: any = { pageSize: 1000, status: "ATIVO" };
+
+      // Não aplicar filtro de unidade se for franqueado (verá todas as unidades)
+      // O backend já filtra automaticamente baseado no perfil
+
+      return listAlunos(params);
+    },
     enabled: activeTab === "manual",
   });
 
   // Query para buscar faixas disponíveis (válidas para graduação)
   const faixasQuery = useQuery({
-    queryKey: ["faixas-graduacao", selectedAlunoManual?.id],
+    queryKey: [
+      "faixas-graduacao",
+      selectedAlunoManual?.id,
+      showGraduacaoManualModal,
+    ],
     queryFn: async () => {
       if (!selectedAlunoManual?.id) {
-        return await listarFaixas("ADULTO");
+        return [];
       }
 
       try {
-        // Buscar apenas faixas válidas para graduação (ordem superior à atual)
-        const faixasValidas = await listarFaixasValidasParaGraduacao(
+        // Buscar próxima faixa usando endpoint de graduação MANUAL (sem validar graus)
+        const faixasValidas = await listarFaixasValidasParaGraduacaoManual(
           selectedAlunoManual.id,
           "ADULTO"
         );
 
+        console.log("🎯 Faixas válidas retornadas:", faixasValidas);
         return faixasValidas;
       } catch (error) {
-        console.error(
-          "❌ Erro ao buscar faixas válidas, buscando todas:",
-          error
-        );
-        // Fallback: buscar todas as faixas
-        return await listarFaixas("ADULTO");
+        console.error("❌ Erro ao buscar faixas válidas:", error);
+        // Retorna array vazio em caso de erro
+        return [];
       }
     },
-    enabled: activeTab === "manual" && !!selectedAlunoManual,
+    enabled:
+      activeTab === "manual" &&
+      !!selectedAlunoManual &&
+      showGraduacaoManualModal,
+  });
+
+  // Query para graduações pendentes
+  const graduacoesPendentesQuery = useQuery({
+    queryKey: ["graduacoes-pendentes"],
+    queryFn: listarGraduacoesPendentes,
+    enabled: activeTab === "pendentes",
+  });
+
+  // Query para graduações aprovadas
+  const graduacoesAprovadasQuery = useQuery({
+    queryKey: ["graduacoes-aprovadas"],
+    queryFn: listarGraduacoesAprovadas,
+    enabled: activeTab === "aprovados",
   });
 
   // Mutations
@@ -156,24 +196,62 @@ export default function AprovacaoGraduacaoPage() {
       alunoId: string;
       faixaDestinoId: string;
       observacao?: string;
+      tamanhoFaixa?: string;
+      aprovarDireto?: boolean;
     }) =>
       graduarAlunoManual(data.alunoId, {
         faixaDestinoId: data.faixaDestinoId,
         observacao: data.observacao,
+        tamanhoFaixa: data.tamanhoFaixa,
+        aprovarDireto: data.aprovarDireto,
       }),
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["todos-alunos-graduacao"] });
       queryClient.invalidateQueries({ queryKey: ["alunos-aptos"] });
-      toast.success("Aluno graduado manualmente com sucesso!");
+      const mensagem = variables.aprovarDireto
+        ? "Aluno graduado e aprovado com sucesso!"
+        : "Graduação solicitada! Aguardando aprovação.";
+      toast.success(mensagem);
       setShowGraduacaoManualModal(false);
       setSelectedAlunoManual(null);
       setObservacaoManual("");
       setFaixaDestinoId("");
+      setTamanhoFaixa("");
+      setAprovarDireto(false);
     },
     onError: (error: Error) => {
       toast.error(error.message || "Erro ao graduar aluno");
     },
   });
+
+  // Mutation para aprovar graduações em massa
+  const aprovarEmMassaMutation = useMutation({
+    mutationFn: aprovarGraduacoesEmMassa,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["graduacoes-pendentes"] });
+      queryClient.invalidateQueries({ queryKey: ["graduacoes-aprovadas"] });
+      queryClient.invalidateQueries({ queryKey: ["todos-alunos-graduacao"] });
+      toast.success(
+        `${graduacoesSelecionadas.length} graduação(ões) aprovada(s) com sucesso!`
+      );
+      setGraduacoesSelecionadas([]);
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Erro ao aprovar graduações");
+    },
+  });
+
+  // Effect para selecionar automaticamente a primeira faixa válida quando as faixas forem carregadas
+  useEffect(() => {
+    if (
+      faixasQuery.data &&
+      faixasQuery.data.length > 0 &&
+      showGraduacaoManualModal
+    ) {
+      // Selecionar automaticamente a primeira faixa (próxima faixa em ordem)
+      setFaixaDestinoId(faixasQuery.data[0].id);
+    }
+  }, [faixasQuery.data, showGraduacaoManualModal]);
 
   const handleAprovar = (aluno: AlunoAptoGraduacao) => {
     if (!aluno.proxima_faixa_id) {
@@ -268,6 +346,162 @@ export default function AprovacaoGraduacaoPage() {
     return cores[cor] || "bg-gray-100 text-gray-800 border-gray-300";
   };
 
+  // Função para calcular categoria do aluno (Kids ou Adulto)
+  const calcularCategoria = (dataNascimento: string): "kids" | "adulto" => {
+    if (!dataNascimento) return "adulto";
+    const anoNascimento = new Date(dataNascimento).getFullYear();
+    const anoAtual = new Date().getFullYear();
+    const idade = anoAtual - anoNascimento;
+    return idade <= 15 ? "kids" : "adulto";
+  };
+
+  // Função para obter cor de fundo da faixa
+  const colorBgClass = (nome: string): string => {
+    const map: Record<string, string> = {
+      Branca: "bg-white",
+      Cinza: "bg-gray-400",
+      Preta: "bg-black",
+      Amarela: "bg-yellow-400",
+      Amarelo: "bg-yellow-400",
+      Laranja: "bg-orange-500",
+      Verde: "bg-green-600",
+      Azul: "bg-blue-600",
+      Roxa: "bg-purple-700",
+      Roxo: "bg-purple-700",
+      Marrom: "bg-amber-800",
+      Coral: "bg-red-500",
+      Vermelha: "bg-red-600",
+      // Variações com hífen
+      "Cinza-Branca": "bg-gray-400",
+      "Cinza-Preta": "bg-gray-400",
+      "Amarela-Branca": "bg-yellow-400",
+      "Amarela-Preta": "bg-yellow-400",
+      "Laranja-Branca": "bg-orange-500",
+      "Laranja-Preta": "bg-orange-500",
+      "Verde-Branca": "bg-green-600",
+      "Verde-Preta": "bg-green-600",
+      // Variações com underscore (do banco)
+      BRANCA: "bg-white",
+      CINZA: "bg-gray-400",
+      PRETA: "bg-black",
+      AMARELA: "bg-yellow-400",
+      LARANJA: "bg-orange-500",
+      VERDE: "bg-green-600",
+      AZUL: "bg-blue-600",
+      ROXA: "bg-purple-700",
+      MARROM: "bg-amber-800",
+      CINZA_BRANCA: "bg-gray-400",
+      CINZA_PRETA: "bg-gray-400",
+      AMARELA_BRANCA: "bg-yellow-400",
+      AMARELA_PRETA: "bg-yellow-400",
+      LARANJA_BRANCA: "bg-orange-500",
+      LARANJA_PRETA: "bg-orange-500",
+      VERDE_BRANCA: "bg-green-600",
+      VERDE_PRETA: "bg-green-600",
+      AZUL_BRANCA: "bg-blue-600",
+      AZUL_PRETA: "bg-blue-600",
+      // Variações lowercase
+      branca: "bg-white",
+      cinza: "bg-gray-400",
+      preta: "bg-black",
+      amarela: "bg-yellow-400",
+      laranja: "bg-orange-500",
+      verde: "bg-green-600",
+      azul: "bg-blue-600",
+      roxa: "bg-purple-700",
+      roxo: "bg-purple-700",
+      marrom: "bg-amber-800",
+    };
+    return map[nome] || "bg-gray-300";
+  };
+
+  // Função para verificar se é faixa kids e extrair padrão
+  const KIDS_BASES = ["Cinza", "Amarela", "Laranja", "Verde"];
+  const parseKidsPattern = (
+    faixa: string
+  ): {
+    isKids: boolean;
+    base?: string;
+    stripe?: "white" | "black" | null;
+  } => {
+    const raw = faixa.trim();
+    const lower = raw.toLowerCase();
+    const base = KIDS_BASES.find((b) => lower.startsWith(b.toLowerCase()));
+    if (!base) return { isKids: false };
+    const hasWhite = /e\s+branc[oa]/i.test(raw) || /\/\s*branc[ao]/i.test(raw);
+    const hasBlack = /e\s+pret[ao]/i.test(raw) || /\/\s*pret[ao]/i.test(raw);
+    return {
+      isKids: true,
+      base,
+      stripe: hasWhite ? "white" : hasBlack ? "black" : null,
+    };
+  };
+
+  // Função para obter segmentos principais da faixa
+  const getBeltMainSegments = (faixa: string): string[] => {
+    const raw = faixa.replace(/\s+/g, " ").trim();
+    // Suporta separadores: -, /, "e", " e "
+    const parts = raw.split(/\s*[-\/]\s*|\s+e\s+/i).map((p) => p.trim());
+    if (parts.length >= 2) return [parts[0], parts[1]];
+    return [raw];
+  };
+
+  // Componente visual da faixa
+  const BeltDisplay = ({
+    faixa,
+    graus = 0,
+  }: {
+    faixa: string;
+    graus?: number;
+  }) => {
+    const kids = parseKidsPattern(faixa);
+    const segments = kids.isKids
+      ? [kids.base as string]
+      : getBeltMainSegments(faixa);
+
+    return (
+      <div className="flex items-center w-28 h-4 rounded-sm overflow-hidden ring-1 ring-black/20 shadow-sm">
+        <div className="relative flex-1 h-full flex">
+          {segments.length === 2 ? (
+            <>
+              <div
+                className={`flex-1 h-full ${colorBgClass(segments[0])}`}
+              ></div>
+              <div
+                className={`flex-1 h-full ${colorBgClass(segments[1])}`}
+              ></div>
+            </>
+          ) : (
+            <div
+              className={`flex-1 h-full ${colorBgClass(segments[0])} ${
+                segments[0] === "Branca" ? "border border-gray-300" : ""
+              }`}
+            ></div>
+          )}
+          {kids.isKids && kids.stripe && (
+            <div
+              className={`absolute top-1/2 -translate-y-1/2 left-0 right-0 ${
+                kids.stripe === "white" ? "bg-white" : "bg-black"
+              } h-0.5`}
+            ></div>
+          )}
+        </div>
+        {graus > 0 && (
+          <div className="flex items-center justify-start bg-black h-full w-9 px-1 gap-0.5">
+            {[...Array(4)].map((_, i) => (
+              <div
+                key={i}
+                className={`h-2.5 w-1 rounded-sm ${
+                  i < graus ? "bg-white" : "bg-white/30"
+                }`}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   if (!podeAprovar) {
     return (
       <div className="min-h-screen bg-gray-50 p-6">
@@ -314,16 +548,6 @@ export default function AprovacaoGraduacaoPage() {
         <div className="mb-6 border-b border-gray-200">
           <nav className="-mb-px flex space-x-8">
             <button
-              onClick={() => setActiveTab("automatica")}
-              className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                activeTab === "automatica"
-                  ? "border-blue-500 text-blue-600"
-                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-              }`}
-            >
-              Graduação Automática (Por Parâmetros)
-            </button>
-            <button
               onClick={() => setActiveTab("manual")}
               className={`py-2 px-1 border-b-2 font-medium text-sm ${
                 activeTab === "manual"
@@ -331,7 +555,37 @@ export default function AprovacaoGraduacaoPage() {
                   : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
               }`}
             >
-              Graduação Manual (Sem Parâmetros)
+              Graduação Manual
+            </button>
+            <button
+              onClick={() => setActiveTab("automatica")}
+              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                activeTab === "automatica"
+                  ? "border-blue-500 text-blue-600"
+                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+              }`}
+            >
+              Graduação Automática
+            </button>
+            <button
+              onClick={() => setActiveTab("pendentes")}
+              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                activeTab === "pendentes"
+                  ? "border-blue-500 text-blue-600"
+                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+              }`}
+            >
+              Aprovar Graduações
+            </button>
+            <button
+              onClick={() => setActiveTab("aprovados")}
+              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                activeTab === "aprovados"
+                  ? "border-blue-500 text-blue-600"
+                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+              }`}
+            >
+              Relatório de Graduados
             </button>
           </nav>
         </div>
@@ -541,30 +795,23 @@ export default function AprovacaoGraduacaoPage() {
 
                           <div className="flex items-center gap-4 mb-3">
                             <div className="flex items-center gap-2">
-                              <span className="text-sm text-gray-700">
+                              <span className="text-sm text-gray-700 font-medium">
                                 Atual:
                               </span>
-                              <span
-                                className={`px-3 py-1 rounded-full text-sm border font-medium ${getFaixaCorClass(
-                                  aluno.faixa_atual_cor
-                                )}`}
-                              >
-                                {aluno.faixa_atual_nome} ({aluno.graus_atual}{" "}
-                                graus)
-                              </span>
+                              <BeltDisplay
+                                faixa={aluno.faixa_atual_nome}
+                                graus={aluno.graus_atual}
+                              />
                             </div>
-                            <span className="text-gray-400">→</span>
+                            <span className="text-gray-400 text-xl">→</span>
                             <div className="flex items-center gap-2">
-                              <span className="text-sm text-gray-700">
+                              <span className="text-sm text-gray-700 font-medium">
                                 Próxima:
                               </span>
-                              <span
-                                className={`px-3 py-1 rounded-full text-sm border font-medium ${getFaixaCorClass(
-                                  aluno.proxima_faixa_cor || "#FFFFFF"
-                                )}`}
-                              >
-                                {aluno.proxima_faixa_nome || "N/A"}
-                              </span>
+                              <BeltDisplay
+                                faixa={aluno.proxima_faixa_nome || "N/A"}
+                                graus={0}
+                              />
                             </div>
                           </div>
 
@@ -665,27 +912,27 @@ export default function AprovacaoGraduacaoPage() {
 
                   <div className="p-6">
                     <div className="mb-4">
-                      <div className="flex items-center justify-center gap-4 p-4 bg-gray-50 rounded-lg">
+                      <div className="flex items-center justify-center gap-6 p-6 bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg border border-gray-200">
                         <div className="text-center">
-                          <p className="text-sm text-gray-600">Faixa Atual</p>
-                          <span
-                            className={`px-3 py-1 rounded-full text-sm border ${getFaixaCorClass(
-                              selectedAluno.faixa_atual_cor
-                            )}`}
-                          >
-                            {selectedAluno.faixa_atual_nome}
-                          </span>
+                          <p className="text-sm font-medium text-gray-600 mb-2">
+                            Faixa Atual
+                          </p>
+                          <BeltDisplay
+                            faixa={selectedAluno.faixa_atual_nome}
+                            graus={selectedAluno.graus_atual}
+                          />
                         </div>
-                        <div className="text-gray-400">→</div>
+                        <div className="text-gray-400 text-2xl font-light">
+                          →
+                        </div>
                         <div className="text-center">
-                          <p className="text-sm text-gray-600">Nova Faixa</p>
-                          <span
-                            className={`px-3 py-1 rounded-full text-sm border ${getFaixaCorClass(
-                              selectedAluno.proxima_faixa_cor || "#FFFFFF"
-                            )}`}
-                          >
-                            {selectedAluno.proxima_faixa_nome || "N/A"}
-                          </span>
+                          <p className="text-sm font-medium text-gray-600 mb-2">
+                            Nova Faixa
+                          </p>
+                          <BeltDisplay
+                            faixa={selectedAluno.proxima_faixa_nome || "N/A"}
+                            graus={0}
+                          />
                         </div>
                       </div>
                     </div>
@@ -746,8 +993,61 @@ export default function AprovacaoGraduacaoPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="flex gap-4">
-                  <div className="flex-1">
+                {/* Filtros */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Categoria
+                    </label>
+                    <select
+                      value={filtroCategoria}
+                      onChange={(e) =>
+                        setFiltroCategoria(
+                          e.target.value as "todos" | "kids" | "adulto"
+                        )
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      <option value="todos">Todos</option>
+                      <option value="kids">Kids (≤15 anos)</option>
+                      <option value="adulto">Adulto (16+ anos)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Faixa Atual
+                    </label>
+                    <select
+                      value={filtroFaixa}
+                      onChange={(e) => setFiltroFaixa(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      <option value="todas">Todas as Faixas</option>
+                      <option value="BRANCA">Branca</option>
+                      <option value="CINZA_BRANCA">Cinza-Branca</option>
+                      <option value="CINZA">Cinza</option>
+                      <option value="CINZA_PRETA">Cinza-Preta</option>
+                      <option value="AMARELA_BRANCA">Amarela-Branca</option>
+                      <option value="AMARELA">Amarela</option>
+                      <option value="AMARELA_PRETA">Amarela-Preta</option>
+                      <option value="LARANJA_BRANCA">Laranja-Branca</option>
+                      <option value="LARANJA">Laranja</option>
+                      <option value="LARANJA_PRETA">Laranja-Preta</option>
+                      <option value="VERDE_BRANCA">Verde-Branca</option>
+                      <option value="VERDE">Verde</option>
+                      <option value="VERDE_PRETA">Verde-Preta</option>
+                      <option value="AZUL">Azul</option>
+                      <option value="ROXA">Roxa</option>
+                      <option value="MARROM">Marrom</option>
+                      <option value="PRETA">Preta</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Buscar por Nome
+                    </label>
                     <input
                       type="text"
                       placeholder="Digite o nome do aluno..."
@@ -756,44 +1056,64 @@ export default function AprovacaoGraduacaoPage() {
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
                   </div>
+                </div>
+
+                <div className="flex gap-4">
                   <button
                     onClick={() => setShowGraduacaoManualModal(true)}
                     disabled={!selectedAlunoManual}
                     className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Graduar
+                    Graduar Aluno Selecionado
                   </button>
                 </div>
 
                 {/* Lista de Alunos Filtrados */}
-                {searchAlunoManual && (
-                  <div className="border border-gray-200 rounded-lg max-h-60 overflow-y-auto">
-                    {todosAlunosQuery.data?.items
-                      ?.filter((aluno) =>
-                        aluno.nome_completo
-                          ?.toLowerCase()
-                          ?.includes(searchAlunoManual.toLowerCase())
-                      )
-                      .map((aluno) => (
+                <div className="border border-gray-200 rounded-lg max-h-96 overflow-y-auto">
+                  {todosAlunosQuery.data?.items
+                    ?.filter((aluno) => {
+                      // Filtro por nome
+                      const matchNome = searchAlunoManual
+                        ? aluno.nome_completo
+                            ?.toLowerCase()
+                            ?.includes(searchAlunoManual.toLowerCase())
+                        : true;
+
+                      // Filtro por categoria
+                      const categoria = calcularCategoria(
+                        aluno.data_nascimento
+                      );
+                      const matchCategoria =
+                        filtroCategoria === "todos" ||
+                        filtroCategoria === categoria;
+
+                      // Filtro por faixa
+                      const matchFaixa =
+                        filtroFaixa === "todas" ||
+                        aluno.faixa_atual === filtroFaixa;
+
+                      return matchNome && matchCategoria && matchFaixa;
+                    })
+                    .map((aluno) => {
+                      const faixaAtiva =
+                        aluno.faixas?.find((f) => f.ativa) || aluno.faixas?.[0];
+                      const faixaNome =
+                        faixaAtiva?.faixaDef?.nome_exibicao ||
+                        aluno.faixa_atual?.replace(/_/g, " ") ||
+                        "Sem faixa";
+                      const faixaCor =
+                        faixaAtiva?.faixaDef?.cor_hex ||
+                        getFaixaCorByEnum(aluno.faixa_atual) ||
+                        "#FFFFFF";
+                      const grausAtual = faixaAtiva?.graus || 0;
+                      const categoria = calcularCategoria(
+                        aluno.data_nascimento
+                      );
+
+                      return (
                         <div
                           key={aluno.id}
                           onClick={() => {
-                            // Debug log para verificar estrutura dos dados
-
-                            // Buscar faixa ativa primeiro, senão usar faixa_atual enum
-                            const faixaAtiva =
-                              aluno.faixas?.find((f) => f.ativa) ||
-                              aluno.faixas?.[0];
-
-                            const faixaNome =
-                              faixaAtiva?.faixaDef?.nome_exibicao ||
-                              aluno.faixa_atual?.replace(/_/g, " ") ||
-                              "Sem faixa";
-                            const faixaCor =
-                              faixaAtiva?.faixaDef?.cor_hex ||
-                              getFaixaCorByEnum(aluno.faixa_atual) ||
-                              "#FFFFFF";
-
                             setSelectedAlunoManual({
                               id: aluno.id,
                               nome: aluno.nome_completo,
@@ -805,45 +1125,59 @@ export default function AprovacaoGraduacaoPage() {
                             });
                             setSearchAlunoManual(aluno.nome_completo);
                           }}
-                          className={`p-3 border-b border-gray-100 last:border-b-0 cursor-pointer hover:bg-gray-50 ${
+                          className={`p-3 border-b border-gray-100 last:border-b-0 cursor-pointer hover:bg-gray-50 transition-colors ${
                             selectedAlunoManual?.id === aluno.id
                               ? "bg-blue-50"
                               : ""
                           }`}
                         >
-                          <div className="flex justify-between items-center">
-                            <div>
-                              <p className="font-medium">
+                          <div className="flex justify-between items-center gap-4">
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-gray-900 truncate">
                                 {aluno.nome_completo}
                               </p>
-                              <p className="text-sm text-gray-500">
-                                Faixa:{" "}
-                                {(() => {
-                                  const faixaAtiva =
-                                    aluno.faixas?.find((f) => f.ativa) ||
-                                    aluno.faixas?.[0];
-                                  return (
-                                    faixaAtiva?.faixaDef?.nome_exibicao ||
-                                    aluno.faixa_atual?.replace(/_/g, " ") ||
-                                    "Sem faixa"
-                                  );
-                                })()}{" "}
-                                | Unidade:{" "}
-                                {aluno.unidade?.nome || "Sem unidade"}
+                              <p className="text-sm text-gray-500 mt-0.5">
+                                Unidade: {aluno.unidade?.nome || "Sem unidade"}{" "}
+                                |
+                                <span
+                                  className={`ml-1 font-medium ${
+                                    categoria === "kids"
+                                      ? "text-blue-600"
+                                      : "text-green-600"
+                                  }`}
+                                >
+                                  {categoria === "kids" ? "Kids" : "Adulto"}
+                                </span>
+                                {aluno.data_nascimento && (
+                                  <>
+                                    {" | "}
+                                    <span className="text-gray-600">
+                                      Nasc:{" "}
+                                      {new Date(
+                                        aluno.data_nascimento
+                                      ).toLocaleDateString("pt-BR")}
+                                    </span>
+                                  </>
+                                )}
                               </p>
                             </div>
-                            <div
-                              className={`px-2 py-1 rounded text-xs font-medium border ${getFaixaCorClass(
-                                aluno.faixa_cor
-                              )}`}
-                            >
-                              {aluno.faixa_nome}
+                            <div className="flex-shrink-0">
+                              <BeltDisplay
+                                faixa={faixaNome}
+                                graus={grausAtual}
+                              />
                             </div>
                           </div>
                         </div>
-                      ))}
-                  </div>
-                )}
+                      );
+                    })}
+
+                  {todosAlunosQuery.data?.items?.length === 0 && (
+                    <div className="p-8 text-center text-gray-500">
+                      Nenhum aluno encontrado
+                    </div>
+                  )}
+                </div>
               </CardContent>
             </Card>
 
@@ -860,16 +1194,14 @@ export default function AprovacaoGraduacaoPage() {
                       <p className="font-medium">{selectedAlunoManual.nome}</p>
                     </div>
                     <div>
-                      <p className="text-sm text-gray-500">Faixa Atual</p>
-                      <div className="flex items-center gap-2">
-                        <div
-                          className={`px-2 py-1 rounded text-xs font-medium border ${getFaixaCorClass(
-                            selectedAlunoManual.faixa_cor
-                          )}`}
-                        >
-                          {selectedAlunoManual.faixa_nome}
-                        </div>
-                      </div>
+                      <p className="text-sm text-gray-500 mb-2">Faixa Atual</p>
+                      <p className="text-base font-semibold text-gray-900 mb-1">
+                        {selectedAlunoManual.faixa_nome}
+                      </p>
+                      <BeltDisplay
+                        faixa={selectedAlunoManual.faixa_nome}
+                        graus={0}
+                      />
                     </div>
                     <div>
                       <p className="text-sm text-gray-500">Unidade</p>
@@ -919,6 +1251,190 @@ export default function AprovacaoGraduacaoPage() {
           </div>
         )}
 
+        {/* Conteúdo da Tab Pendentes */}
+        {activeTab === "pendentes" && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Clock className="h-5 w-5" />
+                Graduações Aguardando Aprovação
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {graduacoesPendentesQuery.isLoading ? (
+                <div className="text-center py-8">Carregando...</div>
+              ) : graduacoesPendentesQuery.data?.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  Nenhuma graduação pendente de aprovação
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {graduacoesSelecionadas.length > 0 && (
+                    <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg">
+                      <span className="text-sm font-medium">
+                        {graduacoesSelecionadas.length} selecionada(s)
+                      </span>
+                      <button
+                        onClick={() =>
+                          aprovarEmMassaMutation.mutate(graduacoesSelecionadas)
+                        }
+                        disabled={aprovarEmMassaMutation.isPending}
+                        className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium disabled:opacity-50"
+                      >
+                        Aprovar Selecionadas
+                      </button>
+                    </div>
+                  )}
+
+                  {graduacoesPendentesQuery.data?.map(
+                    (grad: GraduacaoDetalhada) => (
+                      <div
+                        key={grad.id}
+                        className="p-4 border rounded-lg hover:bg-gray-50"
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-start gap-3">
+                            <input
+                              type="checkbox"
+                              checked={graduacoesSelecionadas.includes(grad.id)}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setGraduacoesSelecionadas([
+                                    ...graduacoesSelecionadas,
+                                    grad.id,
+                                  ]);
+                                } else {
+                                  setGraduacoesSelecionadas(
+                                    graduacoesSelecionadas.filter(
+                                      (id) => id !== grad.id
+                                    )
+                                  );
+                                }
+                              }}
+                              className="mt-1"
+                            />
+                            <div>
+                              <p className="font-semibold">
+                                {grad.aluno?.nome_completo}
+                              </p>
+                              <p className="text-sm text-gray-600">
+                                {grad.faixaOrigem?.nome_exibicao} →{" "}
+                                {grad.faixaDestino?.nome_exibicao}
+                              </p>
+                              <p className="text-xs text-gray-500 mt-1">
+                                Solicitado em:{" "}
+                                {new Date(grad.created_at).toLocaleDateString(
+                                  "pt-BR"
+                                )}
+                              </p>
+                              {grad.tamanho_faixa && (
+                                <p className="text-xs text-gray-500">
+                                  Tamanho: {grad.tamanho_faixa}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Conteúdo da Tab Aprovados */}
+        {activeTab === "aprovados" && (
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <CheckCircle className="h-5 w-5 text-green-600" />
+                  Relatório de Graduações Aprovadas
+                </CardTitle>
+                <button
+                  onClick={() => window.print()}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium flex items-center gap-2"
+                >
+                  <svg
+                    className="h-4 w-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"
+                    />
+                  </svg>
+                  Imprimir Relatório
+                </button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {graduacoesAprovadasQuery.isLoading ? (
+                <div className="text-center py-8">Carregando...</div>
+              ) : graduacoesAprovadasQuery.data?.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  Nenhuma graduação aprovada ainda
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                          Aluno
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                          Faixa Origem
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                          Faixa Destino
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                          Tamanho
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                          Data Aprovação
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                      {graduacoesAprovadasQuery.data?.map(
+                        (grad: GraduacaoDetalhada) => (
+                          <tr key={grad.id}>
+                            <td className="px-4 py-3">
+                              {grad.aluno?.nome_completo}
+                            </td>
+                            <td className="px-4 py-3">
+                              {grad.faixaOrigem?.nome_exibicao}
+                            </td>
+                            <td className="px-4 py-3 font-semibold text-green-600">
+                              {grad.faixaDestino?.nome_exibicao}
+                            </td>
+                            <td className="px-4 py-3">
+                              {grad.tamanho_faixa || "-"}
+                            </td>
+                            <td className="px-4 py-3">
+                              {new Date(grad.dt_aprovacao).toLocaleDateString(
+                                "pt-BR"
+                              )}
+                            </td>
+                          </tr>
+                        )
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
         {/* Modal de Graduação Manual */}
         {showGraduacaoManualModal && selectedAlunoManual && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
@@ -930,6 +1446,22 @@ export default function AprovacaoGraduacaoPage() {
               </div>
 
               <div className="p-6 space-y-4">
+                {/* Faixa Atual */}
+                <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                  <p className="text-sm font-medium text-gray-600 mb-2">
+                    Faixa Atual do Aluno
+                  </p>
+                  <div className="space-y-2">
+                    <p className="text-base font-semibold text-gray-900">
+                      {selectedAlunoManual.faixa_nome}
+                    </p>
+                    <BeltDisplay
+                      faixa={selectedAlunoManual.faixa_nome}
+                      graus={0}
+                    />
+                  </div>
+                </div>
+
                 {/* Seleção de Faixa */}
                 <div>
                   <label className="text-sm font-medium text-gray-700 mb-2 block">
@@ -970,10 +1502,30 @@ export default function AprovacaoGraduacaoPage() {
                           value={faixa.id}
                           className="text-gray-900"
                         >
-                          {faixa.nome_exibicao} (Ordem: {faixa.ordem || "N/A"})
+                          {faixa.nome_exibicao}
                         </option>
                       ));
                     })()}
+                  </select>
+                </div>
+
+                {/* Tamanho da Faixa */}
+                <div>
+                  <label className="text-sm font-medium text-gray-700 mb-2 block">
+                    Tamanho da Faixa
+                  </label>
+                  <select
+                    value={tamanhoFaixa}
+                    onChange={(e) => setTamanhoFaixa(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="">Selecione o tamanho</option>
+                    <option value="PP">PP</option>
+                    <option value="P">P</option>
+                    <option value="M">M</option>
+                    <option value="G">G</option>
+                    <option value="GG">GG</option>
+                    <option value="XG">XG</option>
                   </select>
                 </div>
 
@@ -990,6 +1542,26 @@ export default function AprovacaoGraduacaoPage() {
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
                   />
                 </div>
+
+                {/* Aprovação */}
+                <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={aprovarDireto}
+                      onChange={(e) => setAprovarDireto(e.target.checked)}
+                      className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                    />
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">
+                        Aprovar graduação imediatamente
+                      </p>
+                      <p className="text-xs text-gray-600">
+                        Se desmarcado, a graduação ficará pendente de aprovação
+                      </p>
+                    </div>
+                  </label>
+                </div>
               </div>
 
               <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-200">
@@ -999,6 +1571,8 @@ export default function AprovacaoGraduacaoPage() {
                     setShowGraduacaoManualModal(false);
                     setFaixaDestinoId("");
                     setObservacaoManual("");
+                    setTamanhoFaixa("");
+                    setAprovarDireto(false);
                   }}
                   className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium transition-colors"
                 >
@@ -1014,6 +1588,8 @@ export default function AprovacaoGraduacaoPage() {
                       alunoId: selectedAlunoManual.id,
                       faixaDestinoId,
                       observacao: observacaoManual || undefined,
+                      tamanhoFaixa: tamanhoFaixa || undefined,
+                      aprovarDireto,
                     });
                   }}
                   disabled={!faixaDestinoId || graduarManualMutation.isPending}

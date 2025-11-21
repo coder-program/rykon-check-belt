@@ -239,11 +239,106 @@ export async function reprovarGraduacao(
   return response.json();
 }
 
+// Listar graduações pendentes de aprovação
+export async function listarGraduacoesPendentes(): Promise<
+  GraduacaoDetalhada[]
+> {
+  const token = localStorage.getItem("token");
+
+  const response = await fetch(`${API_URL}/graduacao/pendentes`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error("Erro ao buscar graduações pendentes");
+  }
+
+  return response.json();
+}
+
+// Listar graduações aprovadas (relatório)
+export async function listarGraduacoesAprovadas(): Promise<
+  GraduacaoDetalhada[]
+> {
+  const token = localStorage.getItem("token");
+
+  const response = await fetch(`${API_URL}/graduacao/aprovadas`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error("Erro ao buscar graduações aprovadas");
+  }
+
+  return response.json();
+}
+
+// Aprovar graduações em massa
+export async function aprovarGraduacoesEmMassa(
+  graduacaoIds: string[]
+): Promise<any> {
+  const token = localStorage.getItem("token");
+
+  const response = await fetch(`${API_URL}/graduacao/aprovar-massa`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ graduacaoIds }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || "Erro ao aprovar graduações");
+  }
+
+  return response.json();
+}
+
 // =============== GRADUAÇÃO MANUAL ===============
+
+export interface GraduacaoDetalhada {
+  id: string;
+  aluno_id: string;
+  faixa_origem_id: string;
+  faixa_destino_id: string;
+  dt_graduacao: string;
+  concedido_por: string;
+  observacao?: string;
+  aprovado: boolean;
+  aprovado_por?: string;
+  dt_aprovacao?: string;
+  tamanho_faixa?: string;
+  created_at: string;
+  aluno?: {
+    id: string;
+    nome_completo: string;
+    cpf?: string;
+  };
+  faixaOrigem?: {
+    id: string;
+    codigo: string;
+    nome_exibicao: string;
+    cor_hex: string;
+  };
+  faixaDestino?: {
+    id: string;
+    codigo: string;
+    nome_exibicao: string;
+    cor_hex: string;
+  };
+}
 
 export interface GraduarManualDto {
   faixaDestinoId: string;
   observacao?: string;
+  tamanhoFaixa?: string;
+  aprovarDireto?: boolean;
 }
 
 // Graduar aluno automaticamente (próxima faixa na ordem sequencial)
@@ -291,6 +386,8 @@ export async function graduarAlunoManual(
       body: JSON.stringify({
         faixaDestinoId: data.faixaDestinoId,
         observacao: data.observacao,
+        tamanhoFaixa: data.tamanhoFaixa,
+        aprovarDireto: data.aprovarDireto,
       }),
     }
   );
@@ -341,38 +438,70 @@ export async function listarFaixasValidasParaGraduacao(
 ): Promise<any[]> {
   const token = localStorage.getItem("token");
 
-  try {
-    // 1. Buscar a faixa atual do aluno
-    const statusResponse = await fetch(
-      `${API_URL}/graduacao/alunos/${alunoId}/status`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
-    );
+  console.log("🔥 [API] Buscando próxima faixa para aluno:", alunoId);
 
-    if (!statusResponse.ok) {
-      throw new Error("Não foi possível obter status do aluno");
+  try {
+    // Usar o novo endpoint que retorna apenas a próxima faixa válida
+    const url = `${API_URL}/graduacao/alunos/${alunoId}/proxima-faixa`;
+    console.log("🔥 [API] URL:", url);
+
+    const response = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    console.log("🔥 [API] Response status:", response.status);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("🔥 [API] Erro response:", errorText);
+      return [];
     }
 
-    const status = await statusResponse.json();
-    const faixaAtualOrdem = status.faixaAtual?.ordem || 0;
-
-    // 2. Buscar todas as faixas disponíveis
-    const todasFaixas = await listarFaixas(categoria);
-
-    // 3. Filtrar apenas as faixas com ordem SUPERIOR à atual
-    // Se o aluno está na ordem 2, só pode graduar para ordem 3, 4, 5, etc.
-    const faixasValidas = todasFaixas.filter(
-      (faixa: any) => (faixa.ordem || 0) > faixaAtualOrdem
-    );
-
-    return faixasValidas;
+    const data = await response.json();
+    console.log("🔥 [API] Faixas retornadas do backend:", data);
+    return data;
   } catch (error) {
-    console.error("Erro ao buscar faixas válidas para graduação:", error);
-    // Fallback: retorna todas as faixas se não conseguir determinar a atual
-    return await listarFaixas(categoria);
+    console.error("🔥 [API] Erro ao buscar faixas válidas:", error);
+    return [];
+  }
+}
+
+// Listar faixas válidas para graduação MANUAL (sem validar graus)
+export async function listarFaixasValidasParaGraduacaoManual(
+  alunoId: string,
+  categoria?: string
+): Promise<any[]> {
+  const token = localStorage.getItem("token");
+
+  console.log("🔥 [API MANUAL] Buscando próxima faixa para aluno:", alunoId);
+
+  try {
+    // Usar o endpoint de graduação manual que NÃO valida graus
+    const url = `${API_URL}/graduacao/alunos/${alunoId}/proxima-faixa-manual`;
+    console.log("🔥 [API MANUAL] URL:", url);
+
+    const response = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    console.log("🔥 [API MANUAL] Response status:", response.status);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("🔥 [API MANUAL] Erro response:", errorText);
+      return [];
+    }
+
+    const data = await response.json();
+    console.log("🔥 [API MANUAL] Faixas retornadas do backend:", data);
+    return data;
+  } catch (error) {
+    console.error("🔥 [API MANUAL] Erro ao buscar faixas válidas:", error);
+    return [];
   }
 }
 

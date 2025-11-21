@@ -219,6 +219,9 @@ export class UnidadesService {
 
   // Método PÚBLICO para listagem de unidades ativas (cadastro público)
   async listarPublicasAtivas(): Promise<any[]> {
+    console.log(
+      '🔍 [UNIDADES SERVICE] Executando query listarPublicasAtivas...',
+    );
     const q = `
       SELECT u.id, u.nome, u.status, u.endereco_id,
              e.cidade, e.estado, e.bairro
@@ -228,6 +231,9 @@ export class UnidadesService {
       ORDER BY u.nome ASC
     `;
     const res = await this.dataSource.query(q);
+    console.log(`✅ [UNIDADES SERVICE] Query retornou ${res.length} registros`);
+    console.log('📋 [UNIDADES SERVICE] Primeiras 3 unidades:', res.slice(0, 3));
+    console.log('📋 [UNIDADES SERVICE] Últimas 3 unidades:', res.slice(-3));
     return res;
   }
 

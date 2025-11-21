@@ -7,10 +7,15 @@ import {
   Matches,
   IsOptional,
   IsUUID,
+  IsEnum,
+  IsInt,
+  Min,
+  Max,
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { IsValidName } from '../../common/decorators/is-valid-name.decorator';
 import { IsValidCPF } from '../../common/decorators/is-valid-cpf.decorator';
+import { FaixaEnum } from '../../people/entities/aluno.entity';
 
 export class RegisterDto {
   @ApiProperty({ example: 'João da Silva' })
@@ -91,4 +96,70 @@ export class RegisterDto {
   @IsOptional()
   @IsUUID()
   unidade_id?: string;
+
+  @ApiProperty({
+    example: 'BRANCA',
+    required: false,
+    description: 'Faixa atual do aluno',
+  })
+  @IsOptional()
+  @IsEnum(FaixaEnum, { message: 'Faixa inválida' })
+  faixa_atual?: FaixaEnum;
+
+  @ApiProperty({
+    example: 0,
+    required: false,
+    description: 'Graus na faixa atual (0-4)',
+  })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(4)
+  graus?: number;
+
+  @ApiProperty({
+    example: '2024-01-15',
+    required: false,
+    description: 'Data da última graduação',
+  })
+  @IsOptional()
+  @IsDateString()
+  data_ultima_graduacao?: string;
+
+  @ApiProperty({
+    example: 'MASCULINO',
+    required: false,
+    description: 'Gênero do aluno',
+  })
+  @IsOptional()
+  @IsString()
+  genero?: string;
+
+  @ApiProperty({
+    example: 'Nome do Responsável',
+    required: false,
+    description: 'Nome do responsável (obrigatório para menores de 16 anos)',
+  })
+  @IsOptional()
+  @IsString()
+  responsavel_nome?: string;
+
+  @ApiProperty({
+    example: '12345678909',
+    required: false,
+    description: 'CPF do responsável (obrigatório para menores de 16 anos)',
+  })
+  @IsOptional()
+  @IsString()
+  responsavel_cpf?: string;
+
+  @ApiProperty({
+    example: '11999999999',
+    required: false,
+    description:
+      'Telefone do responsável (obrigatório para menores de 16 anos)',
+  })
+  @IsOptional()
+  @IsString()
+  responsavel_telefone?: string;
 }

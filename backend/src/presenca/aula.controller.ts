@@ -9,6 +9,7 @@ import {
   Query,
   UseGuards,
   Request,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -20,6 +21,40 @@ import { CreateAulaDto, UpdateAulaDto } from './dto/aula.dto';
 @UseGuards(JwtAuthGuard)
 export class AulaController {
   constructor(private readonly aulaService: AulaService) {}
+
+  /**
+   * 🔒 Helper para extrair unidade_id do usuário autenticado
+   * Verifica todos os perfis possíveis: ALUNO, PROFESSOR, GERENTE_UNIDADE, RECEPCIONISTA
+   */
+  private getUnidadeIdFromUser(req: any): string | null {
+    const user = req?.user;
+
+    if (!user) {
+      return null;
+    }
+
+    // Prioridade 1: Aluno
+    if (user.aluno?.unidade_id) {
+      return user.aluno.unidade_id;
+    }
+
+    // Prioridade 2: Professor
+    if (user.professor?.unidade_id) {
+      return user.professor.unidade_id;
+    }
+
+    // Prioridade 3: Gerente de Unidade
+    if (user.gerente_unidade?.unidade_id) {
+      return user.gerente_unidade.unidade_id;
+    }
+
+    // Prioridade 4: Recepcionista
+    if (user.recepcionista_unidade?.unidade_id) {
+      return user.recepcionista_unidade.unidade_id;
+    }
+
+    return null;
+  }
 
   @Post()
   @ApiOperation({ summary: 'Criar nova aula' })
@@ -38,16 +73,19 @@ export class AulaController {
     @Query('dia_semana') dia_semana?: string,
     @Request() req?: any,
   ) {
-    // REGRA: Cada aluno só pode ver aulas da sua unidade
-    let unidadeIdFiltro = unidade_id;
+    // 🔒 SEGURANÇA: Extrair unidade_id do usuário autenticado
+    const unidadeIdDoUsuario = this.getUnidadeIdFromUser(req);
 
-    // Se o usuário tem aluno associado, força a usar a unidade do aluno
-    if (req?.user?.aluno?.unidade_id) {
-      unidadeIdFiltro = req.user.aluno.unidade_id;
+    // 🔒 VALIDAÇÃO: Usuário DEVE ter uma unidade associada
+    if (!unidadeIdDoUsuario) {
+      throw new UnauthorizedException(
+        'Usuário não possui unidade associada. Por favor, contate o administrador.',
+      );
     }
 
+    // 🔒 SEGURANÇA: Ignorar qualquer unidade_id passada via query parameter
     return this.aulaService.findAll({
-      unidade_id: unidadeIdFiltro,
+      unidade_id: unidadeIdDoUsuario,
       ativo: ativo ? ativo === 'true' : undefined,
       dia_semana: dia_semana ? parseInt(dia_semana) : undefined,
     });
@@ -60,15 +98,19 @@ export class AulaController {
     @Query('unidade_id') unidade_id?: string,
     @Request() req?: any,
   ) {
-    // REGRA: Cada aluno só pode ver aulas da sua unidade
-    let unidadeIdFiltro = unidade_id;
+    // 🔒 SEGURANÇA: Extrair unidade_id do usuário autenticado
+    const unidadeIdDoUsuario = this.getUnidadeIdFromUser(req);
 
-    // Se o usuário tem aluno associado, força a usar a unidade do aluno
-    if (req?.user?.aluno?.unidade_id) {
-      unidadeIdFiltro = req.user.aluno.unidade_id;
+    // 🔒 VALIDAÇÃO: Usuário DEVE ter uma unidade associada
+    if (!unidadeIdDoUsuario) {
+      throw new UnauthorizedException(
+        'Usuário não possui unidade associada. Por favor, contate o administrador.',
+      );
     }
 
-    return this.aulaService.findHorariosDisponiveis(unidadeIdFiltro);
+    // 🔒 SEGURANÇA: Ignorar qualquer unidade_id passada via query parameter
+    // Sempre usar a unidade do usuário autenticado
+    return this.aulaService.findHorariosDisponiveis(unidadeIdDoUsuario);
   }
 
   @Get('hoje')
@@ -78,16 +120,19 @@ export class AulaController {
     @Query('unidade_id') unidade_id?: string,
     @Request() req?: any,
   ) {
-    // REGRA: Cada usuário só pode ver aulas da sua unidade
-    let unidadeIdFiltro = unidade_id;
+    // 🔒 SEGURANÇA: Extrair unidade_id do usuário autenticado
+    const unidadeIdDoUsuario = this.getUnidadeIdFromUser(req);
 
-    // Se o usuário tem aluno associado, força a usar a unidade do aluno
-    if (req?.user?.aluno?.unidade_id) {
-      unidadeIdFiltro = req.user.aluno.unidade_id;
+    // 🔒 VALIDAÇÃO: Usuário DEVE ter uma unidade associada
+    if (!unidadeIdDoUsuario) {
+      throw new UnauthorizedException(
+        'Usuário não possui unidade associada. Por favor, contate o administrador.',
+      );
     }
 
-    const count = await this.aulaService.countHoje(unidadeIdFiltro);
-    return { count, unidade_id: unidadeIdFiltro };
+    // 🔒 SEGURANÇA: Ignorar qualquer unidade_id passada via query parameter
+    const count = await this.aulaService.countHoje(unidadeIdDoUsuario);
+    return { count, unidade_id: unidadeIdDoUsuario };
   }
 
   @Get(':id')

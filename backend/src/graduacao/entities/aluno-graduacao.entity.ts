@@ -27,29 +27,32 @@ export class AlunoGraduacao {
   @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   dt_graduacao: Date;
 
-  @Column({ type: 'uuid', nullable: true })
-  concedido_por: string;
+  @Column({ type: 'varchar', nullable: true })
+  concedido_por: string | null;
 
   @Column({ type: 'text', nullable: true })
-  observacao: string;
+  observacao: string | null;
 
   @Column({ type: 'boolean', default: false })
   aprovado: boolean;
 
-  @Column({ type: 'uuid', nullable: true })
-  aprovado_por: string;
+  @Column({ type: 'varchar', nullable: true })
+  aprovado_por: string | null;
 
   @Column({ type: 'timestamp', nullable: true })
-  dt_aprovacao: Date;
+  dt_aprovacao: Date | null;
 
   @Column({ type: 'uuid', nullable: true })
-  parametro_id: string;
+  parametro_id: string | null;
 
   @Column({ type: 'timestamp', nullable: true })
-  solicitado_em: Date;
+  solicitado_em: Date | null;
 
   @Column({ type: 'text', nullable: true })
   observacao_aprovacao: string | null;
+
+  @Column({ type: 'varchar', length: 10, nullable: true })
+  tamanho_faixa: string | null;
 
   @CreateDateColumn()
   created_at: Date;

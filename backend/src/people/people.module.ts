@@ -5,6 +5,7 @@ import { ProfessoresController } from './controllers/professores.controller';
 import { FranqueadosController } from './controllers/franqueados.controller';
 import { UnidadesController } from './controllers/unidades.controller';
 import { RecepcionistaUnidadesController } from './controllers/recepcionista-unidades.controller';
+import { GerenteUnidadesController } from './controllers/gerente-unidades.controller';
 import { AlunosService } from './services/alunos.service';
 import { ProfessoresService } from './services/professores.service';
 import { FranqueadosService } from './services/franqueados.service';
@@ -60,6 +61,7 @@ import { Modalidade } from '../modalidades/entities/modalidade.entity';
     FranqueadosController,
     UnidadesController,
     RecepcionistaUnidadesController,
+    GerenteUnidadesController,
   ],
   providers: [
     AlunosService,

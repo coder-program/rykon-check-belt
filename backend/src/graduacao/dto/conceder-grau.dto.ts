@@ -31,6 +31,22 @@ export class GraduarFaixaDto {
 
   @ApiProperty({
     required: false,
+    description: 'Tamanho da faixa (P, M, G, GG, etc)',
+  })
+  @IsOptional()
+  @IsString()
+  tamanhoFaixa?: string;
+
+  @ApiProperty({
+    required: false,
+    description: 'Se true, aprova a graduação imediatamente',
+    default: false,
+  })
+  @IsOptional()
+  aprovarDireto?: boolean;
+
+  @ApiProperty({
+    required: false,
     description: 'ID do usuário que concedeu a graduação',
   })
   @IsOptional()

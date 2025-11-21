@@ -41,6 +41,40 @@ export class GraduacaoController {
     return await this.graduacaoService.listarFaixas(categoria);
   }
 
+  @Get('alunos/:alunoId/proxima-faixa')
+  @ApiOperation({
+    summary: 'Lista a próxima faixa válida para o aluno graduar',
+  })
+  @ApiResponse({ status: 200, description: 'Próxima faixa válida' })
+  @ApiResponse({
+    status: 404,
+    description: 'Aluno não encontrado ou sem faixa ativa',
+  })
+  async listarProximaFaixaValida(
+    @Param('alunoId', ParseUUIDPipe) alunoId: string,
+  ): Promise<FaixaDef[]> {
+    return await this.graduacaoService.listarProximaFaixaValida(alunoId);
+  }
+
+  @Get('alunos/:alunoId/proxima-faixa-manual')
+  @ApiOperation({
+    summary:
+      'Lista a próxima faixa válida para graduação MANUAL (sem validar graus)',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Próxima faixa válida para graduação manual',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Aluno não encontrado ou sem faixa ativa',
+  })
+  async listarProximaFaixaValidaManual(
+    @Param('alunoId', ParseUUIDPipe) alunoId: string,
+  ): Promise<FaixaDef[]> {
+    return await this.graduacaoService.listarProximaFaixaValidaManual(alunoId);
+  }
+
   @Get('faixas-definicao')
   @ApiOperation({ summary: 'Lista todas as definições de faixas' })
   @ApiResponse({ status: 200, description: 'Lista de definições de faixas' })
@@ -234,6 +268,41 @@ export class GraduacaoController {
       graduacaoId,
       userId,
       dto?.observacao,
+    );
+  }
+
+  @Get('pendentes')
+  @ApiOperation({ summary: 'Lista graduações pendentes de aprovação' })
+  @ApiResponse({ status: 200, description: 'Lista de graduações pendentes' })
+  async listarGraduacoesPendentes() {
+    return await this.graduacaoService.listarGraduacoesPendentes();
+  }
+
+  @Get('aprovadas')
+  @ApiOperation({ summary: 'Lista graduações aprovadas' })
+  @ApiResponse({ status: 200, description: 'Lista de graduações aprovadas' })
+  async listarGraduacoesAprovadas() {
+    return await this.graduacaoService.listarGraduacoesAprovadas();
+  }
+
+  @Post('aprovar-massa')
+  @ApiOperation({ summary: 'Aprova múltiplas graduações em massa' })
+  @ApiResponse({
+    status: 200,
+    description: 'Graduações aprovadas com sucesso',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Nenhuma graduação pendente encontrada',
+  })
+  async aprovarGraduacoesEmMassa(
+    @Body() dto: { graduacaoIds: string[] },
+    @Request() req?: any,
+  ) {
+    const aprovadorId = req?.user?.id || 'sistema';
+    return await this.graduacaoService.aprovarGraduacoesEmMassa(
+      dto.graduacaoIds,
+      aprovadorId,
     );
   }
 

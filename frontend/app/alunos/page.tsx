@@ -39,6 +39,15 @@ interface AlunoFormData {
   telefone_emergencia?: string;
   nome_contato_emergencia?: string;
   unidade_id: string;
+  // Endereço
+  cep?: string;
+  logradouro?: string;
+  numero?: string;
+  complemento?: string;
+  bairro?: string;
+  cidade?: string;
+  uf?: string;
+  // Matrícula
   data_matricula?: string;
   numero_matricula?: string;
   status?: StatusAluno;
@@ -52,9 +61,14 @@ interface AlunoFormData {
   observacoes_medicas?: string;
   alergias?: string;
   medicamentos_uso_continuo?: string;
+  plano_saude?: string;
+  atestado_medico_validade?: string;
+  restricoes_medicas?: string;
   dia_vencimento?: number;
   valor_mensalidade?: number;
   desconto_percentual?: number;
+  consent_lgpd?: boolean;
+  consent_imagem?: boolean;
   observacoes?: string;
 }
 
@@ -332,6 +346,15 @@ function AlunosContent() {
       telefone_emergencia: aluno.telefone_emergencia,
       nome_contato_emergencia: aluno.nome_contato_emergencia,
       unidade_id: aluno.unidade_id || "",
+      // Endereço
+      cep: aluno.cep,
+      logradouro: aluno.logradouro,
+      numero: aluno.numero,
+      complemento: aluno.complemento,
+      bairro: aluno.bairro,
+      cidade: aluno.cidade,
+      uf: aluno.uf,
+      // Matrícula
       data_matricula: aluno.data_matricula,
       numero_matricula: aluno.numero_matricula,
       status: aluno.status || "ATIVO",
@@ -345,9 +368,14 @@ function AlunosContent() {
       observacoes_medicas: aluno.observacoes_medicas,
       alergias: aluno.alergias,
       medicamentos_uso_continuo: aluno.medicamentos_uso_continuo,
+      plano_saude: aluno.plano_saude,
+      atestado_medico_validade: aluno.atestado_medico_validade,
+      restricoes_medicas: aluno.restricoes_medicas,
       dia_vencimento: aluno.dia_vencimento,
       valor_mensalidade: aluno.valor_mensalidade,
       desconto_percentual: aluno.desconto_percentual || 0,
+      consent_lgpd: aluno.consent_lgpd || false,
+      consent_imagem: aluno.consent_imagem || false,
       observacoes: aluno.observacoes,
     });
   };

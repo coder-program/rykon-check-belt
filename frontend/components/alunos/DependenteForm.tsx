@@ -1,7 +1,7 @@
 "use client";
 
-import React from "react";
-import { X } from "lucide-react";
+import { useEffect, useState } from "react";
+import { X, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,6 +12,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { http } from "@/lib/api";
+import { useQuery } from "@tanstack/react-query";
 
 type Genero = "MASCULINO" | "FEMININO" | "OUTRO";
 
@@ -81,8 +83,100 @@ export default function DependenteForm({
   unidades,
   isEditMode = false,
 }: DependenteFormProps) {
+  const [unidadeSearchTerm, setUnidadeSearchTerm] = useState("");
+  const [showUnidadeDropdown, setShowUnidadeDropdown] = useState(false);
+  const [erroIdade, setErroIdade] = useState<string>("");
+
+  // 🎨 Buscar faixas disponíveis do backend - APENAS INFANTIS para dependentes
+  const { data: faixas, isLoading: loadingFaixas } = useQuery({
+    queryKey: ["faixas-disponiveis-kids"],
+    queryFn: async () => {
+      console.log("🎨 Buscando faixas infantis...");
+      try {
+        const data = await http("/graduacao/faixas?categoria=INFANTIL", {
+          auth: true,
+        });
+        console.log("🎨 Faixas recebidas:", data);
+        return Array.isArray(data) ? data : [];
+      } catch (error) {
+        console.error("❌ Erro ao buscar faixas:", error);
+        return [];
+      }
+    },
+    staleTime: 5 * 60 * 1000, // Cache por 5 minutos
+    retry: 1,
+  });
+
+  // ✅ Validar idade - permitir apenas quem completa 15 anos ou menos no ano atual
+  useEffect(() => {
+    if (formData.data_nascimento) {
+      const dataNasc = new Date(formData.data_nascimento);
+      const anoAtual = new Date().getFullYear();
+      const anoNascimento = dataNasc.getFullYear();
+      const idadeNoAnoAtual = anoAtual - anoNascimento;
+
+      if (idadeNoAnoAtual > 15) {
+        setErroIdade(
+          `Apenas dependentes que fazem até 15 anos em ${anoAtual} podem ser cadastrados. Esta pessoa faz ${idadeNoAnoAtual} anos em ${anoAtual}.`
+        );
+      } else {
+        setErroIdade("");
+      }
+    } else {
+      setErroIdade("");
+    }
+  }, [formData.data_nascimento]);
+
+  // Sincronizar o campo de busca com a unidade selecionada
+  useEffect(() => {
+    if (formData.unidade_id && unidades.length > 0) {
+      const unidadeSelecionada = unidades.find(
+        (u) => u.id === formData.unidade_id
+      );
+      if (unidadeSelecionada) {
+        setUnidadeSearchTerm(unidadeSelecionada.nome);
+      }
+    }
+  }, [formData.unidade_id, unidades]);
+
+  // Fechar dropdown ao clicar fora
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (
+        !target.closest("#unidade_id") &&
+        !target.closest(".unidade-dropdown")
+      ) {
+        setShowUnidadeDropdown(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // Filtrar unidades baseado no termo de busca
+  const unidadesFiltradas = unidades.filter((unidade) => {
+    const searchLower = unidadeSearchTerm.toLowerCase();
+    return unidade.nome.toLowerCase().includes(searchLower);
+  });
+
+  // Obter nome da unidade selecionada
+  const getUnidadeNome = (unidadeId: string) => {
+    const unidade = unidades.find((u) => u.id === unidadeId);
+    return unidade ? unidade.nome : "";
+  };
+
   const handleChange = (field: keyof DependenteFormData, value: string) => {
+    console.log(
+      `📝 [DEPENDENTE FORM] handleChange chamado - campo: ${field}, valor:`,
+      value
+    );
     setFormData({ ...formData, [field]: value });
+    console.log(`✅ [DEPENDENTE FORM] FormData atualizado para ${field}:`, {
+      ...formData,
+      [field]: value,
+    });
   };
 
   const formatCPF = (value: string) => {
@@ -166,7 +260,15 @@ export default function DependenteForm({
                     handleChange("data_nascimento", e.target.value)
                   }
                   required
+                  className={erroIdade ? "border-red-500" : ""}
                 />
+                {erroIdade && (
+                  <p className="text-sm text-red-600 mt-1">{erroIdade}</p>
+                )}
+                <p className="text-xs text-gray-500 mt-1">
+                  Dependentes devem fazer até 15 anos em{" "}
+                  {new Date().getFullYear()}
+                </p>
               </div>
             </div>
 
@@ -194,23 +296,79 @@ export default function DependenteForm({
               <div>
                 <Label htmlFor="unidade_id">
                   Unidade <span className="text-red-500">*</span>
+                  {formData.unidade_id && (
+                    <span className="ml-2 text-xs text-green-600">
+                      ✓ Selecionada
+                    </span>
+                  )}
                 </Label>
-                <Select
-                  value={formData.unidade_id}
-                  onValueChange={(value) => handleChange("unidade_id", value)}
-                  required
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione a unidade" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {unidades.map((unidade) => (
-                      <SelectItem key={unidade.id} value={unidade.id}>
-                        {unidade.nome}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="relative">
+                  <Input
+                    id="unidade_id"
+                    type="text"
+                    placeholder="Digite para buscar a unidade..."
+                    value={unidadeSearchTerm}
+                    onChange={(e) => {
+                      const valorDigitado = e.target.value;
+                      setUnidadeSearchTerm(valorDigitado);
+                      setShowUnidadeDropdown(true);
+
+                      // Se o usuário apagar tudo MANUALMENTE, limpar a unidade selecionada
+                      // Só limpa se o campo estava preenchido antes (unidadeSearchTerm tinha valor)
+                      if (!valorDigitado && unidadeSearchTerm) {
+                        handleChange("unidade_id", "");
+                      }
+                    }}
+                    onFocus={() => setShowUnidadeDropdown(true)}
+                    onBlur={() => {
+                      // Ao perder o foco, verificar se o texto digitado corresponde a uma unidade
+                      setTimeout(() => {
+                        const unidadeExata = unidades.find(
+                          (u) =>
+                            u.nome.toLowerCase() ===
+                            unidadeSearchTerm.toLowerCase()
+                        );
+                        if (unidadeExata) {
+                          handleChange("unidade_id", unidadeExata.id);
+                        } else if (unidadeSearchTerm && !formData.unidade_id) {
+                          // Se digitou algo mas não selecionou, limpar
+                          setUnidadeSearchTerm("");
+                        }
+                      }, 200);
+                    }}
+                    required
+                  />
+                  {showUnidadeDropdown && unidadesFiltradas.length > 0 && (
+                    <div className="unidade-dropdown absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-xl max-h-60 overflow-y-auto">
+                      {unidadesFiltradas.map((unidade) => (
+                        <div
+                          key={unidade.id}
+                          onClick={() => {
+                            console.log(
+                              "🏢 [DEPENDENTE FORM] Unidade clicada:",
+                              {
+                                id: unidade.id,
+                                nome: unidade.nome,
+                              }
+                            );
+                            handleChange("unidade_id", unidade.id);
+                            console.log(
+                              "✅ [DEPENDENTE FORM] handleChange chamado com ID:",
+                              unidade.id
+                            );
+                            setUnidadeSearchTerm(unidade.nome);
+                            setShowUnidadeDropdown(false);
+                          }}
+                          className="px-4 py-3 hover:bg-gray-100 cursor-pointer transition-colors border-b border-gray-200 last:border-b-0"
+                        >
+                          <span className="font-medium text-gray-900">
+                            {unidade.nome}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -318,23 +476,29 @@ export default function DependenteForm({
               <div>
                 <Label htmlFor="faixa_atual">Faixa Atual</Label>
                 <Select
-                  value={formData.faixa_atual || "BRANCA"}
+                  value={formData.faixa_atual || "CINZA"}
                   onValueChange={(value) => handleChange("faixa_atual", value)}
+                  disabled={loadingFaixas}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione a faixa" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="BRANCA">Branca</SelectItem>
-                    <SelectItem value="CINZA">Cinza</SelectItem>
-                    <SelectItem value="AMARELA">Amarela</SelectItem>
-                    <SelectItem value="LARANJA">Laranja</SelectItem>
-                    <SelectItem value="VERDE">Verde</SelectItem>
-                    <SelectItem value="AZUL">Azul</SelectItem>
-                    <SelectItem value="ROXA">Roxa</SelectItem>
-                    <SelectItem value="MARROM">Marrom</SelectItem>
-                    <SelectItem value="VERMELHA">Vermelha</SelectItem>
-                    <SelectItem value="PRETA">Preta</SelectItem>
+                    {loadingFaixas ? (
+                      <SelectItem value="LOADING">
+                        Carregando faixas...
+                      </SelectItem>
+                    ) : faixas && faixas.length > 0 ? (
+                      faixas
+                        .sort((a: any, b: any) => a.ordem - b.ordem)
+                        .map((faixa: any) => (
+                          <SelectItem key={faixa.codigo} value={faixa.codigo}>
+                            {faixa.nome_exibicao}
+                          </SelectItem>
+                        ))
+                    ) : (
+                      <SelectItem value="CINZA">Cinza (padrão)</SelectItem>
+                    )}
                   </SelectContent>
                 </Select>
               </div>
@@ -658,7 +822,7 @@ export default function DependenteForm({
             <Button
               type="submit"
               className="flex-1 bg-blue-600 hover:bg-blue-700"
-              disabled={isLoading}
+              disabled={isLoading || !!erroIdade}
             >
               {isLoading
                 ? isEditMode

@@ -288,6 +288,12 @@ export class AlunosController {
     @Body(ValidationPipe) dto: UpdateAlunoDto,
     @Request() req,
   ) {
+    console.log('📝 [ALUNO PATCH CONTROLLER] DTO recebido:', dto);
+    console.log('📝 [ALUNO PATCH CONTROLLER] faixa_atual:', dto.faixa_atual);
+    console.log(
+      '📝 [ALUNO PATCH CONTROLLER] typeof faixa_atual:',
+      typeof dto.faixa_atual,
+    );
     const user = req?.user || null;
     return this.service.update(id, dto, user);
   }

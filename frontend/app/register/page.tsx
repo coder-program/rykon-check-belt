@@ -66,6 +66,12 @@ export default function RegisterPage() {
     genero: "", // Adicionar gênero
     perfil_id: "", // Adicionar perfil selecionado
     unidade_id: "", // Adicionar unidade selecionada
+    faixa_atual: "", // Faixa atual do aluno
+    graus: "0", // Graus na faixa atual
+    data_ultima_graduacao: "", // Data que pegou a faixa atual
+    responsavel_nome: "", // Nome do responsável (se menor de 18)
+    responsavel_cpf: "", // CPF do responsável (se menor de 18)
+    responsavel_telefone: "", // Telefone do responsável (se menor de 18)
   });
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -73,12 +79,39 @@ export default function RegisterPage() {
   const [loadingPerfis, setLoadingPerfis] = useState(true);
   const [unidades, setUnidades] = useState<Unidade[]>([]);
   const [loadingUnidades, setLoadingUnidades] = useState(true);
+  const [faixas, setFaixas] = useState<
+    Array<{ codigo: string; nome_exibicao: string; categoria: string }>
+  >([]);
+  const [loadingFaixas, setLoadingFaixas] = useState(true);
   const [cpfError, setCpfError] = useState("");
   const [telefoneError, setTelefoneError] = useState("");
+  const [responsavelCpfError, setResponsavelCpfError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isMenorDeIdade, setIsMenorDeIdade] = useState(false);
+  const [unidadeSearchTerm, setUnidadeSearchTerm] = useState("");
+  const [showUnidadeDropdown, setShowUnidadeDropdown] = useState(false);
 
   const router = useRouter();
+
+  // Função para calcular idade que vai completar no ano atual
+  const calcularIdade = (dataNascimento: string): number => {
+    if (!dataNascimento) return 0;
+    const hoje = new Date();
+    const nascimento = new Date(dataNascimento);
+    // Retorna a idade que vai completar no ano (ano atual - ano de nascimento)
+    return hoje.getFullYear() - nascimento.getFullYear();
+  };
+
+  // Verificar se é menor de 16 quando data de nascimento mudar
+  useEffect(() => {
+    if (formData.data_nascimento) {
+      const idade = calcularIdade(formData.data_nascimento);
+      setIsMenorDeIdade(idade <= 15);
+    } else {
+      setIsMenorDeIdade(false);
+    }
+  }, [formData.data_nascimento]);
 
   // Carregar unidades ativas disponíveis
   useEffect(() => {
@@ -108,6 +141,50 @@ export default function RegisterPage() {
     loadUnidades();
   }, []);
 
+  // Carregar faixas disponíveis da API
+  useEffect(() => {
+    const loadFaixas = async () => {
+      try {
+        const response = await fetch(
+          "http://localhost:4000/api/graduacao/faixas",
+          {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+            },
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error("Erro ao carregar faixas");
+        }
+
+        const data = await response.json();
+
+        if (!data || !Array.isArray(data)) {
+          console.error("Resposta da API de faixas inválida:", data);
+          throw new Error("Formato de resposta inválido");
+        }
+
+        setFaixas(data);
+
+        // Definir BRANCA como padrão se disponível
+        const faixaBranca = data.find((f: any) => f.codigo === "BRANCA");
+        if (faixaBranca) {
+          setFormData((prev) => ({ ...prev, faixa_atual: faixaBranca.codigo }));
+        }
+      } catch (error) {
+        console.error("Erro ao carregar faixas:", error);
+        toast.error("Não foi possível carregar as faixas disponíveis", {
+          duration: 5000,
+        });
+      } finally {
+        setLoadingFaixas(false);
+      }
+    };
+    loadFaixas();
+  }, []);
+
   // Carregar perfis disponíveis
   useEffect(() => {
     const loadPerfis = async () => {
@@ -121,11 +198,19 @@ export default function RegisterPage() {
         }
 
         // Filtrar apenas perfis públicos (aluno, responsavel)
-        const perfisPublicos = data.filter(
+        // Se for menor de idade (<=15), remove o perfil RESPONSAVEL
+        let perfisPublicos = data.filter(
           (p) =>
             p.nome.toLowerCase() === "aluno" ||
             p.nome.toLowerCase() === "responsavel"
         );
+
+        // Se for menor de idade, filtrar para mostrar apenas ALUNO
+        if (isMenorDeIdade) {
+          perfisPublicos = perfisPublicos.filter(
+            (p) => p.nome.toLowerCase() === "aluno"
+          );
+        }
 
         if (perfisPublicos.length === 0) {
           console.warn("Nenhum perfil público encontrado");
@@ -169,7 +254,7 @@ export default function RegisterPage() {
       }
     };
     loadPerfis();
-  }, []);
+  }, [isMenorDeIdade]); // Recarregar quando isMenorDeIdade mudar
 
   // useEffect para formatar telefone automaticamente quando dados vierem do banco
   useEffect(() => {
@@ -186,6 +271,47 @@ export default function RegisterPage() {
       }
     }
   }, [formData.telefone]); // Monitora mudanças no telefone
+
+  // Fechar dropdown de unidades ao clicar fora
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (!target.closest("#unidade") && !target.closest(".absolute.z-50")) {
+        setShowUnidadeDropdown(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // Filtrar unidades baseado no termo de busca
+  // Filtrar unidades baseado no termo de busca
+  // Se não houver termo de busca, mostra todas as unidades
+  const unidadesFiltradas =
+    unidadeSearchTerm.trim() === ""
+      ? unidades
+      : unidades.filter((unidade) => {
+          const searchLower = unidadeSearchTerm.toLowerCase();
+          return (
+            unidade.nome.toLowerCase().includes(searchLower) ||
+            unidade.cidade?.toLowerCase().includes(searchLower) ||
+            unidade.bairro?.toLowerCase().includes(searchLower)
+          );
+        });
+
+  // Obter nome da unidade selecionada
+  const getUnidadeNome = (unidadeId: string) => {
+    const unidade = unidades.find((u) => u.id === unidadeId);
+    if (!unidade) return "";
+    return `${unidade.nome}${
+      unidade.cidade || unidade.bairro
+        ? ` - ${unidade.cidade || ""}${
+            unidade.cidade && unidade.bairro ? " - " : ""
+          }${unidade.bairro || ""}`
+        : ""
+    }`;
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
@@ -347,6 +473,14 @@ export default function RegisterPage() {
       setError("Seleção da unidade é obrigatória");
       return false;
     }
+    if (!formData.faixa_atual) {
+      setError("Seleção da faixa atual é obrigatória");
+      return false;
+    }
+    if (formData.graus === "" || formData.graus === undefined) {
+      setError("Seleção dos graus é obrigatória");
+      return false;
+    }
 
     // Validar idade mínima de 10 anos
     const dataNascimento = new Date(formData.data_nascimento);
@@ -366,6 +500,31 @@ export default function RegisterPage() {
     if (idade < 10) {
       setError("Idade mínima para cadastro é de 10 anos");
       return false;
+    }
+
+    // Se menor de 16 anos, validar dados do responsável
+    if (isMenorDeIdade) {
+      if (!formData.responsavel_nome.trim()) {
+        setError(
+          "Nome do responsável é obrigatório para quem tem 15 anos ou menos"
+        );
+        return false;
+      }
+
+      const responsavelCpfValidation = getCPFValidationMessage(
+        formData.responsavel_cpf
+      );
+      if (responsavelCpfValidation) {
+        setError(`CPF do responsável: ${responsavelCpfValidation}`);
+        return false;
+      }
+
+      if (!formData.responsavel_telefone.trim()) {
+        setError(
+          "Telefone do responsável é obrigatório para quem tem 15 anos ou menos"
+        );
+        return false;
+      }
     }
 
     // perfil_id é opcional - se não selecionado, backend usa "aluno" como padrão
@@ -395,6 +554,12 @@ export default function RegisterPage() {
         genero?: string;
         perfil_id?: string;
         unidade_id?: string;
+        faixa_atual?: string;
+        graus?: number;
+        data_ultima_graduacao?: string;
+        responsavel_nome?: string;
+        responsavel_cpf?: string;
+        responsavel_telefone?: string;
       } = {
         nome: formData.nome,
         username: formData.username,
@@ -405,7 +570,18 @@ export default function RegisterPage() {
         data_nascimento: formData.data_nascimento,
         genero: formData.genero || "OUTRO", // Incluir gênero
         unidade_id: formData.unidade_id,
+        faixa_atual: formData.faixa_atual || "BRANCA", // Incluir faixa atual (padrão BRANCA)
+        graus: parseInt(formData.graus) || 0, // Incluir graus (padrão 0)
+        data_ultima_graduacao: formData.data_ultima_graduacao || undefined, // Data que recebeu a faixa
       };
+
+      // Se for menor de 18 anos, incluir dados do responsável
+      if (isMenorDeIdade) {
+        registerData.responsavel_nome = formData.responsavel_nome;
+        registerData.responsavel_cpf = cleanCPF(formData.responsavel_cpf);
+        registerData.responsavel_telefone =
+          formData.responsavel_telefone.replace(/\D/g, "");
+      }
 
       // Adicionar perfil_id apenas se tiver valor e for um UUID válido
       const uuidRegex =
@@ -695,6 +871,234 @@ export default function RegisterPage() {
                   </Select>
                 </div>
 
+                {/* Campos de Graduação (Faixa e Graus) */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label
+                      htmlFor="faixa_atual"
+                      className="flex items-center gap-2 text-gray-200"
+                    >
+                      <User2 className="h-4 w-4 text-red-400" />
+                      Faixa Atual *
+                    </Label>
+                    <Select
+                      value={formData.faixa_atual}
+                      onValueChange={(value) =>
+                        setFormData({ ...formData, faixa_atual: value })
+                      }
+                      disabled={loadingFaixas}
+                    >
+                      <SelectTrigger className="h-11 bg-gray-800/50 border-gray-600 text-white focus:border-red-500 focus:ring-red-500">
+                        <SelectValue
+                          placeholder={
+                            loadingFaixas
+                              ? "Carregando faixas..."
+                              : "Selecione sua faixa atual"
+                          }
+                        />
+                      </SelectTrigger>
+                      <SelectContent className="bg-gray-800 border-gray-600 max-h-80">
+                        {faixas.map((faixa) => (
+                          <SelectItem
+                            key={faixa.codigo}
+                            value={faixa.codigo}
+                            className="text-white hover:bg-gray-700 focus:bg-gray-700"
+                          >
+                            <div className="flex flex-col">
+                              <span className="font-medium">
+                                {faixa.nome_exibicao}
+                              </span>
+                              <span className="text-xs text-gray-400">
+                                {faixa.categoria}
+                              </span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-gray-400">
+                      Selecione sua graduação atual no Jiu-Jitsu
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label
+                      htmlFor="graus"
+                      className="flex items-center gap-2 text-gray-200"
+                    >
+                      <User2 className="h-4 w-4 text-red-400" />
+                      Graus na Faixa Atual *
+                    </Label>
+                    <Select
+                      value={formData.graus}
+                      onValueChange={(value) =>
+                        setFormData({ ...formData, graus: value })
+                      }
+                    >
+                      <SelectTrigger className="h-11 bg-gray-800/50 border-gray-600 text-white focus:border-red-500 focus:ring-red-500">
+                        <SelectValue placeholder="Selecione os graus" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-gray-800 border-gray-600">
+                        <SelectItem value="0" className="text-white">
+                          0 graus (sem grau)
+                        </SelectItem>
+                        <SelectItem value="1" className="text-white">
+                          1 grau
+                        </SelectItem>
+                        <SelectItem value="2" className="text-white">
+                          2 graus
+                        </SelectItem>
+                        <SelectItem value="3" className="text-white">
+                          3 graus
+                        </SelectItem>
+                        <SelectItem value="4" className="text-white">
+                          4 graus
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-gray-400">
+                      Quantos graus você possui na sua faixa atual
+                    </p>
+                  </div>
+                </div>
+
+                {/* Data da Última Graduação */}
+                <div className="space-y-2">
+                  <Label
+                    htmlFor="data_ultima_graduacao"
+                    className="flex items-center gap-2 text-gray-200"
+                  >
+                    <Calendar className="h-4 w-4 text-red-400" />
+                    Data que Recebeu a Faixa Atual
+                  </Label>
+                  <Input
+                    id="data_ultima_graduacao"
+                    name="data_ultima_graduacao"
+                    type="date"
+                    value={formData.data_ultima_graduacao}
+                    onChange={handleChange}
+                    max={new Date().toISOString().split("T")[0]}
+                    className="h-11 bg-gray-800/50 border-gray-600 text-white placeholder-gray-400 focus:border-red-500 focus:ring-red-500"
+                  />
+                  <p className="text-xs text-gray-400">
+                    Quando você recebeu sua faixa atual (opcional)
+                  </p>
+                </div>
+
+                {/* Campos do Responsável (apenas se menor de 18) */}
+                {isMenorDeIdade && (
+                  <>
+                    <div className="col-span-2 bg-red-900/20 border border-red-500/30 rounded-lg p-4">
+                      <div className="flex items-center gap-2 mb-3">
+                        <AlertCircle className="h-5 w-5 text-red-400" />
+                        <h3 className="text-sm font-semibold text-red-400">
+                          Dados do Responsável Legal
+                        </h3>
+                      </div>
+                      <p className="text-xs text-gray-300 mb-4">
+                        Como você tem 15 anos ou menos, é necessário informar os
+                        dados de um responsável legal.
+                      </p>
+
+                      <div className="grid md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label
+                            htmlFor="responsavel_nome"
+                            className="flex items-center gap-2 text-gray-200"
+                          >
+                            <User className="h-4 w-4 text-red-400" />
+                            Nome Completo do Responsável *
+                          </Label>
+                          <NameInput
+                            id="responsavel_nome"
+                            name="responsavel_nome"
+                            required
+                            value={formData.responsavel_nome}
+                            onChange={handleChange}
+                            className="h-11 bg-gray-800/50 border-gray-600 text-white placeholder-gray-400 focus:border-red-500 focus:ring-red-500"
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label
+                            htmlFor="responsavel_cpf"
+                            className="flex items-center gap-2 text-gray-200"
+                          >
+                            <User className="h-4 w-4 text-red-400" />
+                            CPF do Responsável *
+                          </Label>
+                          <Input
+                            id="responsavel_cpf"
+                            name="responsavel_cpf"
+                            type="text"
+                            required
+                            placeholder="000.000.000-00"
+                            value={formatCPF(formData.responsavel_cpf)}
+                            onChange={(e) => {
+                              const formatted = formatCPF(e.target.value);
+                              setFormData({
+                                ...formData,
+                                responsavel_cpf: formatted,
+                              });
+
+                              // Validar CPF em tempo real
+                              if (formatted.replace(/\D/g, "").length === 11) {
+                                const validationMessage =
+                                  getCPFValidationMessage(formatted);
+                                setResponsavelCpfError(validationMessage || "");
+                              } else {
+                                setResponsavelCpfError("");
+                              }
+                            }}
+                            className={`h-11 bg-gray-800/50 border-gray-600 text-white placeholder-gray-400 focus:border-red-500 focus:ring-red-500 ${
+                              responsavelCpfError ? "border-red-500" : ""
+                            }`}
+                          />
+                          {responsavelCpfError && (
+                            <p className="text-xs text-red-400">
+                              {responsavelCpfError}
+                            </p>
+                          )}
+                          {!responsavelCpfError &&
+                            formData.responsavel_cpf.replace(/\D/g, "")
+                              .length === 11 && (
+                              <p className="text-xs text-green-400 flex items-center gap-1">
+                                <CheckCircle className="h-3 w-3" />
+                                CPF válido
+                              </p>
+                            )}
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label
+                            htmlFor="responsavel_telefone"
+                            className="flex items-center gap-2 text-gray-200"
+                          >
+                            <Phone className="h-4 w-4 text-red-400" />
+                            Telefone do Responsável *
+                          </Label>
+                          <Input
+                            id="responsavel_telefone"
+                            name="responsavel_telefone"
+                            type="tel"
+                            required
+                            placeholder="(00) 00000-0000"
+                            value={formatPhone(formData.responsavel_telefone)}
+                            onChange={(e) => {
+                              const formatted = formatPhone(e.target.value);
+                              setFormData({
+                                ...formData,
+                                responsavel_telefone: formatted,
+                              });
+                            }}
+                            className="h-11 bg-gray-800/50 border-gray-600 text-white placeholder-gray-400 focus:border-red-500 focus:ring-red-500"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
+
                 <div className="space-y-2">
                   <Label
                     htmlFor="unidade"
@@ -703,43 +1107,58 @@ export default function RegisterPage() {
                     <Building2 className="h-4 w-4 text-red-400" />
                     Unidade *
                   </Label>
-                  <Select
-                    value={formData.unidade_id}
-                    onValueChange={(value) =>
-                      setFormData({ ...formData, unidade_id: value })
-                    }
-                    disabled={loadingUnidades}
-                  >
-                    <SelectTrigger className="h-11 bg-gray-800/50 border-gray-600 text-white focus:border-red-500 focus:ring-red-500">
-                      <SelectValue
-                        placeholder={
-                          loadingUnidades
-                            ? "Carregando unidades..."
-                            : "Selecione a unidade"
-                        }
-                      />
-                    </SelectTrigger>
-                    <SelectContent className="bg-gray-800 border-gray-600">
-                      {unidades.map((unidade) => (
-                        <SelectItem
-                          key={unidade.id}
-                          value={unidade.id}
-                          className="text-white hover:bg-gray-700 focus:bg-gray-700"
-                        >
-                          <div className="flex flex-col">
-                            <span className="font-medium">{unidade.nome}</span>
-                            {(unidade.cidade || unidade.bairro) && (
-                              <span className="text-xs text-gray-400">
-                                {unidade.cidade}
-                                {unidade.cidade && unidade.bairro ? " - " : ""}
-                                {unidade.bairro}
+                  <div className="relative">
+                    <Input
+                      id="unidade"
+                      type="text"
+                      placeholder={
+                        loadingUnidades
+                          ? "Carregando unidades..."
+                          : "Digite para buscar a unidade..."
+                      }
+                      value={unidadeSearchTerm}
+                      onChange={(e) => {
+                        setUnidadeSearchTerm(e.target.value);
+                        setShowUnidadeDropdown(true);
+                      }}
+                      onFocus={() => setShowUnidadeDropdown(true)}
+                      disabled={loadingUnidades}
+                      className="h-11 bg-gray-800/50 border-gray-600 text-white placeholder-gray-400 focus:border-red-500 focus:ring-red-500"
+                    />
+                    {showUnidadeDropdown && unidadesFiltradas.length > 0 && (
+                      <div className="absolute z-50 w-full mt-1 bg-gray-800 border border-gray-600 rounded-lg shadow-xl max-h-60 overflow-y-auto">
+                        {unidadesFiltradas.map((unidade) => (
+                          <div
+                            key={unidade.id}
+                            onClick={() => {
+                              setFormData({
+                                ...formData,
+                                unidade_id: unidade.id,
+                              });
+                              setUnidadeSearchTerm(getUnidadeNome(unidade.id));
+                              setShowUnidadeDropdown(false);
+                            }}
+                            className="px-4 py-3 hover:bg-gray-700 cursor-pointer transition-colors border-b border-gray-700 last:border-b-0"
+                          >
+                            <div className="flex flex-col">
+                              <span className="font-medium text-white">
+                                {unidade.nome}
                               </span>
-                            )}
+                              {(unidade.cidade || unidade.bairro) && (
+                                <span className="text-xs text-gray-400">
+                                  {unidade.cidade}
+                                  {unidade.cidade && unidade.bairro
+                                    ? " - "
+                                    : ""}
+                                  {unidade.bairro}
+                                </span>
+                              )}
+                            </div>
                           </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                   <p className="text-xs text-gray-400">
                     Selecione a unidade onde deseja se cadastrar
                   </p>

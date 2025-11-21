@@ -71,15 +71,31 @@ interface AlunoFormData {
   responsavel_telefone?: string;
   responsavel_parentesco?: string;
 
+  // Endereço
+  cep?: string;
+  logradouro?: string;
+  numero?: string;
+  complemento?: string;
+  bairro?: string;
+  cidade?: string;
+  uf?: string;
+
   // Dados Médicos
   observacoes_medicas?: string;
   alergias?: string;
   medicamentos_uso_continuo?: string;
+  plano_saude?: string;
+  atestado_medico_validade?: string;
+  restricoes_medicas?: string;
 
   // Financeiro
   dia_vencimento?: number;
   valor_mensalidade?: number;
   desconto_percentual?: number;
+
+  // LGPD
+  consent_lgpd?: boolean;
+  consent_imagem?: boolean;
 
   // Outros
   observacoes?: string;
@@ -137,10 +153,11 @@ export default function AlunoForm({
   const tabs = [
     { id: 0, label: "Dados Pessoais", icon: User },
     { id: 1, label: "Contato", icon: Phone },
-    { id: 2, label: "Matrícula", icon: GraduationCap },
-    { id: 3, label: "Responsável", icon: Shield },
-    { id: 4, label: "Saúde", icon: Heart },
-    { id: 5, label: "Financeiro", icon: Calendar },
+    { id: 2, label: "Endereço", icon: MapPin },
+    { id: 3, label: "Matrícula", icon: GraduationCap },
+    { id: 4, label: "Responsável", icon: Shield },
+    { id: 5, label: "Saúde", icon: Heart },
+    { id: 6, label: "Financeiro", icon: Calendar },
   ];
 
   // Calcular idade e determinar se é menor
@@ -395,8 +412,170 @@ export default function AlunoForm({
               </div>
             )}
 
-            {/* Tab 2: Matrícula */}
+            {/* Tab 2: Endereço */}
             {activeTab === 2 && (
+              <div className="space-y-4">
+                <h3 className="text-lg font-medium text-gray-900">Endereço</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      CEP
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.cep || ""}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          cep: e.target.value.replace(/\D/g, "").slice(0, 8),
+                        })
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="00000-000"
+                      maxLength={8}
+                    />
+                  </div>
+
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Logradouro
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.logradouro || ""}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          logradouro: e.target.value,
+                        })
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Rua, Avenida, etc."
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Número
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.numero || ""}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          numero: e.target.value,
+                        })
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="123"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Complemento
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.complemento || ""}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          complemento: e.target.value,
+                        })
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Apto, Casa, etc."
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Bairro
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.bairro || ""}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          bairro: e.target.value,
+                        })
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Nome do bairro"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Cidade
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.cidade || ""}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          cidade: e.target.value,
+                        })
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Nome da cidade"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      UF
+                    </label>
+                    <select
+                      value={formData.uf || ""}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          uf: e.target.value,
+                        })
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      <option value="">Selecione</option>
+                      <option value="AC">AC</option>
+                      <option value="AL">AL</option>
+                      <option value="AP">AP</option>
+                      <option value="AM">AM</option>
+                      <option value="BA">BA</option>
+                      <option value="CE">CE</option>
+                      <option value="DF">DF</option>
+                      <option value="ES">ES</option>
+                      <option value="GO">GO</option>
+                      <option value="MA">MA</option>
+                      <option value="MT">MT</option>
+                      <option value="MS">MS</option>
+                      <option value="MG">MG</option>
+                      <option value="PA">PA</option>
+                      <option value="PB">PB</option>
+                      <option value="PR">PR</option>
+                      <option value="PE">PE</option>
+                      <option value="PI">PI</option>
+                      <option value="RJ">RJ</option>
+                      <option value="RN">RN</option>
+                      <option value="RS">RS</option>
+                      <option value="RO">RO</option>
+                      <option value="RR">RR</option>
+                      <option value="SC">SC</option>
+                      <option value="SP">SP</option>
+                      <option value="SE">SE</option>
+                      <option value="TO">TO</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Tab 3: Matrícula */}
+            {activeTab === 3 && (
               <div className="space-y-4">
                 <h3 className="text-lg font-medium text-gray-900">
                   Dados de Matrícula
@@ -524,8 +703,8 @@ export default function AlunoForm({
               </div>
             )}
 
-            {/* Tab 3: Responsável */}
-            {activeTab === 3 && (
+            {/* Tab 4: Responsável */}
+            {activeTab === 4 && (
               <div className="space-y-4">
                 <h3 className="text-lg font-medium text-gray-900">
                   Dados do Responsável
@@ -617,8 +796,8 @@ export default function AlunoForm({
               </div>
             )}
 
-            {/* Tab 4: Saúde */}
-            {activeTab === 4 && (
+            {/* Tab 5: Saúde */}
+            {activeTab === 5 && (
               <div className="space-y-4">
                 <h3 className="text-lg font-medium text-gray-900">
                   Informações de Saúde
@@ -677,12 +856,65 @@ export default function AlunoForm({
                       placeholder="Medicamentos em uso..."
                     />
                   </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Plano de Saúde
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.plano_saude || ""}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          plano_saude: e.target.value,
+                        })
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Nome do plano de saúde"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Validade do Atestado Médico
+                    </label>
+                    <input
+                      type="date"
+                      value={formData.atestado_medico_validade || ""}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          atestado_medico_validade: e.target.value,
+                        })
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Restrições Médicas
+                    </label>
+                    <textarea
+                      value={formData.restricoes_medicas || ""}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          restricoes_medicas: e.target.value,
+                        })
+                      }
+                      rows={2}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Restrições para atividades físicas..."
+                    />
+                  </div>
                 </div>
               </div>
             )}
 
-            {/* Tab 5: Financeiro */}
-            {activeTab === 5 && (
+            {/* Tab 6: Financeiro */}
+            {activeTab === 6 && (
               <div className="space-y-4">
                 <h3 className="text-lg font-medium text-gray-900">
                   Dados Financeiros
@@ -767,6 +999,57 @@ export default function AlunoForm({
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     placeholder="Observações adicionais sobre o aluno..."
                   />
+                </div>
+
+                <div className="border-t pt-4">
+                  <h4 className="text-md font-medium text-gray-900 mb-3">
+                    Consentimentos LGPD
+                  </h4>
+                  <div className="space-y-3">
+                    <div className="flex items-start">
+                      <input
+                        type="checkbox"
+                        id="consent_lgpd"
+                        checked={formData.consent_lgpd || false}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            consent_lgpd: e.target.checked,
+                          })
+                        }
+                        className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                      />
+                      <label
+                        htmlFor="consent_lgpd"
+                        className="ml-3 text-sm text-gray-700"
+                      >
+                        Autorizo o uso dos dados pessoais conforme a LGPD (Lei
+                        Geral de Proteção de Dados)
+                      </label>
+                    </div>
+
+                    <div className="flex items-start">
+                      <input
+                        type="checkbox"
+                        id="consent_imagem"
+                        checked={formData.consent_imagem || false}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            consent_imagem: e.target.checked,
+                          })
+                        }
+                        className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                      />
+                      <label
+                        htmlFor="consent_imagem"
+                        className="ml-3 text-sm text-gray-700"
+                      >
+                        Autorizo o uso de imagem para divulgação nas redes
+                        sociais e materiais de marketing
+                      </label>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}

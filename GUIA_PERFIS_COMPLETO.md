@@ -63,22 +63,66 @@ Perfil: master
 
 - **Nome no DB:** `gerente_unidade`
 - **Descrição:** Gerente de academia/unidade
-- **Permissões:**
-  - ✅ **Unidades:** READ, WRITE (dados operacionais da unidade)
-  - ✅ **Alunos:** READ, WRITE (gerencia alunos da unidade)
-  - ✅ **Professores:** READ (visualiza professores)
-  - ✅ **Financeiro:** READ (visualiza dados financeiros)
-  - ✅ **Relatórios:** READ (relatórios da unidade)
+- **Escopo:** **LIMITADO A UMA ÚNICA UNIDADE** (filtro automático)
+- **Vinculação:** CPF do gerente vinculado ao campo `responsavel_cpf` da unidade
+
+**Permissões:**
+
+- ✅ **Unidades:** READ, WRITE (dados operacionais da SUA unidade)
+- ✅ **Alunos:** READ, WRITE (alunos DA SUA unidade)
+- ✅ **Professores:** READ (apenas visualizar professores da unidade)
+- ✅ **Financeiro:** READ (relatórios financeiros da unidade)
+- ✅ **Relatórios:** READ (relatórios da unidade)
+- ✅ **Graduações:** READ, WRITE, APROVAR (graduações da unidade)
+- ✅ **Presença:** READ, WRITE (registrar presença)
+- ✅ **Aulas/Horários:** READ, WRITE (gerenciar horários)
+- ✅ **Aprovações:** APROVAR cadastros de alunos e usuários da unidade
 
 **Quem usa:** Gerentes responsáveis pela operação de uma unidade específica
 
-**Funcionalidades:**
+**O que PODE fazer:**
 
-- Gerenciar alunos da unidade
-- Acompanhar horários e aulas
-- Visualizar escalas de professores
-- Consultar indicadores financeiros
-- Gerar relatórios operacionais
+- ✅ Ver e gerenciar **todos os alunos da sua unidade** (ativos e inativos)
+- ✅ Criar novos alunos e editar dados existentes
+- ✅ Aprovar cadastros pendentes de alunos
+- ✅ Graduar alunos (manual e automático)
+- ✅ Aprovar graduações pendentes
+- ✅ Registrar presença em aulas
+- ✅ Ver e editar horários de aulas
+- ✅ Ver estatísticas da unidade (ocupação, receita, total de alunos)
+- ✅ Ver relatórios de frequência e evolução
+- ✅ Editar dados operacionais da unidade
+- ✅ **Visualizar** professores que lecionam na unidade
+
+**O que NÃO PODE fazer:**
+
+- ❌ Ver ou gerenciar **outras unidades** da franquia
+- ❌ Criar, editar ou excluir professores
+- ❌ Excluir alunos (apenas inativar)
+- ❌ Excluir a unidade
+- ❌ Alterar configurações da franquia
+- ❌ Criar outros gerentes
+- ❌ Alterar permissões de usuários
+- ❌ Acessar dados financeiros globais
+
+**Dashboard do Gerente:**
+
+- **Estatísticas:** Total de alunos, Taxa de ocupação, Receita mensal, Aulas hoje
+- **Informações da Unidade:** Nome, CNPJ, Status, Capacidade, Tatames, Área
+- **Ações Rápidas:** Gerenciar alunos, Registrar presença, Horários, Graduações, Relatórios
+
+**Filtro Automático:**
+
+```sql
+-- Tudo que o gerente vê é AUTOMATICAMENTE filtrado
+WHERE unidade_id = (
+  SELECT id FROM unidades
+  WHERE responsavel_cpf = usuario.cpf
+  AND responsavel_papel = 'GERENTE'
+)
+```
+
+**Importante:** O gerente é um "mini-administrador" da sua unidade, com poderes completos para operação do dia-a-dia, mas sem acesso a outras unidades ou configurações globais.
 
 ---
 
@@ -426,6 +470,7 @@ GET /api/alunos/:id
 ---
 
 **Criado em:** 18/10/2025
-**Atualizado em:** 18/10/2025
-**Versão:** 2.0
+**Atualizado em:** 21/11/2025
+**Versão:** 2.1
 **Autor:** Team Cruz Development Team
+**Última atualização:** Detalhamento completo do perfil GERENTE_UNIDADE

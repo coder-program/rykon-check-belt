@@ -32,6 +32,7 @@ export enum StatusAluno {
 // NOTA: StatusAprovacao removido - usamos StatusAluno.INATIVO para pendente e ATIVO para aprovado
 
 export enum FaixaEnum {
+  // Faixas Infantis
   BRANCA = 'BRANCA',
   CINZA_BRANCA = 'CINZA_BRANCA',
   CINZA = 'CINZA',
@@ -45,6 +46,8 @@ export enum FaixaEnum {
   VERDE_BRANCA = 'VERDE_BRANCA',
   VERDE = 'VERDE',
   VERDE_PRETA = 'VERDE_PRETA',
+
+  // Faixas Adultas
   AZUL = 'AZUL',
   ROXA = 'ROXA',
   MARROM = 'MARROM',

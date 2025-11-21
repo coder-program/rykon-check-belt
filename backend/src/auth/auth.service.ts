@@ -13,6 +13,8 @@ import { AlunosService } from '../people/services/alunos.service';
 import { ProfessoresService } from '../people/services/professores.service';
 import { ResponsaveisService } from '../people/services/responsaveis.service';
 import { UnidadesService } from '../people/services/unidades.service';
+import { GerenteUnidadesService } from '../people/services/gerente-unidades.service';
+import { RecepcionistaUnidadesService } from '../people/services/recepcionista-unidades.service';
 import { AuditService } from '../audit/audit.service';
 import { AuditAction } from '../audit/entities/audit-log.entity';
 import { Usuario } from '../usuarios/entities/usuario.entity';
@@ -53,6 +55,10 @@ export interface LoginResponse {
     email: string;
     nome: string;
     cpf?: string; // ✅ Adicionar CPF (opcional pois pode não estar cadastrado)
+    telefone?: string;
+    data_nascimento?: string;
+    foto?: string;
+    ativo?: boolean;
     cadastro_completo: boolean;
     permissions: string[];
     permissionsDetail: PermissionDetail[];
@@ -72,6 +78,8 @@ export class AuthService {
     private professoresService: ProfessoresService,
     private responsaveisService: ResponsaveisService,
     private unidadesService: UnidadesService,
+    private gerenteUnidadesService: GerenteUnidadesService,
+    private recepcionistaUnidadesService: RecepcionistaUnidadesService,
     private dataSource: DataSource,
     private auditService: AuditService,
     private emailService: EmailService,
@@ -182,6 +190,14 @@ export class AuthService {
         email: user.email,
         nome: user.nome,
         cpf: user.cpf, // ✅ Adicionar CPF para uso no frontend
+        telefone: user.telefone,
+        data_nascimento: user.data_nascimento
+          ? user.data_nascimento instanceof Date
+            ? user.data_nascimento.toISOString().split('T')[0]
+            : String(user.data_nascimento).split('T')[0]
+          : undefined,
+        foto: user.foto,
+        ativo: user.ativo,
         cadastro_completo: cadastroCompleto,
         permissions,
         permissionsDetail,
@@ -215,6 +231,33 @@ export class AuthService {
       aluno = await this.alunosService.findByUsuarioId(user.id);
     } catch (error) {}
 
+    // Incluir dados do professor se existir
+    let professor: any = null;
+    try {
+      professor = await this.professoresService.findByUsuarioId(user.id);
+    } catch (error) {}
+
+    // Incluir dados do gerente_unidade se existir
+    let gerente_unidade: any = null;
+    try {
+      gerente_unidade = await this.gerenteUnidadesService.buscarPorUsuario(
+        user.id,
+      );
+    } catch (error) {}
+
+    // Incluir dados do recepcionista se existir
+    let recepcionista_unidades: any = null;
+    try {
+      const vinculos = await this.recepcionistaUnidadesService.list({
+        usuario_id: user.id,
+        ativo: true,
+      });
+      if (vinculos && vinculos.length > 0) {
+        // Pega o primeiro vínculo ativo (normalmente recepcionistas têm apenas 1 unidade)
+        recepcionista_unidades = vinculos[0];
+      }
+    } catch (error) {}
+
     const userData = {
       ...user,
       perfis: user.perfis, // Já vem como objetos com { id, nome, etc }
@@ -225,6 +268,30 @@ export class AuthService {
             unidade_id: aluno.unidade_id,
             faixa_atual: aluno.faixa_atual,
             status: aluno.status,
+          }
+        : null,
+      professor: professor
+        ? {
+            id: professor.id,
+            nome_completo: professor.nome_completo,
+            unidade_id: professor.unidade_id,
+            especialidades: professor.especialidades,
+          }
+        : null,
+      gerente_unidade: gerente_unidade
+        ? {
+            id: gerente_unidade.id,
+            unidade_id: gerente_unidade.unidade_id,
+            cargo: gerente_unidade.cargo,
+            ativo: gerente_unidade.ativo,
+          }
+        : null,
+      recepcionista_unidade: recepcionista_unidades
+        ? {
+            id: recepcionista_unidades.id,
+            unidade_id: recepcionista_unidades.unidade_id,
+            cargo: recepcionista_unidades.cargo,
+            turno: recepcionista_unidades.turno,
           }
         : null,
     };
@@ -646,7 +713,11 @@ export class AuthService {
 
             // Graduação
             faixa_atual: payload.faixa_atual || 'BRANCA',
-            graus: 0,
+            graus:
+              payload.graus !== undefined && payload.graus !== null
+                ? payload.graus
+                : 0,
+            data_ultima_graduacao: payload.data_ultima_graduacao || null,
 
             // Dados opcionais
             peso: payload.peso || null,

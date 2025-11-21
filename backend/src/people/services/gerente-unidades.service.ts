@@ -116,4 +116,14 @@ export class GerenteUnidadesService {
 
     return count > 0;
   }
+
+  /**
+   * Buscar dados do vínculo gerente-unidade por usuário
+   */
+  async buscarPorUsuario(usuarioId: string): Promise<GerenteUnidade | null> {
+    return await this.gerenteUnidadeRepository.findOne({
+      where: { usuario_id: usuarioId, ativo: true },
+      relations: ['unidade'],
+    });
+  }
 }

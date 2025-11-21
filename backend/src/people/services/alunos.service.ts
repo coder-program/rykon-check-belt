@@ -423,14 +423,14 @@ export class AlunosService {
       const dataNascimento = new Date(dto.data_nascimento);
       const idade = this.calcularIdade(dataNascimento);
 
-      if (!dto.responsavel_id && idade < 18) {
+      if (!dto.responsavel_id && idade <= 15) {
         if (
           !dto.responsavel_nome ||
           !dto.responsavel_cpf ||
           !dto.responsavel_telefone
         ) {
           throw new BadRequestException(
-            'Para alunos menores de 18 anos é obrigatório informar os dados do responsável',
+            'Para alunos que completam 15 anos ou menos no ano atual é obrigatório informar os dados do responsável',
           );
         }
       }
@@ -450,6 +450,84 @@ export class AlunosService {
         data_ultima_graduacao: dto.data_ultima_graduacao
           ? new Date(dto.data_ultima_graduacao)
           : undefined,
+        // Converter strings vazias para null em campos de data
+        atestado_medico_validade:
+          dto.atestado_medico_validade &&
+          dto.atestado_medico_validade.trim() !== ''
+            ? new Date(dto.atestado_medico_validade)
+            : null,
+        // Converter strings vazias para null em campos de texto
+        telefone:
+          dto.telefone && dto.telefone.trim() !== '' ? dto.telefone : null,
+        telefone_emergencia:
+          dto.telefone_emergencia && dto.telefone_emergencia.trim() !== ''
+            ? dto.telefone_emergencia
+            : null,
+        nome_contato_emergencia:
+          dto.nome_contato_emergencia &&
+          dto.nome_contato_emergencia.trim() !== ''
+            ? dto.nome_contato_emergencia
+            : null,
+        observacoes_medicas:
+          dto.observacoes_medicas && dto.observacoes_medicas.trim() !== ''
+            ? dto.observacoes_medicas
+            : null,
+        alergias:
+          dto.alergias && dto.alergias.trim() !== '' ? dto.alergias : null,
+        medicamentos_uso_continuo:
+          dto.medicamentos_uso_continuo &&
+          dto.medicamentos_uso_continuo.trim() !== ''
+            ? dto.medicamentos_uso_continuo
+            : null,
+        plano_saude:
+          dto.plano_saude && dto.plano_saude.trim() !== ''
+            ? dto.plano_saude
+            : null,
+        restricoes_medicas:
+          dto.restricoes_medicas && dto.restricoes_medicas.trim() !== ''
+            ? dto.restricoes_medicas
+            : null,
+        responsavel_nome:
+          dto.responsavel_nome && dto.responsavel_nome.trim() !== ''
+            ? dto.responsavel_nome
+            : null,
+        responsavel_cpf:
+          dto.responsavel_cpf && dto.responsavel_cpf.trim() !== ''
+            ? dto.responsavel_cpf
+            : null,
+        responsavel_telefone:
+          dto.responsavel_telefone && dto.responsavel_telefone.trim() !== ''
+            ? dto.responsavel_telefone
+            : null,
+        responsavel_parentesco:
+          dto.responsavel_parentesco && dto.responsavel_parentesco.trim() !== ''
+            ? dto.responsavel_parentesco
+            : null,
+        observacoes:
+          dto.observacoes && dto.observacoes.trim() !== ''
+            ? dto.observacoes
+            : null,
+        dia_vencimento:
+          dto.dia_vencimento && dto.dia_vencimento !== ''
+            ? Number(dto.dia_vencimento)
+            : null,
+        valor_mensalidade:
+          dto.valor_mensalidade && dto.valor_mensalidade !== ''
+            ? Number(dto.valor_mensalidade)
+            : null,
+        desconto_percentual:
+          dto.desconto_percentual && dto.desconto_percentual !== ''
+            ? Number(dto.desconto_percentual)
+            : 0,
+        // Converter strings vazias para false em campos booleanos
+        consent_lgpd:
+          dto.consent_lgpd === true || dto.consent_lgpd === 'true'
+            ? true
+            : false,
+        consent_imagem:
+          dto.consent_imagem === true || dto.consent_imagem === 'true'
+            ? true
+            : false,
       };
 
       console.log('🔍 [ALUNO CREATE] Dados do aluno preparados:', {
@@ -654,7 +732,17 @@ export class AlunosService {
   }
 
   async update(id: string, dto: UpdateAlunoDto, user?: any): Promise<Aluno> {
+    console.log(
+      '🔧 [UPDATE ALUNO] DTO recebido:',
+      JSON.stringify(dto, null, 2),
+    );
+    console.log('🏢 [UPDATE ALUNO] unidade_id no DTO:', dto.unidade_id);
+    console.log('🎨 [UPDATE ALUNO] faixa_atual no DTO:', dto.faixa_atual);
+
     const aluno = await this.findById(id, user);
+    const unidadeAnterior = aluno.unidade_id; // Salvar antes do assign
+    console.log('🏢 [UPDATE ALUNO] unidade_id ANTES:', unidadeAnterior);
+    console.log('🎨 [UPDATE ALUNO] faixa_atual ANTES:', aluno.faixa_atual);
 
     // Verificar CPF único (se estiver sendo alterado)
     if (dto.cpf && dto.cpf !== aluno.cpf) {
@@ -672,7 +760,7 @@ export class AlunosService {
       const dataNascimento = new Date(dto.data_nascimento);
       const idade = this.calcularIdade(dataNascimento);
 
-      if (idade < 18) {
+      if (idade <= 15) {
         const responsavelNome = dto.responsavel_nome || aluno.responsavel_nome;
         const responsavelCpf = dto.responsavel_cpf || aluno.responsavel_cpf;
         const responsavelTelefone =
@@ -680,14 +768,14 @@ export class AlunosService {
 
         if (!responsavelNome || !responsavelCpf || !responsavelTelefone) {
           throw new BadRequestException(
-            'Para alunos menores de 18 anos é obrigatório informar os dados do responsável',
+            'Para alunos que completam 15 anos ou menos no ano atual é obrigatório informar os dados do responsável',
           );
         }
       }
     }
 
-    // Atualizar os dados
-    Object.assign(aluno, {
+    // Preparar dados para atualização
+    const updateData: any = {
       ...dto,
       data_nascimento: dto.data_nascimento
         ? new Date(dto.data_nascimento)
@@ -698,11 +786,36 @@ export class AlunosService {
       data_ultima_graduacao: dto.data_ultima_graduacao
         ? new Date(dto.data_ultima_graduacao)
         : aluno.data_ultima_graduacao,
+    };
+
+    console.log(
+      '🔄 [UPDATE ALUNO] Atualizando direto no banco com:',
+      updateData,
+    );
+
+    // Fazer UPDATE direto no banco (bypass da relação @ManyToOne)
+    await this.alunoRepository.update(id, updateData);
+
+    console.log('✅ [UPDATE ALUNO] Salvo no banco');
+
+    // Buscar novamente do banco para garantir dados atualizados
+    const resultado = await this.alunoRepository.findOne({
+      where: { id },
+      relations: ['unidade', 'alunoUnidades', 'alunoUnidades.unidade'],
     });
 
-    await this.alunoRepository.save(aluno);
+    if (!resultado) {
+      throw new NotFoundException(
+        `Aluno com ID ${id} não encontrado após atualização`,
+      );
+    }
 
-    return this.findById(id);
+    console.log(
+      '🏢 [UPDATE ALUNO] unidade_id no retorno final:',
+      resultado.unidade_id,
+    );
+
+    return resultado;
   }
 
   async delete(id: string): Promise<void> {
@@ -780,18 +893,8 @@ export class AlunosService {
    */
   private calcularIdade(dataNascimento: Date): number {
     const hoje = new Date();
-    let idade = hoje.getFullYear() - dataNascimento.getFullYear();
-    const mesAtual = hoje.getMonth();
-    const mesNascimento = dataNascimento.getMonth();
-
-    if (
-      mesAtual < mesNascimento ||
-      (mesAtual === mesNascimento && hoje.getDate() < dataNascimento.getDate())
-    ) {
-      idade--;
-    }
-
-    return idade;
+    // Retorna a idade que vai completar no ano atual (ano atual - ano nascimento)
+    return hoje.getFullYear() - dataNascimento.getFullYear();
   }
 
   /**
@@ -1180,7 +1283,24 @@ export class AlunosService {
     const responsavelId = responsavelData[0].id;
     console.log('🔍 [GET MEUS DEPENDENTES] Responsável ID:', responsavelId);
 
-    // Buscar alunos vinculados ao responsável
+    // Primeiro, buscar TODOS os alunos vinculados ao responsavel_id (sem filtro)
+    const todosAlunos = await this.dataSource.query(
+      `SELECT id, nome_completo, usuario_id, responsavel_id
+       FROM teamcruz.alunos
+       WHERE responsavel_id = $1
+       ORDER BY nome_completo ASC`,
+      [responsavelId],
+    );
+    console.log(
+      '📋 [GET MEUS DEPENDENTES] Todos os alunos do responsavel_id:',
+      todosAlunos,
+    );
+    console.log(
+      '🔑 [GET MEUS DEPENDENTES] Usuario_id do responsável:',
+      user.id,
+    );
+
+    // Buscar alunos vinculados ao responsável (exceto o próprio responsável)
     const query = this.alunoRepository.createQueryBuilder('aluno');
 
     query.leftJoinAndSelect('aluno.unidade', 'unidade');
@@ -1190,7 +1310,16 @@ export class AlunosService {
     query.leftJoinAndSelect('faixas.faixaDef', 'faixaDef');
 
     query.where('aluno.responsavel_id = :responsavelId', { responsavelId });
+    // Excluir o próprio responsável da lista (caso ele também seja aluno)
+    // Aceitar alunos com usuario_id NULL (dependentes menores) OU com usuario_id diferente do responsável
+    query.andWhere(
+      '(aluno.usuario_id IS NULL OR aluno.usuario_id != :usuarioId)',
+      { usuarioId: user.id },
+    );
     query.orderBy('aluno.nome_completo', 'ASC');
+
+    // ⚡ CRITICAL: Desabilitar cache do TypeORM para forçar buscar dados frescos do banco
+    query.cache(false);
 
     const alunos = await query.getMany();
 
@@ -1199,24 +1328,58 @@ export class AlunosService {
       alunos.length,
     );
 
-    return alunos.map((aluno) => ({
-      id: aluno.id,
-      nome_completo: aluno.nome_completo,
-      data_nascimento: aluno.data_nascimento,
-      faixa_atual:
-        aluno.faixas?.[0]?.faixaDef?.nome_exibicao ||
+    // 🔍 DEBUG: Log detalhado de cada dependente
+    alunos.forEach((aluno, index) => {
+      console.log(`🧒 [DEPENDENTE ${index + 1}] ID: ${aluno.id}`);
+      console.log(`   Nome: ${aluno.nome_completo}`);
+      console.log(`   faixa_atual (campo direto): ${aluno.faixa_atual}`);
+      console.log(`   graus (campo direto): ${aluno.graus}`);
+      console.log(
+        `   faixas (relação): ${JSON.stringify(aluno.faixas?.map((f) => ({ id: f.id, ativa: f.ativa, faixaDef: f.faixaDef?.nome_exibicao })))}`,
+      );
+      console.log(`   unidade_id: ${aluno.unidade_id}`);
+      console.log(
+        `   unidade (relação): ${aluno.unidade ? `${aluno.unidade.id} - ${aluno.unidade.nome}` : 'null'}`,
+      );
+    });
+
+    const resultado = alunos.map((aluno) => {
+      // ⚡ PRIORIDADE INVERTIDA: campo direto primeiro, relação só se vazio
+      const faixaFinal =
         aluno.faixa_atual ||
-        'Sem faixa',
-      graus: aluno.graus || 0,
-      status: aluno.status,
-      foto_url: aluno.foto_url,
-      unidade: aluno.unidade
-        ? {
-            id: aluno.unidade.id,
-            nome: aluno.unidade.nome,
-          }
-        : null,
-    }));
+        aluno.faixas?.[0]?.faixaDef?.nome_exibicao ||
+        'Sem faixa';
+      const grausFinal = aluno.graus || 0;
+
+      console.log(`📤 [RETORNO DEPENDENTE ${aluno.id}]:`);
+      console.log(`   faixa_atual retornada: ${faixaFinal}`);
+      console.log(`   graus retornados: ${grausFinal}`);
+      console.log(
+        `   unidade retornada: ${aluno.unidade ? aluno.unidade.nome : 'null'}`,
+      );
+
+      return {
+        id: aluno.id,
+        nome_completo: aluno.nome_completo,
+        data_nascimento: aluno.data_nascimento,
+        faixa_atual: faixaFinal,
+        graus: grausFinal,
+        status: aluno.status,
+        foto_url: aluno.foto_url,
+        unidade: aluno.unidade
+          ? {
+              id: aluno.unidade.id,
+              nome: aluno.unidade.nome,
+            }
+          : null,
+      };
+    });
+
+    console.log(
+      '🏁 [GET MEUS DEPENDENTES] Retornando:',
+      JSON.stringify(resultado, null, 2),
+    );
+    return resultado;
   }
 
   async responsavelViraAluno(user: any): Promise<any> {
