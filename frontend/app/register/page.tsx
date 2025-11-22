@@ -145,15 +145,14 @@ export default function RegisterPage() {
   useEffect(() => {
     const loadFaixas = async () => {
       try {
-        const response = await fetch(
-          "http://localhost:4000/api/graduacao/faixas",
-          {
-            method: "GET",
-            headers: {
-              "Content-Type": "application/json",
-            },
-          }
-        );
+        const API_URL =
+          process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api";
+        const response = await fetch(`${API_URL}/graduacao/faixas`, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        });
 
         if (!response.ok) {
           throw new Error("Erro ao carregar faixas");
