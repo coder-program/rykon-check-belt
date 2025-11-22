@@ -858,7 +858,12 @@ export default function DashboardNew() {
 
   // Query para Professores (aba Professores) - DADOS REAIS DO BANCO
   const professoresQuery = useInfiniteQuery({
-    queryKey: ["professores", debouncedSearch, filterFaixa],
+    queryKey: [
+      "professores",
+      debouncedSearch,
+      filterFaixa,
+      unidadeDoGerente?.id,
+    ],
     initialPageParam: 1,
     getNextPageParam: (lastPage) =>
       lastPage.hasNextPage ? lastPage.page + 1 : undefined,
@@ -877,6 +882,7 @@ export default function DashboardNew() {
         search: debouncedSearch,
         faixa: faixaParam,
         tipo_cadastro: "PROFESSOR", // Filtrar apenas professores
+        unidade_id: unidadeDoGerente?.id, // Filtrar pela unidade do gerente/franqueado
       });
       return {
         items: response.items,

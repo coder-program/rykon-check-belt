@@ -2,14 +2,8 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  useInfiniteQuery,
-  useMutation,
-  useQueryClient,
-  useQuery,
-} from "@tanstack/react-query";
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
-import { FixedSizeList as List } from "react-window";
 import { useAuth } from "@/app/auth/AuthContext";
 import {
   listUnidades,
@@ -27,12 +21,16 @@ import {
   Plus,
   Edit2,
   Trash2,
+  XCircle,
   MapPin,
   Building2,
   Phone,
   AlertCircle,
+  AlertTriangle,
   CheckCircle2,
   ArrowLeft,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import UnidadeForm from "@/components/unidades/UnidadeForm";
@@ -101,7 +99,10 @@ export default function PageUnidades() {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("todos");
   const [debounced, setDebounced] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
   const [showModal, setShowModal] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [unidadeToInativar, setUnidadeToInativar] = useState<any>(null);
   const [editingUnidade, setEditingUnidade] = useState<any>(null);
   const [formData, setFormData] = useState<UnidadeFormData>({
     franqueado_id: "",
@@ -132,27 +133,43 @@ export default function PageUnidades() {
     return perfilNome?.toLowerCase() === "franqueado";
   });
 
+  const isSuperAdmin = user?.perfis?.some((perfil: any) => {
+    const perfilNome =
+      typeof perfil === "string" ? perfil : perfil.nome || perfil.perfil;
+    return perfilNome?.toLowerCase() === "super_admin";
+  });
+
   const { data: myFranqueado } = useQuery({
     queryKey: ["franqueado-me", user?.id],
     queryFn: getMyFranqueado,
     enabled: !!user?.id && isFranqueado,
   });
 
-  const query = useInfiniteQuery({
-    queryKey: ["unidades", debounced, status, myFranqueado?.id],
-    initialPageParam: 1,
-    getNextPageParam: (last) => (last.hasNextPage ? last.page + 1 : undefined),
-    queryFn: async ({ pageParam }) =>
+  // Redirecionar se for franqueado inativo
+  React.useEffect(() => {
+    if (isFranqueado && myFranqueado === null) {
+      router.push("/dashboard");
+    }
+  }, [isFranqueado, myFranqueado, router]);
+
+  const query = useQuery({
+    queryKey: ["unidades", debounced, status, myFranqueado?.id, currentPage],
+    queryFn: () =>
       listUnidades({
-        page: pageParam,
-        pageSize: 15, // Reduzido para melhor performance
+        page: currentPage,
+        pageSize: 10,
         search: debounced,
         status: status === "todos" ? undefined : status,
-        franqueado_id: myFranqueado?.id, // Filtrar por franqueado se for franqueado
+        franqueado_id: myFranqueado?.id,
       }),
-    staleTime: 5 * 60 * 1000, // Cache por 5 minutos
-    gcTime: 10 * 60 * 1000, // Mantém em cache por 10 minutos
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
   });
+
+  // Reset to page 1 when filters change
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [debounced, status]);
 
   const franqueadosQuery = useQuery({
     queryKey: ["franqueados"],
@@ -244,7 +261,20 @@ export default function PageUnidades() {
     },
   });
 
-  const items = (query.data?.pages || []).flatMap((p) => p.items);
+  const items = query.data?.items || [];
+  const totalItems = query.data?.total || 0;
+  const totalPages = Math.ceil(totalItems / 10); // Calcular baseado no total e pageSize
+
+  // DEBUG LOG
+  React.useEffect(() => {
+    console.log("=== DEBUG PAGINAÇÃO ===");
+    console.log("Query data:", query.data);
+    console.log("Items:", items.length);
+    console.log("Total Pages:", totalPages);
+    console.log("Total Items:", totalItems);
+    console.log("Current Page:", currentPage);
+    console.log("======================");
+  }, [query.data, items, totalPages, totalItems, currentPage]);
 
   const resetForm = () => {
     setFormData({
@@ -274,6 +304,24 @@ export default function PageUnidades() {
       horarios_funcionamento: {},
       requer_aprovacao_checkin: false,
     });
+  };
+
+  const handleInativar = (unidade: any) => {
+    setUnidadeToInativar(unidade);
+    setShowConfirmModal(true);
+  };
+
+  const confirmInativar = () => {
+    if (unidadeToInativar) {
+      deleteMutation.mutate(unidadeToInativar.id);
+      setShowConfirmModal(false);
+      setUnidadeToInativar(null);
+    }
+  };
+
+  const cancelInativar = () => {
+    setShowConfirmModal(false);
+    setUnidadeToInativar(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -436,39 +484,36 @@ export default function PageUnidades() {
   return (
     <ProtectedRoute>
       <div className="p-6 space-y-4">
-        {/* Botão Voltar */}
-        <div className="flex items-center gap-2 mb-4">
-          <button
-            onClick={() => router.push("/dashboard")}
-            className="group flex items-center gap-2 text-sm text-gray-600 hover:text-blue-600 transition-colors duration-200"
-            title="Voltar para Dashboard"
-          >
-            <div className="p-1 rounded-full group-hover:bg-blue-100 transition-colors duration-200">
-              <ArrowLeft className="h-4 w-4" />
-            </div>
-            <span>Dashboard</span>
-          </button>
-          <span className="text-gray-400">/</span>
-          <span className="text-gray-900 font-medium">Unidades</span>
-        </div>
-
-        <div className="flex items-center justify-between">
+        {/* Header com Voltar e Título */}
+        <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <Building2 className="h-6 w-6" />
             Unidades
           </h1>
-          {/* Temporário: mostrar para todos os usuários */}
           <button
-            className="btn btn-primary flex items-center gap-2"
-            onClick={() => {
-              setEditingUnidade(null);
-              resetForm();
-              setShowModal(true);
-            }}
+            onClick={() => router.push("/admin/gestao-unidades")}
+            className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-blue-600 hover:text-white text-gray-700 font-medium rounded-lg transition-all duration-200 shadow-sm hover:shadow-md"
           >
-            <Plus className="h-4 w-4" />
-            Nova Unidade
+            <ArrowLeft className="h-4 w-4" />
+            <span>Voltar</span>
           </button>
+        </div>
+
+        <div className="flex items-center justify-between">
+          {/* Temporário: mostrar para todos os usuários */}
+          {!isSuperAdmin && (
+            <button
+              className="btn btn-primary flex items-center gap-2"
+              onClick={() => {
+                setEditingUnidade(null);
+                resetForm();
+                setShowModal(true);
+              }}
+            >
+              <Plus className="h-4 w-4" />
+              Nova Unidade
+            </button>
+          )}
         </div>
 
         {/* Filtros */}
@@ -495,36 +540,25 @@ export default function PageUnidades() {
         </div>
 
         {/* Lista */}
-        <div className="h-[600px] border rounded-lg">
-          <List
-            height={600}
-            itemCount={items.length + (query.hasNextPage ? 1 : 0)}
-            itemSize={120}
-            width="100%"
-            onItemsRendered={({ visibleStopIndex }) => {
-              if (
-                visibleStopIndex >= items.length - 3 &&
-                query.hasNextPage &&
-                !query.isFetchingNextPage
-              )
-                query.fetchNextPage();
-            }}
-          >
-            {({ index, style }) => {
-              const unidade = items[index];
-              if (!unidade)
-                return (
-                  <div style={style} className="p-4">
-                    <div className="skeleton h-20 w-full rounded-lg" />
-                  </div>
-                );
-
-              return (
+        <div className="border rounded-lg overflow-hidden bg-white">
+          {query.isLoading ? (
+            <div className="p-8 text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+              <p className="text-gray-500 mt-2">Carregando unidades...</p>
+            </div>
+          ) : items.length === 0 ? (
+            <div className="p-8 text-center text-gray-500">
+              <Building2 className="h-12 w-12 mx-auto mb-2 text-gray-400" />
+              <p>Nenhuma unidade encontrada</p>
+            </div>
+          ) : (
+            <div className="divide-y">
+              {items.map((unidade) => (
                 <div
-                  style={style}
-                  className="px-4 py-3 border-b hover:bg-gray-50 transition-colors"
+                  key={unidade.id}
+                  className="px-4 py-3 hover:bg-gray-50 transition-colors"
                 >
-                  <div className="flex items-start justify-between h-full">
+                  <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
                         <h3 className="font-semibold text-lg">
@@ -581,28 +615,93 @@ export default function PageUnidades() {
                       >
                         <Edit2 className="h-4 w-4 text-blue-600" />
                       </button>
-                      <button
-                        onClick={() => {
-                          if (
-                            confirm(
-                              `Tem certeza que deseja remover a unidade "${unidade.nome}"?\n\nATENÇÃO: Não é possível remover unidades que possuam professores, alunos, recepcionistas ou gerentes vinculados. Remova os vínculos primeiro.`
-                            )
-                          ) {
-                            deleteMutation.mutate(unidade.id);
-                          }
-                        }}
-                        className="p-2 hover:bg-red-100 rounded-lg transition-colors"
-                        title="Remover"
-                      >
-                        <Trash2 className="h-4 w-4 text-red-600" />
-                      </button>
+                      {unidade.status !== "INATIVA" && (
+                        <button
+                          onClick={() => handleInativar(unidade)}
+                          className="p-2 hover:bg-red-100 rounded-lg transition-colors"
+                          title="Inativar"
+                        >
+                          <XCircle className="h-4 w-4 text-red-600" />
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
-              );
-            }}
-          </List>
+              ))}
+            </div>
+          )}
         </div>
+
+        {/* Pagination */}
+        {!query.isLoading && items.length > 0 && totalPages > 1 && (
+          <div className="mt-6 flex items-center justify-center gap-2">
+            <button
+              onClick={() => setCurrentPage(1)}
+              disabled={currentPage === 1}
+              className="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              Primeira
+            </button>
+            <button
+              onClick={() => setCurrentPage(currentPage - 1)}
+              disabled={currentPage === 1}
+              className="flex items-center gap-1 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              <ChevronLeft className="h-4 w-4" />
+              Anterior
+            </button>
+
+            <div className="flex items-center gap-1">
+              {Array.from({ length: totalPages }, (_, i) => i + 1)
+                .filter((page) => {
+                  // Mostra primeira, última, atual e 2 páginas antes/depois da atual
+                  return (
+                    page === 1 ||
+                    page === totalPages ||
+                    (page >= currentPage - 2 && page <= currentPage + 2)
+                  );
+                })
+                .map((page, index, array) => {
+                  // Adiciona "..." entre páginas não consecutivas
+                  const showEllipsis =
+                    index > 0 && array[index - 1] !== page - 1;
+                  return (
+                    <React.Fragment key={page}>
+                      {showEllipsis && (
+                        <span className="px-2 py-2 text-gray-500">...</span>
+                      )}
+                      <button
+                        onClick={() => setCurrentPage(page)}
+                        className={`px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
+                          currentPage === page
+                            ? "bg-blue-600 text-white"
+                            : "text-gray-700 bg-white border border-gray-300 hover:bg-gray-50"
+                        }`}
+                      >
+                        {page}
+                      </button>
+                    </React.Fragment>
+                  );
+                })}
+            </div>
+
+            <button
+              onClick={() => setCurrentPage(currentPage + 1)}
+              disabled={currentPage === totalPages}
+              className="flex items-center gap-1 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              Próxima
+              <ChevronRight className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => setCurrentPage(totalPages)}
+              disabled={currentPage === totalPages}
+              className="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              Última
+            </button>
+          </div>
+        )}
 
         {/* Modal de Cadastro/Edição */}
         {showModal && (
@@ -624,6 +723,86 @@ export default function PageUnidades() {
             franqueados={franqueadosQuery.data?.items || []}
             myFranqueado={myFranqueado}
           />
+        )}
+
+        {/* Modal de Confirmação de Inativação */}
+        {showConfirmModal && unidadeToInativar && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-xl shadow-2xl max-w-md w-full overflow-hidden animate-in fade-in zoom-in duration-200">
+              {/* Header */}
+              <div className="bg-gradient-to-r from-red-500 to-red-600 p-6 text-white">
+                <div className="flex items-center gap-3">
+                  <div className="bg-white bg-opacity-20 p-3 rounded-full">
+                    <AlertCircle className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold">Inativar Unidade</h3>
+                    <p className="text-red-100 text-sm mt-1">
+                      Esta ação pode afetar o funcionamento da unidade
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Content */}
+              <div className="p-6">
+                <div className="mb-6">
+                  <p className="text-gray-700 mb-4">
+                    Tem certeza que deseja inativar a unidade{" "}
+                    <span className="font-semibold text-gray-900">
+                      {unidadeToInativar.nome}
+                    </span>
+                    ?
+                  </p>
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                    <div className="flex gap-3">
+                      <AlertTriangle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                      <div className="text-sm text-amber-800">
+                        <p className="font-medium mb-1">Atenção:</p>
+                        <ul className="list-disc list-inside space-y-1 text-amber-700">
+                          <li>
+                            Não é possível inativar unidades com professores,
+                            alunos, recepcionistas ou gerentes vinculados
+                          </li>
+                          <li>Remova todos os vínculos primeiro</li>
+                          <li>
+                            Você pode reativar posteriormente se necessário
+                          </li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="flex gap-3">
+                  <button
+                    onClick={cancelInativar}
+                    className="flex-1 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg transition-colors"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={confirmInativar}
+                    disabled={deleteMutation.isPending}
+                    className="flex-1 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  >
+                    {deleteMutation.isPending ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                        Inativando...
+                      </>
+                    ) : (
+                      <>
+                        <XCircle className="h-4 w-4" />
+                        Inativar
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </ProtectedRoute>

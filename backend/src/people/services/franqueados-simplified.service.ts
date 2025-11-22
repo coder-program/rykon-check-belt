@@ -160,6 +160,19 @@ export class FranqueadosServiceSimplified {
     ];
 
     const result = await this.dataSource.query(query, params);
+
+    // ✅ Atualizar usuário para cadastro_completo = true se situação for ATIVA
+    if (body.usuario_id && result[0].situacao === 'ATIVA') {
+      try {
+        await this.dataSource.query(
+          `UPDATE teamcruz.usuarios SET cadastro_completo = true WHERE id = $1`,
+          [body.usuario_id],
+        );
+      } catch (error) {
+        console.error('Erro ao atualizar cadastro_completo do usuário:', error);
+      }
+    }
+
     return result[0];
   }
 
@@ -219,6 +232,19 @@ export class FranqueadosServiceSimplified {
     `;
 
     const result = await this.dataSource.query(query, params);
+
+    // ✅ Atualizar usuário para cadastro_completo = true se situação mudou para ATIVA
+    if (result[0] && result[0].usuario_id && result[0].situacao === 'ATIVA') {
+      try {
+        await this.dataSource.query(
+          `UPDATE teamcruz.usuarios SET cadastro_completo = true WHERE id = $1`,
+          [result[0].usuario_id],
+        );
+      } catch (error) {
+        console.error('Erro ao atualizar cadastro_completo do usuário:', error);
+      }
+    }
+
     return result[0];
   }
 

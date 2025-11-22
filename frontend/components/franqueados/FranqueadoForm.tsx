@@ -457,11 +457,12 @@ export default function FranqueadoForm({
                     <input
                       type="text"
                       required
+                      maxLength={50}
                       value={formData.nome}
                       onChange={(e) =>
                         setFormData({
                           ...formData,
-                          nome: formatTextOnly(e.target.value, 150),
+                          nome: formatTextOnly(e.target.value, 50),
                         })
                       }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"

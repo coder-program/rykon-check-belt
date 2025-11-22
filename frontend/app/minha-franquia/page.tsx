@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "@/app/auth/AuthContext";
 import { useRouter } from "next/navigation";
+import { useFranqueadoProtection } from "@/hooks/useFranqueadoProtection";
 import { Building2, Save, ArrowLeft, Download } from "lucide-react";
 import toast, { Toaster } from "react-hot-toast";
 
@@ -182,6 +183,8 @@ Ao clicar em "Aceito os termos" você declara:
 `;
 
 export default function MinhaFranquiaPage() {
+  const { shouldBlock } = useFranqueadoProtection();
+
   const { user, updateUser } = useAuth();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -197,6 +200,8 @@ export default function MinhaFranquiaPage() {
     telefone: user?.telefone || "",
     ativo: true,
   });
+
+  if (shouldBlock) return null;
 
   const baixarContratoPDF = () => {
     // Criar conteúdo HTML para o PDF
@@ -578,6 +583,7 @@ export default function MinhaFranquiaPage() {
                 <input
                   type="text"
                   name="nome"
+                  maxLength={50}
                   value={formData.nome}
                   onChange={handleChange}
                   required
@@ -586,7 +592,7 @@ export default function MinhaFranquiaPage() {
                       ? "border-red-500 focus:border-red-500"
                       : "border-gray-600 focus:border-yellow-500"
                   }`}
-                  placeholder="Digite seu nome completo"
+                  placeholder="Digite o nome da franquia"
                 />
                 {errors.nome && (
                   <p className="mt-1 text-sm text-red-400">{errors.nome}</p>

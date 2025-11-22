@@ -24,11 +24,6 @@ export class DashboardService {
 
   async getStats(unidadeId?: string) {
     try {
-      console.log(
-        '🔥 [DASHBOARD SERVICE] getStats chamado com unidadeId:',
-        unidadeId,
-      );
-
       // Buscar usuários pendentes (inativos aguardando aprovação)
       const usuariosPendentes = await this.usuarioRepository.count({
         where: {

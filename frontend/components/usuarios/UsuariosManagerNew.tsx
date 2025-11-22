@@ -670,7 +670,7 @@ const UsuariosManagerNew = () => {
                           fontWeight: "bold",
                         }}
                       >
-                        Username *
+                        Usuário *
                       </label>
                       <input
                         type="text"

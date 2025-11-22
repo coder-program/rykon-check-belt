@@ -1889,10 +1889,11 @@ export default function MeuPerfilPage() {
                       type="text"
                       id="nome_franquia"
                       name="nome_franquia"
+                      maxLength={50}
                       value={formData.nome_franquia || ""}
                       onChange={handleChange}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="Nome da franquia"
+                      placeholder="Nome da franquia (máx. 50 caracteres)"
                     />
                   </div>
 

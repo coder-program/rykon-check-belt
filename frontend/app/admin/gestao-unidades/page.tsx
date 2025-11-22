@@ -383,29 +383,28 @@ export default function GestaoUnidadesPage() {
           <div className="flex items-center justify-between">
             <div>
               <div className="flex items-center gap-3 mb-2">
-                <button
-                  onClick={() => router.push("/dashboard")}
-                  className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
-                >
-                  <ArrowLeft className="h-5 w-5" />
-                  Voltar
-                </button>
                 <Building2 className="h-8 w-8 text-blue-600" />
                 <h1 className="text-3xl font-bold text-gray-900">
                   Gestão de Unidades
                 </h1>
               </div>
-              <p className="text-gray-600">
-                Administre unidades e seus professores associados
-              </p>
             </div>
-            <button
-              onClick={() => router.push("/unidades")}
-              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
-            >
-              <Plus className="h-4 w-4" />
-              Gerenciar Unidades
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => router.push("/unidades")}
+                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
+              >
+                <Plus className="h-4 w-4" />
+                Gerenciar Unidades
+              </button>
+              <button
+                onClick={() => router.push("/dashboard")}
+                className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-blue-600 hover:text-white text-gray-700 font-medium rounded-lg transition-all duration-200 shadow-sm hover:shadow-md"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                Voltar
+              </button>
+            </div>
           </div>
         </div>
 
@@ -614,10 +613,6 @@ export default function GestaoUnidadesPage() {
               <Building2 className="h-5 w-5" />
               Unidades e Seus Professores
             </CardTitle>
-            <CardDescription>
-              Clique em &quot;Gerenciar Professores&quot; para
-              associar/desassociar professores de cada unidade
-            </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
@@ -673,6 +668,8 @@ export default function GestaoUnidadesPage() {
                               {unidade.nome}
                               {unidade.status === "ATIVA" ? (
                                 <CheckCircle className="h-4 w-4 text-green-600" />
+                              ) : unidade.status === "INATIVA" ? (
+                                <XCircle className="h-4 w-4 text-red-600" />
                               ) : (
                                 <XCircle className="h-4 w-4 text-yellow-600" />
                               )}

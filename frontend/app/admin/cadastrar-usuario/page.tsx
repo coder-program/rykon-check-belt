@@ -82,6 +82,20 @@ export default function CadastrarUsuarioPage() {
     enabled: !!user?.id,
   });
 
+  // Verificar se é franqueado
+  const isFranqueado = user?.perfis?.some((perfil: any) => {
+    const perfilNome =
+      typeof perfil === "string" ? perfil : perfil.nome || perfil.perfil;
+    return perfilNome?.toLowerCase() === "franqueado";
+  });
+
+  // Redirecionar se for franqueado inativo
+  React.useEffect(() => {
+    if (isFranqueado && franqueado === null) {
+      router.push("/dashboard");
+    }
+  }, [isFranqueado, franqueado, router]);
+
   // Verificar se usuário logado é gerente de unidade
   const isGerenteUnidade = user?.perfis?.some((perfil: any) => {
     const perfilNome =

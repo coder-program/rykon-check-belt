@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useAuth } from "@/app/auth/AuthContext";
 import { useRouter } from "next/navigation";
+import { useFranqueadoProtection } from "@/hooks/useFranqueadoProtection";
 import {
   Card,
   CardContent,
@@ -41,12 +42,16 @@ interface HorarioAula {
 }
 
 export default function HorariosPage() {
+  const { shouldBlock } = useFranqueadoProtection();
+
   const { user } = useAuth();
   const router = useRouter();
   const [horarios, setHorarios] = useState<HorarioAula[]>([]);
   const [loading, setLoading] = useState(true);
   const [filtroSelecionado, setFiltroSelecionado] = useState<string>("todos");
   const [diaSelecionado, setDiaSelecionado] = useState<string>("todos");
+
+  if (shouldBlock) return null;
 
   const diasSemana = [
     { key: "todos", label: "Todos os Dias" },

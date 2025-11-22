@@ -164,7 +164,32 @@ export class AuthService {
       permissions,
     };
 
-    const cadastroCompleto = user.cadastro_completo || false;
+    let cadastroCompleto = user.cadastro_completo || false;
+
+    // Verificar se é franqueado e se está em homologação
+    const isFranqueado = perfis.some(
+      (p: any) =>
+        (typeof p === 'string' && p.toLowerCase() === 'franqueado') ||
+        (typeof p === 'object' && p?.nome?.toLowerCase() === 'franqueado'),
+    );
+
+    if (isFranqueado) {
+      try {
+        const FranqueadosServiceSimplified =
+          require('../people/services/franqueados-simplified.service').FranqueadosServiceSimplified;
+        const franqueadosService = new FranqueadosServiceSimplified(
+          this.dataSource,
+        );
+        const franqueado = await franqueadosService.getByUsuarioId(user.id);
+
+        // Se franqueado está EM_HOMOLOGACAO, forçar cadastro incompleto
+        if (franqueado && franqueado.situacao === 'EM_HOMOLOGACAO') {
+          cadastroCompleto = false;
+        }
+      } catch (error) {
+        console.error('Erro ao verificar situação do franqueado:', error);
+      }
+    }
 
     // Registrar LOGIN na auditoria
     /* try {
@@ -258,6 +283,17 @@ export class AuthService {
       }
     } catch (error) {}
 
+    // Incluir dados do franqueado se existir
+    let franqueado: any = null;
+    try {
+      const FranqueadosServiceSimplified =
+        require('../people/services/franqueados-simplified.service').FranqueadosServiceSimplified;
+      const franqueadosService = new FranqueadosServiceSimplified(
+        this.dataSource,
+      );
+      franqueado = await franqueadosService.getByUsuarioId(user.id);
+    } catch (error) {}
+
     const userData = {
       ...user,
       perfis: user.perfis, // Já vem como objetos com { id, nome, etc }
@@ -292,6 +328,18 @@ export class AuthService {
             unidade_id: recepcionista_unidades.unidade_id,
             cargo: recepcionista_unidades.cargo,
             turno: recepcionista_unidades.turno,
+          }
+        : null,
+      franqueado: franqueado
+        ? {
+            id: franqueado.id,
+            nome: franqueado.nome,
+            cpf: franqueado.cpf,
+            email: franqueado.email,
+            telefone: franqueado.telefone,
+            situacao: franqueado.situacao,
+            unidades_gerencia: franqueado.unidades_gerencia,
+            total_unidades: franqueado.total_unidades,
           }
         : null,
     };
@@ -677,20 +725,6 @@ export class AuthService {
       // Aluno: criar registro na tabela alunos
       if (perfilNome === 'aluno') {
         try {
-          console.log(
-            '🔍 [CREATE ALUNO] Iniciando criação do registro de aluno...',
-          );
-          console.log('🔍 [CREATE ALUNO] user.id:', user.id);
-          console.log('🔍 [CREATE ALUNO] unidade_id:', payload.unidade_id);
-          console.log('🔍 [CREATE ALUNO] nome:', user.nome);
-          console.log('🔍 [CREATE ALUNO] cpf:', user.cpf);
-          console.log(
-            '🔍 [CREATE ALUNO] data_nascimento:',
-            user.data_nascimento || payload.data_nascimento,
-          );
-          console.log('🔍 [CREATE ALUNO] genero:', payload.genero);
-          console.log('🔍 [CREATE ALUNO] telefone:', user.telefone);
-
           // Usar dados do usuário + dados adicionais do payload
           const alunoData = {
             // Dados obrigatórios
@@ -740,17 +774,7 @@ export class AuthService {
             consent_lgpd_date: payload.consent_lgpd ? new Date() : null,
           };
 
-          console.log(
-            '🔍 [CREATE ALUNO] Chamando alunosService.create() com dados:',
-            JSON.stringify(alunoData, null, 2),
-          );
-
           const alunoCriado = await this.alunosService.create(alunoData as any);
-
-          console.log(
-            '✅ [CREATE ALUNO] Registro de aluno criado com sucesso!',
-            alunoCriado.id,
-          );
         } catch (error) {
           console.error(
             '❌ [CREATE ALUNO] Erro ao criar registro de aluno:',

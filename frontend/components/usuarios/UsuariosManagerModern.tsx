@@ -85,19 +85,26 @@ const formatPhone = (value: string): string => {
   // Limita a 11 dígitos
   const limited = cleaned.slice(0, 11);
 
+  // Se está vazio ou tem apenas 1 dígito, retorna sem formatação
+  if (limited.length <= 1) {
+    return limited;
+  }
+
   // Formata conforme a quantidade de dígitos
   if (limited.length === 11) {
     return limited.replace(/(\d{2})(\d{5})(\d{4})/, "($1) $2-$3");
   } else if (limited.length === 10) {
     return limited.replace(/(\d{2})(\d{4})(\d{4})/, "($1) $2-$3");
-  } else if (limited.length >= 6) {
+  } else if (limited.length >= 7) {
+    // 7 a 9 dígitos: (XX) XXXX-X ou (XX) XXXX-XX
     return limited.replace(/(\d{2})(\d{4})(\d{0,4})/, "($1) $2-$3");
-  } else if (limited.length >= 2) {
+  } else if (limited.length >= 3) {
+    // 3 a 6 dígitos: (XX) XXX ou (XX) XXXX
     return limited.replace(/(\d{2})(\d{0,5})/, "($1) $2");
+  } else {
+    // 2 dígitos: (XX
+    return limited.replace(/(\d{2})/, "($1");
   }
-
-  // Retorna apenas os dígitos se ainda não tem 2 caracteres
-  return limited;
 };
 
 interface FormData {
@@ -696,25 +703,27 @@ export default function UsuariosManagerNew() {
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <div className="flex items-center gap-3 mb-2">
+                <Users className="h-8 w-8 text-blue-600" />
+                <h1 className="text-3xl font-bold text-gray-900">
+                  Gerenciamento de Usuários
+                </h1>
+              </div>
+              <p className="text-gray-600">
+                Gerencie usuários, perfis e permissões do sistema
+              </p>
+            </div>
             <button
               type="button"
-              onClick={() => router.back()}
-              className="px-3 py-2 text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 rounded-lg font-medium"
+              onClick={() => router.push("/dashboard")}
+              className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-blue-600 hover:text-white text-gray-700 font-medium rounded-lg transition-all duration-200 shadow-sm hover:shadow-md"
             >
               <ArrowLeft className="h-4 w-4" />
+              <span>Voltar</span>
             </button>
           </div>
-
-          <div className="flex items-center gap-3 mb-2">
-            <Users className="h-8 w-8 text-blue-600" />
-            <h1 className="text-3xl font-bold text-gray-900">
-              Gerenciamento de Usuários
-            </h1>
-          </div>
-          <p className="text-gray-600">
-            Gerencie usuários, perfis e permissões do sistema
-          </p>
         </div>
 
         {/* Stats Cards */}
@@ -1346,48 +1355,54 @@ export default function UsuariosManagerNew() {
                     </span>
                   </label>
                   <div className="space-y-2">
-                    {perfisDisponiveis.map((perfil: any) => (
-                      <label key={perfil.id} className="flex items-center">
-                        <input
-                          type="checkbox"
-                          checked={formData.perfil_ids.includes(perfil.id)}
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              // Permite apenas UM perfil selecionado
-                              const isFranqueado =
-                                perfis
-                                  .find((p) => p.id === perfil.id)
-                                  ?.nome?.toUpperCase() === "FRANQUEADO";
+                    {perfisDisponiveis
+                      .filter((perfil: any) => {
+                        const nome = perfil.nome?.toUpperCase();
+                        // Esconde MASTER e ADMIN_SISTEMA
+                        return nome !== "MASTER" && nome !== "ADMIN_SISTEMA";
+                      })
+                      .map((perfil: any) => (
+                        <label key={perfil.id} className="flex items-center">
+                          <input
+                            type="checkbox"
+                            checked={formData.perfil_ids.includes(perfil.id)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                // Permite apenas UM perfil selecionado
+                                const isFranqueado =
+                                  perfis
+                                    .find((p) => p.id === perfil.id)
+                                    ?.nome?.toUpperCase() === "FRANQUEADO";
 
-                              setFormData({
-                                ...formData,
-                                perfil_ids: [perfil.id], // Substitui qualquer perfil anterior
-                                // Se for FRANQUEADO, sempre false (terá que completar depois)
-                                cadastro_completo: isFranqueado
-                                  ? false
-                                  : formData.cadastro_completo,
-                              });
-                            } else {
-                              setFormData({
-                                ...formData,
-                                perfil_ids: formData.perfil_ids.filter(
-                                  (id) => id !== perfil.id
-                                ),
-                              });
-                            }
-                          }}
-                          className="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
-                        />
-                        <span className="ml-2 text-sm text-gray-700">
-                          {perfil.nome}
-                        </span>
-                        {perfil.descricao && (
-                          <span className="ml-2 text-xs text-gray-500">
-                            - {perfil.descricao}
+                                setFormData({
+                                  ...formData,
+                                  perfil_ids: [perfil.id], // Substitui qualquer perfil anterior
+                                  // Se for FRANQUEADO, sempre false (terá que completar depois)
+                                  cadastro_completo: isFranqueado
+                                    ? false
+                                    : formData.cadastro_completo,
+                                });
+                              } else {
+                                setFormData({
+                                  ...formData,
+                                  perfil_ids: formData.perfil_ids.filter(
+                                    (id) => id !== perfil.id
+                                  ),
+                                });
+                              }
+                            }}
+                            className="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                          />
+                          <span className="ml-2 text-sm text-gray-700">
+                            {perfil.nome}
                           </span>
-                        )}
-                      </label>
-                    ))}
+                          {perfil.descricao && (
+                            <span className="ml-2 text-xs text-gray-500">
+                              - {perfil.descricao}
+                            </span>
+                          )}
+                        </label>
+                      ))}
                   </div>
                   {validationErrors.perfil_ids && (
                     <p className="text-red-600 text-sm mt-2">

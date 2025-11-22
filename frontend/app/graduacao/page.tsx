@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useFranqueadoProtection } from "@/hooks/useFranqueadoProtection";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -73,6 +74,8 @@ interface FaixaDefinicao {
 }
 
 export default function GraduacaoPage() {
+  const { shouldBlock } = useFranqueadoProtection();
+
   const [filtroNome, setFiltroNome] = useState("");
   const [filtroCategoria, setFiltroCategoria] = useState("todos");
   const [filtroFaixa, setFiltroFaixa] = useState("todos");
@@ -81,6 +84,8 @@ export default function GraduacaoPage() {
   const [showAprovacaoModal, setShowAprovacaoModal] = useState(false);
   const [graduacaoParaAprovar, setGraduacaoParaAprovar] = useState<any>(null);
   const [observacaoAprovacao, setObservacaoAprovacao] = useState("");
+
+  if (shouldBlock) return null;
 
   // Queries
   const { data: proximosGraduar, isLoading: loadingProximos } = useQuery({

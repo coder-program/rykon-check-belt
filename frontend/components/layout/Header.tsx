@@ -142,17 +142,23 @@ export default function Header() {
 
             {/* Botões de Ação */}
             <div className="flex items-center gap-2">
-              {/* Meu Perfil */}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => router.push("/meu-perfil")}
-                className="flex items-center gap-2 bg-gradient-to-r from-blue-50 to-blue-100 text-blue-700 border-blue-300 hover:from-blue-100 hover:to-blue-200 hover:shadow-md transition-all duration-200 font-medium"
-                title="Editar meu perfil"
-              >
-                <User className="h-4 w-4" />
-                <span className="hidden lg:inline">Meu Perfil</span>
-              </Button>
+              {/* Meu Perfil - não mostrar para franqueados */}
+              {!user?.perfis?.some((p: any) => {
+                const perfilNome =
+                  typeof p === "string" ? p : p?.nome || p?.perfil;
+                return perfilNome?.toLowerCase() === "franqueado";
+              }) && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => router.push("/meu-perfil")}
+                  className="flex items-center gap-2 bg-gradient-to-r from-blue-50 to-blue-100 text-blue-700 border-blue-300 hover:from-blue-100 hover:to-blue-200 hover:shadow-md transition-all duration-200 font-medium"
+                  title="Editar meu perfil"
+                >
+                  <User className="h-4 w-4" />
+                  <span className="hidden lg:inline">Meu Perfil</span>
+                </Button>
+              )}
 
               {/* Encerrar Todas as Sessões */}
               <Button
@@ -206,17 +212,24 @@ export default function Header() {
 
               {/* Botões Mobile */}
               <div className="space-y-2">
-                <Button
-                  variant="outline"
-                  className="w-full justify-start bg-gradient-to-r from-blue-50 to-blue-100 text-blue-700 border-blue-300 hover:from-blue-100 hover:to-blue-200 hover:shadow-md transition-all duration-200 font-medium"
-                  onClick={() => {
-                    setMobileMenuOpen(false);
-                    router.push("/meu-perfil");
-                  }}
-                >
-                  <User className="h-4 w-4 mr-2" />
-                  Meu Perfil
-                </Button>
+                {/* Meu Perfil - não mostrar para franqueados */}
+                {!user?.perfis?.some((p: any) => {
+                  const perfilNome =
+                    typeof p === "string" ? p : p?.nome || p?.perfil;
+                  return perfilNome?.toLowerCase() === "franqueado";
+                }) && (
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start bg-gradient-to-r from-blue-50 to-blue-100 text-blue-700 border-blue-300 hover:from-blue-100 hover:to-blue-200 hover:shadow-md transition-all duration-200 font-medium"
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      router.push("/meu-perfil");
+                    }}
+                  >
+                    <User className="h-4 w-4 mr-2" />
+                    Meu Perfil
+                  </Button>
+                )}
 
                 <Button
                   variant="outline"

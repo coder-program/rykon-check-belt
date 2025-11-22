@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useAuth } from "@/app/auth/AuthContext";
 import { useRouter } from "next/navigation";
+import { useFranqueadoProtection } from "@/hooks/useFranqueadoProtection";
 import {
   Card,
   CardContent,

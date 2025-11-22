@@ -170,11 +170,25 @@ function AlunosContent() {
     );
   });
 
+  // Verificar se é super_admin
+  const isSuperAdmin = user?.perfis?.some((perfil: any) => {
+    const perfilNome =
+      typeof perfil === "string" ? perfil : perfil.nome || perfil.perfil;
+    return perfilNome?.toLowerCase() === "super_admin";
+  });
+
   const { data: myFranqueado } = useQuery({
     queryKey: ["franqueado-me", user?.id],
     queryFn: getMyFranqueado,
     enabled: !!user?.id && isFranqueado,
   });
+
+  // Redirecionar se for franqueado inativo
+  React.useEffect(() => {
+    if (isFranqueado && myFranqueado === null) {
+      router.push("/dashboard");
+    }
+  }, [isFranqueado, myFranqueado, router]);
 
   // Buscar unidade do gerente (se for gerente de unidade)
   const { data: minhaUnidadeData } = useQuery({
@@ -318,13 +332,29 @@ function AlunosContent() {
     const cleanedData = {
       ...formData,
       cpf: formData.cpf.replace(/\D/g, ""), // Remove pontos, traços e outros caracteres
-      telefone: formData.telefone?.replace(/\D/g, "") || "", // Remove formatação do telefone
+      telefone: formData.telefone?.replace(/\D/g, "") || undefined,
       telefone_emergencia:
-        formData.telefone_emergencia?.replace(/\D/g, "") || "",
-      responsavel_cpf: formData.responsavel_cpf?.replace(/\D/g, "") || "",
+        formData.telefone_emergencia?.replace(/\D/g, "") || undefined,
+      responsavel_cpf:
+        formData.responsavel_cpf?.replace(/\D/g, "").length === 11
+          ? formData.responsavel_cpf.replace(/\D/g, "")
+          : undefined,
       responsavel_telefone:
-        formData.responsavel_telefone?.replace(/\D/g, "") || "",
+        formData.responsavel_telefone?.replace(/\D/g, "") || undefined,
+      responsavel_nome: formData.responsavel_nome?.trim() || undefined,
+      responsavel_parentesco:
+        formData.responsavel_parentesco?.trim() || undefined,
     };
+
+    // Remover campos undefined para não enviar ao backend
+    Object.keys(cleanedData).forEach((key) => {
+      if (
+        cleanedData[key as keyof typeof cleanedData] === undefined ||
+        cleanedData[key as keyof typeof cleanedData] === ""
+      ) {
+        delete cleanedData[key as keyof typeof cleanedData];
+      }
+    });
 
     if (editingAluno?.id) {
       updateMutation.mutate({ id: editingAluno.id, data: cleanedData });
@@ -414,32 +444,18 @@ function AlunosContent() {
         {/* Só mostra o conteúdo se NÃO for acesso de responsável OU se tiver modal aberto */}
         {(!isResponsavelAccess || showModal) && (
           <>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <button
-                  onClick={() => router.push("/dashboard")}
-                  className="flex items-center gap-2 px-3 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
-                  title="Voltar ao Dashboard"
-                >
-                  <ArrowLeft className="h-5 w-5" />
-                  Voltar
-                </button>
-                <h1 className="text-2xl font-bold flex items-center gap-2">
-                  <Users className="h-6 w-6" />
-                  Alunos
-                </h1>
-              </div>
-              {/* <button
-          className="btn btn-primary flex items-center gap-2"
-          onClick={() => {
-            setEditingAluno(null);
-            resetForm();
-            setShowModal(true);
-          }}
-        >
-          <Plus className="h-4 w-4" />
-          Novo Aluno
-        </button> */}
+            <div className="flex items-center justify-between mb-6">
+              <h1 className="text-2xl font-bold flex items-center gap-2">
+                <Users className="h-6 w-6" />
+                Alunos
+              </h1>
+              <button
+                onClick={() => router.push("/dashboard")}
+                className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-blue-600 hover:text-white text-gray-700 font-medium rounded-lg transition-all duration-200 shadow-sm hover:shadow-md"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                <span>Voltar</span>
+              </button>
             </div>
 
             {/* Estatísticas */}
@@ -685,21 +701,23 @@ function AlunosContent() {
                           >
                             <Edit2 className="h-4 w-4 text-blue-600" />
                           </button>
-                          <button
-                            onClick={() => {
-                              if (
-                                confirm(
-                                  `Tem certeza que deseja remover o aluno "${aluno.nome_completo}"?`
-                                )
-                              ) {
-                                deleteMutation.mutate(aluno.id);
-                              }
-                            }}
-                            className="p-2 hover:bg-red-100 rounded-lg transition-colors"
-                            title="Remover"
-                          >
-                            <Trash2 className="h-4 w-4 text-red-600" />
-                          </button>
+                          {!isSuperAdmin && (
+                            <button
+                              onClick={() => {
+                                if (
+                                  confirm(
+                                    `Tem certeza que deseja remover o aluno "${aluno.nome_completo}"?`
+                                  )
+                                ) {
+                                  deleteMutation.mutate(aluno.id);
+                                }
+                              }}
+                              className="p-2 hover:bg-red-100 rounded-lg transition-colors"
+                              title="Remover"
+                            >
+                              <Trash2 className="h-4 w-4 text-red-600" />
+                            </button>
+                          )}
                         </div>
                       </div>
                     </div>

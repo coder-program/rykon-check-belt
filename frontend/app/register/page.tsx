@@ -357,11 +357,12 @@ export default function RegisterPage() {
   };
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    // FORÇA a formatação sempre, independente do valor de entrada
+    // FORCA a formatação sempre, independente do valor de entrada
     const inputValue = e.target.value;
 
-    // Se o usuário colou um número só com dígitos, força formatação
-    const formatted = formatPhone(inputValue);
+    // Remove tudo que não é número antes de formatar
+    const onlyNumbers = inputValue.replace(/\D/g, "");
+    const formatted = formatPhone(onlyNumbers);
 
     setFormData({
       ...formData,
@@ -399,7 +400,11 @@ export default function RegisterPage() {
   }, [formData.telefone]);
 
   const handleCPFChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const formatted = formatCPF(e.target.value);
+    // Remove tudo que não é número antes de formatar
+    const onlyNumbers = e.target.value.replace(/\D/g, "");
+    // Limita a 11 dígitos
+    const limitedNumbers = onlyNumbers.slice(0, 11);
+    const formatted = formatCPF(limitedNumbers);
     setFormData({
       ...formData,
       cpf: formatted,
@@ -1033,9 +1038,17 @@ export default function RegisterPage() {
                             type="text"
                             required
                             placeholder="000.000.000-00"
+                            maxLength={14}
                             value={formatCPF(formData.responsavel_cpf)}
                             onChange={(e) => {
-                              const formatted = formatCPF(e.target.value);
+                              // Remove tudo que não é número antes de formatar
+                              const onlyNumbers = e.target.value.replace(
+                                /\D/g,
+                                ""
+                              );
+                              // Limita a 11 dígitos
+                              const limitedNumbers = onlyNumbers.slice(0, 11);
+                              const formatted = formatCPF(limitedNumbers);
                               setFormData({
                                 ...formData,
                                 responsavel_cpf: formatted,
@@ -1083,9 +1096,17 @@ export default function RegisterPage() {
                             type="tel"
                             required
                             placeholder="(00) 00000-0000"
+                            maxLength={15}
                             value={formatPhone(formData.responsavel_telefone)}
                             onChange={(e) => {
-                              const formatted = formatPhone(e.target.value);
+                              // Remove tudo que não é número antes de formatar
+                              const onlyNumbers = e.target.value.replace(
+                                /\D/g,
+                                ""
+                              );
+                              // Limita a 11 dígitos
+                              const limitedNumbers = onlyNumbers.slice(0, 11);
+                              const formatted = formatPhone(limitedNumbers);
                               setFormData({
                                 ...formData,
                                 responsavel_telefone: formatted,

@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/app/auth/AuthContext";
 import { useRouter } from "next/navigation";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
+import { useFranqueadoProtection } from "@/hooks/useFranqueadoProtection";
 import {
   Card,
   CardContent,
@@ -67,11 +68,13 @@ interface AulaAtiva {
 }
 
 export default function PresencaPage() {
+  const { shouldBlock } = useFranqueadoProtection();
+
   const router = useRouter();
   const { user } = useAuth();
   const videoRef = useRef<HTMLVideoElement>(null);
 
-  // Estados existentes
+  if (shouldBlock) return null; // Estados existentes
   const [scanner, setScanner] = useState<Html5QrcodeScanner | null>(null);
   const [scannerActive, setScannerActive] = useState(false);
   const [aulaAtiva, setAulaAtiva] = useState<AulaAtiva | null>(null);
@@ -104,7 +107,9 @@ export default function PresencaPage() {
   const [alunosEncontrados, setAlunosEncontrados] = useState<Aluno[]>([]);
   const [meusFilhos, setMeusFilhos] = useState<Aluno[]>([]);
   const [showResponsavelMode, setShowResponsavelMode] = useState(false);
-  const [filtroFaixa, setFiltroFaixa] = useState<"todas" | "branca" | "azul" | "roxa" | "marrom" | "preta">("todas");
+  const [filtroFaixa, setFiltroFaixa] = useState<
+    "todas" | "branca" | "azul" | "roxa" | "marrom" | "preta"
+  >("todas");
   const [buscaHistorico, setBuscaHistorico] = useState("");
 
   useEffect(() => {
@@ -763,7 +768,9 @@ export default function PresencaPage() {
                   Presença Mensal
                 </h3>
                 <p className="text-xs text-green-700">
-                  {stats.presencaMensal >= 80 ? "🔥 Excelente!" : "📈 Pode melhorar"}
+                  {stats.presencaMensal >= 80
+                    ? "🔥 Excelente!"
+                    : "📈 Pode melhorar"}
                 </p>
               </CardContent>
             </Card>
@@ -783,9 +790,7 @@ export default function PresencaPage() {
                 <h3 className="text-sm font-semibold text-blue-900 mb-1">
                   Aulas Este Mês
                 </h3>
-                <p className="text-xs text-blue-700">
-                  Aulas frequentadas
-                </p>
+                <p className="text-xs text-blue-700">Aulas frequentadas</p>
               </CardContent>
             </Card>
 
@@ -830,7 +835,9 @@ export default function PresencaPage() {
                   Última Presença
                 </h3>
                 <p className="text-xs text-purple-700">
-                  {stats.ultimaPresenca ? "Último check-in" : "Faça seu primeiro check-in!"}
+                  {stats.ultimaPresenca
+                    ? "Último check-in"
+                    : "Faça seu primeiro check-in!"}
                 </p>
               </CardContent>
             </Card>
@@ -1339,8 +1346,17 @@ export default function PresencaPage() {
                       onClick={() => setFiltroFaixa("branca")}
                       className="text-xs"
                     >
-                      <svg className="w-4 h-4 mr-1" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 14H4V6h16v12z" fill="#FFFFFF" stroke="#000" strokeWidth="0.5"/>
+                      <svg
+                        className="w-4 h-4 mr-1"
+                        viewBox="0 0 24 24"
+                        fill="currentColor"
+                      >
+                        <path
+                          d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 14H4V6h16v12z"
+                          fill="#FFFFFF"
+                          stroke="#000"
+                          strokeWidth="0.5"
+                        />
                       </svg>
                       Branca
                     </Button>
@@ -1350,8 +1366,15 @@ export default function PresencaPage() {
                       onClick={() => setFiltroFaixa("azul")}
                       className="text-xs"
                     >
-                      <svg className="w-4 h-4 mr-1" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 14H4V6h16v12z" fill="#0066CC"/>
+                      <svg
+                        className="w-4 h-4 mr-1"
+                        viewBox="0 0 24 24"
+                        fill="currentColor"
+                      >
+                        <path
+                          d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 14H4V6h16v12z"
+                          fill="#0066CC"
+                        />
                       </svg>
                       Azul
                     </Button>
@@ -1361,8 +1384,15 @@ export default function PresencaPage() {
                       onClick={() => setFiltroFaixa("roxa")}
                       className="text-xs"
                     >
-                      <svg className="w-4 h-4 mr-1" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 14H4V6h16v12z" fill="#9933CC"/>
+                      <svg
+                        className="w-4 h-4 mr-1"
+                        viewBox="0 0 24 24"
+                        fill="currentColor"
+                      >
+                        <path
+                          d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 14H4V6h16v12z"
+                          fill="#9933CC"
+                        />
                       </svg>
                       Roxa
                     </Button>
@@ -1372,8 +1402,15 @@ export default function PresencaPage() {
                       onClick={() => setFiltroFaixa("marrom")}
                       className="text-xs"
                     >
-                      <svg className="w-4 h-4 mr-1" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 14H4V6h16v12z" fill="#8B4513"/>
+                      <svg
+                        className="w-4 h-4 mr-1"
+                        viewBox="0 0 24 24"
+                        fill="currentColor"
+                      >
+                        <path
+                          d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 14H4V6h16v12z"
+                          fill="#8B4513"
+                        />
                       </svg>
                       Marrom
                     </Button>
@@ -1383,8 +1420,15 @@ export default function PresencaPage() {
                       onClick={() => setFiltroFaixa("preta")}
                       className="text-xs"
                     >
-                      <svg className="w-4 h-4 mr-1" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 14H4V6h16v12z" fill="#000000"/>
+                      <svg
+                        className="w-4 h-4 mr-1"
+                        viewBox="0 0 24 24"
+                        fill="currentColor"
+                      >
+                        <path
+                          d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 14H4V6h16v12z"
+                          fill="#000000"
+                        />
                       </svg>
                       Preta
                     </Button>
@@ -1413,46 +1457,48 @@ export default function PresencaPage() {
                         return true;
                       })
                       .map((presenca) => (
-                      <div
-                        key={presenca.id}
-                        className="flex items-center justify-between p-3 bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg border border-gray-200 hover:shadow-md transition-shadow"
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="p-2 bg-green-100 rounded-lg">
-                            <CheckCircle className="h-4 w-4 text-green-600" />
+                        <div
+                          key={presenca.id}
+                          className="flex items-center justify-between p-3 bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg border border-gray-200 hover:shadow-md transition-shadow"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="p-2 bg-green-100 rounded-lg">
+                              <CheckCircle className="h-4 w-4 text-green-600" />
+                            </div>
+                            <div>
+                              <div className="font-medium text-sm">
+                                {presenca.aula.nome}
+                              </div>
+                              <div className="text-xs text-gray-600">
+                                Prof. {presenca.aula.professor}
+                              </div>
+                              <div className="text-xs text-gray-500">
+                                {presenca.aula.unidade}
+                              </div>
+                            </div>
                           </div>
-                          <div>
-                            <div className="font-medium text-sm">
-                              {presenca.aula.nome}
+                          <div className="text-right">
+                            <div className="text-sm font-medium">
+                              {formatDate(presenca.data).split(" ")[0]}
                             </div>
                             <div className="text-xs text-gray-600">
-                              Prof. {presenca.aula.professor}
+                              {presenca.horario}
                             </div>
-                            <div className="text-xs text-gray-500">
-                              {presenca.aula.unidade}
-                            </div>
+                            <Badge
+                              variant={
+                                presenca.tipo === "entrada"
+                                  ? "default"
+                                  : "secondary"
+                              }
+                              className="text-xs mt-1"
+                            >
+                              {presenca.tipo === "entrada"
+                                ? "Entrada"
+                                : "Saída"}
+                            </Badge>
                           </div>
                         </div>
-                        <div className="text-right">
-                          <div className="text-sm font-medium">
-                            {formatDate(presenca.data).split(" ")[0]}
-                          </div>
-                          <div className="text-xs text-gray-600">
-                            {presenca.horario}
-                          </div>
-                          <Badge
-                            variant={
-                              presenca.tipo === "entrada"
-                                ? "default"
-                                : "secondary"
-                            }
-                            className="text-xs mt-1"
-                          >
-                            {presenca.tipo === "entrada" ? "Entrada" : "Saída"}
-                          </Badge>
-                        </div>
-                      </div>
-                    ))}
+                      ))}
 
                     <div className="pt-3 border-t">
                       <Button

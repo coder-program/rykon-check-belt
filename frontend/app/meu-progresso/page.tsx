@@ -50,6 +50,7 @@ interface FaixaForm {
   faixaDestinoId: string;
   dt_inicio: string;
   dt_fim: string;
+  isFaixaAtual: boolean;
 }
 
 export default function MeuProgressoPage() {
@@ -60,7 +61,7 @@ export default function MeuProgressoPage() {
   const [isFaixaModalOpen, setIsFaixaModalOpen] = useState(false);
   const [editingFaixa, setEditingFaixa] = useState<string | null>(null);
   const [editDates, setEditDates] = useState({ dt_inicio: "", dt_fim: "" });
-  
+
   // Limpar cache quando o usuário mudar
   useEffect(() => {
     queryClient.invalidateQueries({ queryKey: ["meu-historico"] });
@@ -82,6 +83,7 @@ export default function MeuProgressoPage() {
     faixaDestinoId: "",
     dt_inicio: "",
     dt_fim: "",
+    isFaixaAtual: false,
   }); // Query para buscar histórico
   const { data: historico } = useQuery({
     queryKey: ["meu-historico"],
@@ -246,9 +248,37 @@ export default function MeuProgressoPage() {
   };
 
   const handleSalvarFaixa = () => {
+    // Validação: Faixa e Data de Início são sempre obrigatórios
     if (!faixaForm.faixaDestinoId || !faixaForm.dt_inicio) {
       alert("Por favor, preencha a faixa conquistada e a data de início.");
       return;
+    }
+
+    // Se NÃO é a faixa atual (é uma faixa antiga concluída), Data de Fim é obrigatória
+    if (!faixaForm.isFaixaAtual && !faixaForm.dt_fim) {
+      alert(
+        "Para faixas antigas concluídas, a Data de Fim é obrigatória. Se esta é sua faixa atual, marque a opção 'Esta é minha faixa atual'."
+      );
+      return;
+    }
+
+    // Se marcou como faixa atual, não pode ter Data de Fim
+    if (faixaForm.isFaixaAtual && faixaForm.dt_fim) {
+      alert(
+        "Faixa atual não pode ter Data de Fim. Desmarque 'Esta é minha faixa atual' se a faixa já foi concluída."
+      );
+      return;
+    }
+
+    // Validar que a Data de Fim não é anterior à Data de Início
+    if (faixaForm.dt_fim && faixaForm.dt_inicio) {
+      const inicio = new Date(faixaForm.dt_inicio + "T00:00:00");
+      const fim = new Date(faixaForm.dt_fim + "T00:00:00");
+
+      if (fim < inicio) {
+        alert("A Data de Fim não pode ser anterior à Data de Início.");
+        return;
+      }
     }
 
     const dados: FaixaForm & { dt_fim?: string } = {
@@ -256,6 +286,7 @@ export default function MeuProgressoPage() {
       faixaDestinoId: faixaForm.faixaDestinoId,
       dt_inicio: faixaForm.dt_inicio,
       dt_fim: faixaForm.dt_fim || "",
+      isFaixaAtual: faixaForm.isFaixaAtual,
     };
 
     adicionarFaixaMutation.mutate(dados);
@@ -284,8 +315,8 @@ export default function MeuProgressoPage() {
 
   // Função para calcular o tempo em uma faixa
   const calcularTempoFaixa = (dt_inicio: string, dt_fim?: string) => {
-    const inicio = new Date(dt_inicio);
-    const fim = dt_fim ? new Date(dt_fim) : new Date(); // Se não tem fim, usa data atual
+    const inicio = new Date(dt_inicio + "T00:00:00"); // Força timezone local
+    const fim = dt_fim ? new Date(dt_fim + "T00:00:00") : new Date(); // Se não tem fim, usa data atual
 
     const diffMs = fim.getTime() - inicio.getTime();
     const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
@@ -314,6 +345,12 @@ export default function MeuProgressoPage() {
       }
       return result;
     }
+  };
+
+  // Função para formatar data sem problema de timezone
+  const formatarData = (dataString: string) => {
+    const data = new Date(dataString + "T00:00:00"); // Força timezone local
+    return data.toLocaleDateString("pt-BR");
   };
 
   // Função para verificar se é a faixa atual (não tem data fim)
@@ -360,7 +397,7 @@ export default function MeuProgressoPage() {
             </CardHeader>
             <CardContent>
               {historico?.historicoFaixas?.length > 0 ? (
-                <div className="space-y-4">
+                <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2">
                   {historico.historicoFaixas
                     .sort((a: HistoricoFaixa, b: HistoricoFaixa) => {
                       // Faixas atuais (sem dt_fim) primeiro
@@ -368,8 +405,8 @@ export default function MeuProgressoPage() {
                       if (a.dt_fim && !b.dt_fim) return 1;
                       // Se ambas têm dt_fim ou ambas não têm, ordena por dt_inicio DESC
                       return (
-                        new Date(b.dt_inicio).getTime() -
-                        new Date(a.dt_inicio).getTime()
+                        new Date(b.dt_inicio + "T00:00:00").getTime() -
+                        new Date(a.dt_inicio + "T00:00:00").getTime()
                       );
                     })
                     .map((faixa: HistoricoFaixa) => (
@@ -473,16 +510,12 @@ export default function MeuProgressoPage() {
                               <div className="text-sm text-gray-500 space-y-1">
                                 <p>
                                   <strong>Início:</strong>{" "}
-                                  {new Date(faixa.dt_inicio).toLocaleDateString(
-                                    "pt-BR"
-                                  )}
+                                  {formatarData(faixa.dt_inicio)}
                                 </p>
                                 {faixa.dt_fim ? (
                                   <p>
                                     <strong>Fim:</strong>{" "}
-                                    {new Date(faixa.dt_fim).toLocaleDateString(
-                                      "pt-BR"
-                                    )}
+                                    {formatarData(faixa.dt_fim)}
                                   </p>
                                 ) : (
                                   <p className="text-green-600 font-medium">
@@ -536,7 +569,7 @@ export default function MeuProgressoPage() {
             </CardHeader>
             <CardContent>
               {historico?.historicoGraus?.length > 0 ? (
-                <div className="space-y-6">
+                <div className="space-y-6 max-h-[600px] overflow-y-auto pr-2">
                   {/* Agrupar graus por faixa */}
                   {Object.entries(
                     historico.historicoGraus.reduce(
@@ -900,6 +933,27 @@ export default function MeuProgressoPage() {
                 </select>
               </div>
 
+              <div className="mb-3">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={faixaForm.isFaixaAtual}
+                    onChange={(e) => {
+                      const isAtual = e.target.checked;
+                      setFaixaForm({
+                        ...faixaForm,
+                        isFaixaAtual: isAtual,
+                        dt_fim: isAtual ? "" : faixaForm.dt_fim, // Limpa Data de Fim se marcar como atual
+                      });
+                    }}
+                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                  />
+                  <span className="text-sm font-medium text-gray-700">
+                    ✓ Esta é minha faixa atual (ainda não concluí)
+                  </span>
+                </label>
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -916,7 +970,7 @@ export default function MeuProgressoPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Data de Fim
+                    Data de Fim {!faixaForm.isFaixaAtual && "*"}
                   </label>
                   <Input
                     type="date"
@@ -925,17 +979,34 @@ export default function MeuProgressoPage() {
                       setFaixaForm({ ...faixaForm, dt_fim: e.target.value })
                     }
                     placeholder="Quando você terminou nesta faixa"
+                    disabled={faixaForm.isFaixaAtual}
+                    className={
+                      faixaForm.isFaixaAtual
+                        ? "bg-gray-100 cursor-not-allowed"
+                        : ""
+                    }
                   />
                 </div>
               </div>
 
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-                <p className="text-xs text-yellow-700">
-                  💡 <strong>Dica:</strong> Registre apenas faixas antigas que
-                  você conquistou no passado. A data de início é obrigatória. A
-                  data de fim é opcional (deixe em branco se ainda está nesta
-                  faixa).
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <p className="text-sm text-blue-800 font-medium mb-2">
+                  📋 Importante: Preencha os campos corretamente
                 </p>
+                <ul className="text-xs text-blue-700 space-y-1 ml-4 list-disc">
+                  <li>
+                    <strong>Faixa antiga (já concluída):</strong> Deixe o
+                    checkbox desmarcado e preencha tanto a{" "}
+                    <strong>Data de Início</strong> quanto a{" "}
+                    <strong>Data de Fim</strong> - ambos campos são obrigatórios
+                  </li>
+                  <li>
+                    <strong>Faixa atual (em progresso):</strong> Marque o
+                    checkbox "✓ Esta é minha faixa atual" e preencha apenas a{" "}
+                    <strong>Data de Início</strong> - a Data de Fim será
+                    desabilitada
+                  </li>
+                </ul>
               </div>
             </div>
 

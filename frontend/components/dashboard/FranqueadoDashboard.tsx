@@ -275,7 +275,7 @@ export default function FranqueadoDashboard() {
           </h2>
           <p className="text-gray-600 mb-4">
             Seu usuário possui o perfil de FRANQUEADO, mas seu cadastro ainda
-            não foi completado.
+            não foi completado ou sua franquia pode ter sido inativada.
           </p>
 
           <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4 text-left">
@@ -299,13 +299,6 @@ export default function FranqueadoDashboard() {
               </div>
             </div>
           </div>
-
-          <button
-            onClick={() => router.push("/meu-perfil")}
-            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            Ver Meu Perfil
-          </button>
         </div>
       </div>
     );
@@ -323,7 +316,7 @@ export default function FranqueadoDashboard() {
       title: "Gerenciar Unidades",
       description: "Administrar suas academias",
       icon: Building2,
-      action: () => router.push("/unidades"),
+      action: () => router.push("/admin/gestao-unidades"),
       color: "bg-blue-500",
     },
     {
@@ -538,7 +531,7 @@ export default function FranqueadoDashboard() {
                   Nenhuma unidade cadastrada ainda
                 </p>
                 <button
-                  onClick={() => router.push("/unidades")}
+                  onClick={() => router.push("/admin/gestao-unidades")}
                   className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                 >
                   Cadastrar Primeira Unidade
@@ -636,7 +629,7 @@ export default function FranqueadoDashboard() {
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
-                                router.push(`/unidades`);
+                                router.push(`/admin/gestao-unidades`);
                               }}
                               className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                             >

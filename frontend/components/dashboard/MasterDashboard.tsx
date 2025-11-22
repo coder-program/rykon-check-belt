@@ -153,7 +153,7 @@ export default function MasterDashboard() {
       title: "Gestão Franqueados",
       description: "Associar franqueados e unidades",
       icon: Building2,
-      action: () => router.push("/admin/gestao-franqueados"),
+      action: () => router.push("/franqueados"),
       color: "bg-purple-500",
       badge: "Admin",
     },

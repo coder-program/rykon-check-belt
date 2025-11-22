@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
+import { useAuth } from "@/app/auth/AuthContext";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   listFranqueados,
@@ -27,6 +28,7 @@ import {
   CheckCircle,
   XCircle,
   AlertCircle,
+  AlertTriangle,
 } from "lucide-react";
 import toast, { Toaster } from "react-hot-toast";
 
@@ -367,6 +369,7 @@ const FormularioFranqueado: React.FC<FormularioFranqueadoProps> = ({
             <input
               type="text"
               required
+              maxLength={60}
               value={formData.nome}
               onChange={(e) =>
                 setFormData({ ...formData, nome: e.target.value })
@@ -619,13 +622,22 @@ const FormularioFranqueado: React.FC<FormularioFranqueadoProps> = ({
 // ==============================================
 
 export default function FranqueadosPageSimplificada() {
-  // const { user } = useAuth();
+  const { user } = useAuth();
   const router = useRouter();
+
+  const isSuperAdmin = user?.perfis?.some((perfil: any) => {
+    const perfilNome =
+      typeof perfil === "string" ? perfil : perfil.nome || perfil.perfil;
+    return perfilNome?.toLowerCase() === "super_admin";
+  });
   const queryClient = useQueryClient();
 
   const [searchTerm, setSearchTerm] = useState("");
-  const [situacaoFilter, setSituacaoFilter] = useState<string>("");
+  const [situacaoFilter, setSituacaoFilter] = useState<string>("ATIVA");
   const [showModal, setShowModal] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [franqueadoToInativar, setFranqueadoToInativar] =
+    useState<FranqueadoSimplificado | null>(null);
   const [editingFranqueado, setEditingFranqueado] =
     useState<FranqueadoSimplificado | null>(null);
 
@@ -705,14 +717,15 @@ export default function FranqueadosPageSimplificada() {
     },
   });
 
-  const deleteMutation = useMutation({
-    mutationFn: deleteFranqueado,
+  const inativarMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: FranqueadoFormData }) =>
+      updateFranqueado(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["franqueados"] });
-      toast.success("Franqueado excluído com sucesso!");
+      toast.success("Franqueado inativado com sucesso!");
     },
     onError: (error: unknown) => {
-      toast.error((error as Error)?.message || "Erro ao excluir franqueado");
+      toast.error((error as Error)?.message || "Erro ao inativar franqueado");
     },
   });
 
@@ -735,10 +748,32 @@ export default function FranqueadosPageSimplificada() {
     }
   };
 
-  const handleDelete = (franqueado: FranqueadoSimplificado) => {
-    if (confirm(`Tem certeza que deseja excluir ${franqueado.nome}?`)) {
-      deleteMutation.mutate(franqueado.id);
+  const handleInativar = (franqueado: FranqueadoSimplificado) => {
+    setFranqueadoToInativar(franqueado);
+    setShowConfirmModal(true);
+  };
+
+  const confirmInativar = () => {
+    if (franqueadoToInativar) {
+      inativarMutation.mutate({
+        id: franqueadoToInativar.id,
+        data: {
+          nome: franqueadoToInativar.nome,
+          cpf: franqueadoToInativar.cpf,
+          email: franqueadoToInativar.email,
+          telefone: franqueadoToInativar.telefone,
+          situacao: "INATIVA",
+          ativo: false,
+        },
+      });
+      setShowConfirmModal(false);
+      setFranqueadoToInativar(null);
     }
+  };
+
+  const cancelInativar = () => {
+    setShowConfirmModal(false);
+    setFranqueadoToInativar(null);
   };
 
   // Filtrar dados
@@ -781,12 +816,6 @@ export default function FranqueadosPageSimplificada() {
             <div className="flex items-center justify-between">
               <div>
                 <div className="flex items-center gap-3 mb-2">
-                  <button
-                    onClick={() => router.push("/dashboard")}
-                    className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
-                  >
-                    <ArrowLeft className="h-6 w-6" />
-                  </button>
                   <Building2 className="h-8 w-8 text-blue-600" />
                   <h1 className="text-3xl font-bold text-gray-900">
                     Franqueados
@@ -796,13 +825,24 @@ export default function FranqueadosPageSimplificada() {
                   Gerencie os responsáveis pelas franquias
                 </p>
               </div>
-              <button
-                onClick={() => handleOpenModal()}
-                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
-              >
-                <Plus className="h-4 w-4" />
-                Novo Franqueado
-              </button>
+              <div className="flex items-center gap-3">
+                {!isSuperAdmin && (
+                  <button
+                    onClick={() => handleOpenModal()}
+                    className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Novo Franqueado
+                  </button>
+                )}
+                <button
+                  onClick={() => router.push("/dashboard")}
+                  className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-blue-600 hover:text-white text-gray-700 font-medium rounded-lg transition-all duration-200 shadow-sm hover:shadow-md"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  Voltar
+                </button>
+              </div>
             </div>
           </div>
 
@@ -965,13 +1005,15 @@ export default function FranqueadosPageSimplificada() {
                           >
                             <Edit className="h-4 w-4" />
                           </button>
-                          <button
-                            onClick={() => handleDelete(franqueado)}
-                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                            title="Excluir franqueado"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
+                          {franqueado.situacao !== "INATIVA" && (
+                            <button
+                              onClick={() => handleInativar(franqueado)}
+                              className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                              title="Inativar franqueado"
+                            >
+                              <XCircle className="h-4 w-4" />
+                            </button>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -990,6 +1032,85 @@ export default function FranqueadosPageSimplificada() {
               isLoading={createMutation.isPending || updateMutation.isPending}
               usuarios={usuariosQuery.data || []}
             />
+          )}
+
+          {/* Modal de Confirmação de Inativação */}
+          {showConfirmModal && franqueadoToInativar && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+              <div className="bg-white rounded-xl shadow-2xl max-w-md w-full overflow-hidden animate-in fade-in zoom-in duration-200">
+                {/* Header */}
+                <div className="bg-gradient-to-r from-red-500 to-red-600 p-6 text-white">
+                  <div className="flex items-center gap-3">
+                    <div className="bg-white bg-opacity-20 p-3 rounded-full">
+                      <AlertCircle className="h-6 w-6" />
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-bold">Inativar Franqueado</h3>
+                      <p className="text-red-100 text-sm mt-1">
+                        Esta ação bloqueará o acesso ao sistema
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Content */}
+                <div className="p-6">
+                  <div className="mb-6">
+                    <p className="text-gray-700 mb-4">
+                      Tem certeza que deseja inativar{" "}
+                      <span className="font-semibold text-gray-900">
+                        {franqueadoToInativar.nome}
+                      </span>
+                      ?
+                    </p>
+                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                      <div className="flex gap-3">
+                        <AlertTriangle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                        <div className="text-sm text-amber-800">
+                          <p className="font-medium mb-1">Atenção:</p>
+                          <ul className="list-disc list-inside space-y-1 text-amber-700">
+                            <li>
+                              O franqueado não poderá mais acessar o sistema
+                            </li>
+                            <li>Todas as unidades vinculadas serão afetadas</li>
+                            <li>
+                              Você pode reativar posteriormente se necessário
+                            </li>
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex gap-3">
+                    <button
+                      onClick={cancelInativar}
+                      className="flex-1 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg transition-colors"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      onClick={confirmInativar}
+                      disabled={inativarMutation.isPending}
+                      className="flex-1 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    >
+                      {inativarMutation.isPending ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                          Inativando...
+                        </>
+                      ) : (
+                        <>
+                          <XCircle className="h-4 w-4" />
+                          Inativar
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
           )}
         </div>
       </div>

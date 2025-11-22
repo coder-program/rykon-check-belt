@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { useFranqueadoProtection } from "@/hooks/useFranqueadoProtection";
 import {
   useInfiniteQuery,
   useQuery,
@@ -82,9 +83,13 @@ async function getProfessoresStats(params: Record<string, string>) {
 }
 
 export default function PageProfessores() {
+  const { shouldBlock } = useFranqueadoProtection();
+
   const router = useRouter();
   const { user } = useAuth();
   const queryClient = useQueryClient();
+
+  if (shouldBlock) return null;
   // Função para obter a cor do status
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -154,10 +159,17 @@ export default function PageProfessores() {
     return perfilNome?.toLowerCase() === "franqueado";
   });
 
+  // Verificar se é super_admin
+  const isSuperAdmin = user?.perfis?.some((perfil: any) => {
+    const perfilNome =
+      typeof perfil === "string" ? perfil : perfil.nome || perfil.perfil;
+    return perfilNome?.toLowerCase() === "super_admin";
+  });
+
   // Permissões
-  const canCreate = true;
+  const canCreate = !isSuperAdmin; // Super_admin não pode criar professor
   const canEdit = true;
-  const canDelete = isMaster; // Apenas MASTER pode excluir
+  const canDelete = isMaster && !isSuperAdmin; // Apenas MASTER pode excluir, menos super_admin
   const canChangeStatus = isMaster || isFranqueado || isGerenteUnidade; // MASTER, Franqueado e Gerente podem alterar status
 
   // Mutation para deletar professor
@@ -348,15 +360,8 @@ export default function PageProfessores() {
           )}
 
           {/* Header */}
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
             <div className="flex items-center gap-3">
-              <button
-                onClick={() => router.back()}
-                className="p-2 bg-gray-200 hover:bg-gray-300 rounded-lg transition-colors"
-                title="Voltar"
-              >
-                <ArrowLeft className="h-5 w-5 text-gray-600" />
-              </button>
               <div className="p-2 bg-red-600 rounded-lg">
                 <BookOpen className="h-6 w-6 text-white" />
               </div>
@@ -369,15 +374,24 @@ export default function PageProfessores() {
                 </p>
               </div>
             </div>
-            {canCreate && (
-              <Button
-                onClick={() => setShowForm(true)}
-                className="bg-red-600 hover:bg-red-700 text-white"
+            <div className="flex items-center gap-3">
+              {canCreate && (
+                <Button
+                  onClick={() => setShowForm(true)}
+                  className="bg-red-600 hover:bg-red-700 text-white"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Novo Professor
+                </Button>
+              )}
+              <button
+                onClick={() => router.push("/dashboard")}
+                className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-blue-600 hover:text-white text-gray-700 font-medium rounded-lg transition-all duration-200 shadow-sm hover:shadow-md"
               >
-                <Plus className="h-4 w-4 mr-2" />
-                Novo Professor
-              </Button>
-            )}
+                <ArrowLeft className="h-4 w-4" />
+                <span>Voltar</span>
+              </button>
+            </div>
           </div>
 
           {/* Stats Cards */}

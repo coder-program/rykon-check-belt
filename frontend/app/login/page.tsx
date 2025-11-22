@@ -160,7 +160,13 @@ function LoginContent() {
       );
 
       if (isFranqueado) {
-        // Franqueado sempre vai para minha-franquia, independente do cadastro_completo
+        // Franqueado SEMPRE vai para /minha-franquia (lá tem a tela de aceitar contrato)
+        if (result.user?.cadastro_completo === false) {
+          toast("Complete o cadastro da sua franquia para acessar o sistema", {
+            icon: "📋",
+            duration: 3000,
+          });
+        }
         router.push("/minha-franquia");
       } else if (isTabletCheckin) {
         // Tablet checkin sempre vai para a rota de check-in

@@ -538,7 +538,7 @@ export function PersonForm({
 
             <div className="space-y-1">
               <label className="block text-sm font-medium text-gray-700">
-                CPF
+                CPF *
               </label>
               <InputCPF
                 value={formData.cpf}
