@@ -3,8 +3,8 @@
 import { useAuth } from "@/app/auth/AuthContext";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { LogOut, UserX, Menu, User } from "lucide-react";
-import { useState } from "react";
+import { LogOut, UserX, Menu, User, Clock } from "lucide-react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 
@@ -14,6 +14,51 @@ export default function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
   const [logoutAllDialogOpen, setLogoutAllDialogOpen] = useState(false);
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  // Atualizar relógio a cada segundo
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Formatar data e hora
+  const formatDateTime = () => {
+    const days = [
+      "Domingo",
+      "Segunda",
+      "Terça",
+      "Quarta",
+      "Quinta",
+      "Sexta",
+      "Sábado",
+    ];
+    const dayName = days[currentTime.getDay()];
+    const day = currentTime.getDate().toString().padStart(2, "0");
+    const months = [
+      "Janeiro",
+      "Fevereiro",
+      "Março",
+      "Abril",
+      "Maio",
+      "Junho",
+      "Julho",
+      "Agosto",
+      "Setembro",
+      "Outubro",
+      "Novembro",
+      "Dezembro",
+    ];
+    const month = months[currentTime.getMonth()];
+    const time = currentTime.toLocaleTimeString("pt-BR");
+
+    return {
+      date: `${dayName}, ${day} de ${month}`,
+      time: time,
+    };
+  };
 
   const handleLogout = () => {
     setLogoutDialogOpen(true);
@@ -104,10 +149,6 @@ export default function Header() {
                   priority
                 />
               </div>
-              <div className="hidden md:block">
-                <h1 className="text-lg font-bold text-gray-900">TeamCruz</h1>
-                <p className="text-xs text-gray-600">Jiu-Jitsu</p>
-              </div>
             </div>
 
             {/* Separador */}
@@ -132,6 +173,14 @@ export default function Header() {
 
           {/* Desktop: Info do Usuário e Ações */}
           <div className="hidden md:flex items-center gap-4">
+            {/* Relógio */}
+            <div className="text-center">
+              <p className="text-xs text-gray-600">{formatDateTime().date}</p>
+              <p className="text-sm font-bold text-gray-900">
+                {formatDateTime().time}
+              </p>
+            </div>
+
             {/* Saudação */}
             <div className="text-right">
               <p className="text-sm font-medium text-gray-900">
@@ -142,12 +191,16 @@ export default function Header() {
 
             {/* Botões de Ação */}
             <div className="flex items-center gap-2">
-              {/* Meu Perfil - não mostrar para franqueados */}
-              {!user?.perfis?.some((p: any) => {
-                const perfilNome =
-                  typeof p === "string" ? p : p?.nome || p?.perfil;
-                return perfilNome?.toLowerCase() === "franqueado";
-              }) && (
+              {/* Meu Perfil - mostrar para todos exceto franqueados inativos */}
+              {(() => {
+                const isFranqueado = user?.perfis?.some((p: any) => {
+                  const perfilNome =
+                    typeof p === "string" ? p : p?.nome || p?.perfil;
+                  return perfilNome?.toLowerCase() === "franqueado";
+                });
+                const franqueadoAtivo = user?.franqueado_ativo !== false;
+                return !isFranqueado || franqueadoAtivo;
+              })() && (
                 <Button
                   variant="outline"
                   size="sm"
@@ -160,8 +213,8 @@ export default function Header() {
                 </Button>
               )}
 
-              {/* Encerrar Todas as Sessões */}
-              <Button
+              {/* Encerrar Todas as Sessões - Desabilitado temporariamente */}
+              {/* <Button
                 variant="outline"
                 size="sm"
                 onClick={handleLogoutAll}
@@ -170,7 +223,7 @@ export default function Header() {
               >
                 <UserX className="h-4 w-4" />
                 <span className="hidden lg:inline">Encerrar Todas</span>
-              </Button>
+              </Button> */}
 
               {/* Sair */}
               <Button
@@ -212,12 +265,16 @@ export default function Header() {
 
               {/* Botões Mobile */}
               <div className="space-y-2">
-                {/* Meu Perfil - não mostrar para franqueados */}
-                {!user?.perfis?.some((p: any) => {
-                  const perfilNome =
-                    typeof p === "string" ? p : p?.nome || p?.perfil;
-                  return perfilNome?.toLowerCase() === "franqueado";
-                }) && (
+                {/* Meu Perfil - mostrar para todos exceto franqueados inativos */}
+                {(() => {
+                  const isFranqueado = user?.perfis?.some((p: any) => {
+                    const perfilNome =
+                      typeof p === "string" ? p : p?.nome || p?.perfil;
+                    return perfilNome?.toLowerCase() === "franqueado";
+                  });
+                  const franqueadoAtivo = user?.franqueado_ativo !== false;
+                  return !isFranqueado || franqueadoAtivo;
+                })() && (
                   <Button
                     variant="outline"
                     className="w-full justify-start bg-gradient-to-r from-blue-50 to-blue-100 text-blue-700 border-blue-300 hover:from-blue-100 hover:to-blue-200 hover:shadow-md transition-all duration-200 font-medium"
@@ -231,7 +288,8 @@ export default function Header() {
                   </Button>
                 )}
 
-                <Button
+                {/* Encerrar Todas as Sessões - Desabilitado temporariamente */}
+                {/* <Button
                   variant="outline"
                   className="w-full justify-start bg-gradient-to-r from-orange-50 to-orange-100 text-orange-700 border-orange-300 hover:from-orange-100 hover:to-orange-200 hover:shadow-md transition-all duration-200 font-medium"
                   onClick={() => {
@@ -241,7 +299,7 @@ export default function Header() {
                 >
                   <UserX className="h-4 w-4 mr-2" />
                   Encerrar Todas as Sessões
-                </Button>
+                </Button> */}
 
                 <Button
                   variant="outline"

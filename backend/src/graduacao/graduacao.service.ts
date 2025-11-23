@@ -11,6 +11,9 @@ import { AlunoFaixaGrau, OrigemGrau } from './entities/aluno-faixa-grau.entity';
 import { AlunoGraduacao } from './entities/aluno-graduacao.entity';
 import { Person, TipoCadastro } from '../people/entities/person.entity';
 import { Aluno } from '../people/entities/aluno.entity';
+import { Franqueado } from '../people/entities/franqueado.entity';
+import { Unidade } from '../people/entities/unidade.entity';
+import { GerenteUnidade } from '../people/entities/gerente-unidade.entity';
 import { StatusGraduacaoDto } from './dto/status-graduacao.dto';
 import {
   ProximoGraduarDto,
@@ -37,6 +40,12 @@ export class GraduacaoService {
     private personRepository: Repository<Person>,
     @InjectRepository(Aluno)
     private alunoRepository: Repository<Aluno>,
+    @InjectRepository(Franqueado)
+    private franqueadoRepository: Repository<Franqueado>,
+    @InjectRepository(Unidade)
+    private unidadeRepository: Repository<Unidade>,
+    @InjectRepository(GerenteUnidade)
+    private gerenteRepository: Repository<GerenteUnidade>,
     private dataSource: DataSource,
   ) {}
 
@@ -1155,12 +1164,117 @@ export class GraduacaoService {
   /**
    * Lista graduações pendentes de aprovação
    */
-  async listarGraduacoesPendentes() {
+  async listarGraduacoesPendentes(user?: any) {
+    console.log('⏳ [GRADUACOES PENDENTES] Iniciando busca...');
+    const userId = user?.id;
+    console.log('⏳ [GRADUACOES PENDENTES] User ID:', userId);
+
+    // Construir where condition baseado no perfil
+    let whereCondition: any = { aprovado: false };
+
+    if (userId) {
+      // Normalizar perfis
+      const perfisNormalizados = (user?.perfis || []).map((p: any) =>
+        (typeof p === 'string' ? p : p?.nome || p)?.toLowerCase(),
+      );
+      console.log(
+        '⏳ [GRADUACOES PENDENTES] Perfis normalizados:',
+        perfisNormalizados,
+      );
+
+      const isFranqueado = perfisNormalizados.includes('franqueado');
+      const isGerenteUnidade = perfisNormalizados.includes('gerente_unidade');
+
+      console.log('⏳ [GRADUACOES PENDENTES] É franqueado?', isFranqueado);
+      console.log('⏳ [GRADUACOES PENDENTES] É gerente?', isGerenteUnidade);
+
+      if (isFranqueado) {
+        console.log('⏳ [GRADUACOES PENDENTES] Buscando franqueado...');
+        const franqueado = await this.franqueadoRepository.findOne({
+          where: { usuario_id: userId },
+        });
+
+        console.log(
+          '⏳ [GRADUACOES PENDENTES] Franqueado encontrado:',
+          franqueado,
+        );
+
+        if (franqueado) {
+          const unidades = await this.unidadeRepository.find({
+            where: { franqueado_id: franqueado.id },
+          });
+
+          const unidadeIds = unidades.map((u) => u.id);
+          console.log(
+            '⏳ [GRADUACOES PENDENTES] Unidades do franqueado:',
+            unidadeIds,
+          );
+          console.log(
+            '⏳ [GRADUACOES PENDENTES] Total de unidades:',
+            unidadeIds.length,
+          );
+
+          if (unidadeIds.length > 0) {
+            whereCondition = {
+              aprovado: false,
+              aluno: {
+                unidade_id: In(unidadeIds),
+              },
+            };
+            console.log(
+              '⏳ [GRADUACOES PENDENTES] APLICANDO FILTRO DE UNIDADES:',
+              unidadeIds,
+            );
+          } else {
+            console.log(
+              '⏳ [GRADUACOES PENDENTES] ⚠️ Franqueado sem unidades - retornando vazio',
+            );
+            return [];
+          }
+        }
+      } else if (isGerenteUnidade) {
+        console.log('⏳ [GRADUACOES PENDENTES] Buscando gerente de unidade...');
+        const gerente = await this.gerenteRepository.findOne({
+          where: { usuario_id: userId },
+          relations: ['unidade'],
+        });
+
+        console.log('⏳ [GRADUACOES PENDENTES] Gerente encontrado:', gerente);
+
+        if (gerente?.unidade) {
+          whereCondition = {
+            aprovado: false,
+            aluno: {
+              unidade_id: gerente.unidade.id,
+            },
+          };
+          console.log(
+            '⏳ [GRADUACOES PENDENTES] APLICANDO FILTRO DE UNIDADE DO GERENTE:',
+            gerente.unidade.id,
+          );
+        }
+      } else {
+        console.log(
+          '⏳ [GRADUACOES PENDENTES] ⚠️ Perfil não reconhecido - SEM FILTRO',
+        );
+      }
+    }
+
+    console.log(
+      '⏳ [GRADUACOES PENDENTES] Where condition final:',
+      JSON.stringify(whereCondition, null, 2),
+    );
+
     const graduacoes = await this.alunoGraduacaoRepository.find({
-      where: { aprovado: false },
+      where: whereCondition,
       relations: ['aluno', 'faixaOrigem', 'faixaDestino'],
       order: { created_at: 'DESC' },
     });
+
+    console.log(
+      '⏳ [GRADUACOES PENDENTES] Total de graduações encontradas:',
+      graduacoes.length,
+    );
 
     return graduacoes;
   }
@@ -1168,12 +1282,125 @@ export class GraduacaoService {
   /**
    * Lista graduações aprovadas
    */
-  async listarGraduacoesAprovadas() {
+  async listarGraduacoesAprovadas(user?: any) {
+    console.log('🎓 [GRADUACOES APROVADAS] Iniciando busca...');
+    const userId = user?.id;
+    console.log('🎓 [GRADUACOES APROVADAS] User ID:', userId);
+    console.log('🎓 [GRADUACOES APROVADAS] User perfis:', user?.perfis);
+
+    // Construir where condition baseado no perfil
+    let whereCondition: any = { aprovado: true };
+
+    if (userId) {
+      // Normalizar perfis
+      const perfisNormalizados = (user?.perfis || []).map((p: any) =>
+        (typeof p === 'string' ? p : p?.nome || p)?.toLowerCase(),
+      );
+      console.log(
+        '🎓 [GRADUACOES APROVADAS] Perfis normalizados:',
+        perfisNormalizados,
+      );
+
+      // Buscar unidades do usuário (se for franqueado ou gerente)
+      const isFranqueado = perfisNormalizados.includes('franqueado');
+      const isGerenteUnidade = perfisNormalizados.includes('gerente_unidade');
+
+      console.log('🎓 [GRADUACOES APROVADAS] É franqueado?', isFranqueado);
+      console.log('🎓 [GRADUACOES APROVADAS] É gerente?', isGerenteUnidade);
+
+      if (isFranqueado) {
+        console.log('🎓 [GRADUACOES APROVADAS] Buscando franqueado...');
+        // Buscar franqueado
+        const franqueado = await this.franqueadoRepository.findOne({
+          where: { usuario_id: userId },
+        });
+
+        console.log(
+          '🎓 [GRADUACOES APROVADAS] Franqueado encontrado:',
+          franqueado,
+        );
+
+        if (franqueado) {
+          // Buscar unidades do franqueado
+          const unidades = await this.unidadeRepository.find({
+            where: { franqueado_id: franqueado.id },
+          });
+
+          const unidadeIds = unidades.map((u) => u.id);
+          console.log(
+            '🎓 [GRADUACOES APROVADAS] Unidades do franqueado:',
+            unidadeIds,
+          );
+          console.log(
+            '🎓 [GRADUACOES APROVADAS] Total de unidades:',
+            unidadeIds.length,
+          );
+
+          if (unidadeIds.length > 0) {
+            whereCondition = {
+              aprovado: true,
+              aluno: {
+                unidade_id: In(unidadeIds),
+              },
+            };
+            console.log(
+              '🎓 [GRADUACOES APROVADAS] APLICANDO FILTRO DE UNIDADES:',
+              unidadeIds,
+            );
+          } else {
+            // Se não tem unidades, retornar vazio
+            console.log(
+              '🎓 [GRADUACOES APROVADAS] ⚠️ Franqueado sem unidades - retornando vazio',
+            );
+            return [];
+          }
+        } else {
+          console.log('🎓 [GRADUACOES APROVADAS] ⚠️ Franqueado não encontrado');
+        }
+      } else if (isGerenteUnidade) {
+        console.log('🎓 [GRADUACOES APROVADAS] Buscando gerente de unidade...');
+        // Buscar unidade do gerente
+        const gerente = await this.gerenteRepository.findOne({
+          where: { usuario_id: userId },
+          relations: ['unidade'],
+        });
+
+        console.log('🎓 [GRADUACOES APROVADAS] Gerente encontrado:', gerente);
+
+        if (gerente?.unidade) {
+          whereCondition = {
+            aprovado: true,
+            aluno: {
+              unidade_id: gerente.unidade.id,
+            },
+          };
+          console.log(
+            '🎓 [GRADUACOES APROVADAS] APLICANDO FILTRO DE UNIDADE DO GERENTE:',
+            gerente.unidade.id,
+          );
+        }
+      } else {
+        console.log(
+          '🎓 [GRADUACOES APROVADAS] ⚠️ Perfil não reconhecido - SEM FILTRO',
+        );
+      }
+    }
+
+    console.log(
+      '🎓 [GRADUACOES APROVADAS] Where condition final:',
+      JSON.stringify(whereCondition, null, 2),
+    );
+
     const graduacoes = await this.alunoGraduacaoRepository.find({
-      where: { aprovado: true },
+      where: whereCondition,
       relations: ['aluno', 'faixaOrigem', 'faixaDestino'],
       order: { dt_aprovacao: 'DESC' },
     });
+
+    console.log(
+      '🎓 [GRADUACOES APROVADAS] Total de graduações encontradas:',
+      graduacoes.length,
+    );
 
     return graduacoes;
   }

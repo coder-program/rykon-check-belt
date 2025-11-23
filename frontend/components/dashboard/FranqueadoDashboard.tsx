@@ -355,18 +355,11 @@ export default function FranqueadoDashboard() {
       color: "bg-orange-500",
     },
     {
-      title: "Registrar Presença",
-      description: "Marcar presença nas aulas",
+      title: "Relatório de Presenças",
+      description: "Ver relatório completo de presenças",
       icon: CheckCircle,
-      action: () => router.push("/presenca"),
+      action: () => router.push("/relatorio-presencas"),
       color: "bg-green-600",
-    },
-    {
-      title: "Horários de Aulas",
-      description: "Ver grade de horários",
-      icon: Calendar,
-      action: () => router.push("/aulas"),
-      color: "bg-cyan-500",
     },
     {
       title: "Graduações",

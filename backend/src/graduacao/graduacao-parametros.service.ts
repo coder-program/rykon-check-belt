@@ -89,6 +89,19 @@ export class GraduacaoParametrosService {
   // ============================================
 
   async getAlunosAptosGraduacao(parametroId?: string, unidadeIds?: string[]) {
+    console.log(
+      '🔥 🔥 🔥 [GRADUACAO SERVICE] Iniciando getAlunosAptosGraduacao',
+    );
+    console.log('🔥 🔥 🔥 [GRADUACAO SERVICE] parametroId:', parametroId);
+    console.log(
+      '🔥 🔥 🔥 [GRADUACAO SERVICE] unidadeIds recebidos:',
+      unidadeIds,
+    );
+    console.log(
+      '🔥 🔥 🔥 [GRADUACAO SERVICE] Total de unidades:',
+      unidadeIds?.length,
+    );
+
     // Buscar parâmetro ou usar padrão
     let parametro: GraduacaoParametro | null = null;
     if (parametroId) {
@@ -108,6 +121,11 @@ export class GraduacaoParametrosService {
 
     const graus_minimos = parametro?.graus_minimos || 4;
     const presencas_minimas = parametro?.presencas_minimas || 160;
+
+    console.log('🔥 🔥 🔥 [GRADUACAO SERVICE] Parâmetros:', {
+      graus_minimos,
+      presencas_minimas,
+    });
 
     // Query builder para buscar alunos aptos
     const query = this.alunoRepository
@@ -138,10 +156,33 @@ export class GraduacaoParametrosService {
 
     // Filtro por unidades (para perfis que veem apenas suas unidades)
     if (unidadeIds && unidadeIds.length > 0) {
+      console.log(
+        '🔥 🔥 🔥 [GRADUACAO SERVICE] APLICANDO FILTRO DE UNIDADES:',
+        unidadeIds,
+      );
       query.andWhere('aluno.unidade_id IN (:...unidadeIds)', { unidadeIds });
+    } else {
+      console.log(
+        '🔥 🔥 🔥 [GRADUACAO SERVICE] ⚠️  SEM FILTRO DE UNIDADES - RETORNANDO TODOS!',
+      );
     }
 
     const alunos = await query.getMany();
+
+    console.log(
+      '🔥 🔥 🔥 [GRADUACAO SERVICE] Total de alunos encontrados:',
+      alunos.length,
+    );
+    if (alunos.length > 0) {
+      console.log(
+        '🔥 🔥 🔥 [GRADUACAO SERVICE] Primeiros 3 alunos:',
+        alunos.slice(0, 3).map((a) => ({
+          nome: a.nome_completo,
+          unidade_id: a.unidade_id,
+          unidade_nome: a.unidade?.nome,
+        })),
+      );
+    }
 
     // Formatar resultado
     const resultado = await Promise.all(

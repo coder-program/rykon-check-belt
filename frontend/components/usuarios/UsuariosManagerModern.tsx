@@ -189,6 +189,12 @@ export default function UsuariosManagerNew() {
         perfil.nome?.toUpperCase() === "ADMIN_SISTEMA"
   );
 
+  const isSuperAdmin = userPerfisArray.some((perfil: any) =>
+    typeof perfil === "string"
+      ? perfil.toUpperCase() === "SUPER_ADMIN"
+      : perfil.nome?.toUpperCase() === "SUPER_ADMIN"
+  );
+
   const isFranqueado = userPerfisArray.some((perfil: any) =>
     typeof perfil === "string"
       ? perfil.toUpperCase() === "FRANQUEADO"
@@ -253,6 +259,11 @@ export default function UsuariosManagerNew() {
       return false;
     }
 
+    // SUPER_ADMIN pode criar apenas SUPER_ADMIN e FRANQUEADO
+    if (isSuperAdmin) {
+      return ["SUPER_ADMIN", "FRANQUEADO"].includes(nomePerfil);
+    }
+
     // MASTER pode criar qualquer perfil
     if (isMaster) {
       return true;
@@ -265,6 +276,7 @@ export default function UsuariosManagerNew() {
         "GERENTE_UNIDADE",
         "RECEPCIONISTA",
         "INSTRUTOR",
+        "TABLET_CHECKIN",
       ].includes(nomePerfil);
       return permitido;
     }

@@ -24,11 +24,12 @@ import {
   CriarFaixaAlunoDto,
 } from './dto/conceder-grau.dto';
 import { FaixaDef } from './entities/faixa-def.entity';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 @ApiTags('Graduação')
 @Controller('graduacao')
-// @UseGuards(JwtAuthGuard) // Descomentar quando auth estiver configurado
-// @ApiBearerAuth()
+@UseGuards(JwtAuthGuard)
+@ApiBearerAuth()
 export class GraduacaoController {
   constructor(private readonly graduacaoService: GraduacaoService) {}
 
@@ -274,15 +275,18 @@ export class GraduacaoController {
   @Get('pendentes')
   @ApiOperation({ summary: 'Lista graduações pendentes de aprovação' })
   @ApiResponse({ status: 200, description: 'Lista de graduações pendentes' })
-  async listarGraduacoesPendentes() {
-    return await this.graduacaoService.listarGraduacoesPendentes();
+  async listarGraduacoesPendentes(@Request() req: any) {
+    return await this.graduacaoService.listarGraduacoesPendentes(req.user);
   }
 
   @Get('aprovadas')
   @ApiOperation({ summary: 'Lista graduações aprovadas' })
   @ApiResponse({ status: 200, description: 'Lista de graduações aprovadas' })
-  async listarGraduacoesAprovadas() {
-    return await this.graduacaoService.listarGraduacoesAprovadas();
+  async listarGraduacoesAprovadas(@Request() req: any) {
+    console.log('🎯 [CONTROLLER] req completo:', !!req);
+    console.log('🎯 [CONTROLLER] req.user:', req?.user);
+    console.log('🎯 [CONTROLLER] req.headers:', req?.headers?.authorization);
+    return await this.graduacaoService.listarGraduacoesAprovadas(req?.user);
   }
 
   @Post('aprovar-massa')

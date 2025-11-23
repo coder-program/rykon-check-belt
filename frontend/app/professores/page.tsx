@@ -16,8 +16,6 @@ import {
 } from "@/lib/peopleApi";
 import {
   Search,
-  Plus,
-  Edit,
   Trash2,
   BookOpen,
   Users,
@@ -31,7 +29,6 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { http } from "@/lib/api";
-import { PersonForm } from "@/components/people/PersonForm";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -132,8 +129,6 @@ export default function PageProfessores() {
   const [status, setStatus] = useState("todos");
   const [faixa, setFaixa] = useState("todos");
   // const [especialidade, setEspecialidade] = useState("todos"); // Temporariamente comentado
-  const [showForm, setShowForm] = useState(false);
-  const [editingPerson, setEditingPerson] = useState<unknown | null>(null);
 
   // Verificar se é MASTER
   const isMaster = user?.perfis?.some((perfil: any) => {
@@ -167,8 +162,6 @@ export default function PageProfessores() {
   });
 
   // Permissões
-  const canCreate = !isSuperAdmin; // Super_admin não pode criar professor
-  const canEdit = true;
   const canDelete = isMaster && !isSuperAdmin; // Apenas MASTER pode excluir, menos super_admin
   const canChangeStatus = isMaster || isFranqueado || isGerenteUnidade; // MASTER, Franqueado e Gerente podem alterar status
 
@@ -299,42 +292,6 @@ export default function PageProfessores() {
 
   const items = (query.data?.pages || []).flatMap((page) => page.items);
 
-  if (showForm) {
-    return (
-      <div className="p-6">
-        <div className="mb-4">
-          <button
-            onClick={() => {
-              setShowForm(false);
-              setEditingPerson(null);
-            }}
-            className="btn btn-ghost btn-sm"
-          >
-            ← Voltar
-          </button>
-        </div>
-        <h1 className="text-2xl font-bold mb-6 flex items-center">
-          <BookOpen className="mr-3 h-7 w-7 text-red-600" />
-          {editingPerson ? "Editar Professor" : "Novo Professor"}
-        </h1>
-        <PersonForm
-          initialData={editingPerson}
-          isEdit={!!editingPerson}
-          defaultTipo="PROFESSOR"
-          onSuccess={() => {
-            setShowForm(false);
-            setEditingPerson(null);
-            query.refetch();
-          }}
-          onCancel={() => {
-            setShowForm(false);
-            setEditingPerson(null);
-          }}
-        />
-      </div>
-    );
-  }
-
   if (query.isError) {
     return (
       <div className="min-h-screen p-6">
@@ -358,7 +315,6 @@ export default function PageProfessores() {
               </CardContent>
             </Card>
           )}
-
           {/* Header */}
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
             <div className="flex items-center gap-3">
@@ -375,15 +331,6 @@ export default function PageProfessores() {
               </div>
             </div>
             <div className="flex items-center gap-3">
-              {canCreate && (
-                <Button
-                  onClick={() => setShowForm(true)}
-                  className="bg-red-600 hover:bg-red-700 text-white"
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Novo Professor
-                </Button>
-              )}
               <button
                 onClick={() => router.push("/dashboard")}
                 className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-blue-600 hover:text-white text-gray-700 font-medium rounded-lg transition-all duration-200 shadow-sm hover:shadow-md"
@@ -392,8 +339,7 @@ export default function PageProfessores() {
                 <span>Voltar</span>
               </button>
             </div>
-          </div>
-
+          </div>{" "}
           {/* Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <Card>
@@ -453,7 +399,6 @@ export default function PageProfessores() {
               </CardContent>
             </Card>
           </div>
-
           {/* Filtros */}
           <Card>
             <CardContent className="p-6">
@@ -561,7 +506,6 @@ export default function PageProfessores() {
               </div>
             </CardContent>
           </Card>
-
           {/* Lista de Professores */}
           <Card>
             <CardContent className="p-0">
@@ -571,18 +515,11 @@ export default function PageProfessores() {
                   <h3 className="text-lg font-semibold text-gray-900 mb-2">
                     Nenhum professor encontrado
                   </h3>
-                  <p className="text-gray-500 mb-6">
-                    Cadastre o primeiro professor para começar
+                  <p className="text-gray-500">
+                    Professores devem ser criados em "Gerenciar Usuários" com
+                    perfil PROFESSOR. Após o primeiro login, eles completam o
+                    cadastro automaticamente.
                   </p>
-                  {canCreate && (
-                    <Button
-                      onClick={() => setShowForm(true)}
-                      className="bg-red-600 hover:bg-red-700 text-white"
-                    >
-                      <Plus className="h-4 w-4 mr-2" />
-                      Cadastrar Primeiro Professor
-                    </Button>
-                  )}
                 </div>
               ) : (
                 <div className="divide-y divide-gray-200">
@@ -666,20 +603,6 @@ export default function PageProfessores() {
 
                         {/* Ações */}
                         <div className="flex items-center gap-2">
-                          {canEdit && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => {
-                                setEditingPerson(professor);
-                                setShowForm(true);
-                              }}
-                              className="hover:bg-blue-50 hover:text-blue-600"
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                          )}
-
                           {/* Menu de Status */}
                           {canChangeStatus && (
                             <div className="dropdown dropdown-end">

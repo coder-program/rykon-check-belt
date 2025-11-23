@@ -13,6 +13,9 @@ import { HistoricoGraus } from './entities/historico-graus.entity';
 import { HistoricoFaixas } from './entities/historico-faixas.entity';
 import { Person } from '../people/entities/person.entity';
 import { Aluno } from '../people/entities/aluno.entity';
+import { Franqueado } from '../people/entities/franqueado.entity';
+import { Unidade } from '../people/entities/unidade.entity';
+import { GerenteUnidade } from '../people/entities/gerente-unidade.entity';
 import { GraduacaoParametro } from '../people/entities/graduacao-parametro.entity';
 import { GraduacaoParametrosController } from '../people/controllers/graduacao-parametros.controller';
 import { PeopleModule } from '../people/people.module';
@@ -28,6 +31,9 @@ import { PeopleModule } from '../people/people.module';
       HistoricoFaixas,
       Person,
       Aluno,
+      Franqueado,
+      Unidade,
+      GerenteUnidade,
       GraduacaoParametro,
     ]),
     PeopleModule,

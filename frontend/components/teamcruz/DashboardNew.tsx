@@ -45,6 +45,7 @@ import {
   FileText,
   Megaphone,
   Share2,
+  ArrowLeft,
 } from "lucide-react";
 import {
   QrCodeIcon,
@@ -1311,73 +1312,6 @@ export default function DashboardNew() {
 
       {/* Header Moderno e Limpo */}
       <div className="bg-white shadow-sm border-b border-gray-200">
-        <div className="container mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            {/* Logo e Brand */}
-            <div className="flex items-center gap-4">
-              <button
-                onClick={() => (window.location.href = "/dashboard")}
-                className="flex items-center gap-2 px-4 py-2 rounded-lg hover:bg-gray-100 transition-colors group"
-                title="Voltar"
-              >
-                <ArrowLeftIcon className="h-5 w-5 text-gray-600 group-hover:text-blue-600 transition-colors" />
-                <span className="text-sm font-medium text-gray-700 group-hover:text-blue-600 transition-colors">
-                  Voltar
-                </span>
-              </button>
-
-              <div className="h-8 w-px bg-gray-300"></div>
-
-              <div className="flex items-center gap-3">
-                <div className="relative">
-                  <Shield className="h-11 w-11 text-red-600" />
-                  <div className="absolute -top-1 -right-1 h-3.5 w-3.5 bg-green-500 rounded-full border-2 border-white"></div>
-                </div>
-                <div>
-                  <h1 className="text-2xl font-bold text-gray-900">
-                    TeamCruz Jiu-Jitsu
-                  </h1>
-                  <p className="text-xs text-gray-500">
-                    Sistema de Controle de Presença
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Right Section */}
-            <div className="flex items-center gap-6">
-              {/* Clock */}
-              <div className="text-right hidden md:block">
-                <p className="text-xs text-gray-500 capitalize">
-                  {format(currentTime, "EEEE, d 'de' MMMM", { locale: ptBR })}
-                </p>
-                <p className="text-base font-semibold text-gray-900 font-mono">
-                  {format(currentTime, "HH:mm:ss")}
-                </p>
-              </div>
-
-              {/* Actions */}
-              <div className="flex items-center gap-2">
-                <button
-                  className="relative p-2 rounded-lg hover:bg-gray-100 transition-colors"
-                  title="Notificações"
-                >
-                  <Bell className="h-5 w-5 text-gray-600" />
-                  <span className="absolute top-1 right-1 h-2 w-2 bg-red-500 rounded-full animate-pulse"></span>
-                </button>
-
-                <button
-                  onClick={() => setShowConfigModal(true)}
-                  className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
-                  title="Configurações"
-                >
-                  <Settings className="h-5 w-5 text-gray-600" />
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-
         {/* Navigation Bar - Moved inside header */}
         <div className="border-t border-gray-100">
           <div className="container mx-auto px-6 py-3">
@@ -1400,29 +1334,17 @@ export default function DashboardNew() {
                 ))}
               </div>
 
-              {/* Unit Filter */}
-              <div className="flex items-center gap-3 bg-gray-50 border border-gray-200 rounded-lg px-4 py-2 hover:border-blue-300 transition-colors">
-                <Building2 className="h-4 w-4 text-gray-500" />
-                <div className="flex flex-col">
-                  <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">
-                    {isGerenteUnidade ? "Sua Unidade" : "Unidade"}
+              {/* Unit Filter e Botão Voltar */}
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-gray-700">
+                    Filtro:
                   </span>
                   <select
-                    className="text-sm font-semibold text-gray-900 bg-transparent border-none outline-none cursor-pointer hover:text-blue-600 transition-colors disabled:opacity-60 disabled:cursor-not-allowed mt-0.5"
+                    className="select select-bordered"
                     value={selectedUnidade}
                     onChange={(e) => setSelectedUnidade(e.target.value)}
                     disabled={isGerenteUnidade}
-                    style={{
-                      WebkitAppearance: "none",
-                      MozAppearance: "none",
-                      appearance: "none",
-                      backgroundImage: `url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23374151' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e")`,
-                      backgroundRepeat: "no-repeat",
-                      backgroundPosition: "right 0rem center",
-                      backgroundSize: "1rem",
-                      paddingRight: "1.5rem",
-                      minWidth: "180px",
-                    }}
                   >
                     {isGerenteUnidade && unidadeDoGerente ? (
                       <option value={unidadeDoGerente.id}>
@@ -1441,6 +1363,15 @@ export default function DashboardNew() {
                     )}
                   </select>
                 </div>
+
+                {/* Botão Voltar */}
+                <button
+                  onClick={() => window.history.back()}
+                  className="px-3 py-2 text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 hover:text-gray-900 rounded-lg font-medium flex items-center gap-2 transition-colors"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  Voltar
+                </button>
               </div>
             </div>
           </div>
@@ -1790,14 +1721,6 @@ export default function DashboardNew() {
                     <Calendar className="h-5 w-5 text-info" />
                     Aulas de Hoje
                   </CardTitle>
-                  {!isGerenteUnidade && (
-                    <Button
-                      className="btn btn-primary btn-sm"
-                      onClick={() => (window.location.href = "/aulas")}
-                    >
-                      + Nova Aula
-                    </Button>
-                  )}
                 </CardHeader>
                 <CardContent>
                   {aulasHojeQuery.isLoading ? (
@@ -2482,75 +2405,7 @@ export default function DashboardNew() {
                 </CardContent>
               </Card>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <Card className="bg-white border border-blue-200">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Building2 className="h-5 w-5 text-blue-600" />
-                      Funcionalidades
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      <div className="flex items-start gap-3">
-                        <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
-                          <span className="text-lg">📍</span>
-                        </div>
-                        <div>
-                          <h4 className="font-semibold text-gray-900">
-                            Cadastro Completo
-                          </h4>
-                          <p className="text-sm text-gray-600">
-                            Nome, endereço, responsável e contatos
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-start gap-3">
-                        <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-                          <span className="text-lg">⏰</span>
-                        </div>
-                        <div>
-                          <h4 className="font-semibold text-gray-900">
-                            Horários de Funcionamento
-                          </h4>
-                          <p className="text-sm text-gray-600">
-                            Configure os horários de cada dia da semana
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-start gap-3">
-                        <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center flex-shrink-0">
-                          <span className="text-lg">🥋</span>
-                        </div>
-                        <div>
-                          <h4 className="font-semibold text-gray-900">
-                            Modalidades
-                          </h4>
-                          <p className="text-sm text-gray-600">
-                            Jiu-Jitsu, MMA, Muay Thai e mais
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-start gap-3">
-                        <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center flex-shrink-0">
-                          <span className="text-lg">🔍</span>
-                        </div>
-                        <div>
-                          <h4 className="font-semibold text-gray-900">
-                            Busca e Filtros
-                          </h4>
-                          <p className="text-sm text-gray-600">
-                            Encontre unidades por localização ou nome
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <Card className="bg-white border border-blue-200">
                   <CardHeader>
                     <CardTitle>Estatísticas Rápidas</CardTitle>
@@ -2607,7 +2462,7 @@ export default function DashboardNew() {
                                 {unidadesStats.data?.homologacao || 0}
                               </p>
                               <p className="text-sm text-gray-600">
-                                Em Planejamento
+                                Em Homologação
                               </p>
                             </div>
                             <Clock className="h-8 w-8 text-yellow-600" />
@@ -2666,32 +2521,6 @@ export default function DashboardNew() {
                         </div>
                         <ExternalLink className="h-4 w-4 text-gray-400 group-hover:text-green-600" />
                       </a>
-
-                      <a
-                        href="/unidades"
-                        className="w-full flex items-center justify-between p-3 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors cursor-pointer group"
-                      >
-                        <div className="flex items-center gap-3">
-                          <FileText className="h-5 w-5 text-purple-600" />
-                          <span className="font-medium text-gray-900">
-                            Relatórios
-                          </span>
-                        </div>
-                        <ExternalLink className="h-4 w-4 text-gray-400 group-hover:text-purple-600" />
-                      </a>
-
-                      <a
-                        href="/franqueados"
-                        className="w-full flex items-center justify-between p-3 bg-orange-50 rounded-lg hover:bg-orange-100 transition-colors cursor-pointer group"
-                      >
-                        <div className="flex items-center gap-3">
-                          <Users className="h-5 w-5 text-orange-600" />
-                          <span className="font-medium text-gray-900">
-                            Ver Franqueados
-                          </span>
-                        </div>
-                        <ExternalLink className="h-4 w-4 text-gray-400 group-hover:text-orange-600" />
-                      </a>
                     </div>
 
                     <div className="mt-6 p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-blue-200">
@@ -2728,15 +2557,6 @@ export default function DashboardNew() {
                             <GraduationCap className="h-5 w-5 text-warning" />{" "}
                             Próximos a Graduar
                           </CardTitle>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => window.open("/graduacao", "_blank")}
-                            className="flex items-center gap-2"
-                          >
-                            <Settings className="h-4 w-4" />
-                            Gerenciar Graduação
-                          </Button>
                         </div>
                       </CardHeader>
                       <CardContent className="space-y-3">
@@ -2879,223 +2699,33 @@ export default function DashboardNew() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              className="space-y-6"
+              className="flex items-center justify-center min-h-[400px]"
             >
-              {/* Banner Principal da Loja */}
-              <Card className="bg-gradient-to-r from-red-600 to-black text-white border-0">
-                <CardContent className="p-8">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h2 className="text-3xl font-bold mb-2 flex items-center gap-3">
-                        <ShoppingBag className="h-8 w-8" />
-                        Loja Virtual TeamCruz
-                      </h2>
-                      <p className="text-lg opacity-90 mb-4">
-                        Equipamentos, uniformes e produtos oficiais da equipe
-                      </p>
-                      <a
-                        href="https://www.lojateamcruz.com.br/"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-2 bg-white text-red-600 px-6 py-3 rounded-lg font-bold hover:bg-gray-100 transition-colors"
-                      >
-                        Acessar Loja Virtual
-                        <ExternalLink className="h-5 w-5" />
-                      </a>
-                    </div>
-                    <div className="hidden lg:block">
-                      <Package className="h-32 w-32 opacity-20" />
-                    </div>
-                  </div>
+              <Card className="bg-gradient-to-r from-red-600 to-black text-white border-0 max-w-2xl w-full">
+                <CardContent className="p-12 text-center">
+                  <img
+                    src="/imgs/teamcruzdois.png"
+                    alt="TeamCruz Logo"
+                    className="h-32 mx-auto mb-6"
+                  />
+                  <h2 className="text-4xl font-bold mb-4">
+                    Loja Virtual TeamCruz
+                  </h2>
+                  <p className="text-xl opacity-90 mb-8">
+                    Equipamentos, uniformes e produtos oficiais da equipe
+                  </p>
+                  <a
+                    href="https://www.lojateamcruz.com.br/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-3 bg-white text-red-600 px-8 py-4 rounded-lg text-lg font-bold hover:bg-gray-100 transition-all transform hover:scale-105 shadow-lg"
+                  >
+                    <ShoppingBag className="h-6 w-6" />
+                    Acessar Loja Virtual
+                    <ExternalLink className="h-6 w-6" />
+                  </a>
                 </CardContent>
               </Card>
-
-              {/* Promoções Ativas */}
-              <Card className="bg-white border border-blue-200">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Tag className="h-5 w-5 text-red-600" />
-                    Promoções Ativas
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="bg-gradient-to-br from-yellow-50 to-yellow-100 rounded-lg p-4 border-2 border-yellow-300">
-                      <div className="flex items-start justify-between mb-2">
-                        <span className="bg-red-600 text-white text-xs font-bold px-2 py-1 rounded">
-                          -20%
-                        </span>
-                        <Tag className="h-4 w-4 text-yellow-600" />
-                      </div>
-                      <h3 className="font-bold text-gray-900">Kit Iniciante</h3>
-                      <p className="text-sm text-gray-600 mt-1">
-                        Kimono + Faixa + Sacola
-                      </p>
-                      <p className="text-2xl font-bold text-red-600 mt-2">
-                        R$ 199,90
-                      </p>
-                      <p className="text-xs text-gray-500 line-through">
-                        R$ 249,90
-                      </p>
-                    </div>
-
-                    <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-4 border-2 border-blue-300">
-                      <div className="flex items-start justify-between mb-2">
-                        <span className="bg-green-600 text-white text-xs font-bold px-2 py-1 rounded">
-                          NOVO
-                        </span>
-                        <Package className="h-4 w-4 text-blue-600" />
-                      </div>
-                      <h3 className="font-bold text-gray-900">
-                        Rashguard TeamCruz
-                      </h3>
-                      <p className="text-sm text-gray-600 mt-1">
-                        Camiseta de competição
-                      </p>
-                      <p className="text-2xl font-bold text-blue-600 mt-2">
-                        R$ 89,90
-                      </p>
-                      <p className="text-xs text-green-600">Lançamento</p>
-                    </div>
-
-                    <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg p-4 border-2 border-purple-300">
-                      <div className="flex items-start justify-between mb-2">
-                        <span className="bg-purple-600 text-white text-xs font-bold px-2 py-1 rounded">
-                          COMBO
-                        </span>
-                        <ShoppingBag className="h-4 w-4 text-purple-600" />
-                      </div>
-                      <h3 className="font-bold text-gray-900">
-                        Pack Competidor
-                      </h3>
-                      <p className="text-sm text-gray-600 mt-1">
-                        3 kimonos + acessórios
-                      </p>
-                      <p className="text-2xl font-bold text-purple-600 mt-2">
-                        R$ 549,90
-                      </p>
-                      <p className="text-xs text-purple-600">
-                        Economize R$ 150
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Categorias de Produtos */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Card className="bg-white border border-blue-200">
-                  <CardHeader>
-                    <CardTitle>Categorias Populares</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      {[
-                        { nome: "Kimonos", qtd: 24, icon: "🥋" },
-                        { nome: "Faixas", qtd: 12, icon: "🎗️" },
-                        { nome: "Proteções", qtd: 18, icon: "🛡️" },
-                        { nome: "Acessórios", qtd: 35, icon: "🎒" },
-                        { nome: "Suplementos", qtd: 8, icon: "💊" },
-                      ].map((cat, idx) => (
-                        <a
-                          key={idx}
-                          href="https://www.lojateamcruz.com.br/"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-blue-50 transition-colors cursor-pointer"
-                        >
-                          <div className="flex items-center gap-3">
-                            <span className="text-2xl">{cat.icon}</span>
-                            <span className="font-medium text-gray-900">
-                              {cat.nome}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm text-gray-500">
-                              {cat.qtd} produtos
-                            </span>
-                            <ExternalLink className="h-4 w-4 text-gray-400" />
-                          </div>
-                        </a>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card className="bg-white border border-blue-200">
-                  <CardHeader>
-                    <CardTitle>Benefícios Exclusivos</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      <div className="flex items-start gap-3">
-                        <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
-                          <span className="text-lg">✨</span>
-                        </div>
-                        <div>
-                          <h4 className="font-semibold text-gray-900">
-                            10% OFF para Alunos
-                          </h4>
-                          <p className="text-sm text-gray-600">
-                            Desconto exclusivo em todos os produtos
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-start gap-3">
-                        <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-                          <span className="text-lg">🚚</span>
-                        </div>
-                        <div>
-                          <h4 className="font-semibold text-gray-900">
-                            Frete Grátis
-                          </h4>
-                          <p className="text-sm text-gray-600">
-                            Em compras acima de R$ 199
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-start gap-3">
-                        <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center flex-shrink-0">
-                          <span className="text-lg">🎁</span>
-                        </div>
-                        <div>
-                          <h4 className="font-semibold text-gray-900">
-                            Pontos de Fidelidade
-                          </h4>
-                          <p className="text-sm text-gray-600">
-                            Acumule pontos e troque por produtos
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-start gap-3">
-                        <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
-                          <span className="text-lg">💳</span>
-                        </div>
-                        <div>
-                          <h4 className="font-semibold text-gray-900">
-                            Parcelamento
-                          </h4>
-                          <p className="text-sm text-gray-600">
-                            Em até 12x sem juros
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="mt-6 p-4 bg-gradient-to-r from-red-50 to-yellow-50 rounded-lg border border-red-200">
-                      <p className="text-sm text-gray-700 text-center">
-                        <strong>Código Promocional:</strong>{" "}
-                        <code className="bg-white px-2 py-1 rounded text-red-600 font-mono">
-                          ALUNO10
-                        </code>
-                      </p>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
             </motion.div>
           )}
 

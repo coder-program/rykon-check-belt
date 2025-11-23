@@ -13,6 +13,8 @@ import {
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { GraduacaoParametrosService } from '../../graduacao/graduacao-parametros.service';
 import { RecepcionistaUnidadesService } from '../services/recepcionista-unidades.service';
+import { GerenteUnidadesService } from '../services/gerente-unidades.service';
+import { UnidadesService } from '../services/unidades.service';
 import {
   CreateGraduacaoParametroDto,
   UpdateGraduacaoParametroDto,
@@ -26,6 +28,8 @@ export class GraduacaoParametrosController {
   constructor(
     private readonly parametrosService: GraduacaoParametrosService,
     private readonly recepcionistaUnidadesService: RecepcionistaUnidadesService,
+    private readonly gerenteUnidadesService: GerenteUnidadesService,
+    private readonly unidadesService: UnidadesService,
   ) {}
 
   // ============================================
@@ -77,31 +81,74 @@ export class GraduacaoParametrosController {
     @Param('parametro_id') parametroId: string | undefined,
     @Request() req,
   ) {
-    const perfis = req.user.perfis?.map((p: any) => p.nome) || [];
+    console.log('🔥 [ALUNOS APTOS] Iniciando busca...');
+    console.log('🔥 [ALUNOS APTOS] User ID:', req.user.id);
+    console.log('🔥 [ALUNOS APTOS] Perfis:', req.user.perfis);
+
+    const perfis =
+      req.user.perfis?.map(
+        (p: any) => p.nome?.toLowerCase() || p.toLowerCase(),
+      ) || [];
+    console.log('🔥 [ALUNOS APTOS] Perfis normalizados:', perfis);
+
     let unidadeIds: string[] | undefined;
 
     // Verificar perfil e buscar unidades permitidas
     if (perfis.includes('recepcionista')) {
+      console.log('🔥 [ALUNOS APTOS] Perfil RECEPCIONISTA detectado');
       const unidades =
         await this.recepcionistaUnidadesService.getUnidadesByRecepcionista(
           req.user.id,
         );
       unidadeIds = unidades.map((u) => u.unidade_id);
+      console.log('🔥 [ALUNOS APTOS] Unidades do recepcionista:', unidadeIds);
     } else if (perfis.includes('gerente_unidade')) {
-      // Buscar unidade do gerente via responsavel_cpf
-      // TODO: implementar método para buscar unidade do gerente
+      console.log('🔥 [ALUNOS APTOS] Perfil GERENTE_UNIDADE detectado');
+      const gerente = await this.gerenteUnidadesService.buscarPorUsuario(
+        req.user.id,
+      );
+      if (gerente?.unidade_id) {
+        unidadeIds = [gerente.unidade_id];
+      }
+      console.log('🔥 [ALUNOS APTOS] Unidade do gerente:', unidadeIds);
     } else if (perfis.includes('franqueado')) {
-      // Buscar unidades do franqueado
-      // TODO: implementar método para buscar unidades do franqueado
+      console.log('🔥 [ALUNOS APTOS] Perfil FRANQUEADO detectado');
+      const unidades = await this.unidadesService.findUnidadesByFranqueado(
+        req.user.id,
+      );
+      unidadeIds = unidades.map((u) => u.id);
+      console.log('🔥 [ALUNOS APTOS] Unidades do franqueado:', unidadeIds);
+      console.log(
+        '🔥 [ALUNOS APTOS] Total de unidades encontradas:',
+        unidades.length,
+      );
     } else if (perfis.includes('master') || perfis.includes('admin')) {
+      console.log('🔥 [ALUNOS APTOS] Perfil MASTER/ADMIN detectado');
       // Vê todas as unidades
       unidadeIds = undefined;
+    } else {
+      console.log('🔥 [ALUNOS APTOS] NENHUM PERFIL RECONHECIDO!');
     }
 
-    return await this.parametrosService.getAlunosAptosGraduacao(
+    console.log('🔥 [ALUNOS APTOS] Filtro final de unidades:', unidadeIds);
+
+    const resultado = await this.parametrosService.getAlunosAptosGraduacao(
       parametroId !== 'undefined' && parametroId ? parametroId : undefined,
       unidadeIds,
     );
+
+    console.log(
+      '🔥 [ALUNOS APTOS] Total de alunos retornados:',
+      resultado.length,
+    );
+    if (resultado.length > 0) {
+      console.log('🔥 [ALUNOS APTOS] Primeiro aluno:', {
+        nome: resultado[0].aluno_nome,
+        unidade: resultado[0].unidade_nome,
+      });
+    }
+
+    return resultado;
   }
 
   @Get(':id')

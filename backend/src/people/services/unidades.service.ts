@@ -497,6 +497,18 @@ export class UnidadesService {
     return res[0]?.id || null;
   }
 
+  async findUnidadesByFranqueado(userId: string): Promise<Unidade[]> {
+    const franqueadoId = await this.getFranqueadoIdByUser({ id: userId });
+    if (!franqueadoId) return [];
+
+    const res = await this.dataSource.query(
+      `SELECT * FROM teamcruz.unidades WHERE franqueado_id = $1`,
+      [franqueadoId],
+    );
+
+    return res.map((row: any) => this.formatarUnidade(row));
+  }
+
   private async getUnidadeIdByGerente(user: any): Promise<string | null> {
     if (!user?.id) return null;
 
