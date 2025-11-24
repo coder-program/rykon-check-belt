@@ -465,9 +465,57 @@ export default function CompeticoesPage() {
                         type="date"
                         required
                         value={formData.data}
-                        onChange={(e) =>
-                          setFormData({ ...formData, data: e.target.value })
-                        }
+                        min="1900-01-01"
+                        max="2099-12-31"
+                        onKeyDown={(e) => {
+                          // Previne entrada de valores que tornariam a data inválida
+                          const input = e.currentTarget;
+                          const value = input.value;
+                          
+                          // Se já tem uma data completa e válida, previne mais digitação
+                          if (value && value.length >= 10) {
+                            const year = parseInt(value.split('-')[0]);
+                            if (year >= 1000 && year <= 9999) {
+                              // Permite apenas teclas de navegação
+                              if (!['Backspace', 'Delete', 'Tab', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+                                e.preventDefault();
+                              }
+                            }
+                          }
+                        }}
+                        onInput={(e) => {
+                          const input = e.currentTarget;
+                          const value = input.value;
+                          
+                          // Valida o formato e limita o ano
+                          if (value) {
+                            const parts = value.split('-');
+                            if (parts[0] && parts[0].length > 4) {
+                              // Corta o ano para 4 dígitos
+                              const fixedValue = parts[0].substring(0, 4) + '-' + (parts[1] || '') + (parts[2] ? '-' + parts[2] : '');
+                              input.value = fixedValue;
+                              setFormData({ ...formData, data: fixedValue });
+                              return;
+                            }
+                            
+                            if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+                              input.setCustomValidity("Data inválida. Use o formato AAAA-MM-DD com ano de 4 dígitos.");
+                            } else {
+                              input.setCustomValidity("");
+                            }
+                          }
+                        }}
+                        onChange={(e) => {
+                          let value = e.target.value;
+                          // Garante que o ano tenha no máximo 4 dígitos
+                          if (value) {
+                            const parts = value.split('-');
+                            if (parts[0] && parts[0].length > 4) {
+                              value = parts[0].substring(0, 4) + '-' + (parts[1] || '') + (parts[2] ? '-' + parts[2] : '');
+                            }
+                          }
+                          setFormData({ ...formData, data: value });
+                        }}
                         className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
                       />
                     </div>

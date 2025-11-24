@@ -195,9 +195,24 @@ export class CompeticoesService {
   }
 
   async registrarParticipacao(data: Partial<AlunoCompeticao>, userId: string) {
+    // Buscar aluno vinculado ao usuário logado (se aluno_id não for fornecido)
+    let alunoId = data.aluno_id;
+    
+    if (!alunoId) {
+      const aluno = await this.alunoRepository.findOne({
+        where: { usuario_id: userId },
+      });
+
+      if (!aluno) {
+        throw new NotFoundException('Aluno não encontrado para o usuário logado');
+      }
+
+      alunoId = aluno.id;
+    }
+
     // Verificar se aluno existe
     const aluno = await this.alunoRepository.findOne({
-      where: { id: data.aluno_id },
+      where: { id: alunoId },
     });
 
     if (!aluno) {
@@ -216,7 +231,7 @@ export class CompeticoesService {
     // Verificar duplicação
     const existente = await this.alunoCompeticaoRepository.findOne({
       where: {
-        aluno_id: data.aluno_id,
+        aluno_id: alunoId,
         competicao_id: data.competicao_id,
         categoria_peso: data.categoria_peso,
         categoria_faixa: data.categoria_faixa,
@@ -231,6 +246,7 @@ export class CompeticoesService {
 
     const participacao = this.alunoCompeticaoRepository.create({
       ...data,
+      aluno_id: alunoId,
       created_by: userId,
       updated_by: userId,
     });
