@@ -83,29 +83,48 @@ export async function getAulas(params?: {
  * Busca aulas de hoje para uma unidade específica
  */
 export async function getAulasHoje(unidade_id?: string): Promise<AulaHoje[]> {
-  const hoje = new Date().getDay(); // 0 = domingo, 6 = sábado
+  const token = localStorage.getItem("token");
   const dataHoje = new Date().toLocaleDateString("pt-BR");
 
   console.log("🔥 [AULAS HOJE] Iniciando busca:", {
     unidade_id,
-    dia_semana_hoje: hoje,
     data_hoje: dataHoje,
   });
 
-  const aulas = await getAulas({
-    unidade_id,
-    ativo: true,
-    dia_semana: hoje,
+  const queryParams = new URLSearchParams();
+  if (unidade_id) queryParams.append("unidade_id", unidade_id);
+
+  const url = `${API_URL}/aulas/hoje/lista${
+    queryParams.toString() ? `?${queryParams.toString()}` : ""
+  }`;
+
+  console.log("🔥 [AULAS HOJE API] URL:", url);
+
+  const response = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
   });
 
+  if (!response.ok) {
+    console.error(
+      "❌ [AULAS HOJE API] Erro na resposta:",
+      response.status,
+      response.statusText
+    );
+    throw new Error("Erro ao buscar aulas de hoje");
+  }
+
+  const aulas = await response.json();
   console.log(
-    "🔥 [AULAS HOJE] Aulas filtradas para hoje:",
+    "✅ [AULAS HOJE API] Aulas recebidas do backend:",
     aulas.length,
     aulas
   );
 
   // Transformar para formato do dashboard
-  const aulasFormatadas = aulas.map((aula, index) => {
+  const aulasFormatadas = aulas.map((aula: any, index: number) => {
     try {
       console.log(`🔥 [AULAS HOJE] Processando aula ${index}:`, aula);
 
@@ -118,18 +137,13 @@ export async function getAulasHoje(unidade_id?: string): Promise<AulaHoje[]> {
         : "00:00";
 
       console.log(`🔥 [AULAS HOJE] Horário extraído:`, horario);
-      console.log(`🔥 [AULAS HOJE] Turma tipo:`, typeof aula.turma, aula.turma);
-      console.log(
-        `🔥 [AULAS HOJE] Professor tipo:`,
-        typeof aula.professor,
-        aula.professor
-      );
 
       const aulaFormatada = {
         id: aula.id,
         horario,
         turma: aula.turma?.nome || aula.nome || "Turma Regular",
-        instrutor: aula.professor?.nome || "A definir",
+        instrutor:
+          aula.professor?.nome_completo || aula.professor?.nome || "A definir",
         status: determinarStatus(horario),
         presencas: 0,
       };

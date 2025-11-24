@@ -167,6 +167,59 @@ export class PresencaController {
     );
   }
 
+  @Get('frequencia-ultimos-30-dias')
+  @ApiOperation({ summary: 'Frequência diária dos últimos 30 dias' })
+  @ApiResponse({ status: 200, description: 'Dados de frequência por dia' })
+  async getFrequenciaUltimos30Dias(
+    @Request() req,
+    @Query('unidadeId') unidadeId?: string,
+  ) {
+    return this.presencaService.getFrequenciaUltimos30Dias(req.user, unidadeId);
+  }
+
+  @Get('alunos-ausentes')
+  @ApiOperation({ summary: 'Ranking de alunos mais ausentes' })
+  @ApiResponse({ status: 200, description: 'Lista de alunos por ausência' })
+  async getAlunosAusentes(
+    @Request() req,
+    @Query('unidadeId') unidadeId?: string,
+    @Query('dias') dias?: number,
+  ) {
+    return this.presencaService.getAlunosAusentes(
+      req.user,
+      unidadeId,
+      dias || 30,
+    );
+  }
+
+  @Get('professores/ranking-presenca')
+  @ApiOperation({ summary: 'Ranking de professores por presença/pontualidade' })
+  @ApiResponse({ status: 200, description: 'Ranking de professores' })
+  async getRankingProfessoresPresenca(
+    @Request() req,
+    @Query('unidadeId') unidadeId?: string,
+  ) {
+    return this.presencaService.getRankingProfessoresPresenca(
+      req.user,
+      unidadeId,
+    );
+  }
+
+  @Get('alunos/ranking-frequencia')
+  @ApiOperation({ summary: 'Ranking de alunos por frequência/assiduidade' })
+  @ApiResponse({ status: 200, description: 'Top alunos mais assíduos' })
+  async getRankingAlunosFrequencia(
+    @Request() req,
+    @Query('unidadeId') unidadeId?: string,
+    @Query('limit') limit?: number,
+  ) {
+    return this.presencaService.getRankingAlunosFrequencia(
+      req.user,
+      unidadeId,
+      limit || 10,
+    );
+  }
+
   @Get('alunos/buscar')
   @ApiOperation({ summary: 'Buscar alunos por nome ou CPF' })
   @ApiResponse({ status: 200, description: 'Lista de alunos encontrados' })

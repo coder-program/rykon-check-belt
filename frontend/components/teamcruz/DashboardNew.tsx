@@ -6,6 +6,7 @@ import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { FixedSizeList as List } from "react-window";
 import { listAlunos } from "@/lib/peopleApi";
 import { getAulasHoje } from "@/lib/aulasApi";
+import { getRankingAlunosFrequencia } from "@/lib/presencaApi";
 import { useAuth } from "@/app/auth/AuthContext";
 import {
   Card,
@@ -560,6 +561,16 @@ export default function DashboardNew() {
     });
   }, [user]);
 
+  // Extrair perfis do usuário
+  const perfis = React.useMemo(() => {
+    if (!user?.perfis) return [];
+    return user.perfis.map((perfil: any) => {
+      const perfilNome =
+        typeof perfil === "string" ? perfil : perfil.nome || perfil.perfil;
+      return perfilNome?.toUpperCase() || "";
+    });
+  }, [user]);
+
   // Buscar unidade do gerente
   const { data: userData, isLoading: isLoadingUserData } = useQuery({
     queryKey: ["user-me"],
@@ -642,12 +653,29 @@ export default function DashboardNew() {
         "🔥 [AULAS QUERY] Executando query com selectedUnidade:",
         selectedUnidade
       );
+
+      // Para franqueados: se "todas" ou undefined, chama sem filtro (backend retorna todas as unidades do franqueado)
+      // Para outros perfis: se não tem unidade selecionada, retorna vazio
       if (!selectedUnidade || selectedUnidade === "todas") {
-        console.log(
-          "🔥 [AULAS QUERY] Retornando array vazio (todas ou undefined)"
-        );
-        return [];
+        if (perfis.includes("FRANQUEADO")) {
+          console.log(
+            "🔥 [AULAS QUERY] Franqueado - chamando sem filtro de unidade"
+          );
+          const result = await getAulasHoje();
+          console.log(
+            "🔥 [AULAS QUERY] Resultado recebido:",
+            result.length,
+            "aulas"
+          );
+          return result;
+        } else {
+          console.log(
+            "🔥 [AULAS QUERY] Retornando array vazio (não franqueado sem unidade)"
+          );
+          return [];
+        }
       }
+
       console.log(
         "🔥 [AULAS QUERY] Chamando getAulasHoje com unidade:",
         selectedUnidade
@@ -660,7 +688,9 @@ export default function DashboardNew() {
       );
       return result;
     },
-    enabled: !!selectedUnidade && selectedUnidade !== "todas",
+    enabled:
+      perfis.includes("FRANQUEADO") ||
+      (!!selectedUnidade && selectedUnidade !== "todas"),
     refetchOnMount: true,
     refetchOnWindowFocus: false,
   });
@@ -680,6 +710,20 @@ export default function DashboardNew() {
       setSelectedUnidade(unidadeDoGerente.id);
     }
   }, [isGerenteUnidade, unidadeDoGerente]);
+
+  // Query para ranking de frequência (Top Assiduidade)
+  const { data: rankingFrequencia = [], isLoading: isLoadingRanking } =
+    useQuery({
+      queryKey: ["ranking-frequencia", selectedUnidade],
+      queryFn: async () => {
+        if (selectedUnidade === "todas") {
+          return [];
+        }
+        return getRankingAlunosFrequencia(selectedUnidade, 5);
+      },
+      enabled: !!selectedUnidade && selectedUnidade !== "todas",
+      staleTime: 2 * 60 * 1000, // 2 minutos
+    });
 
   // Paginação e filtros
   const pageSize = 30; // quantidade por página para infinite scroll
@@ -1014,6 +1058,7 @@ export default function DashboardNew() {
       overviewFilterFaixa,
       selectedUnidade,
       overviewDebounced,
+      overviewSort,
     ],
     queryFn: async () => {
       try {
@@ -1080,6 +1125,15 @@ export default function DashboardNew() {
           };
         });
 
+        // Aplicar ordenação baseada no overviewSort
+        items.sort((a: any, b: any) => {
+          if (overviewSort === "faltam-asc") {
+            return a.faltam - b.faltam;
+          } else {
+            return b.faltam - a.faltam;
+          }
+        });
+
         return {
           items,
           total: data.total || 0,
@@ -1118,6 +1172,216 @@ export default function DashboardNew() {
     },
     enabled: false, // Desabilitada para evitar queries automáticas
   });
+
+  // Query para buscar frequência dos últimos 30 dias
+  const [frequenciaData, setFrequenciaData] = React.useState<any>(null);
+  const [frequenciaLoading, setFrequenciaLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    const fetchFrequencia = async () => {
+      try {
+        setFrequenciaLoading(true);
+        const token = localStorage.getItem("token");
+        const params = new URLSearchParams();
+
+        if (selectedUnidade && selectedUnidade !== "todas") {
+          params.append("unidadeId", selectedUnidade);
+        }
+
+        const response = await fetch(
+          `${
+            process.env.NEXT_PUBLIC_API_URL
+          }/presenca/frequencia-ultimos-30-dias?${params.toString()}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          setFrequenciaData(data);
+        }
+      } catch (error) {
+        console.error("Erro ao buscar frequência:", error);
+      } finally {
+        setFrequenciaLoading(false);
+      }
+    };
+
+    fetchFrequencia();
+  }, [selectedUnidade]);
+
+  // Query para buscar alunos ausentes
+  const [alunosAusentes, setAlunosAusentes] = React.useState<any[]>([]);
+  const [ausentesLoading, setAusentesLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    const fetchAusentes = async () => {
+      try {
+        setAusentesLoading(true);
+        const token = localStorage.getItem("token");
+        const params = new URLSearchParams({ dias: "30" });
+
+        if (selectedUnidade && selectedUnidade !== "todas") {
+          params.append("unidadeId", selectedUnidade);
+        }
+
+        const response = await fetch(
+          `${
+            process.env.NEXT_PUBLIC_API_URL
+          }/presenca/alunos-ausentes?${params.toString()}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          setAlunosAusentes(data);
+        }
+      } catch (error) {
+        console.error("Erro ao buscar alunos ausentes:", error);
+      } finally {
+        setAusentesLoading(false);
+      }
+    };
+
+    fetchAusentes();
+  }, [selectedUnidade]);
+
+  // Query para buscar ranking de presença dos professores
+  const [rankingProfessoresPresenca, setRankingProfessoresPresenca] =
+    React.useState<any[]>([]);
+  const [rankingProfPresencaLoading, setRankingProfPresencaLoading] =
+    React.useState(true);
+
+  React.useEffect(() => {
+    const fetchRankingPresenca = async () => {
+      try {
+        setRankingProfPresencaLoading(true);
+        const token = localStorage.getItem("token");
+        const params = new URLSearchParams();
+
+        if (selectedUnidade && selectedUnidade !== "todas") {
+          params.append("unidadeId", selectedUnidade);
+        }
+
+        const response = await fetch(
+          `${
+            process.env.NEXT_PUBLIC_API_URL
+          }/presenca/professores/ranking-presenca?${params.toString()}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          setRankingProfessoresPresenca(data);
+        }
+      } catch (error) {
+        console.error(
+          "Erro ao buscar ranking de presença dos professores:",
+          error
+        );
+      } finally {
+        setRankingProfPresencaLoading(false);
+      }
+    };
+
+    fetchRankingPresenca();
+  }, [selectedUnidade]);
+
+  // Query para buscar ranking de aulas por professor
+  const [rankingAulasPorProf, setRankingAulasPorProf] = React.useState<any[]>(
+    []
+  );
+  const [rankingAulasLoading, setRankingAulasLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    const fetchRankingAulas = async () => {
+      try {
+        setRankingAulasLoading(true);
+        const token = localStorage.getItem("token");
+        const params = new URLSearchParams();
+
+        if (selectedUnidade && selectedUnidade !== "todas") {
+          params.append("unidade_id", selectedUnidade);
+        }
+
+        const response = await fetch(
+          `${
+            process.env.NEXT_PUBLIC_API_URL
+          }/aulas/por-professor/ranking?${params.toString()}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          setRankingAulasPorProf(data);
+        }
+      } catch (error) {
+        console.error("Erro ao buscar ranking de aulas por professor:", error);
+      } finally {
+        setRankingAulasLoading(false);
+      }
+    };
+
+    fetchRankingAulas();
+  }, [selectedUnidade]);
+
+  // Query para buscar taxa de aprovação por professor
+  const [taxaAprovacaoProf, setTaxaAprovacaoProf] = React.useState<any[]>([]);
+  const [taxaAprovacaoLoading, setTaxaAprovacaoLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    const fetchTaxaAprovacao = async () => {
+      try {
+        setTaxaAprovacaoLoading(true);
+        const token = localStorage.getItem("token");
+        const params = new URLSearchParams();
+
+        if (selectedUnidade && selectedUnidade !== "todas") {
+          params.append("unidadeId", selectedUnidade);
+        }
+
+        const response = await fetch(
+          `${
+            process.env.NEXT_PUBLIC_API_URL
+          }/graduacao/taxa-aprovacao-professores?${params.toString()}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          setTaxaAprovacaoProf(data);
+        }
+      } catch (error) {
+        console.error(
+          "Erro ao buscar taxa de aprovação dos professores:",
+          error
+        );
+      } finally {
+        setTaxaAprovacaoLoading(false);
+      }
+    };
+
+    fetchTaxaAprovacao();
+  }, [selectedUnidade]);
 
   // Função para registrar check-in e presença automaticamente
   const handleCheckinAluno = (
@@ -1656,9 +1920,14 @@ export default function DashboardNew() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-3">
-                    {/* TODO: Implementar API de ranking quando disponível */}
-                    {(statsQuery.data ? [] : mockData.ranking).map(
-                      (aluno, index) => (
+                    {isLoadingRanking ? (
+                      <div className="text-center py-8 text-gray-500">
+                        <div className="skeleton h-16 w-full mb-2" />
+                        <div className="skeleton h-16 w-full mb-2" />
+                        <div className="skeleton h-16 w-full" />
+                      </div>
+                    ) : rankingFrequencia.length > 0 ? (
+                      rankingFrequencia.map((aluno, index) => (
                         <div
                           key={aluno.id}
                           className="flex items-center gap-3 p-3 bg-gradient-to-r from-gray-50 to-blue-50 rounded-lg hover:shadow-md transition-shadow"
@@ -1689,7 +1958,7 @@ export default function DashboardNew() {
                             <div className="flex items-center gap-1 mt-1.5">
                               <Zap className="h-3.5 w-3.5 text-yellow-500" />
                               <span className="text-xs text-gray-600 font-medium">
-                                {aluno.streak} dias consecutivos
+                                {aluno.diasPresentes} dias presentes
                               </span>
                             </div>
                           </div>
@@ -1697,19 +1966,22 @@ export default function DashboardNew() {
                             <span className="text-lg font-bold text-blue-600">
                               {aluno.percent}%
                             </span>
+                            <span className="text-xs text-gray-500">
+                              {aluno.totalPresencas} presenças
+                            </span>
                           </div>
                         </div>
-                      )
+                      ))
+                    ) : (
+                      <div className="text-center py-8 text-gray-500">
+                        <Zap className="h-12 w-12 mx-auto mb-2 opacity-30" />
+                        <p className="text-sm">
+                          {selectedUnidade === "todas"
+                            ? "Selecione uma unidade para ver o ranking"
+                            : "Nenhuma presença registrada nos últimos 30 dias"}
+                        </p>
+                      </div>
                     )}
-                    {statsQuery.data &&
-                      (!mockData.ranking || mockData.ranking.length === 0) && (
-                        <div className="text-center py-8 text-gray-500">
-                          <Zap className="h-12 w-12 mx-auto mb-2 opacity-30" />
-                          <p className="text-sm">
-                            Ranking será calculado com base nas presenças
-                          </p>
-                        </div>
-                      )}
                   </CardContent>
                 </Card>
               </div>
@@ -2086,126 +2358,625 @@ export default function DashboardNew() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              className="space-y-4"
+              className="space-y-6"
             >
-              <h2 className="text-xl font-bold flex items-center gap-2 text-blue-900">
-                <Users className="h-5 w-5 text-blue-600" /> Lista de Alunos
+              <h2 className="text-2xl font-bold flex items-center gap-2 text-blue-900">
+                <Users className="h-6 w-6 text-blue-600" /> Análise de Alunos
               </h2>
-              <div className="flex items-center gap-3">
-                <div className="relative w-full md:w-96">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-base-content/50" />
-                  <input
-                    className="input input-bordered w-full pl-10"
-                    placeholder="Buscar aluno..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                  />
-                </div>
-                <select
-                  className="select select-bordered select-sm"
-                  value={filterFaixa}
-                  onChange={(e) => setFilterFaixa(e.target.value as any)}
-                >
-                  <option value="todos">Todos</option>
-                  <option value="kids">Kids</option>
-                  <option value="adulto">Adulto</option>
-                </select>
+
+              {/* Stats Cards - Linha 1 */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-blue-700 font-medium">
+                          Total de Alunos
+                        </p>
+                        <p className="text-3xl font-bold text-blue-900">
+                          {alunosQuery.data?.pages[0]?.total || 0}
+                        </p>
+                      </div>
+                      <Users className="h-10 w-10 text-blue-600 opacity-50" />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-green-700 font-medium">
+                          Ativos
+                        </p>
+                        <p className="text-3xl font-bold text-green-900">
+                          {alunosQuery.data?.pages[0]?.items?.filter(
+                            (a: any) => a.status === "ATIVO"
+                          ).length || 0}
+                        </p>
+                      </div>
+                      <CheckCircle className="h-10 w-10 text-green-600 opacity-50" />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-gradient-to-br from-red-50 to-red-100 border-red-200">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-red-700 font-medium">
+                          Inativos
+                        </p>
+                        <p className="text-3xl font-bold text-red-900">
+                          {alunosQuery.data?.pages[0]?.items?.filter(
+                            (a: any) => a.status !== "ATIVO"
+                          ).length || 0}
+                        </p>
+                      </div>
+                      <AlertTriangle className="h-10 w-10 text-red-600 opacity-50" />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-gradient-to-br from-cyan-50 to-cyan-100 border-cyan-200">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-cyan-700 font-medium">
+                          Novos Este Mês
+                        </p>
+                        <p className="text-3xl font-bold text-cyan-900">
+                          {(() => {
+                            const alunos =
+                              alunosQuery.data?.pages[0]?.items || [];
+                            const mesAtual = new Date().getMonth();
+                            const anoAtual = new Date().getFullYear();
+
+                            return alunos.filter((a: any) => {
+                              if (!a.dt_cadastro) return false;
+                              const dtCadastro = new Date(a.dt_cadastro);
+                              return (
+                                dtCadastro.getMonth() === mesAtual &&
+                                dtCadastro.getFullYear() === anoAtual
+                              );
+                            }).length;
+                          })()}
+                        </p>
+                      </div>
+                      <Star className="h-10 w-10 text-cyan-600 opacity-50" />
+                    </div>
+                  </CardContent>
+                </Card>
               </div>
 
-              <div className="h-[700px]">
-                {(() => {
-                  const items = (alunosQuery.data?.pages || []).flatMap(
-                    (p) => p.items
-                  );
-                  const itemCount = items.length;
-                  const loadMoreIfNeeded = ({
-                    visibleStopIndex,
-                  }: {
-                    visibleStopIndex: number;
-                  }) => {
-                    if (
-                      visibleStopIndex >= itemCount - 5 &&
-                      alunosQuery.hasNextPage &&
-                      !alunosQuery.isFetchingNextPage
-                    ) {
-                      alunosQuery.fetchNextPage();
-                    }
-                  };
-                  const Row = ({
-                    index,
-                    style,
-                  }: {
-                    index: number;
-                    style: React.CSSProperties;
-                  }) => {
-                    const aluno = items[index];
-                    if (!aluno) {
-                      return (
-                        <div style={style} className="p-4">
-                          <div className="skeleton h-16 w-full" />
-                        </div>
+              {/* Stats Cards - Linha 2 */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Card className="bg-gradient-to-br from-yellow-50 to-yellow-100 border-yellow-200">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-yellow-700 font-medium">
+                          Aptos a Graduar
+                        </p>
+                        <p className="text-3xl font-bold text-yellow-900">
+                          {proximosQuery.data?.items?.length || 0}
+                        </p>
+                      </div>
+                      <Trophy className="h-10 w-10 text-yellow-600 opacity-50" />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-purple-700 font-medium">
+                          Presença Hoje
+                        </p>
+                        <p className="text-3xl font-bold text-purple-900">
+                          {statsQuery.data?.presencasHoje || 0}
+                        </p>
+                      </div>
+                      <Activity className="h-10 w-10 text-purple-600 opacity-50" />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-gradient-to-br from-indigo-50 to-indigo-100 border-indigo-200">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-indigo-700 font-medium">
+                          Taxa de Retenção
+                        </p>
+                        <p className="text-3xl font-bold text-indigo-900">
+                          {(() => {
+                            const alunos =
+                              alunosQuery.data?.pages[0]?.items || [];
+                            const total = alunos.length;
+                            if (total === 0) return "0%";
+
+                            // Calcular alunos com mais de 3 meses
+                            const tresMesesAtras = new Date();
+                            tresMesesAtras.setMonth(
+                              tresMesesAtras.getMonth() - 3
+                            );
+
+                            const alunosRetidos = alunos.filter((a: any) => {
+                              if (!a.dt_cadastro) return false;
+                              const dtCadastro = new Date(a.dt_cadastro);
+                              return (
+                                dtCadastro <= tresMesesAtras &&
+                                a.status === "ATIVO"
+                              );
+                            }).length;
+
+                            const alunosElegiveis = alunos.filter((a: any) => {
+                              if (!a.dt_cadastro) return false;
+                              const dtCadastro = new Date(a.dt_cadastro);
+                              return dtCadastro <= tresMesesAtras;
+                            }).length;
+
+                            if (alunosElegiveis === 0) return "N/A";
+
+                            const taxa = Math.round(
+                              (alunosRetidos / alunosElegiveis) * 100
+                            );
+                            return `${taxa}%`;
+                          })()}
+                        </p>
+                      </div>
+                      <TrendingUp className="h-10 w-10 text-indigo-600 opacity-50" />
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Gráfico de Evolução da Frequência */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <TrendingUp className="h-5 w-5 text-purple-600" />
+                    Evolução da Frequência - Últimos 30 Dias
+                  </CardTitle>
+                  <CardDescription>
+                    Média de presenças por dia nos últimos 30 dias
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {frequenciaLoading ? (
+                    <div className="flex justify-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600" />
+                    </div>
+                  ) : !frequenciaData || !frequenciaData.dias ? (
+                    <p className="text-sm text-gray-500 text-center py-8">
+                      Nenhum dado de frequência disponível
+                    </p>
+                  ) : (
+                    (() => {
+                      const { dias, estatisticas } = frequenciaData;
+                      const maxPresencas = Math.max(
+                        ...dias.map((d: any) => d.presencas),
+                        1
                       );
-                    }
-                    return (
-                      <div style={style}>
-                        <div className="card bg-white border-2 border-blue-200 shadow-md hover:shadow-lg transition-all">
-                          <div className="card-body p-5">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-bold text-sm">
-                                  {aluno.nome
-                                    .split(" ")
-                                    .map((n: string) => n[0])
-                                    .join("")}
-                                </div>
-                                <div>
-                                  <p className="font-semibold text-gray-900">
-                                    {aluno.nome}
-                                  </p>
-                                  <p className="text-xs text-gray-600">
-                                    {aluno.matricula}
-                                  </p>
-                                </div>
-                              </div>
-                              <div className="text-right">
-                                <span
-                                  className={`badge ${getBeltClass(
-                                    aluno.faixa
-                                  )} mr-2`}
+
+                      return (
+                        <div className="space-y-4">
+                          {/* Gráfico de Barras */}
+                          <div className="flex items-end justify-between h-48 gap-1">
+                            {dias.map((dia: any, index: number) => {
+                              const isWeekend =
+                                dia.diaSemana === 0 || dia.diaSemana === 6;
+                              return (
+                                <div
+                                  key={index}
+                                  className="flex-1 flex flex-col items-center gap-1"
                                 >
-                                  {aluno.faixa}
-                                </span>
-                                <span className="text-xs opacity-60">
-                                  {aluno.graus} graus
-                                </span>
-                              </div>
+                                  <div className="relative flex-1 w-full flex items-end">
+                                    <div
+                                      className={`w-full rounded-t transition-all hover:opacity-80 cursor-pointer ${
+                                        isWeekend
+                                          ? "bg-gradient-to-t from-gray-300 to-gray-400"
+                                          : "bg-gradient-to-t from-purple-500 to-purple-600"
+                                      }`}
+                                      style={{
+                                        height: `${
+                                          (dia.presencas / maxPresencas) * 100
+                                        }%`,
+                                        minHeight:
+                                          dia.presencas > 0 ? "4px" : "0",
+                                      }}
+                                      title={`${dia.dia}/${dia.mes}: ${dia.presencas} presenças`}
+                                    />
+                                  </div>
+                                  {index % 5 === 0 && (
+                                    <span className="text-[8px] text-gray-500 whitespace-nowrap">
+                                      {dia.dia}/{dia.mes}
+                                    </span>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+
+                          {/* Estatísticas do período */}
+                          <div className="grid grid-cols-4 gap-3 pt-4 border-t">
+                            <div className="text-center">
+                              <p className="text-xs text-gray-600">
+                                Média Diária
+                              </p>
+                              <p className="text-lg font-bold text-purple-900">
+                                {estatisticas.mediaDiaria}
+                              </p>
+                            </div>
+                            <div className="text-center">
+                              <p className="text-xs text-gray-600">
+                                Maior Pico
+                              </p>
+                              <p className="text-lg font-bold text-purple-900">
+                                {estatisticas.maiorPico}
+                              </p>
+                            </div>
+                            <div className="text-center">
+                              <p className="text-xs text-gray-600">
+                                Total Período
+                              </p>
+                              <p className="text-lg font-bold text-purple-900">
+                                {estatisticas.totalPeriodo}
+                              </p>
+                            </div>
+                            <div className="text-center">
+                              <p className="text-xs text-gray-600">Tendência</p>
+                              <p
+                                className={`text-lg font-bold flex items-center justify-center gap-1 ${
+                                  estatisticas.tendencia >= 0
+                                    ? "text-green-600"
+                                    : "text-red-600"
+                                }`}
+                              >
+                                <TrendingUp
+                                  className={`h-4 w-4 ${
+                                    estatisticas.tendencia < 0
+                                      ? "rotate-180"
+                                      : ""
+                                  }`}
+                                />
+                                {estatisticas.tendencia > 0 ? "+" : ""}
+                                {estatisticas.tendencia}%
+                              </p>
                             </div>
                           </div>
                         </div>
-                      </div>
-                    );
-                  };
-                  return (
-                    <List
-                      height={700}
-                      itemCount={itemCount + (alunosQuery.hasNextPage ? 1 : 0)}
-                      itemSize={90}
-                      width={"100%"}
-                      onItemsRendered={({
-                        visibleStartIndex,
-                        visibleStopIndex,
-                      }) => loadMoreIfNeeded({ visibleStopIndex })}
-                    >
-                      {Row as any}
-                    </List>
-                  );
-                })()}
+                      );
+                    })()
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Distribuição por Faixas */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Award className="h-5 w-5 text-blue-600" />
+                    Distribuição por Faixas
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    {(() => {
+                      const alunos = alunosQuery.data?.pages[0]?.items || [];
+                      const faixas = alunos.reduce((acc: any, aluno: any) => {
+                        const faixa = aluno.faixa || "Sem Faixa";
+                        acc[faixa] = (acc[faixa] || 0) + 1;
+                        return acc;
+                      }, {});
+
+                      return Object.entries(faixas).map(([faixa, count]) => (
+                        <div
+                          key={faixa}
+                          className="p-4 bg-gray-50 rounded-lg border border-gray-200 hover:border-blue-300 transition-colors"
+                        >
+                          <div className="flex items-center justify-between mb-2">
+                            <span
+                              className={`badge ${getBeltClass(faixa)} text-xs`}
+                            >
+                              {faixa}
+                            </span>
+                            <span className="text-2xl font-bold text-gray-900">
+                              {count as number}
+                            </span>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-2">
+                            <div
+                              className="bg-blue-600 h-2 rounded-full transition-all"
+                              style={{
+                                width: `${
+                                  ((count as number) / alunos.length) * 100
+                                }%`,
+                              }}
+                            />
+                          </div>
+                        </div>
+                      ));
+                    })()}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Top 10 Próximos a Graduar */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Trophy className="h-5 w-5 text-yellow-600" />
+                    Top 10 - Próximos a Graduar
+                  </CardTitle>
+                  <CardDescription>
+                    Alunos mais próximos de atingir a próxima graduação
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {proximosQuery.isLoading ? (
+                    <div className="flex justify-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {(proximosQuery.data?.items || [])
+                        .slice(0, 10)
+                        .map((aluno: any, index: number) => (
+                          <div
+                            key={aluno.id}
+                            className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200 hover:border-blue-300 transition-colors"
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center text-white font-bold text-sm">
+                                #{index + 1}
+                              </div>
+                              <div>
+                                <p className="font-semibold text-gray-900">
+                                  {aluno.nome}
+                                </p>
+                                <div className="flex items-center gap-2 text-xs text-gray-600">
+                                  <span
+                                    className={`badge ${getBeltClass(
+                                      aluno.faixa
+                                    )} badge-xs`}
+                                  >
+                                    {aluno.faixa}
+                                  </span>
+                                  <span className="text-gray-500">
+                                    • {aluno.graus}{" "}
+                                    {aluno.graus === 1 ? "grau" : "graus"}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-sm font-semibold text-gray-900">
+                                Faltam {aluno.faltam}{" "}
+                                {aluno.faltam === 1 ? "aula" : "aulas"}
+                              </p>
+                              <p className="text-xs text-gray-600">
+                                para próximo grau
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Duas colunas - Aniversariantes e Alunos Ausentes */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Aniversariantes do Mês */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Calendar className="h-5 w-5 text-pink-600" />
+                      Aniversariantes do Mês
+                    </CardTitle>
+                    <CardDescription>
+                      Alunos fazendo aniversário este mês
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                      {(() => {
+                        const alunos = alunosQuery.data?.pages[0]?.items || [];
+                        const mesAtual = new Date().getMonth();
+
+                        const aniversariantes = alunos
+                          .filter((aluno: any) => {
+                            if (!aluno.data_nascimento) return false;
+                            const dataNasc = new Date(aluno.data_nascimento);
+                            return dataNasc.getMonth() === mesAtual;
+                          })
+                          .sort((a: any, b: any) => {
+                            const diaA = new Date(a.data_nascimento).getDate();
+                            const diaB = new Date(b.data_nascimento).getDate();
+                            return diaA - diaB;
+                          });
+
+                        if (aniversariantes.length === 0) {
+                          return (
+                            <p className="text-sm text-gray-500 text-center py-4">
+                              Nenhum aniversariante este mês
+                            </p>
+                          );
+                        }
+
+                        return aniversariantes.map((aluno: any) => {
+                          const dataNasc = new Date(aluno.data_nascimento);
+                          const dia = dataNasc.getDate();
+                          const hoje = new Date().getDate();
+                          const isHoje = dia === hoje;
+
+                          return (
+                            <div
+                              key={aluno.id}
+                              className={`flex items-center justify-between p-2 rounded-lg transition-colors ${
+                                isHoje
+                                  ? "bg-pink-50 border border-pink-200"
+                                  : "hover:bg-gray-50"
+                              }`}
+                            >
+                              <div className="flex items-center gap-2">
+                                {isHoje && <span className="text-lg">🎉</span>}
+                                <span className="text-sm font-medium text-gray-900">
+                                  {aluno.nome}
+                                </span>
+                                <span
+                                  className={`badge ${getBeltClass(
+                                    aluno.faixa
+                                  )} badge-xs`}
+                                >
+                                  {aluno.faixa}
+                                </span>
+                              </div>
+                              <span
+                                className={`text-xs ${
+                                  isHoje
+                                    ? "text-pink-600 font-bold"
+                                    : "text-gray-500"
+                                }`}
+                              >
+                                {dia}/{mesAtual + 1}
+                                {isHoje && " - HOJE!"}
+                              </span>
+                            </div>
+                          );
+                        });
+                      })()}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Alunos Mais Ausentes */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <AlertTriangle className="h-5 w-5 text-orange-600" />
+                      Alunos Mais Ausentes
+                    </CardTitle>
+                    <CardDescription>
+                      Ranking de alunos com mais faltas nos últimos 30 dias
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                      {ausentesLoading ? (
+                        <div className="flex justify-center py-4">
+                          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-orange-600" />
+                        </div>
+                      ) : alunosAusentes.length === 0 ? (
+                        <p className="text-sm text-gray-500 text-center py-4">
+                          Nenhum aluno com ausências registradas
+                        </p>
+                      ) : (
+                        alunosAusentes.map((aluno: any, index: number) => (
+                          <div
+                            key={aluno.id}
+                            className="flex items-center justify-between p-2 hover:bg-gray-50 rounded-lg transition-colors"
+                          >
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-bold text-gray-500 w-6">
+                                #{index + 1}
+                              </span>
+                              <div>
+                                <p className="text-sm font-medium text-gray-900">
+                                  {aluno.nome}
+                                </p>
+                                <p className="text-xs text-gray-500">
+                                  {aluno.ultimaPresenca
+                                    ? `Última presença: ${new Date(
+                                        aluno.ultimaPresenca
+                                      ).toLocaleDateString("pt-BR")}`
+                                    : "Nunca registrou presença"}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-sm font-bold text-orange-600">
+                                {aluno.ausencias}{" "}
+                                {aluno.ausencias === 1 ? "falta" : "faltas"}
+                              </p>
+                              <p className="text-xs text-gray-500">
+                                {aluno.diasSemTreino} dias sem treinar
+                              </p>
+                              <div className="w-20 bg-gray-200 rounded-full h-1.5 mt-1">
+                                <div
+                                  className="bg-orange-600 h-1.5 rounded-full"
+                                  style={{
+                                    width: `${Math.min(
+                                      (aluno.ausencias / 30) * 100,
+                                      100
+                                    )}%`,
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
               </div>
-              {alunosQuery.isFetchingNextPage && (
-                <div className="flex justify-center py-2 text-sm text-gray-500">
-                  Carregando mais...
-                </div>
-              )}
+
+              {/* Histórico de Graduações Recentes */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Activity className="h-5 w-5 text-green-600" />
+                    Últimas Graduações
+                  </CardTitle>
+                  <CardDescription>
+                    Graduações aprovadas nos últimos 30 dias
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {historicoQuery.isLoading ? (
+                    <div className="flex justify-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {(historicoQuery.data || [])
+                        .slice(0, 8)
+                        .map((grad: HistoricoGraduacao) => (
+                          <div
+                            key={grad.id}
+                            className="flex items-center justify-between p-2 hover:bg-gray-50 rounded-lg transition-colors"
+                          >
+                            <div className="flex items-center gap-2">
+                              <CheckCircle className="h-4 w-4 text-green-600" />
+                              <span className="text-sm font-medium text-gray-900">
+                                {grad.aluno_nome}
+                              </span>
+                              <span className="text-xs text-gray-500">
+                                graduou para
+                              </span>
+                              <span
+                                className={`badge ${getBeltClass(
+                                  grad.faixa_destino_nome
+                                )} badge-xs`}
+                              >
+                                {grad.faixa_destino_nome}
+                              </span>
+                            </div>
+                            <span className="text-xs text-gray-500">
+                              {new Date(grad.dt_aprovacao).toLocaleDateString(
+                                "pt-BR"
+                              )}
+                            </span>
+                          </div>
+                        ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
             </motion.div>
           )}
 
@@ -2215,159 +2986,500 @@ export default function DashboardNew() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3 }}
-              className="space-y-4"
+              className="space-y-6"
             >
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-2 md:space-y-0">
-                <div className="flex items-center space-x-2">
-                  <GraduationCap className="h-5 w-5 text-red-600" />
-                  <h2 className="text-xl font-bold text-gray-900">
-                    Professores
-                  </h2>
-                  <span className="text-sm text-gray-500">
-                    ({professoresQuery.data?.pages[0]?.total || 0} professores)
-                  </span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                    <input
-                      type="text"
-                      placeholder="Buscar professores..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                    />
-                  </div>
-                  <select
-                    value={filterFaixa}
-                    onChange={(e) => setFilterFaixa(e.target.value as any)}
-                    className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                  >
-                    <option value="todos">Todas as Categorias</option>
-                    <option value="kids">Kids</option>
-                    <option value="adulto">Adulto</option>
-                  </select>
-                </div>
+              <h2 className="text-2xl font-bold flex items-center gap-2 text-red-900">
+                <GraduationCap className="h-6 w-6 text-red-600" />
+                Análise de Professores
+              </h2>
+
+              {/* Stats Cards - Linha 1 */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <Card className="bg-gradient-to-br from-red-50 to-red-100 border-red-200">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-red-700 font-medium">
+                          Total de Professores
+                        </p>
+                        <p className="text-3xl font-bold text-red-900">
+                          {professoresQuery.data?.pages[0]?.total || 0}
+                        </p>
+                      </div>
+                      <GraduationCap className="h-10 w-10 text-red-600 opacity-50" />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-green-700 font-medium">
+                          Ativos
+                        </p>
+                        <p className="text-3xl font-bold text-green-900">
+                          {professoresQuery.data?.pages[0]?.items?.filter(
+                            (p: any) => p.status === "ATIVO"
+                          ).length || 0}
+                        </p>
+                      </div>
+                      <CheckCircle className="h-10 w-10 text-green-600 opacity-50" />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-purple-700 font-medium">
+                          Total de Aulas
+                        </p>
+                        <p className="text-3xl font-bold text-purple-900">
+                          {aulasHojeQuery.data?.length || 0}
+                        </p>
+                      </div>
+                      <Calendar className="h-10 w-10 text-purple-600 opacity-50" />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-blue-700 font-medium">
+                          Taxa Aprovação
+                        </p>
+                        <p className="text-3xl font-bold text-blue-900">
+                          {taxaAprovacaoLoading ? (
+                            <span className="text-xl">Carregando...</span>
+                          ) : taxaAprovacaoProf.length > 0 ? (
+                            `${Math.round(
+                              taxaAprovacaoProf.reduce(
+                                (acc, p) => acc + p.taxaAprovacao,
+                                0
+                              ) / taxaAprovacaoProf.length
+                            )}%`
+                          ) : (
+                            "0%"
+                          )}
+                        </p>
+                      </div>
+                      <TrendingUp className="h-10 w-10 text-blue-600 opacity-50" />
+                    </div>
+                  </CardContent>
+                </Card>
               </div>
 
-              {professoresQuery.isLoading && (
-                <div className="flex justify-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600"></div>
-                </div>
-              )}
+              {/* Stats Cards - Linha 2: Ranking e Distribuição */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Card className="bg-gradient-to-br from-cyan-50 to-cyan-100 border-cyan-200">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-cyan-700 font-medium">
+                          Média Alunos/Prof
+                        </p>
+                        <p className="text-3xl font-bold text-cyan-900">
+                          {(() => {
+                            const totalProfs =
+                              professoresQuery.data?.pages[0]?.total || 0;
+                            const totalAlunos =
+                              alunosQuery.data?.pages[0]?.total || 0;
+                            return totalProfs > 0
+                              ? Math.round(totalAlunos / totalProfs)
+                              : 0;
+                          })()}
+                        </p>
+                      </div>
+                      <Users className="h-10 w-10 text-cyan-600 opacity-50" />
+                    </div>
+                  </CardContent>
+                </Card>
 
-              {professoresQuery.isError && (
-                <div className="text-center py-8 text-red-600">
-                  Erro ao carregar professores:{" "}
-                  {professoresQuery.error?.message}
-                </div>
-              )}
+                <Card className="bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-orange-700 font-medium">
+                          Especializações
+                        </p>
+                        <p className="text-3xl font-bold text-orange-900">
+                          {(() => {
+                            const professores =
+                              professoresQuery.data?.pages[0]?.items || [];
+                            const especialidades = new Set(
+                              professores
+                                .map((p: any) => p.especialidades)
+                                .filter(Boolean)
+                            );
+                            return especialidades.size;
+                          })()}
+                        </p>
+                      </div>
+                      <Star className="h-10 w-10 text-orange-600 opacity-50" />
+                    </div>
+                  </CardContent>
+                </Card>
 
-              {professoresQuery.data && (
-                <List
-                  height={600}
-                  itemCount={
-                    professoresQuery.data.pages.reduce(
-                      (acc, page) => acc + page.items.length,
-                      0
-                    ) + (professoresQuery.hasNextPage ? 1 : 0)
-                  }
-                  itemSize={120}
-                  onItemsRendered={({ visibleStopIndex }) => {
-                    const totalItems = professoresQuery.data.pages.reduce(
-                      (acc, page) => acc + page.items.length,
-                      0
-                    );
-                    if (
-                      visibleStopIndex >= totalItems - 5 &&
-                      professoresQuery.hasNextPage &&
-                      !professoresQuery.isFetchingNextPage
-                    ) {
-                      professoresQuery.fetchNextPage();
-                    }
-                  }}
-                >
-                  {({ index, style }) => {
-                    const allItems = professoresQuery.data.pages.reduce(
-                      (acc, page) => [...acc, ...page.items],
-                      []
-                    );
-                    const professor = allItems[index];
+                <Card className="bg-gradient-to-br from-pink-50 to-pink-100 border-pink-200">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-pink-700 font-medium">
+                          Horas/Semana
+                        </p>
+                        <p className="text-3xl font-bold text-pink-900">
+                          {(() => {
+                            // TODO: Calcular horas reais das aulas
+                            return (aulasHojeQuery.data?.length || 0) * 1.5;
+                          })()}
+                          h
+                        </p>
+                      </div>
+                      <Clock className="h-10 w-10 text-pink-600 opacity-50" />
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
 
-                    if (!professor) {
-                      return (
-                        <div style={style} className="px-4 py-3">
-                          <div className="animate-pulse bg-gray-200 rounded-lg h-20"></div>
-                        </div>
+              {/* Distribuição por Faixa */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Award className="h-5 w-5 text-red-600" />
+                    Professores por Faixa
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    {(() => {
+                      const professores =
+                        professoresQuery.data?.pages[0]?.items || [];
+                      const faixas = professores.reduce(
+                        (acc: any, prof: any) => {
+                          const faixa =
+                            prof.faixa_ministrante || "Não definida";
+                          acc[faixa] = (acc[faixa] || 0) + 1;
+                          return acc;
+                        },
+                        {}
                       );
-                    }
 
-                    return (
-                      <div style={style} className="px-4 py-3">
-                        <div className="bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md transition-shadow">
-                          <div className="flex items-center space-x-4">
-                            <div className="flex-shrink-0">
-                              <div className="w-12 h-12 bg-red-600 rounded-full flex items-center justify-center text-white font-semibold text-lg">
-                                {professor.nome_completo?.charAt(0) || "P"}
-                              </div>
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center space-x-2">
-                                <h3 className="text-lg font-semibold text-gray-900 truncate">
-                                  {professor.nome_completo}
-                                </h3>
-                                <span
-                                  className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                    professor.status === "ATIVO"
-                                      ? "bg-green-100 text-green-800"
-                                      : "bg-gray-100 text-gray-800"
-                                  }`}
-                                >
-                                  {professor.status || "Ativo"}
-                                </span>
-                              </div>
-                              <div className="flex items-center space-x-4 mt-1">
-                                <span className="flex items-center text-sm text-gray-600">
-                                  <Award className="h-4 w-4 mr-1" />
-                                  {professor.faixa_ministrante ||
-                                    "Faixa não informada"}
-                                </span>
-                                {professor.telefone_whatsapp && (
-                                  <span className="text-sm text-gray-500">
-                                    Tel: {professor.telefone_whatsapp}
-                                  </span>
-                                )}
-                              </div>
-                              {professor.especialidades && (
-                                <div className="mt-1">
-                                  <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
-                                    {professor.especialidades}
-                                  </span>
-                                </div>
-                              )}
-                            </div>
-                            <div className="flex-shrink-0">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="text-red-600 border-red-600 hover:bg-red-50"
-                              >
-                                Ver Perfil
-                              </Button>
-                            </div>
+                      return Object.entries(faixas).map(([faixa, count]) => (
+                        <div
+                          key={faixa}
+                          className="p-4 bg-gray-50 rounded-lg border border-gray-200 hover:border-red-300 transition-colors"
+                        >
+                          <div className="flex items-center justify-between mb-2">
+                            <span
+                              className={`badge ${getBeltClass(faixa)} text-xs`}
+                            >
+                              {faixa}
+                            </span>
+                            <span className="text-2xl font-bold text-gray-900">
+                              {count as number}
+                            </span>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-2">
+                            <div
+                              className="bg-red-600 h-2 rounded-full transition-all"
+                              style={{
+                                width: `${
+                                  ((count as number) / professores.length) * 100
+                                }%`,
+                              }}
+                            />
                           </div>
                         </div>
-                      </div>
-                    );
-                  }}
-                </List>
-              )}
+                      ));
+                    })()}
+                  </div>
+                </CardContent>
+              </Card>
 
-              {professoresQuery.isFetchingNextPage && (
-                <div className="flex justify-center py-2 text-sm text-gray-500">
-                  Carregando mais professores...
-                </div>
-              )}
+              {/* Ranking de Presença dos Professores */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <CheckCircle className="h-5 w-5 text-green-600" />
+                    Ranking de Presença
+                  </CardTitle>
+                  <CardDescription>
+                    Professores mais pontuais e assíduos (últimos 30 dias)
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {rankingProfPresencaLoading ? (
+                    <div className="flex justify-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600" />
+                    </div>
+                  ) : rankingProfessoresPresenca.length === 0 ? (
+                    <div className="text-center py-8 text-gray-500">
+                      Nenhum professor com registro de presença
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {rankingProfessoresPresenca
+                        .slice(0, 10)
+                        .map((prof: any, index: number) => (
+                          <div
+                            key={prof.id}
+                            className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200 hover:border-green-300 transition-colors"
+                          >
+                            <div className="flex items-center gap-3">
+                              <div
+                                className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm ${
+                                  index === 0
+                                    ? "bg-gradient-to-br from-yellow-400 to-yellow-600"
+                                    : index === 1
+                                    ? "bg-gradient-to-br from-gray-300 to-gray-500"
+                                    : index === 2
+                                    ? "bg-gradient-to-br from-orange-400 to-orange-600"
+                                    : "bg-gradient-to-br from-green-500 to-green-700"
+                                }`}
+                              >
+                                #{index + 1}
+                              </div>
+                              <div>
+                                <p className="font-semibold text-gray-900">
+                                  {prof.nome}
+                                </p>
+                                <div className="flex items-center gap-2 text-xs text-gray-600">
+                                  <span
+                                    className={`badge ${getBeltClass(
+                                      prof.faixa?.nome || ""
+                                    )} badge-xs`}
+                                  >
+                                    {prof.faixa?.nome || "Não definida"}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-2xl font-bold text-green-600">
+                                {prof.taxaPresenca}%
+                              </p>
+                              <p className="text-xs text-gray-500">
+                                {prof.aulasPresente}/{prof.totalAulas} aulas •{" "}
+                                {prof.diasTrabalho} dias
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Ranking de Aulas */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Trophy className="h-5 w-5 text-yellow-600" />
+                    Ranking - Aulas por Professor
+                  </CardTitle>
+                  <CardDescription>
+                    Professores ordenados por número de aulas ministradas
+                    (últimos 30 dias)
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {rankingAulasLoading ? (
+                    <div className="flex justify-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600" />
+                    </div>
+                  ) : rankingAulasPorProf.length === 0 ? (
+                    <div className="text-center py-8 text-gray-500">
+                      Nenhum professor com aulas ministradas
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {rankingAulasPorProf
+                        .slice(0, 10)
+                        .map((prof: any, index: number) => (
+                          <div
+                            key={prof.id}
+                            className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200 hover:border-red-300 transition-colors"
+                          >
+                            <div className="flex items-center gap-3">
+                              <div
+                                className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm ${
+                                  index === 0
+                                    ? "bg-gradient-to-br from-yellow-400 to-yellow-600"
+                                    : index === 1
+                                    ? "bg-gradient-to-br from-gray-300 to-gray-500"
+                                    : index === 2
+                                    ? "bg-gradient-to-br from-orange-400 to-orange-600"
+                                    : "bg-gradient-to-br from-red-500 to-red-700"
+                                }`}
+                              >
+                                #{index + 1}
+                              </div>
+                              <div>
+                                <p className="font-semibold text-gray-900">
+                                  {prof.nome}
+                                </p>
+                                <div className="flex items-center gap-2 text-xs text-gray-600">
+                                  <span
+                                    className={`badge ${getBeltClass(
+                                      prof.faixa?.nome || ""
+                                    )} badge-xs`}
+                                  >
+                                    {prof.faixa?.nome || "Não definida"}
+                                  </span>
+                                  {prof.modalidades &&
+                                    Array.isArray(prof.modalidades) &&
+                                    prof.modalidades.length > 0 && (
+                                      <span className="text-gray-500">
+                                        • {prof.modalidades.join(", ")}
+                                      </span>
+                                    )}
+                                </div>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-2xl font-bold text-red-600">
+                                {prof.totalAulas}
+                              </p>
+                              <p className="text-xs text-gray-500">
+                                {prof.diasTrabalho} dias •{" "}
+                                {prof.mediaAulasSemana} aulas/sem
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Especialidades e Modalidades */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Star className="h-5 w-5 text-blue-600" />
+                      Especialidades
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {(() => {
+                        const professores =
+                          professoresQuery.data?.pages[0]?.items || [];
+                        const especialidadesCount: Record<string, number> = {};
+
+                        professores.forEach((prof: any) => {
+                          const esp =
+                            prof.especialidades || "Sem especialidade";
+                          especialidadesCount[esp] =
+                            (especialidadesCount[esp] || 0) + 1;
+                        });
+
+                        const cores = [
+                          "blue",
+                          "purple",
+                          "green",
+                          "pink",
+                          "red",
+                          "yellow",
+                          "indigo",
+                        ];
+
+                        return Object.entries(especialidadesCount).map(
+                          ([nome, count], index) => (
+                            <div
+                              key={nome}
+                              className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                            >
+                              <span className="text-sm font-medium text-gray-900">
+                                {nome}
+                              </span>
+                              <div className="flex items-center gap-2">
+                                <div className="w-32 bg-gray-200 rounded-full h-2">
+                                  <div
+                                    className={`bg-${
+                                      cores[index % cores.length]
+                                    }-600 h-2 rounded-full`}
+                                    style={{
+                                      width: `${
+                                        (count / professores.length) * 100
+                                      }%`,
+                                    }}
+                                  />
+                                </div>
+                                <span className="text-sm font-bold text-gray-700 w-8 text-right">
+                                  {count}
+                                </span>
+                              </div>
+                            </div>
+                          )
+                        );
+                      })()}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <TrendingUp className="h-5 w-5 text-green-600" />
+                      Performance
+                    </CardTitle>
+                    <CardDescription>
+                      Taxa de aprovação em graduações por professor (últimos 90
+                      dias)
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {taxaAprovacaoLoading ? (
+                      <div className="flex justify-center py-8">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600" />
+                      </div>
+                    ) : taxaAprovacaoProf.length === 0 ? (
+                      <div className="text-center py-8 text-gray-500">
+                        Nenhuma graduação realizada no período
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {taxaAprovacaoProf.slice(0, 5).map((prof: any) => (
+                          <div
+                            key={prof.id}
+                            className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200"
+                          >
+                            <div className="flex-1">
+                              <p className="text-sm font-medium text-gray-900 truncate">
+                                {prof.nome}
+                              </p>
+                              <p className="text-xs text-gray-600">
+                                {prof.totalGraduacoes} graduações •{" "}
+                                {prof.totalAprovadas} aprovadas
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <span
+                                className={`badge ${getBeltClass(
+                                  prof.faixa?.nome || ""
+                                )} badge-sm`}
+                              >
+                                {prof.faixa?.nome || "N/A"}
+                              </span>
+                              <div className="text-right">
+                                <span className="text-lg font-bold text-green-600">
+                                  {prof.taxaAprovacao}%
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
             </motion.div>
           )}
 

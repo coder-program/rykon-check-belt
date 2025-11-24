@@ -136,7 +136,7 @@ export default function AulasPage() {
         "Content-Type": "application/json",
       };
 
-      // Buscar dados do usuário para pegar a unidade
+      // Buscar dados do usuário para pegar a unidade (se houver)
       const userResponse = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/usuarios/me`,
         { headers }
@@ -154,12 +154,15 @@ export default function AulasPage() {
         else if (userData.unidades?.length > 0) {
           unidadeDoUsuario = userData.unidades[0].id;
         }
+        // Se for professor
+        else if (userData.professor?.unidade_id) {
+          unidadeDoUsuario = userData.professor.unidade_id;
+        }
       }
 
-      // Carregar aulas FILTRADAS pela unidade do usuário
-      const aulasUrl = unidadeDoUsuario
-        ? `${process.env.NEXT_PUBLIC_API_URL}/aulas?unidade_id=${unidadeDoUsuario}`
-        : `${process.env.NEXT_PUBLIC_API_URL}/aulas`;
+      // Carregar aulas - o backend já filtra automaticamente por perfil
+      // Franqueados verão todas as suas unidades, outros perfis verão apenas a sua unidade
+      const aulasUrl = `${process.env.NEXT_PUBLIC_API_URL}/aulas`;
 
       // Carregar aulas, unidades e professores em paralelo
       const [aulasRes, unidadesRes, professoresRes] = await Promise.all([
@@ -170,6 +173,7 @@ export default function AulasPage() {
 
       if (aulasRes.ok) {
         const data = await aulasRes.json();
+        console.log("📋 Aulas carregadas:", data.length);
         setAulas(data);
       }
 
@@ -177,7 +181,7 @@ export default function AulasPage() {
         const data = await unidadesRes.json();
         const unidadesArray = Array.isArray(data) ? data : data.items || [];
 
-        // Se tem unidade do usuário, filtrar para mostrar só ela no select
+        // Para não-franqueados, filtrar apenas sua unidade
         if (unidadeDoUsuario) {
           const unidadesFiltradas = unidadesArray.filter(
             (u: Unidade) => u.id === unidadeDoUsuario
@@ -191,6 +195,7 @@ export default function AulasPage() {
             }));
           }
         } else {
+          // Franqueado vê todas as unidades
           setUnidades(unidadesArray);
         }
       }

@@ -102,6 +102,42 @@ export class AulaService {
     return aulas;
   }
 
+  async findAllByUnidades(
+    unidadeIds: string[],
+    params?: {
+      ativo?: boolean;
+      dia_semana?: number;
+    },
+  ): Promise<Aula[]> {
+    if (!unidadeIds || unidadeIds.length === 0) {
+      return [];
+    }
+
+    const query = this.aulaRepository
+      .createQueryBuilder('aula')
+      .leftJoinAndSelect('aula.unidade', 'unidade')
+      .leftJoinAndSelect('aula.professor', 'professor')
+      .where('aula.unidade_id IN (:...unidadeIds)', { unidadeIds });
+
+    if (params?.ativo !== undefined) {
+      query.andWhere('aula.ativo = :ativo', { ativo: params.ativo });
+    }
+
+    if (params?.dia_semana !== undefined) {
+      query.andWhere('aula.dia_semana = :dia_semana', {
+        dia_semana: params.dia_semana,
+      });
+    }
+
+    query
+      .orderBy('aula.dia_semana', 'ASC')
+      .addOrderBy('aula.data_hora_inicio', 'ASC');
+
+    const aulas = await query.getMany();
+
+    return aulas;
+  }
+
   async findOne(id: string): Promise<Aula> {
     const aula = await this.aulaRepository.findOne({
       where: { id },
@@ -208,5 +244,88 @@ export class AulaService {
     const count = await query.getCount();
 
     return count;
+  }
+
+  async findAulasHoje(unidadeIds?: string | string[]): Promise<Aula[]> {
+    const hoje = new Date();
+    const diaSemanaHoje = hoje.getDay(); // 0 = domingo, 1 = segunda, etc
+
+    const query = this.aulaRepository
+      .createQueryBuilder('aula')
+      .leftJoinAndSelect('aula.unidade', 'unidade')
+      .leftJoinAndSelect('aula.professor', 'professor')
+      .leftJoinAndSelect('aula.turma', 'turma')
+      .where('aula.ativo = :ativo', { ativo: true })
+      .andWhere('aula.dia_semana = :dia_semana', { dia_semana: diaSemanaHoje });
+
+    if (unidadeIds) {
+      if (Array.isArray(unidadeIds)) {
+        query.andWhere('aula.unidade_id IN (:...unidadeIds)', { unidadeIds });
+      } else {
+        query.andWhere('aula.unidade_id = :unidadeId', {
+          unidadeId: unidadeIds,
+        });
+      }
+    }
+
+    query
+      .orderBy('aula.data_hora_inicio', 'ASC')
+      .addOrderBy('aula.nome', 'ASC');
+
+    const aulas = await query.getMany();
+
+    return aulas;
+  }
+
+  async getAulasPorProfessor(user: any, unidadeId?: string) {
+    const dataLimite = new Date();
+    dataLimite.setDate(dataLimite.getDate() - 30);
+
+    // Query para buscar professores com total de aulas
+    let query = `
+      SELECT
+        prof.id,
+        prof.usuario_id,
+        u.nome as nome_completo,
+        prof.faixa_ministrante as faixa_nome,
+        COUNT(DISTINCT aula.id) as total_aulas,
+        COUNT(DISTINCT DATE(aula.data_hora_inicio)) as dias_trabalho,
+        ROUND(COUNT(DISTINCT aula.id)::numeric / 4.0, 1) as media_aulas_semana,
+        ARRAY_AGG(DISTINCT aula.tipo) FILTER (WHERE aula.tipo IS NOT NULL) as modalidades
+      FROM teamcruz.professores prof
+      INNER JOIN teamcruz.usuarios u ON u.id = prof.usuario_id
+      LEFT JOIN teamcruz.aulas aula ON aula.professor_id = prof.id
+        AND aula.data_hora_inicio >= $1
+        AND aula.ativo = true
+      WHERE prof.status = 'ATIVO'
+    `;
+
+    const params: any[] = [dataLimite];
+
+    if (unidadeId) {
+      query += ` AND prof.unidade_id = $2`;
+      params.push(unidadeId);
+    }
+
+    query += `
+      GROUP BY prof.id, prof.usuario_id, u.nome, prof.faixa_ministrante
+      HAVING COUNT(DISTINCT aula.id) > 0
+      ORDER BY total_aulas DESC, u.nome ASC
+      LIMIT 20
+    `;
+
+    const resultado = await this.aulaRepository.manager.query(query, params);
+
+    return resultado.map((r: any) => ({
+      id: r.id,
+      nome: r.nome_completo,
+      faixa: {
+        nome: r.faixa_nome || 'Não definida',
+      },
+      totalAulas: parseInt(r.total_aulas) || 0,
+      diasTrabalho: parseInt(r.dias_trabalho) || 0,
+      mediaAulasSemana: parseFloat(r.media_aulas_semana) || 0,
+      modalidades: r.modalidades || [],
+    }));
   }
 }

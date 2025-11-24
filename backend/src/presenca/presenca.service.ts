@@ -689,6 +689,264 @@ export class PresencaService {
     };
   }
 
+  async getFrequenciaUltimos30Dias(user: any, unidadeId?: string) {
+    const hoje = new Date();
+    const tresDiasAtras = new Date(hoje);
+    tresDiasAtras.setDate(hoje.getDate() - 30);
+
+    // Query SQL para contar presenças por dia
+    let query = `
+      SELECT
+        DATE(p.hora_checkin) as data,
+        COUNT(DISTINCT p.aluno_id) as total_presencas
+      FROM teamcruz.presencas p
+      WHERE p.hora_checkin >= $1 AND p.hora_checkin <= $2
+    `;
+
+    const params: any[] = [tresDiasAtras, hoje];
+
+    if (unidadeId) {
+      query += ` AND p.unidade_id = $3`;
+      params.push(unidadeId);
+    }
+
+    query += `
+      GROUP BY DATE(p.hora_checkin)
+      ORDER BY DATE(p.hora_checkin) ASC
+    `;
+
+    const resultado = await this.presencaRepository.manager.query(
+      query,
+      params,
+    );
+
+    // Preencher todos os dias mesmo sem dados
+    const frequenciaPorDia: Array<{
+      data: string;
+      dia: number;
+      mes: number;
+      diaSemana: number;
+      presencas: number;
+    }> = [];
+    for (let i = 29; i >= 0; i--) {
+      const data = new Date(hoje);
+      data.setDate(hoje.getDate() - i);
+      data.setHours(0, 0, 0, 0);
+
+      const dataStr = data.toISOString().split('T')[0];
+      const registro = resultado.find((r: any) => {
+        const rData = new Date(r.data);
+        return rData.toISOString().split('T')[0] === dataStr;
+      });
+
+      frequenciaPorDia.push({
+        data: dataStr,
+        dia: data.getDate(),
+        mes: data.getMonth() + 1,
+        diaSemana: data.getDay(),
+        presencas: registro ? parseInt(registro.total_presencas) : 0,
+      });
+    }
+
+    // Calcular estatísticas
+    const totalPresencas = frequenciaPorDia.reduce(
+      (sum, d) => sum + d.presencas,
+      0,
+    );
+    const mediaDiaria = Math.round(totalPresencas / 30);
+    const maiorPico = Math.max(...frequenciaPorDia.map((d) => d.presencas));
+
+    // Calcular tendência (primeiros 10 vs últimos 10 dias)
+    const primeiros10 =
+      frequenciaPorDia.slice(0, 10).reduce((s, d) => s + d.presencas, 0) / 10;
+    const ultimos10 =
+      frequenciaPorDia.slice(-10).reduce((s, d) => s + d.presencas, 0) / 10;
+    const tendencia =
+      primeiros10 > 0 ? ((ultimos10 - primeiros10) / primeiros10) * 100 : 0;
+
+    return {
+      dias: frequenciaPorDia,
+      estatisticas: {
+        mediaDiaria,
+        maiorPico,
+        totalPeriodo: totalPresencas,
+        tendencia: Math.round(tendencia),
+      },
+    };
+  }
+
+  async getAlunosAusentes(user: any, unidadeId?: string, dias: number = 30) {
+    const dataLimite = new Date();
+    dataLimite.setDate(dataLimite.getDate() - dias);
+
+    // Query para buscar alunos e suas últimas presenças
+    let query = `
+      SELECT
+        a.id,
+        a.usuario_id,
+        u.nome as nome_completo,
+        u.cpf,
+        MAX(pr.hora_checkin) as ultima_presenca,
+        COUNT(DISTINCT DATE(pr.hora_checkin)) as total_presencas,
+        $1 - COUNT(DISTINCT DATE(pr.hora_checkin)) as ausencias
+      FROM teamcruz.alunos a
+      INNER JOIN teamcruz.usuarios u ON u.id = a.usuario_id
+      LEFT JOIN teamcruz.presencas pr ON pr.aluno_id = a.id
+        AND pr.hora_checkin >= $2
+      WHERE a.status = 'ATIVO'
+    `;
+
+    const params: any[] = [dias, dataLimite];
+
+    if (unidadeId) {
+      query += ` AND a.unidade_id = $3`;
+      params.push(unidadeId);
+    }
+
+    query += `
+      GROUP BY a.id, a.usuario_id, u.nome, u.cpf
+      HAVING COUNT(DISTINCT DATE(pr.hora_checkin)) < $1
+      ORDER BY ausencias DESC, ultima_presenca ASC NULLS FIRST
+      LIMIT 20
+    `;
+
+    const resultado = await this.presencaRepository.manager.query(
+      query,
+      params,
+    );
+
+    return resultado.map((r: any) => ({
+      id: r.id,
+      nome: r.nome_completo || r.nome,
+      cpf: r.cpf,
+      ultimaPresenca: r.ultima_presenca
+        ? new Date(r.ultima_presenca).toISOString()
+        : null,
+      totalPresencas: parseInt(r.total_presencas) || 0,
+      ausencias: parseInt(r.ausencias) || dias,
+      diasSemTreino: r.ultima_presenca
+        ? Math.floor(
+            (Date.now() - new Date(r.ultima_presenca).getTime()) /
+              (1000 * 60 * 60 * 24),
+          )
+        : dias,
+    }));
+  }
+
+  async getRankingProfessoresPresenca(user: any, unidadeId?: string) {
+    const dataLimite = new Date();
+    dataLimite.setDate(dataLimite.getDate() - 30);
+
+    // Query para buscar professores com estatísticas de aulas ministradas
+    let query = `
+      SELECT
+        prof.id,
+        prof.usuario_id,
+        u.nome as nome_completo,
+        prof.faixa_ministrante as faixa_nome,
+        COUNT(DISTINCT aula.id) as total_aulas_dadas,
+        COUNT(DISTINCT DATE(aula.data_hora_inicio)) as dias_trabalho,
+        COUNT(DISTINCT aula.id) as aulas_presente,
+        100.0 as taxa_presenca
+      FROM teamcruz.professores prof
+      INNER JOIN teamcruz.usuarios u ON u.id = prof.usuario_id
+      LEFT JOIN teamcruz.aulas aula ON aula.professor_id = prof.id
+        AND aula.data_hora_inicio >= $1
+      WHERE prof.status = 'ATIVO'
+    `;
+
+    const params: any[] = [dataLimite];
+
+    if (unidadeId) {
+      query += ` AND prof.unidade_id = $2`;
+      params.push(unidadeId);
+    }
+
+    query += `
+      GROUP BY prof.id, prof.usuario_id, u.nome, prof.faixa_ministrante
+      HAVING COUNT(DISTINCT aula.id) > 0
+      ORDER BY taxa_presenca DESC, total_aulas_dadas DESC
+      LIMIT 20
+    `;
+
+    const resultado = await this.presencaRepository.manager.query(
+      query,
+      params,
+    );
+
+    return resultado.map((r: any) => ({
+      id: r.id,
+      nome: r.nome_completo,
+      faixa: {
+        nome: r.faixa_nome || 'Não definida',
+      },
+      totalAulas: parseInt(r.total_aulas_dadas) || 0,
+      diasTrabalho: parseInt(r.dias_trabalho) || 0,
+      aulasPresente: parseInt(r.aulas_presente) || 0,
+      taxaPresenca: parseFloat(r.taxa_presenca) || 0,
+    }));
+  }
+
+  async getRankingAlunosFrequencia(
+    user: any,
+    unidadeId?: string,
+    limit: number = 10,
+  ) {
+    const dataLimite = new Date();
+    dataLimite.setDate(dataLimite.getDate() - 30);
+
+    // Query para buscar alunos com melhor frequência
+    let query = `
+      SELECT
+        a.id,
+        a.usuario_id,
+        u.nome as nome_completo,
+        COUNT(DISTINCT pr.id) as total_presencas,
+        COUNT(DISTINCT DATE(pr.hora_checkin)) as dias_presentes,
+        ROUND(
+          (COUNT(DISTINCT DATE(pr.hora_checkin))::numeric / 30.0 * 100), 1
+        ) as taxa_frequencia,
+        MAX(pr.hora_checkin) as ultima_presenca
+      FROM teamcruz.alunos a
+      INNER JOIN teamcruz.usuarios u ON u.id = a.usuario_id
+      LEFT JOIN teamcruz.presencas pr ON pr.aluno_id = a.id
+        AND pr.hora_checkin >= $1
+        AND pr.status = 'presente'
+      WHERE a.status = 'ATIVO'
+    `;
+
+    const params: any[] = [dataLimite];
+
+    if (unidadeId) {
+      query += ` AND a.unidade_id = $2`;
+      params.push(unidadeId);
+    }
+
+    query += `
+      GROUP BY a.id, a.usuario_id, u.nome
+      HAVING COUNT(DISTINCT pr.id) > 0
+      ORDER BY dias_presentes DESC, total_presencas DESC
+      LIMIT $${params.length + 1}
+    `;
+
+    params.push(limit);
+
+    const resultado = await this.presencaRepository.manager.query(
+      query,
+      params,
+    );
+
+    return resultado.map((r: any) => ({
+      id: r.id,
+      nome: r.nome_completo,
+      totalPresencas: parseInt(r.total_presencas) || 0,
+      diasPresentes: parseInt(r.dias_presentes) || 0,
+      taxaFrequencia: parseFloat(r.taxa_frequencia) || 0,
+      streak: parseInt(r.dias_presentes) || 0, // Simplificado como dias presentes
+      percent: parseFloat(r.taxa_frequencia) || 0,
+    }));
+  }
+
   async buscarAlunos(termo: string, user: any) {
     const query = this.personRepository
       .createQueryBuilder('pessoa')

@@ -25,6 +25,7 @@ import {
 } from './dto/conceder-grau.dto';
 import { FaixaDef } from './entities/faixa-def.entity';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { Public } from '../auth/decorators/public.decorator';
 
 @ApiTags('Graduação')
 @Controller('graduacao')
@@ -33,8 +34,9 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 export class GraduacaoController {
   constructor(private readonly graduacaoService: GraduacaoService) {}
 
+  @Public()
   @Get('faixas')
-  @ApiOperation({ summary: 'Lista todas as faixas disponíveis' })
+  @ApiOperation({ summary: 'Lista todas as faixas disponíveis (público)' })
   @ApiResponse({ status: 200, description: 'Lista de faixas' })
   async listarFaixas(
     @Query('categoria') categoria?: string,
@@ -323,5 +325,21 @@ export class GraduacaoController {
       pageSize,
       unidadeId,
     });
+  }
+
+  @Get('taxa-aprovacao-professores')
+  @ApiOperation({ summary: 'Taxa de aprovação por professor' })
+  @ApiResponse({
+    status: 200,
+    description: 'Lista de professores com taxa de aprovação',
+  })
+  async getTaxaAprovacaoPorProfessor(
+    @Query('unidadeId') unidadeId?: string,
+    @Request() req?: any,
+  ) {
+    return await this.graduacaoService.getTaxaAprovacaoPorProfessor(
+      req.user,
+      unidadeId,
+    );
   }
 }

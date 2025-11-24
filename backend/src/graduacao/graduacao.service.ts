@@ -1125,6 +1125,63 @@ export class GraduacaoService {
     };
   }
 
+  async getTaxaAprovacaoPorProfessor(user: any, unidadeId?: string) {
+    const dataLimite = new Date();
+    dataLimite.setDate(dataLimite.getDate() - 90); // Últimos 3 meses
+
+    // Query para buscar professores com taxa de aprovação
+    let query = `
+      SELECT
+        prof.id,
+        prof.usuario_id,
+        u.nome as nome_completo,
+        prof.faixa_ministrante as faixa_nome,
+        COUNT(DISTINCT ag.id) as total_graduacoes,
+        COUNT(DISTINCT ag.id) FILTER (WHERE ag.aprovado = true) as total_aprovadas,
+        COUNT(DISTINCT ag.id) FILTER (WHERE ag.aprovado = false) as total_pendentes,
+        ROUND(
+          (COUNT(DISTINCT ag.id) FILTER (WHERE ag.aprovado = true)::numeric /
+          NULLIF(COUNT(DISTINCT ag.id), 0) * 100), 1
+        ) as taxa_aprovacao
+      FROM teamcruz.professores prof
+      INNER JOIN teamcruz.usuarios u ON u.id = prof.usuario_id
+      LEFT JOIN teamcruz.aluno_graduacao ag ON ag.concedido_por = u.id::varchar
+        AND ag.dt_graduacao >= $1
+      WHERE prof.status = 'ATIVO'
+    `;
+
+    const params: any[] = [dataLimite];
+
+    if (unidadeId) {
+      query += ` AND prof.unidade_id = $2`;
+      params.push(unidadeId);
+    }
+
+    query += `
+      GROUP BY prof.id, prof.usuario_id, u.nome, prof.faixa_ministrante
+      HAVING COUNT(DISTINCT ag.id) > 0
+      ORDER BY taxa_aprovacao DESC, total_graduacoes DESC
+      LIMIT 20
+    `;
+
+    const resultado = await this.alunoGraduacaoRepository.manager.query(
+      query,
+      params,
+    );
+
+    return resultado.map((r: any) => ({
+      id: r.id,
+      nome: r.nome_completo,
+      faixa: {
+        nome: r.faixa_nome || 'Não definida',
+      },
+      totalGraduacoes: parseInt(r.total_graduacoes) || 0,
+      totalAprovadas: parseInt(r.total_aprovadas) || 0,
+      totalPendentes: parseInt(r.total_pendentes) || 0,
+      taxaAprovacao: parseFloat(r.taxa_aprovacao) || 0,
+    }));
+  }
+
   /**
    * Valida tempo mínimo na faixa antes de graduar
    */
