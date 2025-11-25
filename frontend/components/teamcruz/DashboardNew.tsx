@@ -4,7 +4,7 @@ import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { FixedSizeList as List } from "react-window";
-import { listAlunos } from "@/lib/peopleApi";
+import { listAlunos, listProfessores } from "@/lib/peopleApi";
 import { getAulasHoje } from "@/lib/aulasApi";
 import { getRankingAlunosFrequencia } from "@/lib/presencaApi";
 import { useAuth } from "@/app/auth/AuthContext";
@@ -921,14 +921,16 @@ export default function DashboardNew() {
           ? undefined
           : filterFaixa;
 
-      const response = await listAlunos({
+      const response = await listProfessores({
         page: pageParam,
         pageSize: 30,
         search: debouncedSearch,
         faixa: faixaParam,
-        tipo_cadastro: "PROFESSOR", // Filtrar apenas professores
         unidade_id: unidadeDoGerente?.id, // Filtrar pela unidade do gerente/franqueado
       });
+
+      console.log("🔍 [FRONTEND] Response de listProfessores:", response);
+
       return {
         items: response.items,
         page: response.page,
@@ -3003,7 +3005,23 @@ export default function DashboardNew() {
                           Total de Professores
                         </p>
                         <p className="text-3xl font-bold text-red-900">
-                          {professoresQuery.data?.pages[0]?.total || 0}
+                          {(() => {
+                            const total =
+                              professoresQuery.data?.pages[0]?.total || 0;
+                            console.log(
+                              "🔍 [FRONTEND] Total de Professores exibido:",
+                              total
+                            );
+                            console.log(
+                              "🔍 [FRONTEND] professoresQuery.data:",
+                              professoresQuery.data
+                            );
+                            console.log(
+                              "🔍 [FRONTEND] Items:",
+                              professoresQuery.data?.pages[0]?.items
+                            );
+                            return total;
+                          })()}
                         </p>
                       </div>
                       <GraduationCap className="h-10 w-10 text-red-600 opacity-50" />
@@ -3085,7 +3103,8 @@ export default function DashboardNew() {
                         <p className="text-3xl font-bold text-cyan-900">
                           {(() => {
                             const totalProfs =
-                              professoresQuery.data?.pages[0]?.total || 0;
+                              professoresQuery.data?.pages[0]?.items?.length ||
+                              0;
                             const totalAlunos =
                               alunosQuery.data?.pages[0]?.total || 0;
                             return totalProfs > 0
@@ -3158,6 +3177,21 @@ export default function DashboardNew() {
                     {(() => {
                       const professores =
                         professoresQuery.data?.pages[0]?.items || [];
+                      console.log(
+                        "🔍 [FRONTEND] Professores por Faixa - total items:",
+                        professores.length
+                      );
+                      console.log(
+                        "🔍 [FRONTEND] Professores por Faixa - items DETALHADO:",
+                        professores.map((p: any) => ({
+                          id: p.id,
+                          usuario_id: p.usuario_id,
+                          nome: p.nome_completo || p.nome,
+                          faixa_ministrante: p.faixa_ministrante,
+                          perfis: p.perfis,
+                          unidades: p.unidades,
+                        }))
+                      );
                       const faixas = professores.reduce(
                         (acc: any, prof: any) => {
                           const faixa =
