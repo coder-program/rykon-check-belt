@@ -182,37 +182,82 @@ export class DashboardService {
         unidadesDoFranqueado,
       );
 
-      // Total de professores (FILTRADO da mesma forma)
+      // Total de professores (usando a tabela professor_unidades)
       let totalProfessores = 0;
 
+      console.log('🔍 [PROFESSORES COUNT] Iniciando contagem de professores', {
+        unidadeId,
+        isFranqueado,
+        isGerenteUnidade,
+        isMaster,
+        unidadesDoFranqueado,
+      });
+
       if (unidadeId) {
-        totalProfessores = await this.personRepository.count({
-          where: {
-            tipo_cadastro: TipoCadastro.PROFESSOR,
-            unidade_id: unidadeId,
-          },
+        // Contar professores vinculados a uma unidade específica
+        const result = await this.dataSource.query(
+          `
+          SELECT COUNT(DISTINCT pu.professor_id) as total
+          FROM teamcruz.professor_unidades pu
+          WHERE pu.unidade_id = $1
+            AND pu.ativo = true
+        `,
+          [unidadeId],
+        );
+        totalProfessores = parseInt(result[0]?.total || '0');
+        console.log('🔍 [PROFESSORES COUNT] Contagem por unidadeId:', {
+          unidadeId,
+          totalProfessores,
+          result,
         });
       } else if (isFranqueado && unidadesDoFranqueado.length > 0) {
-        const { In } = require('typeorm');
-        totalProfessores = await this.personRepository.count({
-          where: {
-            tipo_cadastro: TipoCadastro.PROFESSOR,
-            unidade_id: In(unidadesDoFranqueado),
-          },
+        // Contar professores vinculados às unidades do franqueado
+        const result = await this.dataSource.query(
+          `
+          SELECT COUNT(DISTINCT pu.professor_id) as total
+          FROM teamcruz.professor_unidades pu
+          WHERE pu.unidade_id = ANY($1::uuid[])
+            AND pu.ativo = true
+        `,
+          [unidadesDoFranqueado],
+        );
+        totalProfessores = parseInt(result[0]?.total || '0');
+        console.log('🔍 [PROFESSORES COUNT] Contagem Franqueado:', {
+          unidadesDoFranqueado,
+          totalProfessores,
+          result,
         });
       } else if (isGerenteUnidade && unidadesDoFranqueado.length > 0) {
-        const { In } = require('typeorm');
-        totalProfessores = await this.personRepository.count({
-          where: {
-            tipo_cadastro: TipoCadastro.PROFESSOR,
-            unidade_id: In(unidadesDoFranqueado),
-          },
+        // Contar professores vinculados às unidades do gerente
+        const result = await this.dataSource.query(
+          `
+          SELECT COUNT(DISTINCT pu.professor_id) as total
+          FROM teamcruz.professor_unidades pu
+          WHERE pu.unidade_id = ANY($1::uuid[])
+            AND pu.ativo = true
+        `,
+          [unidadesDoFranqueado],
+        );
+        totalProfessores = parseInt(result[0]?.total || '0');
+        console.log('🔍 [PROFESSORES COUNT] Contagem Gerente:', {
+          unidadesDoFranqueado,
+          totalProfessores,
+          result,
         });
       } else if (isMaster) {
+        // Master vê todos os professores cadastrados
         totalProfessores = await this.personRepository.count({
           where: { tipo_cadastro: TipoCadastro.PROFESSOR },
         });
+        console.log('🔍 [PROFESSORES COUNT] Contagem Master (TODOS):', {
+          totalProfessores,
+        });
       }
+
+      console.log(
+        '✅ [PROFESSORES COUNT] Total final de professores:',
+        totalProfessores,
+      );
 
       // Total de unidades - filtrado por franquia
       let totalUnidades = 0;
