@@ -68,16 +68,37 @@ export class GraduacaoService {
    * Obtém o status de graduação do aluno
    */
   async getStatusGraduacao(alunoId: string): Promise<StatusGraduacaoDto> {
+    console.log('🔍 [GET STATUS GRADUACAO] alunoId recebido:', alunoId);
+
     // Primeiro tenta buscar por usuario_id (para alunos com login)
     let aluno = await this.alunoRepository.findOne({
       where: { usuario_id: alunoId },
     });
+
+    console.log(
+      '🔍 [GET STATUS GRADUACAO] Aluno encontrado por usuario_id:',
+      aluno
+        ? {
+            id: aluno.id,
+            nome: aluno.nome_completo,
+          }
+        : 'não encontrado',
+    );
 
     // Se não encontrar, tenta buscar diretamente pelo ID do aluno (para dependentes sem login)
     if (!aluno) {
       aluno = await this.alunoRepository.findOne({
         where: { id: alunoId },
       });
+      console.log(
+        '🔍 [GET STATUS GRADUACAO] Aluno encontrado por id:',
+        aluno
+          ? {
+              id: aluno.id,
+              nome: aluno.nome_completo,
+            }
+          : 'não encontrado',
+      );
     }
 
     if (!aluno) {
@@ -87,22 +108,6 @@ export class GraduacaoService {
     const faixaAtiva = await this.getFaixaAtivaAluno(aluno.id);
 
     if (!faixaAtiva) {
-      // Se não tem faixa ativa, criar uma baseada na faixa_atual do aluno
-      if (aluno.faixa_atual) {
-        const faixaDef = await this.faixaDefRepository.findOne({
-          where: { codigo: aluno.faixa_atual },
-        });
-
-        if (faixaDef) {
-          await this.criarFaixaAluno(aluno.id, {
-            faixaDefId: faixaDef.id,
-            grausInicial: aluno.graus || 0,
-          });
-
-          return this.getStatusGraduacao(alunoId); // Recursão para buscar novamente
-        }
-      }
-
       throw new NotFoundException('Aluno não possui faixa ativa');
     }
 
@@ -341,24 +346,9 @@ export class GraduacaoService {
         );
 
         // Atualizar campos na tabela Person (compatibilidade)
-        // faixa_atual usa o ENUM FaixaEnum que corresponde ao codigo da faixa
-        console.log('🔥 [GRADUAÇÃO MANUAL] Atualizando tabela Aluno:', {
-          alunoId,
-          faixaAtual: faixaDestino.codigo,
-        });
-
-        const resultUpdate = await manager.update(Aluno, alunoId, {
-          faixa_atual: faixaDestino.codigo as any,
-          graus: 0,
-        });
-
-        console.log('🔥 [GRADUAÇÃO MANUAL] Resultado do update:', {
-          affected: resultUpdate.affected,
-        });
-
+        // NOTA: faixa_atual removida - usar apenas aluno_faixas
         console.log('✅ [GRADUAÇÃO MANUAL] Faixa atualizada:', {
           alunoId,
-          novaFaixa: faixaDestino.codigo,
           novaFaixaNome: faixaDestino.nome_exibicao,
         });
       } else {
@@ -464,12 +454,6 @@ export class GraduacaoService {
     });
 
     const faixaSalva = await this.alunoFaixaRepository.save(novaFaixa);
-
-    // Atualizar campos na tabela Person (compatibilidade)
-    await this.personRepository.update(alunoId, {
-      faixa_atual: faixaDef.codigo,
-      grau_atual: dto.grausInicial || 0,
-    });
 
     return faixaSalva;
   }
@@ -1065,12 +1049,6 @@ export class GraduacaoService {
 
       await queryRunner.manager.save(graduacao);
 
-      // Atualizar dados do aluno na tabela pessoas
-      await queryRunner.manager.update(Person, alunoId, {
-        faixa_atual: proximaFaixa.codigo,
-        grau_atual: 1,
-      });
-
       await queryRunner.commitTransaction();
 
       return {
@@ -1258,29 +1236,8 @@ export class GraduacaoService {
           novaFaixa.id,
         );
 
-        // Atualizar tabela Person
-        console.log('🔥 [APROVAR GRADUAÇÃO] Atualizando tabela Person/Aluno:', {
-          alunoId: graduacao.aluno_id,
-          faixaAtual: faixaDestino.codigo,
-          graus: 0,
-        });
-
-        const resultUpdate = await this.alunoRepository.update(
-          { id: graduacao.aluno_id },
-          {
-            faixa_atual: faixaDestino.codigo as any,
-            graus: 0,
-          },
-        );
-
-        console.log('🔥 [APROVAR GRADUAÇÃO] Resultado do update:', {
-          affected: resultUpdate.affected,
-          raw: resultUpdate.raw,
-        });
-
         console.log('✅ [APROVAR GRADUAÇÃO] Faixa atualizada:', {
           alunoId: graduacao.aluno_id,
-          novaFaixa: faixaDestino.codigo,
           novaFaixaNome: faixaDestino.nome_exibicao,
         });
       }
@@ -1734,15 +1691,8 @@ export class GraduacaoService {
           aprovado_por: aprovadorNome,
         });
 
-        // ✅ Atualizar faixa_atual do aluno usando o codigo (FaixaEnum)
-        await manager.update(Aluno, graduacao.aluno_id, {
-          faixa_atual: graduacao.faixaDestino.codigo as any,
-          graus: 0,
-        });
-
         console.log('✅ [APROVAR EM MASSA] Faixa atualizada:', {
           alunoId: graduacao.aluno_id,
-          novaFaixa: graduacao.faixaDestino.codigo,
           novaFaixaNome: graduacao.faixaDestino.nome_exibicao,
         });
       }

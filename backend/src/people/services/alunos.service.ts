@@ -470,13 +470,39 @@ export class AlunosService {
       }
 
       // 4. Preparar dados do aluno (incluindo usuario_id se foi criado)
+      // Gerar número de matrícula único se não foi fornecido
+      let numeroMatricula = dto.numero_matricula;
+      if (!numeroMatricula || numeroMatricula.trim() === '') {
+        // Gerar número único baseado em timestamp + random
+        const timestamp = Date.now().toString().slice(-6);
+        const random = Math.floor(Math.random() * 1000)
+          .toString()
+          .padStart(3, '0');
+        numeroMatricula = `${timestamp}${random}`;
+
+        // Verificar se já existe (improvável, mas garantir unicidade)
+        let tentativas = 0;
+        while (tentativas < 5) {
+          const existente = await this.alunoRepository.findOne({
+            where: { numero_matricula: numeroMatricula },
+          });
+          if (!existente) break;
+
+          // Se existir, gerar outro
+          const newRandom = Math.floor(Math.random() * 1000)
+            .toString()
+            .padStart(3, '0');
+          numeroMatricula = `${timestamp}${newRandom}`;
+          tentativas++;
+        }
+      }
+
       const alunoData: any = {
         ...dto,
+        numero_matricula: numeroMatricula, // Usar o número gerado ou fornecido
         cpf: dto.cpf && dto.cpf.trim() !== '' ? dto.cpf : null, // Converter string vazia para null
         usuario_id, // Incluir o usuario_id criado automaticamente
         status: dto.status || StatusAluno.ATIVO,
-        faixa_atual: dto.faixa_atual || FaixaEnum.BRANCA,
-        graus: dto.graus || 0,
         data_matricula: dto.data_matricula
           ? new Date(dto.data_matricula)
           : new Date(),
@@ -771,12 +797,10 @@ export class AlunosService {
       JSON.stringify(dto, null, 2),
     );
     console.log('🏢 [UPDATE ALUNO] unidade_id no DTO:', dto.unidade_id);
-    console.log('🎨 [UPDATE ALUNO] faixa_atual no DTO:', dto.faixa_atual);
 
     const aluno = await this.findById(id, user);
     const unidadeAnterior = aluno.unidade_id; // Salvar antes do assign
     console.log('🏢 [UPDATE ALUNO] unidade_id ANTES:', unidadeAnterior);
-    console.log('🎨 [UPDATE ALUNO] faixa_atual ANTES:', aluno.faixa_atual);
 
     // Verificar CPF único (se estiver sendo alterado)
     if (dto.cpf && dto.cpf !== aluno.cpf) {
@@ -1366,8 +1390,6 @@ export class AlunosService {
     alunos.forEach((aluno, index) => {
       console.log(`🧒 [DEPENDENTE ${index + 1}] ID: ${aluno.id}`);
       console.log(`   Nome: ${aluno.nome_completo}`);
-      console.log(`   faixa_atual (campo direto): ${aluno.faixa_atual}`);
-      console.log(`   graus (campo direto): ${aluno.graus}`);
       console.log(
         `   faixas (relação): ${JSON.stringify(aluno.faixas?.map((f) => ({ id: f.id, ativa: f.ativa, faixaDef: f.faixaDef?.nome_exibicao })))}`,
       );
@@ -1378,12 +1400,10 @@ export class AlunosService {
     });
 
     const resultado = alunos.map((aluno) => {
-      // ⚡ PRIORIDADE INVERTIDA: campo direto primeiro, relação só se vazio
-      const faixaFinal =
-        aluno.faixa_atual ||
-        aluno.faixas?.[0]?.faixaDef?.nome_exibicao ||
-        'Sem faixa';
-      const grausFinal = aluno.graus || 0;
+      // Buscar faixa ativa da relação aluno_faixas
+      const faixaAtiva = aluno.faixas?.find((f) => f.ativa);
+      const faixaFinal = faixaAtiva?.faixaDef?.nome_exibicao || 'Sem faixa';
+      const grausFinal = faixaAtiva?.graus_atual || 0;
 
       console.log(`📤 [RETORNO DEPENDENTE ${aluno.id}]:`);
       console.log(`   faixa_atual retornada: ${faixaFinal}`);
@@ -1461,8 +1481,6 @@ export class AlunosService {
       telefone: pessoa.telefone_whatsapp || '',
       unidade_id: unidadeId,
       status: StatusAluno.ATIVO,
-      faixa_atual: FaixaEnum.BRANCA,
-      graus: 0,
     });
 
     // Atualizar usuario_id após criar
@@ -1481,7 +1499,6 @@ export class AlunosService {
       aluno: {
         id: novoAluno.id,
         nome: novoAluno.nome_completo,
-        faixa: novoAluno.faixa_atual,
       },
     };
   }

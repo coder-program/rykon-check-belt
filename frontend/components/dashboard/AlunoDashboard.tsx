@@ -173,16 +173,16 @@ interface Dependente {
 function getFaixaColors(faixa: string) {
   const faixaUpper = faixa?.toUpperCase() || "";
   const colorMap: { [key: string]: { text: string } } = {
-    "BRANCA": { text: "text-white" },
-    "CINZA": { text: "text-gray-300" },
-    "AMARELA": { text: "text-yellow-300" },
-    "LARANJA": { text: "text-orange-300" },
-    "VERDE": { text: "text-green-300" },
-    "AZUL": { text: "text-blue-200" },
-    "ROXA": { text: "text-purple-300" },
-    "MARROM": { text: "text-yellow-700" },
-    "PRETA": { text: "text-gray-800" },
-    "CORAL": { text: "text-red-300" },
+    BRANCA: { text: "text-white" },
+    CINZA: { text: "text-gray-300" },
+    AMARELA: { text: "text-yellow-300" },
+    LARANJA: { text: "text-orange-300" },
+    VERDE: { text: "text-green-300" },
+    AZUL: { text: "text-blue-200" },
+    ROXA: { text: "text-purple-300" },
+    MARROM: { text: "text-yellow-700" },
+    PRETA: { text: "text-gray-800" },
+    CORAL: { text: "text-red-300" },
   };
   return colorMap[faixaUpper] || { text: "text-white" };
 }
@@ -305,6 +305,33 @@ export default function AlunoDashboard({
       setLoading(true);
       setError(null);
 
+      // Primeiro, precisamos obter o ID real do aluno
+      let realAlunoId = alunoId; // Se foi passado como prop, usar
+
+      // Se não foi passado alunoId, precisamos buscar pelo usuario_id
+      if (!realAlunoId) {
+        try {
+          const alunoByUsuario = await http(
+            `/alunos/usuario/${targetAlunoId}`,
+            { auth: true }
+          );
+          realAlunoId = alunoByUsuario.id; // Usar o ID do aluno, não do usuário
+          console.log("🔍 [ALUNO DASHBOARD] Aluno encontrado por usuario_id:", {
+            usuario_id: targetAlunoId,
+            aluno_id: realAlunoId,
+            nome: alunoByUsuario.nome_completo,
+          });
+        } catch (err) {
+          console.error(
+            "❌ [ALUNO DASHBOARD] Erro ao buscar aluno por usuario_id:",
+            err
+          );
+          setError("Não foi possível carregar os dados do aluno.");
+          setLoading(false);
+          return;
+        }
+      }
+
       // Se está visualizando outro aluno (não o próprio), verificar permissões
       if (alunoId && alunoId !== user?.id) {
         const alunoResponse = await http(`/alunos/${alunoId}`, { auth: true });
@@ -333,7 +360,7 @@ export default function AlunoDashboard({
         setCanAccess(true);
       }
 
-      // Carregar dados em paralelo
+      // Carregar dados em paralelo - USAR realAlunoId para graduação
       const [
         graduacaoData,
         presencaData,
@@ -343,8 +370,8 @@ export default function AlunoDashboard({
         alunoData,
         dependentesData,
       ] = await Promise.allSettled([
-        // 1. Status de Graduação
-        getStatusGraduacao(targetAlunoId),
+        // 1. Status de Graduação - USAR realAlunoId (ID do aluno, não do usuário)
+        getStatusGraduacao(realAlunoId),
 
         // 2. Estatísticas de Presença
         http("/presenca/minhas-estatisticas", { auth: true }),
@@ -354,7 +381,9 @@ export default function AlunoDashboard({
 
         // 4. Ranking da Unidade - passar alunoId se estiver visualizando dependente
         http(
-          `/presenca/ranking-unidade${alunoId ? `?alunoId=${alunoId}` : ""}`,
+          `/presenca/ranking-unidade${
+            realAlunoId ? `?alunoId=${realAlunoId}` : ""
+          }`,
           { auth: true }
         ),
 
@@ -362,10 +391,8 @@ export default function AlunoDashboard({
         http("/competicoes/meu-historico", { auth: true }),
 
         // 6. Dados do Aluno (inclui unidade)
-        // Se alunoId foi passado como prop, busca direto por ID do aluno, senão busca por usuario_id
-        alunoId
-          ? http(`/alunos/${targetAlunoId}`, { auth: true })
-          : http(`/alunos/usuario/${targetAlunoId}`, { auth: true }),
+        // Usar realAlunoId que já foi resolvido
+        http(`/alunos/${realAlunoId}`, { auth: true }),
 
         // 7. Dependentes do aluno (se ele for responsável)
         http("/alunos/meus-dependentes", { auth: true }),
@@ -373,6 +400,10 @@ export default function AlunoDashboard({
 
       // Processar resultados
       if (graduacaoData.status === "fulfilled") {
+        console.log(
+          "🔍 [GRADUACAO DATA] Dados recebidos da API:",
+          graduacaoData.value
+        );
         setStatusGraduacao(graduacaoData.value);
       } else {
         console.error(
@@ -850,7 +881,13 @@ export default function AlunoDashboard({
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div>
-                  <h3 className={`text-2xl font-bold ${getFaixaColors(graduacaoAtual).text}`}>{graduacaoAtual}</h3>
+                  <h3
+                    className={`text-2xl font-bold ${
+                      getFaixaColors(graduacaoAtual).text
+                    }`}
+                  >
+                    {graduacaoAtual}
+                  </h3>
                   <p className="text-blue-100">
                     {statusGraduacao?.grausAtual || 0} /{" "}
                     {statusGraduacao?.grausMax || 4} graus
@@ -884,7 +921,13 @@ export default function AlunoDashboard({
                 </div>
                 <div>
                   <h4 className="font-semibold">Próxima Graduação</h4>
-                  <p className={`text-xl font-bold ${getFaixaColors(proximaGraduacao).text}`}>{proximaGraduacao}</p>
+                  <p
+                    className={`text-xl font-bold ${
+                      getFaixaColors(proximaGraduacao).text
+                    }`}
+                  >
+                    {proximaGraduacao}
+                  </p>
                   {statusGraduacao && (
                     <>
                       <p className="text-sm text-blue-100 mt-1">

@@ -501,17 +501,17 @@ function AlunosContent() {
                     <div className="text-sm font-semibold text-purple-800 mb-1">
                       Por Faixa (Ativos)
                     </div>
-                    <div className="text-xs text-purple-600 space-y-1">
-                      {Object.entries(statsQuery.data.porFaixa || {})
-                        .slice(0, 3)
-                        .map(([faixa, count]) => (
+                    <div className="text-xs text-purple-600 space-y-1 max-h-32 overflow-y-auto">
+                      {Object.entries(statsQuery.data.porFaixa || {}).map(
+                        ([faixa, count]) => (
                           <div key={faixa} className="flex justify-between">
                             <span>{faixa.replace(/_/g, " ")}</span>
                             <span className="font-semibold">
                               {count as number}
                             </span>
                           </div>
-                        ))}
+                        )
+                      )}
                     </div>
                   </div>
                 )}
@@ -522,8 +522,8 @@ function AlunosContent() {
             <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-end">
               {/* Campo de busca - largura maior */}
               <div className="flex-1 min-w-0">
-                <label className="label">
-                  <span className="label-text">
+                <label className="block mb-1">
+                  <span className="text-sm font-medium text-gray-700">
                     Buscar por nome, CPF ou matrícula
                   </span>
                 </label>
@@ -541,8 +541,10 @@ function AlunosContent() {
               {/* Filtros menores lado a lado */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 w-full lg:w-auto">
                 <div className="min-w-32">
-                  <label className="label">
-                    <span className="label-text">Categoria</span>
+                  <label className="block mb-1">
+                    <span className="text-sm font-medium text-gray-700">
+                      Categoria
+                    </span>
                   </label>
                   <select
                     className="select select-bordered w-full"
@@ -556,8 +558,10 @@ function AlunosContent() {
                 </div>
 
                 <div className="min-w-32">
-                  <label className="label">
-                    <span className="label-text">Status</span>
+                  <label className="block mb-1">
+                    <span className="text-sm font-medium text-gray-700">
+                      Status
+                    </span>
                   </label>
                   <select
                     className="select select-bordered w-full"
@@ -573,8 +577,10 @@ function AlunosContent() {
                 </div>
 
                 <div className="min-w-40">
-                  <label className="label">
-                    <span className="label-text">Unidade</span>
+                  <label className="block mb-1">
+                    <span className="text-sm font-medium text-gray-700">
+                      Unidade
+                    </span>
                   </label>
                   {isGerenteUnidade && minhaUnidade ? (
                     <div className="select select-bordered w-full bg-gray-100 cursor-not-allowed flex items-center">
@@ -597,8 +603,10 @@ function AlunosContent() {
                 </div>
 
                 <div className="min-w-32">
-                  <label className="label">
-                    <span className="label-text">Faixa</span>
+                  <label className="block mb-1">
+                    <span className="text-sm font-medium text-gray-700">
+                      Faixa
+                    </span>
                   </label>
                   <select
                     className="select select-bordered w-full"

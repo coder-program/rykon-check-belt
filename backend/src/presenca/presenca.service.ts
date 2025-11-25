@@ -1347,6 +1347,7 @@ export class PresencaService {
           unidade_id: aluno.unidade_id,
           status: StatusAluno.ATIVO,
         },
+        relations: ['faixas', 'faixas.faixaDef'],
       });
 
       // Determinar categoria do aluno atual (INFANTIL: até 15 anos no ano atual, ADULTO: 16+)
@@ -1381,13 +1382,16 @@ export class PresencaService {
       }
 
       // Criar ranking com informações dos alunos
-      const rankingComDetalhes = alunosMesmaCategoria.map((alunoItem) => ({
-        alunoId: alunoItem.id,
-        nome: alunoItem.nome_completo,
-        faixa: alunoItem.faixa_atual,
-        graus: alunoItem.graus,
-        presencas: presencasPorAluno.get(alunoItem.id) || 0,
-      }));
+      const rankingComDetalhes = alunosMesmaCategoria.map((alunoItem) => {
+        const faixaAtiva = alunoItem.faixas?.find((f) => f.ativa);
+        return {
+          alunoId: alunoItem.id,
+          nome: alunoItem.nome_completo,
+          faixa: faixaAtiva?.faixaDef?.nome_exibicao || 'Sem faixa',
+          graus: faixaAtiva?.graus_atual || 0,
+          presencas: presencasPorAluno.get(alunoItem.id) || 0,
+        };
+      });
 
       // Ordenar por número de presenças (descendente)
       rankingComDetalhes.sort((a, b) => b.presencas - a.presencas);

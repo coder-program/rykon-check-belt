@@ -62,7 +62,6 @@ export enum FaixaEnum {
 @Index(['nome_completo'])
 @Index(['unidade_id'])
 @Index(['status'])
-@Index(['faixa_atual'])
 export class Aluno {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -121,15 +120,7 @@ export class Aluno {
   status: StatusAluno;
 
   // ===== GRADUAÇÃO =====
-  @Column({
-    type: 'enum',
-    enum: FaixaEnum,
-    default: FaixaEnum.BRANCA,
-  })
-  faixa_atual: FaixaEnum;
-
-  @Column({ type: 'int', default: 0 })
-  graus: number;
+  // NOTA: faixa_atual e graus removidos - usar tabela aluno_faixas
 
   @Column({ type: 'date', nullable: true })
   data_ultima_graduacao: Date;
