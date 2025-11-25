@@ -107,7 +107,7 @@ const withPWA = require("next-pwa")({
 });
 
 const nextConfig: NextConfig = {
-  output: "standalone",
+  // output: "standalone", // Desabilitado - usando npm start normal
   // Otimizações para desenvolvimento
   experimental: {
     // Turbo mode para builds mais rápidas

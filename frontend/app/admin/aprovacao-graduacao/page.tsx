@@ -80,6 +80,8 @@ export default function AprovacaoGraduacaoPage() {
   const [graduacoesSelecionadas, setGraduacoesSelecionadas] = useState<
     string[]
   >([]);
+  const [dataInicio, setDataInicio] = useState("");
+  const [dataFim, setDataFim] = useState("");
 
   // Verificar permissões
   const hasPerfil = (p: string) =>
@@ -486,18 +488,23 @@ export default function AprovacaoGraduacaoPage() {
             ></div>
           )}
         </div>
-        {graus > 0 && (
-          <div className="flex items-center justify-start bg-black h-full w-9 px-1 gap-0.5">
-            {[...Array(4)].map((_, i) => (
+        {/* Ponteira preta sempre visível */}
+        <div className="flex items-center justify-start bg-black h-full w-9 px-1 gap-0.5">
+          {graus > 0 ? (
+            // Se tem graus, mostrar os graus brancos
+            [...Array(4)].map((_, i) => (
               <div
                 key={i}
                 className={`h-2.5 w-1 rounded-sm ${
                   i < graus ? "bg-white" : "bg-white/30"
                 }`}
               />
-            ))}
-          </div>
-        )}
+            ))
+          ) : (
+            // Se não tem graus, mostrar apenas a ponteira preta
+            <div className="w-full h-full"></div>
+          )}
+        </div>
       </div>
     );
   };
@@ -1286,8 +1293,142 @@ export default function AprovacaoGraduacaoPage() {
                     </div>
                   )}
 
-                  {graduacoesPendentesQuery.data?.map(
-                    (grad: GraduacaoDetalhada) => (
+                  {/* Checkbox Selecionar Todos */}
+                  {graduacoesPendentesQuery.data &&
+                    graduacoesPendentesQuery.data.length > 0 && (
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                          <input
+                            type="checkbox"
+                            checked={
+                              graduacoesSelecionadas.length ===
+                                graduacoesPendentesQuery.data.filter((grad) => {
+                                  if (!dataInicio && !dataFim) return true;
+                                  const gradDate = new Date(grad.created_at);
+                                  const inicio = dataInicio
+                                    ? new Date(dataInicio)
+                                    : null;
+                                  const fim = dataFim
+                                    ? new Date(dataFim + "T23:59:59")
+                                    : null;
+                                  if (inicio && gradDate < inicio) return false;
+                                  if (fim && gradDate > fim) return false;
+                                  return true;
+                                }).length &&
+                              graduacoesPendentesQuery.data.filter((grad) => {
+                                if (!dataInicio && !dataFim) return true;
+                                const gradDate = new Date(grad.created_at);
+                                const inicio = dataInicio
+                                  ? new Date(dataInicio)
+                                  : null;
+                                const fim = dataFim
+                                  ? new Date(dataFim + "T23:59:59")
+                                  : null;
+                                if (inicio && gradDate < inicio) return false;
+                                if (fim && gradDate > fim) return false;
+                                return true;
+                              }).length > 0
+                            }
+                            onChange={(e) => {
+                              const graduacoesFiltradas =
+                                graduacoesPendentesQuery.data.filter((grad) => {
+                                  if (!dataInicio && !dataFim) return true;
+                                  const gradDate = new Date(grad.created_at);
+                                  const inicio = dataInicio
+                                    ? new Date(dataInicio)
+                                    : null;
+                                  const fim = dataFim
+                                    ? new Date(dataFim + "T23:59:59")
+                                    : null;
+                                  if (inicio && gradDate < inicio) return false;
+                                  if (fim && gradDate > fim) return false;
+                                  return true;
+                                });
+                              if (e.target.checked) {
+                                setGraduacoesSelecionadas(
+                                  graduacoesFiltradas.map((g) => g.id)
+                                );
+                              } else {
+                                setGraduacoesSelecionadas([]);
+                              }
+                            }}
+                            className="w-4 h-4"
+                          />
+                          <label className="text-sm font-medium text-gray-700">
+                            Selecionar todos (
+                            {
+                              graduacoesPendentesQuery.data.filter((grad) => {
+                                if (!dataInicio && !dataFim) return true;
+                                const gradDate = new Date(grad.created_at);
+                                const inicio = dataInicio
+                                  ? new Date(dataInicio)
+                                  : null;
+                                const fim = dataFim
+                                  ? new Date(dataFim + "T23:59:59")
+                                  : null;
+                                if (inicio && gradDate < inicio) return false;
+                                if (fim && gradDate > fim) return false;
+                                return true;
+                              }).length
+                            }
+                            )
+                          </label>
+                        </div>
+
+                        {/* Filtro de Data */}
+                        <div className="flex items-center gap-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                          <div className="flex items-center gap-2">
+                            <label className="text-sm font-medium text-gray-700">
+                              De:
+                            </label>
+                            <input
+                              type="date"
+                              value={dataInicio}
+                              onChange={(e) => setDataInicio(e.target.value)}
+                              max={new Date().toISOString().split("T")[0]}
+                              className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm"
+                            />
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <label className="text-sm font-medium text-gray-700">
+                              Até:
+                            </label>
+                            <input
+                              type="date"
+                              value={dataFim}
+                              onChange={(e) => setDataFim(e.target.value)}
+                              max={new Date().toISOString().split("T")[0]}
+                              className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm"
+                            />
+                          </div>
+                          {(dataInicio || dataFim) && (
+                            <button
+                              onClick={() => {
+                                setDataInicio("");
+                                setDataFim("");
+                              }}
+                              className="px-3 py-1.5 text-sm text-blue-600 hover:text-blue-800 font-medium"
+                            >
+                              Limpar filtro
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                  {graduacoesPendentesQuery.data
+                    ?.filter((grad) => {
+                      if (!dataInicio && !dataFim) return true;
+                      const gradDate = new Date(grad.created_at);
+                      const inicio = dataInicio ? new Date(dataInicio) : null;
+                      const fim = dataFim
+                        ? new Date(dataFim + "T23:59:59")
+                        : null;
+                      if (inicio && gradDate < inicio) return false;
+                      if (fim && gradDate > fim) return false;
+                      return true;
+                    })
+                    .map((grad: GraduacaoDetalhada) => (
                       <div
                         key={grad.id}
                         className="p-4 border rounded-lg hover:bg-gray-50"
@@ -1336,8 +1477,7 @@ export default function AprovacaoGraduacaoPage() {
                           </div>
                         </div>
                       </div>
-                    )
-                  )}
+                    ))}
                 </div>
               )}
             </CardContent>
@@ -1514,19 +1654,14 @@ export default function AprovacaoGraduacaoPage() {
                   <label className="text-sm font-medium text-gray-700 mb-2 block">
                     Tamanho da Faixa
                   </label>
-                  <select
+                  <input
+                    type="text"
                     value={tamanhoFaixa}
                     onChange={(e) => setTamanhoFaixa(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    <option value="">Selecione o tamanho</option>
-                    <option value="PP">PP</option>
-                    <option value="P">P</option>
-                    <option value="M">M</option>
-                    <option value="G">G</option>
-                    <option value="GG">GG</option>
-                    <option value="XG">XG</option>
-                  </select>
+                    placeholder="Ex: M2, M3, A1, A2..."
+                    maxLength={3}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent uppercase"
+                  />
                 </div>
 
                 {/* Observação */}

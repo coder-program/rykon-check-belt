@@ -700,13 +700,14 @@ export class PresencaService {
         DATE(p.hora_checkin) as data,
         COUNT(DISTINCT p.aluno_id) as total_presencas
       FROM teamcruz.presencas p
+      INNER JOIN teamcruz.aulas a ON a.id = p.aula_id
       WHERE p.hora_checkin >= $1 AND p.hora_checkin <= $2
     `;
 
     const params: any[] = [tresDiasAtras, hoje];
 
     if (unidadeId) {
-      query += ` AND p.unidade_id = $3`;
+      query += ` AND a.unidade_id = $3`;
       params.push(unidadeId);
     }
 
@@ -779,6 +780,40 @@ export class PresencaService {
     const dataLimite = new Date();
     dataLimite.setDate(dataLimite.getDate() - dias);
 
+    // Se não forneceu unidadeId, detectar automaticamente baseado no usuário
+    let unidadeFiltro = unidadeId;
+    
+    if (!unidadeFiltro && user) {
+      // Se for franqueado (não master), buscar unidades do franqueado
+      const perfis = user.perfis?.map((p: any) => (typeof p === 'string' ? p : p.nome)?.toUpperCase()) || [];
+      const isFranqueado = perfis.includes('FRANQUEADO');
+      const isMaster = perfis.includes('MASTER') || perfis.includes('ADMIN');
+      const isGerente = perfis.includes('GERENTE_UNIDADE');
+      
+      if (!isMaster) {
+        if (isFranqueado) {
+          // Franqueado: buscar primeira unidade do franqueado
+          const unidadesResult = await this.presencaRepository.manager.query(
+            `SELECT id FROM teamcruz.unidades WHERE franqueado_id = 
+             (SELECT id FROM teamcruz.franqueados WHERE usuario_id = $1) LIMIT 1`,
+            [user.id]
+          );
+          if (unidadesResult.length > 0) {
+            unidadeFiltro = unidadesResult[0].id;
+          }
+        } else if (isGerente) {
+          // Gerente: buscar unidade que ele gerencia
+          const unidadeResult = await this.presencaRepository.manager.query(
+            `SELECT unidade_id FROM teamcruz.gerente_unidades WHERE usuario_id = $1 AND ativo = true LIMIT 1`,
+            [user.id]
+          );
+          if (unidadeResult.length > 0) {
+            unidadeFiltro = unidadeResult[0].unidade_id;
+          }
+        }
+      }
+    }
+
     // Query para buscar alunos e suas últimas presenças
     let query = `
       SELECT
@@ -798,9 +833,9 @@ export class PresencaService {
 
     const params: any[] = [dias, dataLimite];
 
-    if (unidadeId) {
+    if (unidadeFiltro) {
       query += ` AND a.unidade_id = $3`;
-      params.push(unidadeId);
+      params.push(unidadeFiltro);
     }
 
     query += `
@@ -837,6 +872,43 @@ export class PresencaService {
     const dataLimite = new Date();
     dataLimite.setDate(dataLimite.getDate() - 30);
 
+    // Se não forneceu unidadeId, detectar automaticamente baseado no usuário
+    let unidadeFiltro = unidadeId;
+
+    if (!unidadeFiltro && user) {
+      // Se for franqueado (não master), buscar unidades do franqueado
+      const perfis =
+        user.perfis?.map((p: any) =>
+          (typeof p === 'string' ? p : p.nome)?.toUpperCase(),
+        ) || [];
+      const isFranqueado = perfis.includes('FRANQUEADO');
+      const isMaster = perfis.includes('MASTER') || perfis.includes('ADMIN');
+      const isGerente = perfis.includes('GERENTE_UNIDADE');
+
+      if (!isMaster) {
+        if (isFranqueado) {
+          // Franqueado: buscar primeira unidade do franqueado
+          const unidadesResult = await this.presencaRepository.manager.query(
+            `SELECT id FROM teamcruz.unidades WHERE franqueado_id =
+             (SELECT id FROM teamcruz.franqueados WHERE usuario_id = $1) LIMIT 1`,
+            [user.id],
+          );
+          if (unidadesResult.length > 0) {
+            unidadeFiltro = unidadesResult[0].id;
+          }
+        } else if (isGerente) {
+          // Gerente: buscar unidade que ele gerencia
+          const unidadeResult = await this.presencaRepository.manager.query(
+            `SELECT unidade_id FROM teamcruz.gerente_unidades WHERE usuario_id = $1 AND ativo = true LIMIT 1`,
+            [user.id],
+          );
+          if (unidadeResult.length > 0) {
+            unidadeFiltro = unidadeResult[0].unidade_id;
+          }
+        }
+      }
+    }
+
     // Query para buscar professores com estatísticas de aulas ministradas
     let query = `
       SELECT
@@ -850,6 +922,7 @@ export class PresencaService {
         100.0 as taxa_presenca
       FROM teamcruz.professores prof
       INNER JOIN teamcruz.usuarios u ON u.id = prof.usuario_id
+      INNER JOIN teamcruz.professor_unidades pu ON pu.professor_id = prof.id AND pu.ativo = true
       LEFT JOIN teamcruz.aulas aula ON aula.professor_id = prof.id
         AND aula.data_hora_inicio >= $1
       WHERE prof.status = 'ATIVO'
@@ -857,9 +930,9 @@ export class PresencaService {
 
     const params: any[] = [dataLimite];
 
-    if (unidadeId) {
-      query += ` AND prof.unidade_id = $2`;
-      params.push(unidadeId);
+    if (unidadeFiltro) {
+      query += ` AND pu.unidade_id = $2`;
+      params.push(unidadeFiltro);
     }
 
     query += `
@@ -895,6 +968,40 @@ export class PresencaService {
     const dataLimite = new Date();
     dataLimite.setDate(dataLimite.getDate() - 30);
 
+    // Se não forneceu unidadeId, detectar automaticamente baseado no usuário
+    let unidadeFiltro = unidadeId;
+    
+    if (!unidadeFiltro && user) {
+      // Se for franqueado (não master), buscar unidades do franqueado
+      const perfis = user.perfis?.map((p: any) => (typeof p === 'string' ? p : p.nome)?.toUpperCase()) || [];
+      const isFranqueado = perfis.includes('FRANQUEADO');
+      const isMaster = perfis.includes('MASTER') || perfis.includes('ADMIN');
+      const isGerente = perfis.includes('GERENTE_UNIDADE');
+      
+      if (!isMaster) {
+        if (isFranqueado) {
+          // Franqueado: buscar primeira unidade do franqueado
+          const unidadesResult = await this.presencaRepository.manager.query(
+            `SELECT id FROM teamcruz.unidades WHERE franqueado_id = 
+             (SELECT id FROM teamcruz.franqueados WHERE usuario_id = $1) LIMIT 1`,
+            [user.id]
+          );
+          if (unidadesResult.length > 0) {
+            unidadeFiltro = unidadesResult[0].id;
+          }
+        } else if (isGerente) {
+          // Gerente: buscar unidade que ele gerencia
+          const unidadeResult = await this.presencaRepository.manager.query(
+            `SELECT unidade_id FROM teamcruz.gerente_unidades WHERE usuario_id = $1 AND ativo = true LIMIT 1`,
+            [user.id]
+          );
+          if (unidadeResult.length > 0) {
+            unidadeFiltro = unidadeResult[0].unidade_id;
+          }
+        }
+      }
+    }
+
     // Query para buscar alunos com melhor frequência
     let query = `
       SELECT
@@ -917,9 +1024,9 @@ export class PresencaService {
 
     const params: any[] = [dataLimite];
 
-    if (unidadeId) {
+    if (unidadeFiltro) {
       query += ` AND a.unidade_id = $2`;
-      params.push(unidadeId);
+      params.push(unidadeFiltro);
     }
 
     query += `

@@ -108,10 +108,47 @@ export default function RegisterPage() {
     if (formData.data_nascimento) {
       const idade = calcularIdade(formData.data_nascimento);
       setIsMenorDeIdade(idade <= 15);
+
+      // Ajustar faixa selecionada se não for compatível com a idade
+      if (formData.faixa_atual && faixas.length > 0) {
+        const faixaSelecionada = faixas.find(
+          (f) => f.codigo === formData.faixa_atual
+        );
+
+        if (faixaSelecionada) {
+          // Se maior de 16 e faixa é infantil, mudar para AZUL
+          if (idade >= 16 && faixaSelecionada.categoria === "INFANTIL") {
+            const faixaAzul = faixas.find((f) => f.codigo === "AZUL");
+            if (faixaAzul) {
+              setFormData((prev) => ({
+                ...prev,
+                faixa_atual: faixaAzul.codigo,
+              }));
+              toast.success("Faixa ajustada para Azul (faixa inicial adulto)", {
+                duration: 3000,
+              });
+            }
+          }
+          // Se menor de 16 e faixa é adulto, mudar para BRANCA
+          else if (idade <= 15 && faixaSelecionada.categoria === "ADULTO") {
+            const faixaBranca = faixas.find((f) => f.codigo === "BRANCA");
+            if (faixaBranca) {
+              setFormData((prev) => ({
+                ...prev,
+                faixa_atual: faixaBranca.codigo,
+              }));
+              toast.success(
+                "Faixa ajustada para Branca (faixa inicial infantil)",
+                { duration: 3000 }
+              );
+            }
+          }
+        }
+      }
     } else {
       setIsMenorDeIdade(false);
     }
-  }, [formData.data_nascimento]);
+  }, [formData.data_nascimento, faixas]);
 
   // Carregar unidades ativas disponíveis
   useEffect(() => {
@@ -183,6 +220,21 @@ export default function RegisterPage() {
     };
     loadFaixas();
   }, []);
+
+  // Filtrar faixas baseado na idade
+  const faixasFiltradas = faixas.filter((faixa) => {
+    if (!formData.data_nascimento) return true; // Mostra todas se não tiver data
+
+    const idade = calcularIdade(formData.data_nascimento);
+
+    // Maior de idade (16+): apenas faixas ADULTO (AZUL, ROXA, MARROM, PRETA)
+    if (idade >= 16) {
+      return faixa.categoria === "ADULTO";
+    }
+
+    // Menor de idade (<=15): apenas faixas INFANTIL
+    return faixa.categoria === "INFANTIL";
+  });
 
   // Carregar perfis disponíveis
   useEffect(() => {
@@ -902,27 +954,45 @@ export default function RegisterPage() {
                         />
                       </SelectTrigger>
                       <SelectContent className="bg-gray-800 border-gray-600 max-h-80">
-                        {faixas.map((faixa) => (
-                          <SelectItem
-                            key={faixa.codigo}
-                            value={faixa.codigo}
-                            className="text-white hover:bg-gray-700 focus:bg-gray-700"
-                          >
-                            <div className="flex flex-col">
-                              <span className="font-medium">
-                                {faixa.nome_exibicao}
-                              </span>
-                              <span className="text-xs text-gray-400">
-                                {faixa.categoria}
-                              </span>
-                            </div>
-                          </SelectItem>
-                        ))}
+                        {faixasFiltradas.length === 0 ? (
+                          <div className="px-4 py-3 text-sm text-gray-400">
+                            {!formData.data_nascimento
+                              ? "Selecione a data de nascimento primeiro"
+                              : "Nenhuma faixa disponível para esta idade"}
+                          </div>
+                        ) : (
+                          faixasFiltradas.map((faixa) => (
+                            <SelectItem
+                              key={faixa.codigo}
+                              value={faixa.codigo}
+                              className="text-white hover:bg-gray-700 focus:bg-gray-700"
+                            >
+                              <div className="flex flex-col">
+                                <span className="font-medium">
+                                  {faixa.nome_exibicao}
+                                </span>
+                                <span className="text-xs text-gray-400">
+                                  {faixa.categoria}
+                                </span>
+                              </div>
+                            </SelectItem>
+                          ))
+                        )}
                       </SelectContent>
                     </Select>
-                    <p className="text-xs text-gray-400">
-                      Selecione sua graduação atual no Jiu-Jitsu
-                    </p>
+                    {formData.data_nascimento && (
+                      <p className="text-xs text-gray-400">
+                        {calcularIdade(formData.data_nascimento) >= 16
+                          ? "Apenas faixas adultas (Azul, Roxa, Marrom, Preta) disponíveis para maiores de 16 anos"
+                          : "Apenas faixas infantis disponíveis para menores de 16 anos"}
+                      </p>
+                    )}
+                    {!formData.data_nascimento && (
+                      <p className="text-xs text-gray-400">
+                        Selecione a data de nascimento para ver faixas
+                        disponíveis
+                      </p>
+                    )}
                   </div>
 
                   <div className="space-y-2">

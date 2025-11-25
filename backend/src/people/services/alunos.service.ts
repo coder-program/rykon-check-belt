@@ -53,6 +53,14 @@ export class AlunosService {
   ) {}
 
   async list(params: ListAlunosParams, user?: any) {
+    console.log('🔥🔥🔥 [ALUNOS LIST] ===== INÍCIO ===== ');
+    console.log(
+      '🔥🔥🔥 [ALUNOS LIST] Params:',
+      JSON.stringify(params, null, 2),
+    );
+    console.log('🔥🔥🔥 [ALUNOS LIST] User perfis:', user?.perfis);
+    console.log('🔥🔥🔥 [ALUNOS LIST] User ID:', user?.id);
+
     const page = Math.max(1, Number(params.page) || 1);
     const pageSize = Math.min(5000, Math.max(1, Number(params.pageSize) || 20));
 
@@ -121,17 +129,32 @@ export class AlunosService {
     }
     // Se franqueado (não master), filtra apenas alunos das suas unidades
     else if (user && this.isFranqueado(user) && !this.isMaster(user)) {
+      console.log('🔥 [ALUNOS LIST] Usuário identificado como FRANQUEADO');
       const franqueadoId = await this.getFranqueadoIdByUser(user);
+      console.log('🔥 [ALUNOS LIST] Franqueado ID:', franqueadoId);
+
       if (franqueadoId) {
         // Buscar unidades do franqueado
         const unidadesDeFranqueado =
           await this.getUnidadesDeFranqueado(franqueadoId);
+        console.log(
+          '🔥 [ALUNOS LIST] Unidades do franqueado:',
+          unidadesDeFranqueado,
+        );
+
         if (unidadesDeFranqueado.length > 0) {
           query.andWhere('aluno.unidade_id IN (:...unidades)', {
             unidades: unidadesDeFranqueado,
           });
+          console.log(
+            '🔥 [ALUNOS LIST] Filtro aplicado - alunos das unidades:',
+            unidadesDeFranqueado,
+          );
         } else {
           query.andWhere('1 = 0'); // Retorna vazio se franqueado não tem unidades
+          console.log(
+            '🔥 [ALUNOS LIST] Franqueado sem unidades - retornando vazio',
+          );
         }
       }
     }
@@ -170,6 +193,17 @@ export class AlunosService {
       .skip((page - 1) * pageSize)
       .take(pageSize)
       .getManyAndCount();
+
+    console.log('🔥🔥🔥 [ALUNOS LIST] Total de alunos encontrados:', total);
+    console.log('🔥🔥🔥 [ALUNOS LIST] Alunos na página atual:', items.length);
+    console.log(
+      '🔥🔥🔥 [ALUNOS LIST] Alunos:',
+      items.map((a) => ({
+        nome: a.nome_completo,
+        unidade_id: a.unidade_id,
+        unidade_nome: a.unidade?.nome,
+      })),
+    );
 
     // Buscar status dos usuários vinculados aos alunos
     const usuarioIds = items

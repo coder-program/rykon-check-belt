@@ -199,13 +199,13 @@ export default function GerenteDashboard() {
     //   action: () => router.push("/presenca"),
     //   color: "bg-green-500",
     // },
-    {
-      title: "Horários de Aulas",
-      description: "Ver grade de horários",
-      icon: Calendar,
-      action: () => router.push("/horarios"),
-      color: "bg-purple-500",
-    },
+    // {
+    //   title: "Horários de Aulas",
+    //   description: "Ver grade de horários",
+    //   icon: Calendar,
+    //   action: () => router.push("/horarios"),
+    //   color: "bg-purple-500",
+    // },
     {
       title: "Graduações",
       description: `${stats.graduacoesPendentes} pendentes de aprovação`,

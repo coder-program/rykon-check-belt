@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Delete,
   Body,
   Param,
   Query,
@@ -310,6 +311,20 @@ export class GraduacaoController {
       dto.graduacaoIds,
       aprovadorId,
     );
+  }
+
+  @Delete('graduacoes/:graduacaoId')
+  @ApiOperation({ summary: 'Cancela/Remove uma graduação pendente' })
+  @ApiResponse({ status: 200, description: 'Graduação cancelada com sucesso' })
+  @ApiResponse({ status: 404, description: 'Graduação não encontrada' })
+  @ApiResponse({
+    status: 400,
+    description: 'Não é possível cancelar graduação já aprovada',
+  })
+  async cancelarGraduacao(
+    @Param('graduacaoId', ParseUUIDPipe) graduacaoId: string,
+  ) {
+    return await this.graduacaoService.cancelarGraduacao(graduacaoId);
   }
 
   @Get('pendentes-aprovacao')

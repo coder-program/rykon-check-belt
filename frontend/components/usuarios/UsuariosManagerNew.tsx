@@ -917,19 +917,42 @@ const UsuariosManagerNew = () => {
                               }
                               onChange={(e) => {
                                 const perfilIds = formData.perfil_ids || [];
+                                let newPerfilIds: string[];
+
                                 if (e.target.checked) {
-                                  setFormData({
-                                    ...formData,
-                                    perfil_ids: [...perfilIds, perfil.id],
-                                  });
+                                  newPerfilIds = [...perfilIds, perfil.id];
                                 } else {
-                                  setFormData({
-                                    ...formData,
-                                    perfil_ids: perfilIds.filter(
-                                      (id: string) => id !== perfil.id
-                                    ),
-                                  });
+                                  newPerfilIds = perfilIds.filter(
+                                    (id: string) => id !== perfil.id
+                                  );
                                 }
+
+                                // Verificar se algum perfil selecionado requer cadastro completo
+                                const perfisQueRequeremCadastroCompleto = [
+                                  "PROFESSOR",
+                                  "INSTRUTOR",
+                                  "GERENTE_UNIDADE",
+                                  "RECEPCIONISTA",
+                                ];
+
+                                const perfisAtualizados = perfis.filter((p) =>
+                                  newPerfilIds.includes(p.id)
+                                );
+
+                                const requerCadastroCompleto =
+                                  perfisAtualizados.some((p) =>
+                                    perfisQueRequeremCadastroCompleto.includes(
+                                      p.nome?.toUpperCase() || ""
+                                    )
+                                  );
+
+                                setFormData({
+                                  ...formData,
+                                  perfil_ids: newPerfilIds,
+                                  cadastro_completo: requerCadastroCompleto
+                                    ? true
+                                    : formData.cadastro_completo,
+                                });
                               }}
                               style={{ transform: "scale(1.3)" }}
                             />

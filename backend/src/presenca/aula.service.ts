@@ -281,6 +281,43 @@ export class AulaService {
     const dataLimite = new Date();
     dataLimite.setDate(dataLimite.getDate() - 30);
 
+    // Se não forneceu unidadeId, detectar automaticamente baseado no usuário
+    let unidadeFiltro = unidadeId;
+
+    if (!unidadeFiltro && user) {
+      // Se for franqueado (não master), buscar unidades do franqueado
+      const perfis =
+        user.perfis?.map((p: any) =>
+          (typeof p === 'string' ? p : p.nome)?.toUpperCase(),
+        ) || [];
+      const isFranqueado = perfis.includes('FRANQUEADO');
+      const isMaster = perfis.includes('MASTER') || perfis.includes('ADMIN');
+      const isGerente = perfis.includes('GERENTE_UNIDADE');
+
+      if (!isMaster) {
+        if (isFranqueado) {
+          // Franqueado: buscar primeira unidade do franqueado
+          const unidadesResult = await this.aulaRepository.manager.query(
+            `SELECT id FROM teamcruz.unidades WHERE franqueado_id =
+             (SELECT id FROM teamcruz.franqueados WHERE usuario_id = $1) LIMIT 1`,
+            [user.id],
+          );
+          if (unidadesResult.length > 0) {
+            unidadeFiltro = unidadesResult[0].id;
+          }
+        } else if (isGerente) {
+          // Gerente: buscar unidade que ele gerencia
+          const unidadeResult = await this.aulaRepository.manager.query(
+            `SELECT unidade_id FROM teamcruz.gerente_unidades WHERE usuario_id = $1 AND ativo = true LIMIT 1`,
+            [user.id],
+          );
+          if (unidadeResult.length > 0) {
+            unidadeFiltro = unidadeResult[0].unidade_id;
+          }
+        }
+      }
+    }
+
     // Query para buscar professores com total de aulas
     let query = `
       SELECT
@@ -294,6 +331,7 @@ export class AulaService {
         ARRAY_AGG(DISTINCT aula.tipo) FILTER (WHERE aula.tipo IS NOT NULL) as modalidades
       FROM teamcruz.professores prof
       INNER JOIN teamcruz.usuarios u ON u.id = prof.usuario_id
+      INNER JOIN teamcruz.professor_unidades pu ON pu.professor_id = prof.id AND pu.ativo = true
       LEFT JOIN teamcruz.aulas aula ON aula.professor_id = prof.id
         AND aula.data_hora_inicio >= $1
         AND aula.ativo = true
@@ -302,9 +340,9 @@ export class AulaService {
 
     const params: any[] = [dataLimite];
 
-    if (unidadeId) {
-      query += ` AND prof.unidade_id = $2`;
-      params.push(unidadeId);
+    if (unidadeFiltro) {
+      query += ` AND pu.unidade_id = $2`;
+      params.push(unidadeFiltro);
     }
 
     query += `

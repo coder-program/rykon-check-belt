@@ -88,26 +88,18 @@ export class DashboardService {
 
       // Se for GERENTE_UNIDADE, buscar unidades que ele gerencia
       if (isGerenteUnidade && !isMaster && !isFranqueado) {
-        // Buscar pelo campo gerente_id se existir na tabela unidades
-        const gerenteRecord = await this.dataSource.query(
-          `SELECT id FROM teamcruz.gerentes_unidade WHERE usuario_id = $1`,
+        // Buscar unidades através da tabela gerente_unidades
+        const unidadesGerente = await this.dataSource.query(
+          `SELECT unidade_id as id FROM teamcruz.gerente_unidades WHERE usuario_id = $1 AND ativo = true`,
           [userId],
         );
 
-        if (gerenteRecord && gerenteRecord.length > 0) {
-          const gerenteId = gerenteRecord[0].id;
-          const unidadesGerente = await this.dataSource.query(
-            `SELECT id FROM teamcruz.unidades WHERE gerente_id = $1`,
-            [gerenteId],
+        if (unidadesGerente && unidadesGerente.length > 0) {
+          unidadesDoFranqueado = unidadesGerente.map((u) => u.id);
+          console.log(
+            '🔥 [DASHBOARD SERVICE] Gerente possui unidades:',
+            unidadesDoFranqueado,
           );
-
-          if (unidadesGerente && unidadesGerente.length > 0) {
-            unidadesDoFranqueado = unidadesGerente.map((u) => u.id);
-            console.log(
-              '🔥 [DASHBOARD SERVICE] Gerente possui unidades:',
-              unidadesDoFranqueado,
-            );
-          }
         }
       }
       console.log(

@@ -655,8 +655,18 @@ export class UsuariosService {
         '🔍 [FIND ALL HIERARCHY] Motivos de inclusão:',
         usuariosIds.map((u: any) => ({
           nome: u.nome,
+          email: u.email,
           motivo: u.motivo_inclusao,
         })),
+      );
+
+      // 🔥 LOG DETALHADO: Quantos alunos foram retornados pela query
+      const totalAlunos = usuariosIds.filter(
+        (u: any) => u.motivo_inclusao === 'aluno_da_unidade',
+      ).length;
+      console.log(
+        '🔥 [FIND ALL HIERARCHY] Total de ALUNOS retornados:',
+        totalAlunos,
       );
 
       const ids = usuariosIds.map((row: any) => row.id);
