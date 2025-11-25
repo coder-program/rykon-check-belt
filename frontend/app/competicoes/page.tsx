@@ -75,6 +75,39 @@ export default function CompeticoesPage() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editando, setEditando] = useState<string | null>(null);
+  const [cidades, setCidades] = useState<string[]>([]);
+  const [loadingCidades, setLoadingCidades] = useState(false);
+
+  // Estados do Brasil com bandeiras
+  const estados = [
+    { sigla: "AC", nome: "Acre", emoji: "🌳" },
+    { sigla: "AL", nome: "Alagoas", emoji: "🏖️" },
+    { sigla: "AP", nome: "Amapá", emoji: "🌴" },
+    { sigla: "AM", nome: "Amazonas", emoji: "🌿" },
+    { sigla: "BA", nome: "Bahia", emoji: "🥥" },
+    { sigla: "CE", nome: "Ceará", emoji: "⛱️" },
+    { sigla: "DF", nome: "Distrito Federal", emoji: "🏛️" },
+    { sigla: "ES", nome: "Espírito Santo", emoji: "⛰️" },
+    { sigla: "GO", nome: "Goiás", emoji: "🌾" },
+    { sigla: "MA", nome: "Maranhão", emoji: "🏝️" },
+    { sigla: "MT", nome: "Mato Grosso", emoji: "🌻" },
+    { sigla: "MS", nome: "Mato Grosso do Sul", emoji: "🦜" },
+    { sigla: "MG", nome: "Minas Gerais", emoji: "⛏️" },
+    { sigla: "PA", nome: "Pará", emoji: "🌳" },
+    { sigla: "PB", nome: "Paraíba", emoji: "🌴" },
+    { sigla: "PR", nome: "Paraná", emoji: "🌲" },
+    { sigla: "PE", nome: "Pernambuco", emoji: "🎭" },
+    { sigla: "PI", nome: "Piauí", emoji: "🏜️" },
+    { sigla: "RJ", nome: "Rio de Janeiro", emoji: "🏔️" },
+    { sigla: "RN", nome: "Rio Grande do Norte", emoji: "🌵" },
+    { sigla: "RS", nome: "Rio Grande do Sul", emoji: "🧉" },
+    { sigla: "RO", nome: "Rondônia", emoji: "🌳" },
+    { sigla: "RR", nome: "Roraima", emoji: "⛰️" },
+    { sigla: "SC", nome: "Santa Catarina", emoji: "❄️" },
+    { sigla: "SP", nome: "São Paulo", emoji: "🏙️" },
+    { sigla: "SE", nome: "Sergipe", emoji: "🥥" },
+    { sigla: "TO", nome: "Tocantins", emoji: "🏞️" },
+  ];
 
   // Form state
   const [formData, setFormData] = useState({
@@ -95,6 +128,26 @@ export default function CompeticoesPage() {
     derrotas: "",
     observacoes: "",
   });
+  
+  const [erroLutas, setErroLutas] = useState("");
+
+  // Função para obter as cores da faixa
+  const getFaixaColors = (faixa: string) => {
+    const faixaUpper = faixa?.toUpperCase() || "";
+    const colorMap: { [key: string]: { bg: string; text: string; border: string } } = {
+      "BRANCA": { bg: "bg-white", text: "text-gray-800", border: "border-gray-300" },
+      "CINZA": { bg: "bg-gray-400", text: "text-white", border: "border-gray-500" },
+      "AMARELA": { bg: "bg-yellow-400", text: "text-gray-800", border: "border-yellow-500" },
+      "LARANJA": { bg: "bg-orange-400", text: "text-white", border: "border-orange-500" },
+      "VERDE": { bg: "bg-green-500", text: "text-white", border: "border-green-600" },
+      "AZUL": { bg: "bg-blue-500", text: "text-white", border: "border-blue-600" },
+      "ROXA": { bg: "bg-purple-500", text: "text-white", border: "border-purple-600" },
+      "MARROM": { bg: "bg-yellow-800", text: "text-white", border: "border-yellow-900" },
+      "PRETA": { bg: "bg-black", text: "text-white", border: "border-gray-900" },
+      "CORAL": { bg: "bg-red-600", text: "text-white", border: "border-red-700" },
+    };
+    return colorMap[faixaUpper] || { bg: "bg-purple-100", text: "text-purple-700", border: "border-purple-200" };
+  };
 
   useEffect(() => {
     if (user?.id) {
@@ -113,6 +166,32 @@ export default function CompeticoesPage() {
       console.error("Erro ao carregar histórico:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const carregarCidades = async (uf: string) => {
+    if (!uf) {
+      setCidades([]);
+      return;
+    }
+
+    try {
+      setLoadingCidades(true);
+      const response = await fetch(
+        `https://servicodados.ibge.gov.br/api/v1/localidades/estados/${uf}/municipios`
+      );
+      const data = await response.json();
+      const nomeCidades = data
+        .map((cidade: { nome: string }) => cidade.nome)
+        .sort((a: string, b: string) => 
+          a.localeCompare(b, 'pt-BR', { sensitivity: 'base' })
+        );
+      setCidades(nomeCidades);
+    } catch (error) {
+      console.error("Erro ao carregar cidades:", error);
+      setCidades([]);
+    } finally {
+      setLoadingCidades(false);
     }
   };
 
@@ -537,36 +616,55 @@ export default function CompeticoesPage() {
 
                     <div>
                       <label className="block text-sm font-medium mb-2">
-                        Cidade
+                        Estado
                       </label>
-                      <input
-                        type="text"
-                        value={formData.cidade}
-                        onChange={(e) =>
-                          setFormData({ ...formData, cidade: e.target.value })
-                        }
+                      <select
+                        value={formData.estado}
+                        onChange={(e) => {
+                          const uf = e.target.value;
+                          setFormData({
+                            ...formData,
+                            estado: uf,
+                            cidade: "", // Limpa a cidade ao mudar o estado
+                          });
+                          carregarCidades(uf);
+                        }}
                         className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                        placeholder="Ex: São Paulo"
-                      />
+                      >
+                        <option value="">Selecione o estado</option>
+                        {estados.map((estado) => (
+                          <option key={estado.sigla} value={estado.sigla}>
+                            {estado.emoji} {estado.nome} - {estado.sigla}
+                          </option>
+                        ))}
+                      </select>
                     </div>
 
                     <div>
                       <label className="block text-sm font-medium mb-2">
-                        Estado
+                        Cidade
                       </label>
-                      <input
-                        type="text"
-                        maxLength={2}
-                        value={formData.estado}
+                      <select
+                        value={formData.cidade}
                         onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            estado: e.target.value.toUpperCase(),
-                          })
+                          setFormData({ ...formData, cidade: e.target.value })
                         }
-                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                        placeholder="SP"
-                      />
+                        disabled={!formData.estado || loadingCidades}
+                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                      >
+                        <option value="">
+                          {!formData.estado
+                            ? "Selecione primeiro o estado"
+                            : loadingCidades
+                            ? "Carregando cidades..."
+                            : "Selecione a cidade"}
+                        </option>
+                        {cidades.map((cidade) => (
+                          <option key={cidade} value={cidade}>
+                            {cidade}
+                          </option>
+                        ))}
+                      </select>
                     </div>
                   </div>
                 </div>
@@ -579,10 +677,9 @@ export default function CompeticoesPage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium mb-2">
-                        Categoria de Peso
+                        🏋️‍♂️ Categoria de Peso
                       </label>
-                      <input
-                        type="text"
+                      <select
                         value={formData.categoria_peso}
                         onChange={(e) =>
                           setFormData({
@@ -591,16 +688,25 @@ export default function CompeticoesPage() {
                           })
                         }
                         className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                        placeholder="Ex: Médio, Leve, Pesado"
-                      />
+                      >
+                        <option value="">Selecione a categoria de peso</option>
+                        <option value="GALO">🐓 GALO</option>
+                        <option value="PLUMA">🍃 PLUMA</option>
+                        <option value="PENA">🪶 PENA</option>
+                        <option value="LEVE">⚖️ LEVE</option>
+                        <option value="MÉDIO">🪵 MÉDIO</option>
+                        <option value="MEIO-PESADO">💪 MEIO-PESADO</option>
+                        <option value="PESADO">🦾 PESADO</option>
+                        <option value="SUPER PESADO">🪨 SUPER PESADO</option>
+                        <option value="PESADÍSSIMO">🦍 PESADÍSSIMO</option>
+                      </select>
                     </div>
 
                     <div>
                       <label className="block text-sm font-medium mb-2">
-                        Categoria de Idade
+                        🔠 Categoria de Idade
                       </label>
-                      <input
-                        type="text"
+                      <select
                         value={formData.categoria_idade}
                         onChange={(e) =>
                           setFormData({
@@ -609,16 +715,30 @@ export default function CompeticoesPage() {
                           })
                         }
                         className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                        placeholder="Ex: Adulto, Master 1"
-                      />
+                      >
+                        <option value="">Selecione a categoria de idade</option>
+                        <option value="PRÉ MIRIM">PRÉ MIRIM (4 e 5 anos)</option>
+                        <option value="MIRIM">MIRIM (6 e 7 anos)</option>
+                        <option value="INFANTIL A">INFANTIL A (8 e 9 anos)</option>
+                        <option value="INFANTIL B">INFANTIL B (10 e 11 anos)</option>
+                        <option value="INFANTO A">INFANTO A (12 e 13 anos)</option>
+                        <option value="INFANTO B">INFANTO B (14 e 15 anos)</option>
+                        <option value="JUVENIL">JUVENIL (16 e 17 anos)</option>
+                        <option value="ADULTO">ADULTO (18 até 29 anos)</option>
+                        <option value="MASTER 1">MASTER 1 (30 até 35 anos)</option>
+                        <option value="MASTER 2">MASTER 2 (36 até 40 anos)</option>
+                        <option value="MASTER 3">MASTER 3 (41 até 45 anos)</option>
+                        <option value="MASTER 4">MASTER 4 (46 até 50 anos)</option>
+                        <option value="MASTER 5">MASTER 5 (51 até 55 anos)</option>
+                        <option value="MASTER 6">MASTER 6 (Acima de 56 anos)</option>
+                      </select>
                     </div>
 
                     <div>
                       <label className="block text-sm font-medium mb-2">
-                        Faixa Competida
+                        🥋 Faixa Competida
                       </label>
-                      <input
-                        type="text"
+                      <select
                         value={formData.categoria_faixa}
                         onChange={(e) =>
                           setFormData({
@@ -627,13 +747,24 @@ export default function CompeticoesPage() {
                           })
                         }
                         className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                        placeholder="Ex: Azul, Roxa"
-                      />
+                      >
+                        <option value="">Selecione a faixa</option>
+                        <option value="BRANCA">⚪ BRANCA</option>
+                        <option value="CINZA">⚫ CINZA</option>
+                        <option value="AMARELA">🟡 AMARELA</option>
+                        <option value="LARANJA">🟠 LARANJA</option>
+                        <option value="VERDE">🟢 VERDE</option>
+                        <option value="AZUL">🔵 AZUL</option>
+                        <option value="ROXA">🟣 ROXA</option>
+                        <option value="MARROM">🟤 MARROM</option>
+                        <option value="PRETA">⚫ PRETA</option>
+                        <option value="CORAL">🔴 CORAL</option>
+                      </select>
                     </div>
 
                     <div>
                       <label className="block text-sm font-medium mb-2">
-                        Posição *
+                        🎖️ Posição *
                       </label>
                       <select
                         required
@@ -653,69 +784,151 @@ export default function CompeticoesPage() {
 
                     <div>
                       <label className="block text-sm font-medium mb-2">
-                        Colocação
+                        🏆 Meu Ranking
                       </label>
                       <input
-                        type="number"
-                        min="1"
+                        type="text"
                         value={formData.colocacao}
-                        onChange={(e) =>
+                        onChange={(e) => {
+                          let value = e.target.value.replace(/\D/g, ""); // Remove tudo que não é número
+                          if (value.length > 3) {
+                            value = value.slice(0, 3); // Limita a 3 dígitos
+                          }
                           setFormData({
                             ...formData,
-                            colocacao: e.target.value,
-                          })
-                        }
+                            colocacao: value,
+                          });
+                        }}
+                        onBlur={(e) => {
+                          // Adiciona o º ao sair do campo se houver valor
+                          const value = e.target.value.replace(/\D/g, "");
+                          if (value) {
+                            setFormData({
+                              ...formData,
+                              colocacao: value,
+                            });
+                          }
+                        }}
                         className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                        placeholder="1, 2, 3..."
+                        placeholder="Ex: 1, 2, 3..."
+                        maxLength={3}
                       />
+                      {formData.colocacao && (
+                        <div className="mt-1 text-sm text-gray-600">
+                          Você ficou em: <span className="font-semibold text-blue-600">{formData.colocacao}º lugar</span>
+                        </div>
+                      )}
                     </div>
 
                     <div>
                       <label className="block text-sm font-medium mb-2">
-                        Total de Lutas
+                        📊 Total de Lutas
                       </label>
                       <input
                         type="number"
                         min="0"
+                        max="999"
                         value={formData.total_lutas}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            total_lutas: e.target.value,
-                          })
-                        }
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          if (value === "" || (parseInt(value) >= 0 && parseInt(value) <= 999)) {
+                            setFormData({
+                              ...formData,
+                              total_lutas: value,
+                            });
+                          }
+                        }}
+                        onInput={(e) => {
+                          const input = e.currentTarget;
+                          if (input.value.length > 3) {
+                            input.value = input.value.slice(0, 3);
+                          }
+                        }}
                         className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
                       />
                     </div>
 
                     <div>
                       <label className="block text-sm font-medium mb-2">
-                        Vitórias
+                        ✅ Vitórias
                       </label>
                       <input
                         type="number"
                         min="0"
+                        max="999"
                         value={formData.vitorias}
-                        onChange={(e) =>
-                          setFormData({ ...formData, vitorias: e.target.value })
-                        }
-                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          const totalLutas = parseInt(formData.total_lutas) || 0;
+                          const derrotas = parseInt(formData.derrotas) || 0;
+                          const vitorias = parseInt(value) || 0;
+                          
+                          if (value === "" || (vitorias >= 0 && vitorias <= 999)) {
+                            // Verifica se vitórias + derrotas não ultrapassa o total de lutas
+                            if (totalLutas > 0 && (vitorias + derrotas) > totalLutas) {
+                              setErroLutas(`Vitórias + Derrotas não podem ultrapassar o Total de Lutas (${totalLutas})`);
+                              return;
+                            }
+                            setErroLutas("");
+                            setFormData({ ...formData, vitorias: value });
+                          }
+                        }}
+                        onInput={(e) => {
+                          const input = e.currentTarget;
+                          if (input.value.length > 3) {
+                            input.value = input.value.slice(0, 3);
+                          }
+                        }}
+                        className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${erroLutas ? 'border-red-500' : ''}`}
                       />
                     </div>
 
                     <div>
                       <label className="block text-sm font-medium mb-2">
-                        Derrotas
+                        ❌ Derrotas
                       </label>
                       <input
                         type="number"
                         min="0"
+                        max="999"
                         value={formData.derrotas}
-                        onChange={(e) =>
-                          setFormData({ ...formData, derrotas: e.target.value })
-                        }
-                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          const totalLutas = parseInt(formData.total_lutas) || 0;
+                          const vitorias = parseInt(formData.vitorias) || 0;
+                          const derrotas = parseInt(value) || 0;
+                          
+                          if (value === "" || (derrotas >= 0 && derrotas <= 999)) {
+                            // Verifica se vitórias + derrotas não ultrapassa o total de lutas
+                            if (totalLutas > 0 && (vitorias + derrotas) > totalLutas) {
+                              setErroLutas(`Vitórias + Derrotas não podem ultrapassar o Total de Lutas (${totalLutas})`);
+                              return;
+                            }
+                            setErroLutas("");
+                            setFormData({ ...formData, derrotas: value });
+                          }
+                        }}
+                        onInput={(e) => {
+                          const input = e.currentTarget;
+                          if (input.value.length > 3) {
+                            input.value = input.value.slice(0, 3);
+                          }
+                        }}
+                        className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${erroLutas ? 'border-red-500' : ''}`}
                       />
+                      {erroLutas && (
+                        <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+                          <p className="text-sm text-red-600 font-medium">⚠️ {erroLutas}</p>
+                        </div>
+                      )}
+                      {!erroLutas && formData.total_lutas && (parseInt(formData.vitorias || "0") + parseInt(formData.derrotas || "0")) > 0 && (
+                        <div className="mt-1 text-sm text-gray-600">
+                          Total: {parseInt(formData.vitorias || "0") + parseInt(formData.derrotas || "0")} de {formData.total_lutas} lutas
+                          {parseInt(formData.vitorias || "0") + parseInt(formData.derrotas || "0") === parseInt(formData.total_lutas) && (
+                            <span className="text-green-600 ml-2">✓</span>
+                          )}
+                        </div>
+                      )}
                     </div>
 
                     <div className="md:col-span-2">
@@ -834,7 +1047,7 @@ export default function CompeticoesPage() {
                               </span>
                             )}
                             {part.categoria_faixa && (
-                              <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded text-xs">
+                              <span className={`px-2 py-1 rounded text-xs border ${getFaixaColors(part.categoria_faixa).bg} ${getFaixaColors(part.categoria_faixa).text} ${getFaixaColors(part.categoria_faixa).border}`}>
                                 {part.categoria_faixa}
                               </span>
                             )}

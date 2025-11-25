@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { ArrowLeft, Plus, X, Save, Edit, Check } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/app/auth/AuthContext";
+import toast from "react-hot-toast";
 
 interface FaixaDef {
   id: string;
@@ -52,6 +53,42 @@ interface FaixaForm {
   dt_fim: string;
   isFaixaAtual: boolean;
 }
+
+// Função para obter a cor da faixa
+const getFaixaColor = (faixa: string) => {
+  const faixaUpper = faixa?.toUpperCase() || "";
+  const colorMap: { [key: string]: string } = {
+    "BRANCA": "text-gray-600",
+    "CINZA": "text-gray-500",
+    "AMARELA": "text-yellow-600",
+    "LARANJA": "text-orange-600",
+    "VERDE": "text-green-600",
+    "AZUL": "text-blue-600",
+    "ROXA": "text-purple-600",
+    "MARROM": "text-yellow-800",
+    "PRETA": "text-gray-900",
+    "CORAL": "text-red-600",
+  };
+  return colorMap[faixaUpper] || "text-purple-600";
+};
+
+// Função para obter a cor da borda da faixa
+const getFaixaBorderColor = (faixa: string) => {
+  const faixaUpper = faixa?.toUpperCase() || "";
+  const colorMap: { [key: string]: string } = {
+    "BRANCA": "border-gray-400",
+    "CINZA": "border-gray-500",
+    "AMARELA": "border-yellow-500",
+    "LARANJA": "border-orange-500",
+    "VERDE": "border-green-500",
+    "AZUL": "border-blue-500",
+    "ROXA": "border-purple-500",
+    "MARROM": "border-yellow-800",
+    "PRETA": "border-gray-900",
+    "CORAL": "border-red-500",
+  };
+  return colorMap[faixaUpper] || "border-purple-500";
+};
 
 export default function MeuProgressoPage() {
   const router = useRouter();
@@ -136,7 +173,7 @@ export default function MeuProgressoPage() {
       return response.json();
     },
     onSuccess: () => {
-      alert("Grau adicionado com sucesso!");
+      toast.success("Grau adicionado com sucesso!");
       setIsGrauModalOpen(false);
       setGrauForm({
         faixaId: "",
@@ -150,7 +187,7 @@ export default function MeuProgressoPage() {
       queryClient.invalidateQueries({ queryKey: ["meu-historico"] });
     },
     onError: (error) => {
-      alert("Erro ao adicionar grau: " + error.message);
+      toast.error("Erro ao adicionar grau: " + error.message);
     },
   });
 
@@ -172,18 +209,19 @@ export default function MeuProgressoPage() {
       return response.json();
     },
     onSuccess: () => {
-      alert("Faixa adicionada com sucesso!");
+      toast.success("Faixa adicionada com sucesso!");
       setIsFaixaModalOpen(false);
       setFaixaForm({
         faixaOrigemId: "",
         faixaDestinoId: "",
         dt_inicio: "",
         dt_fim: "",
+        isFaixaAtual: false,
       });
       queryClient.invalidateQueries({ queryKey: ["meu-historico"] });
     },
     onError: (error) => {
-      alert("Erro ao adicionar faixa: " + error.message);
+      toast.error("Erro ao adicionar faixa: " + error.message);
     },
   });
 
@@ -212,13 +250,13 @@ export default function MeuProgressoPage() {
       return response.json();
     },
     onSuccess: () => {
-      alert("Datas atualizadas com sucesso!");
+      toast.success("Datas atualizadas com sucesso!");
       setEditingFaixa(null);
       setEditDates({ dt_inicio: "", dt_fim: "" });
       queryClient.invalidateQueries({ queryKey: ["meu-historico"] });
     },
     onError: (error) => {
-      alert("Erro ao atualizar faixa: " + error.message);
+      toast.error("Erro ao atualizar faixa: " + error.message);
     },
   });
 
@@ -232,7 +270,7 @@ export default function MeuProgressoPage() {
 
   const handleSalvarGrau = () => {
     if (!grauForm.faixaId || !grauForm.dataConcessao) {
-      alert("Por favor, preencha a faixa e a data da graduação.");
+      toast.error("Por favor, preencha a faixa e a data da graduação.");
       return;
     }
 
@@ -250,13 +288,13 @@ export default function MeuProgressoPage() {
   const handleSalvarFaixa = () => {
     // Validação: Faixa e Data de Início são sempre obrigatórios
     if (!faixaForm.faixaDestinoId || !faixaForm.dt_inicio) {
-      alert("Por favor, preencha a faixa conquistada e a data de início.");
+      toast.error("Por favor, preencha a faixa conquistada e a data de início.");
       return;
     }
 
     // Se NÃO é a faixa atual (é uma faixa antiga concluída), Data de Fim é obrigatória
     if (!faixaForm.isFaixaAtual && !faixaForm.dt_fim) {
-      alert(
+      toast.error(
         "Para faixas antigas concluídas, a Data de Fim é obrigatória. Se esta é sua faixa atual, marque a opção 'Esta é minha faixa atual'."
       );
       return;
@@ -264,7 +302,7 @@ export default function MeuProgressoPage() {
 
     // Se marcou como faixa atual, não pode ter Data de Fim
     if (faixaForm.isFaixaAtual && faixaForm.dt_fim) {
-      alert(
+      toast.error(
         "Faixa atual não pode ter Data de Fim. Desmarque 'Esta é minha faixa atual' se a faixa já foi concluída."
       );
       return;
@@ -276,7 +314,7 @@ export default function MeuProgressoPage() {
       const fim = new Date(faixaForm.dt_fim + "T00:00:00");
 
       if (fim < inicio) {
-        alert("A Data de Fim não pode ser anterior à Data de Início.");
+        toast.error("A Data de Fim não pode ser anterior à Data de Início.");
         return;
       }
     }
@@ -415,7 +453,7 @@ export default function MeuProgressoPage() {
                         className={`border-l-4 ${
                           isFaixaAtual(faixa.dt_fim)
                             ? "border-green-500 bg-green-50"
-                            : "border-purple-500 bg-white"
+                            : `${getFaixaBorderColor(faixa.faixaDestino)} bg-white`
                         } pl-4 py-2 rounded-r-lg`}
                       >
                         {editingFaixa === faixa.id ? (
@@ -426,7 +464,7 @@ export default function MeuProgressoPage() {
                                 {faixa.faixaOrigem
                                   ? `${faixa.faixaOrigem} → `
                                   : ""}
-                                <span className="text-purple-600">
+                                <span className={getFaixaColor(faixa.faixaDestino)}>
                                   {faixa.faixaDestino}
                                 </span>
                               </p>
@@ -497,7 +535,7 @@ export default function MeuProgressoPage() {
                                   {faixa.faixaOrigem
                                     ? `${faixa.faixaOrigem} → `
                                     : ""}
-                                  <span className="text-purple-600">
+                                  <span className={getFaixaColor(faixa.faixaDestino)}>
                                     {faixa.faixaDestino}
                                   </span>
                                 </p>

@@ -169,6 +169,24 @@ interface Dependente {
 //   };
 // }
 
+// Função para obter as cores da faixa (para texto em fundo azul)
+function getFaixaColors(faixa: string) {
+  const faixaUpper = faixa?.toUpperCase() || "";
+  const colorMap: { [key: string]: { text: string } } = {
+    "BRANCA": { text: "text-white" },
+    "CINZA": { text: "text-gray-300" },
+    "AMARELA": { text: "text-yellow-300" },
+    "LARANJA": { text: "text-orange-300" },
+    "VERDE": { text: "text-green-300" },
+    "AZUL": { text: "text-blue-200" },
+    "ROXA": { text: "text-purple-300" },
+    "MARROM": { text: "text-yellow-700" },
+    "PRETA": { text: "text-gray-800" },
+    "CORAL": { text: "text-red-300" },
+  };
+  return colorMap[faixaUpper] || { text: "text-white" };
+}
+
 // Helper para converter dias em anos e meses
 function formatarTempoNaFaixa(dias: number): string {
   if (dias < 30) {
@@ -832,7 +850,7 @@ export default function AlunoDashboard({
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div>
-                  <h3 className="text-2xl font-bold">{graduacaoAtual}</h3>
+                  <h3 className={`text-2xl font-bold ${getFaixaColors(graduacaoAtual).text}`}>{graduacaoAtual}</h3>
                   <p className="text-blue-100">
                     {statusGraduacao?.grausAtual || 0} /{" "}
                     {statusGraduacao?.grausMax || 4} graus
@@ -866,7 +884,7 @@ export default function AlunoDashboard({
                 </div>
                 <div>
                   <h4 className="font-semibold">Próxima Graduação</h4>
-                  <p className="text-xl font-bold">{proximaGraduacao}</p>
+                  <p className={`text-xl font-bold ${getFaixaColors(proximaGraduacao).text}`}>{proximaGraduacao}</p>
                   {statusGraduacao && (
                     <>
                       <p className="text-sm text-blue-100 mt-1">
