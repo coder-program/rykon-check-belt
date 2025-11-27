@@ -226,7 +226,7 @@ export class PresencaService {
       throw new NotFoundException('Aula não encontrada');
     }
 
-    // Verificar se já fez check-in hoje
+    // Verificar se já existe check-in hoje (apenas 1 check-in por dia permitido)
     const hoje = new Date();
     hoje.setHours(0, 0, 0, 0);
     const amanha = new Date(hoje);
@@ -240,7 +240,9 @@ export class PresencaService {
     });
 
     if (presencaHoje) {
-      throw new BadRequestException('Você já fez check-in hoje');
+      throw new BadRequestException(
+        'Você já fez check-in hoje. Apenas 1 check-in por dia é permitido.',
+      );
     }
 
     // Registrar presença manual
@@ -328,7 +330,7 @@ export class PresencaService {
       throw new NotFoundException('Unidade não encontrada');
     }
 
-    // Verificar se já fez check-in hoje
+    // Verificar se já existe check-in hoje (apenas 1 check-in por dia permitido)
     const hoje = new Date();
     hoje.setHours(0, 0, 0, 0);
     const amanha = new Date(hoje);
@@ -343,7 +345,7 @@ export class PresencaService {
 
     if (presencaHoje) {
       throw new BadRequestException(
-        `${aluno.nome_completo} já fez check-in hoje`,
+        `${aluno.nome_completo} já fez check-in hoje. Apenas 1 check-in por dia é permitido.`,
       );
     }
 
@@ -456,43 +458,96 @@ export class PresencaService {
   }
 
   async getMinhaHistorico(user: any, limit: number = 10) {
+    console.log('🔍 [MINHA HISTORICO] ========== INÍCIO ==========');
+    console.log('🔍 [MINHA HISTORICO] User ID:', user.id);
+    console.log('🔍 [MINHA HISTORICO] Limit:', limit);
+
     // Buscar aluno pelo usuario_id
     const aluno = await this.alunoRepository.findOne({
       where: { usuario_id: user.id },
     });
 
+    console.log(
+      '🔍 [MINHA HISTORICO] Aluno encontrado:',
+      aluno ? { id: aluno.id, nome: aluno.nome_completo } : 'não encontrado',
+    );
+
     if (!aluno) {
+      console.log(
+        '⚠️ [MINHA HISTORICO] Retornando vazio - aluno não encontrado',
+      );
       return [];
     }
 
+    console.log(
+      '🔍 [MINHA HISTORICO] Buscando presenças para aluno_id:',
+      aluno.id,
+    );
+
     const presencas = await this.presencaRepository.find({
       where: { aluno_id: aluno.id },
+      relations: ['aula', 'aula.unidade', 'aula.professor'],
       order: { created_at: 'DESC' },
       take: limit,
     });
 
-    // Buscar informações das aulas para cada presença
-    const presencasComAulas = await Promise.all(
-      presencas.map(async (p) => {
-        const aula = await this.aulaRepository.findOne({
-          where: { id: p.aula_id },
-          relations: ['unidade', 'professor'],
-        });
-
-        return {
-          id: p.id,
-          data: p.created_at,
-          horario: p.hora_checkin.toTimeString().slice(0, 5),
-          tipo: 'entrada',
-          aula: {
-            nome: aula?.nome || 'Aula não encontrada',
-            professor: aula?.professor?.nome_completo || 'Professor',
-            unidade: aula?.unidade?.nome || 'Unidade',
-          },
-        };
-      }),
+    console.log(
+      '🔍 [MINHA HISTORICO] Total de presenças encontradas:',
+      presencas.length,
     );
 
+    if (presencas.length > 0) {
+      console.log('🔍 [MINHA HISTORICO] Primeira presença:', {
+        id: presencas[0].id,
+        created_at: presencas[0].created_at,
+        aula_id: presencas[0].aula_id,
+      });
+    }
+
+    console.log('🔍 [MINHA HISTORICO] Buscando faixa ativa...');
+
+    // Buscar faixa ativa do aluno
+    const faixaAtiva = await this.alunoFaixaRepository.findOne({
+      where: { aluno_id: aluno.id, ativa: true },
+      relations: ['faixaDef'],
+    });
+
+    console.log(
+      '🔍 [MINHA HISTORICO] Faixa ativa:',
+      faixaAtiva
+        ? {
+            id: faixaAtiva.id,
+            faixa: faixaAtiva.faixaDef?.nome_exibicao,
+            codigo: faixaAtiva.faixaDef?.codigo,
+            graus: faixaAtiva.graus_atual,
+          }
+        : 'não encontrada',
+    );
+
+    // Mapear as presenças com informações das aulas
+    const presencasComAulas = presencas.map((p) => {
+      return {
+        id: p.id,
+        data: p.created_at,
+        horario: p.hora_checkin?.toTimeString().slice(0, 5) || '00:00',
+        tipo: 'entrada',
+        faixa: faixaAtiva?.faixaDef?.nome_exibicao || 'Branca',
+        faixaCodigo: faixaAtiva?.faixaDef?.codigo || 'BRANCA',
+        graus: faixaAtiva?.graus_atual || 0,
+        aula: {
+          nome: p.aula?.nome || 'Aula não encontrada',
+          professor: p.aula?.professor?.nome_completo || 'Professor',
+          unidade: p.aula?.unidade?.nome || 'Unidade',
+        },
+      };
+    });
+
+    console.log(
+      '✅ [MINHA HISTORICO] Retornando:',
+      presencasComAulas.length,
+      'presenças',
+    );
+    console.log('🔍 [MINHA HISTORICO] ========== FIM ==========');
     return presencasComAulas;
   }
 

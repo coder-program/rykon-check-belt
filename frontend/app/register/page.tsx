@@ -184,6 +184,11 @@ export default function RegisterPage() {
       try {
         const API_URL =
           process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api";
+        console.log(
+          "🔍 Tentando carregar faixas de:",
+          `${API_URL}/graduacao/faixas`
+        );
+
         const response = await fetch(`${API_URL}/graduacao/faixas`, {
           method: "GET",
           headers: {
@@ -191,8 +196,18 @@ export default function RegisterPage() {
           },
         });
 
+        console.log(
+          "📡 Status da resposta:",
+          response.status,
+          response.statusText
+        );
+
         if (!response.ok) {
-          throw new Error("Erro ao carregar faixas");
+          const errorText = await response.text();
+          console.error("❌ Erro na resposta:", errorText);
+          throw new Error(
+            `Erro ao carregar faixas: ${response.status} - ${errorText}`
+          );
         }
 
         const data = await response.json();
@@ -661,8 +676,22 @@ export default function RegisterPage() {
       }
     } catch (error: unknown) {
       console.error("Erro no cadastro:", error);
-      const errorMessage =
-        error instanceof Error ? error.message : "Erro ao realizar cadastro";
+      let errorMessage = "Erro ao realizar cadastro";
+
+      if (error instanceof Error) {
+        // Mensagens de erro específicas
+        if (error.message.includes("Já existe um usuário com este CPF")) {
+          errorMessage =
+            "Este CPF já está cadastrado no sistema. Se você já possui uma conta, faça login. Se esqueceu sua senha, utilize a opção 'Esqueci minha senha'.";
+        } else if (error.message.includes("CPF")) {
+          errorMessage = "CPF inválido ou já cadastrado";
+        } else if (error.message.includes("email")) {
+          errorMessage = "Este email já está cadastrado no sistema";
+        } else {
+          errorMessage = error.message;
+        }
+      }
+
       setError(errorMessage);
     } finally {
       setIsLoading(false);

@@ -488,6 +488,8 @@ export class GraduacaoService {
    * Lista todas as faixas disponíveis
    */
   async listarFaixas(categoria?: string): Promise<FaixaDef[]> {
+    console.log('🔍 [BACKEND] listarFaixas chamado. Categoria:', categoria);
+
     const query = this.faixaDefRepository
       .createQueryBuilder('fd')
       .where('fd.ativo = :ativo', { ativo: true });
@@ -498,7 +500,14 @@ export class GraduacaoService {
 
     query.orderBy('fd.ordem', 'ASC');
 
-    return await query.getMany();
+    const result = await query.getMany();
+    console.log('✅ [BACKEND] Faixas encontradas:', result.length);
+    console.log(
+      '📋 [BACKEND] Faixas:',
+      result.map((f) => ({ codigo: f.codigo, nome: f.nome_exibicao })),
+    );
+
+    return result;
   }
 
   /**

@@ -29,6 +29,8 @@ import {
   XCircle,
   AlertCircle,
   AlertTriangle,
+  FileText,
+  Calendar,
 } from "lucide-react";
 import toast, { Toaster } from "react-hot-toast";
 
@@ -65,6 +67,12 @@ interface FranqueadoSimplificado {
   // Status
   situacao: SituacaoFranqueado;
   ativo: boolean;
+  // Contrato
+  contrato_aceito?: boolean;
+  contrato_aceito_em?: string | null;
+  contrato_versao?: string | null;
+  contrato_ip?: string | null;
+  // Datas
   created_at: string;
   updated_at: string;
 }
@@ -993,6 +1001,63 @@ export default function FranqueadosPageSimplificada() {
                                   </span>
                                 )}
                               </div>
+
+                              {/* Contract Information - Super Admin Only */}
+                              {isSuperAdmin && franqueado.contrato_aceito && (
+                                <div className="mt-3 pt-3 border-t border-gray-200">
+                                  <div className="flex items-start gap-2">
+                                    <FileText className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                                    <div className="flex-1">
+                                      <div className="text-xs font-medium text-gray-700 mb-1.5">
+                                        Informações do Contrato
+                                      </div>
+                                      <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs text-gray-600">
+                                        <div className="flex items-center gap-1.5">
+                                          <CheckCircle className="h-3 w-3 text-green-600" />
+                                          <span className="font-medium text-green-700">
+                                            Contrato Aceito
+                                          </span>
+                                        </div>
+                                        <div className="flex items-center gap-1.5">
+                                          <Calendar className="h-3 w-3 text-gray-500" />
+                                          <span>
+                                            {franqueado.contrato_aceito_em
+                                              ? new Date(
+                                                  franqueado.contrato_aceito_em
+                                                ).toLocaleString("pt-BR", {
+                                                  day: "2-digit",
+                                                  month: "2-digit",
+                                                  year: "numeric",
+                                                  hour: "2-digit",
+                                                  minute: "2-digit",
+                                                })
+                                              : "Data não disponível"}
+                                          </span>
+                                        </div>
+                                        {franqueado.contrato_versao && (
+                                          <div className="flex items-center gap-1.5">
+                                            <FileText className="h-3 w-3 text-blue-600" />
+                                            <span>
+                                              Versão:{" "}
+                                              {franqueado.contrato_versao}
+                                            </span>
+                                          </div>
+                                        )}
+                                        {franqueado.contrato_ip && (
+                                          <div className="flex items-center gap-1.5">
+                                            <span className="text-gray-500">
+                                              IP:
+                                            </span>
+                                            <span className="font-mono">
+                                              {franqueado.contrato_ip}
+                                            </span>
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
                             </div>
                           </div>
                         </div>

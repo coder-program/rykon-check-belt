@@ -65,12 +65,20 @@ export class FranqueadosController {
     @Request() req: any,
     @Body() body: CreateFranqueadoSimplifiedDto,
   ) {
+    // Extrair IP real do cliente
+    const clientIp =
+      req.ip ||
+      req.connection.remoteAddress ||
+      req.headers['x-forwarded-for']?.split(',')[0] ||
+      'unknown';
+
     // Garantir que o usuario_id seja o do usuário logado
     const dadosFranquia = {
       ...body,
       usuario_id: req.user.id,
       situacao: 'ATIVA' as any, // Franqueado que se auto-cadastra já fica ativo
       ativo: true,
+      contrato_ip: clientIp, // Sobrescrever com IP real
     };
     return this.service.create(dadosFranquia);
   }
@@ -112,12 +120,21 @@ export class FranqueadosController {
       (p: any) => p.nome === 'MASTER' || p === 'MASTER',
     );
 
+    // Extrair IP real do cliente se houver contrato_ip no body
+    const clientIp = body.contrato_aceito
+      ? req.ip ||
+        req.connection.remoteAddress ||
+        req.headers['x-forwarded-for']?.split(',')[0] ||
+        'unknown'
+      : null;
+
     const dadosFranquia: CreateFranqueadoSimplifiedDto = {
       ...body,
       situacao: (isMaster ? 'ATIVA' : 'EM_HOMOLOGACAO') as
         | 'ATIVA'
         | 'INATIVA'
         | 'EM_HOMOLOGACAO',
+      contrato_ip: clientIp || body.contrato_ip, // Usar IP real se contrato foi aceito
     };
 
     return this.service.create(dadosFranquia);

@@ -472,7 +472,7 @@ export default function MinhaFranquiaPage() {
         ...(!franquiaExistente && {
           contrato_aceito: true,
           contrato_versao: CONTRATO_VERSAO,
-          contrato_ip: "client", // Será substituído pelo IP real no backend se implementado
+          // contrato_ip será capturado automaticamente pelo backend
         }),
       };
 

@@ -107,9 +107,6 @@ export default function PresencaPage() {
   const [alunosEncontrados, setAlunosEncontrados] = useState<Aluno[]>([]);
   const [meusFilhos, setMeusFilhos] = useState<Aluno[]>([]);
   const [showResponsavelMode, setShowResponsavelMode] = useState(false);
-  const [filtroFaixa, setFiltroFaixa] = useState<
-    "todas" | "branca" | "azul" | "roxa" | "marrom" | "preta"
-  >("todas");
   const [buscaHistorico, setBuscaHistorico] = useState("");
 
   useEffect(() => {
@@ -846,66 +843,6 @@ export default function PresencaPage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* Check-in Section */}
             <div className="space-y-6">
-              {/* Aula Ativa */}
-              {aulaAtiva && (
-                <Card className="border-green-200 bg-green-50">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-green-800">
-                      <Clock className="h-5 w-5" />
-                      Aula Ativa Agora
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      <div>
-                        <h3 className="font-semibold text-lg">
-                          {aulaAtiva.nome}
-                        </h3>
-                        <p className="text-sm text-gray-600">
-                          Prof. {aulaAtiva.professor}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <MapPin className="h-4 w-4" />
-                        {aulaAtiva.unidade}
-                      </div>
-                      <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <Clock className="h-4 w-4" />
-                        {aulaAtiva.horarioInicio} - {aulaAtiva.horarioFim}
-                      </div>
-                      {aulaAtiva.qrCode && (
-                        <div className="mt-4 p-4 bg-white rounded-lg border text-center">
-                          <p className="text-sm font-medium mb-3">
-                            QR Code da Aula
-                          </p>
-                          {qrCodeImageUrl ? (
-                            <div className="inline-block p-3 bg-white rounded-lg border-2 border-gray-200 shadow-sm">
-                              <img
-                                src={qrCodeImageUrl}
-                                alt="QR Code da Aula"
-                                className="w-48 h-48 mx-auto"
-                              />
-                            </div>
-                          ) : (
-                            <div className="bg-gray-100 p-8 rounded border-2 border-dashed border-gray-300 inline-block">
-                              <div className="text-gray-500">
-                                Gerando QR Code...
-                              </div>
-                            </div>
-                          )}
-                          <p className="text-xs text-gray-500 mt-3">
-                            Escaneie este QR Code para fazer check-in na aula
-                          </p>
-                          <p className="text-xs text-gray-400 mt-1 font-mono break-all">
-                            {aulaAtiva.qrCode}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-
               {/* Seletor de Método de Check-in */}
               {aulaAtiva && (
                 <Card className="border-2">
@@ -924,36 +861,42 @@ export default function PresencaPage() {
                         <QrCode className="h-4 w-4" />
                         QR Code
                       </Button>
-                      <Button
-                        variant={
-                          metodoCheckin === "CPF" ? "default" : "outline"
-                        }
-                        onClick={() => setMetodoCheckin("CPF")}
-                        className="flex items-center gap-2"
-                      >
-                        <CreditCard className="h-4 w-4" />
-                        CPF
-                      </Button>
-                      <Button
-                        variant={
-                          metodoCheckin === "FACIAL" ? "default" : "outline"
-                        }
-                        onClick={() => setMetodoCheckin("FACIAL")}
-                        className="flex items-center gap-2"
-                      >
-                        <Camera className="h-4 w-4" />
-                        Facial
-                      </Button>
-                      <Button
-                        variant={
-                          metodoCheckin === "NOME" ? "default" : "outline"
-                        }
-                        onClick={() => setMetodoCheckin("NOME")}
-                        className="flex items-center gap-2"
-                      >
-                        <Search className="h-4 w-4" />
-                        Nome
-                      </Button>
+                      {!user?.perfis?.some(
+                        (p: string) => p.toLowerCase() === "aluno"
+                      ) && (
+                        <>
+                          <Button
+                            variant={
+                              metodoCheckin === "CPF" ? "default" : "outline"
+                            }
+                            onClick={() => setMetodoCheckin("CPF")}
+                            className="flex items-center gap-2"
+                          >
+                            <CreditCard className="h-4 w-4" />
+                            CPF
+                          </Button>
+                          <Button
+                            variant={
+                              metodoCheckin === "FACIAL" ? "default" : "outline"
+                            }
+                            onClick={() => setMetodoCheckin("FACIAL")}
+                            className="flex items-center gap-2"
+                          >
+                            <Camera className="h-4 w-4" />
+                            Facial
+                          </Button>
+                          <Button
+                            variant={
+                              metodoCheckin === "NOME" ? "default" : "outline"
+                            }
+                            onClick={() => setMetodoCheckin("NOME")}
+                            className="flex items-center gap-2"
+                          >
+                            <Search className="h-4 w-4" />
+                            Nome
+                          </Button>
+                        </>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
@@ -1310,13 +1253,25 @@ export default function PresencaPage() {
             {/* Histórico */}
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <History className="h-5 w-5" />
-                  Histórico Recente
-                </CardTitle>
-                <CardDescription>
-                  Suas últimas presenças registradas
-                </CardDescription>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <History className="h-5 w-5" />
+                      Histórico Recente
+                    </CardTitle>
+                    <CardDescription>
+                      Suas últimas presenças registradas
+                    </CardDescription>
+                  </div>
+                  <Button
+                    variant="outline"
+                    onClick={() => router.push("/historico-presenca")}
+                    className="flex items-center gap-2"
+                  >
+                    <History className="h-4 w-4" />
+                    Ver Histórico Completo
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent>
                 {/* Filtros */}
@@ -1328,110 +1283,6 @@ export default function PresencaPage() {
                       onChange={(e) => setBuscaHistorico(e.target.value)}
                       className="flex-1"
                     />
-                  </div>
-
-                  {/* Filtro de Faixa com ícone de faixa */}
-                  <div className="flex gap-2 flex-wrap">
-                    <Button
-                      size="sm"
-                      variant={filtroFaixa === "todas" ? "default" : "outline"}
-                      onClick={() => setFiltroFaixa("todas")}
-                      className="text-xs"
-                    >
-                      Todas
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant={filtroFaixa === "branca" ? "default" : "outline"}
-                      onClick={() => setFiltroFaixa("branca")}
-                      className="text-xs"
-                    >
-                      <svg
-                        className="w-4 h-4 mr-1"
-                        viewBox="0 0 24 24"
-                        fill="currentColor"
-                      >
-                        <path
-                          d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 14H4V6h16v12z"
-                          fill="#FFFFFF"
-                          stroke="#000"
-                          strokeWidth="0.5"
-                        />
-                      </svg>
-                      Branca
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant={filtroFaixa === "azul" ? "default" : "outline"}
-                      onClick={() => setFiltroFaixa("azul")}
-                      className="text-xs"
-                    >
-                      <svg
-                        className="w-4 h-4 mr-1"
-                        viewBox="0 0 24 24"
-                        fill="currentColor"
-                      >
-                        <path
-                          d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 14H4V6h16v12z"
-                          fill="#0066CC"
-                        />
-                      </svg>
-                      Azul
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant={filtroFaixa === "roxa" ? "default" : "outline"}
-                      onClick={() => setFiltroFaixa("roxa")}
-                      className="text-xs"
-                    >
-                      <svg
-                        className="w-4 h-4 mr-1"
-                        viewBox="0 0 24 24"
-                        fill="currentColor"
-                      >
-                        <path
-                          d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 14H4V6h16v12z"
-                          fill="#9933CC"
-                        />
-                      </svg>
-                      Roxa
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant={filtroFaixa === "marrom" ? "default" : "outline"}
-                      onClick={() => setFiltroFaixa("marrom")}
-                      className="text-xs"
-                    >
-                      <svg
-                        className="w-4 h-4 mr-1"
-                        viewBox="0 0 24 24"
-                        fill="currentColor"
-                      >
-                        <path
-                          d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 14H4V6h16v12z"
-                          fill="#8B4513"
-                        />
-                      </svg>
-                      Marrom
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant={filtroFaixa === "preta" ? "default" : "outline"}
-                      onClick={() => setFiltroFaixa("preta")}
-                      className="text-xs"
-                    >
-                      <svg
-                        className="w-4 h-4 mr-1"
-                        viewBox="0 0 24 24"
-                        fill="currentColor"
-                      >
-                        <path
-                          d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 14H4V6h16v12z"
-                          fill="#000000"
-                        />
-                      </svg>
-                      Preta
-                    </Button>
                   </div>
                 </div>
 

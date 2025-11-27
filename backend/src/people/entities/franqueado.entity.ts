@@ -29,8 +29,41 @@ export class Franqueado {
   @Column({ length: 150, nullable: true })
   nome: string;
 
+  @Column({ length: 14, nullable: true })
+  cpf: string;
+
+  @Column({ length: 150, nullable: true })
+  email: string;
+
+  @Column({ length: 20, nullable: true })
+  telefone: string;
+
+  @Column({ type: 'uuid', nullable: true })
+  endereco_id: string | null;
+
   @Column({ type: 'jsonb', nullable: true })
   unidades_gerencia: string[] | null;
+
+  @Column({
+    type: 'varchar',
+    length: 20,
+    nullable: true,
+    default: 'ATIVA',
+  })
+  situacao: SituacaoFranqueado;
+
+  // Campos do contrato
+  @Column({ type: 'boolean', default: false })
+  contrato_aceito: boolean;
+
+  @Column({ type: 'timestamp', nullable: true })
+  contrato_aceito_em: Date | null;
+
+  @Column({ type: 'varchar', length: 20, nullable: true })
+  contrato_versao: string | null;
+
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  contrato_ip: string | null;
 
   @Column({ default: true })
   ativo: boolean;

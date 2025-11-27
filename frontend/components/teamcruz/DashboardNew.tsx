@@ -880,15 +880,23 @@ export default function DashboardNew() {
       });
 
       // Adaptar os dados para o formato esperado pelo componente
-      const adaptedItems = response.items.map((aluno: any) => ({
-        id: aluno.id,
-        nome: aluno.nome || aluno.nome_completo,
-        matricula: aluno.matricula || aluno.id.substring(0, 8).toUpperCase(),
-        faixa: aluno.faixa || aluno.faixa_atual || "Branca",
-        graus: aluno.graus || aluno.grau_atual || 0,
-        cpf: aluno.cpf,
-        token: `TKN-${aluno.id.substring(0, 8)}`,
-      }));
+      const adaptedItems = response.items.map((aluno: any) => {
+        // Buscar faixa ativa da relação aluno_faixas
+        const faixaAtiva = aluno.faixas?.find((f: any) => f.ativa);
+        const faixaNome =
+          faixaAtiva?.faixaDef?.nome_exibicao || aluno.faixa || "Branca";
+        const grausAtual = faixaAtiva?.graus_atual || aluno.graus || 0;
+
+        return {
+          id: aluno.id,
+          nome: aluno.nome || aluno.nome_completo,
+          matricula: aluno.matricula || aluno.id.substring(0, 8).toUpperCase(),
+          faixa: faixaNome,
+          graus: grausAtual,
+          cpf: aluno.cpf,
+          token: `TKN-${aluno.id.substring(0, 8)}`,
+        };
+      });
 
       return {
         items: adaptedItems,
@@ -971,15 +979,23 @@ export default function DashboardNew() {
       });
 
       // Adaptar os dados
-      const adaptedItems = response.items.map((aluno: any) => ({
-        id: aluno.id,
-        nome: aluno.nome || aluno.nome_completo,
-        matricula: aluno.matricula || aluno.id.substring(0, 8).toUpperCase(),
-        faixa: aluno.faixa || aluno.faixa_atual || "Branca",
-        graus: aluno.graus || aluno.grau_atual || 0,
-        cpf: aluno.cpf,
-        token: `TKN-${aluno.id.substring(0, 8)}`,
-      }));
+      const adaptedItems = response.items.map((aluno: any) => {
+        // Buscar faixa ativa da relação aluno_faixas
+        const faixaAtiva = aluno.faixas?.find((f: any) => f.ativa);
+        const faixaNome =
+          faixaAtiva?.faixaDef?.nome_exibicao || aluno.faixa || "Branca";
+        const grausAtual = faixaAtiva?.graus_atual || aluno.graus || 0;
+
+        return {
+          id: aluno.id,
+          nome: aluno.nome || aluno.nome_completo,
+          matricula: aluno.matricula || aluno.id.substring(0, 8).toUpperCase(),
+          faixa: faixaNome,
+          graus: grausAtual,
+          cpf: aluno.cpf,
+          token: `TKN-${aluno.id.substring(0, 8)}`,
+        };
+      });
 
       return {
         items: adaptedItems,
@@ -1098,15 +1114,14 @@ export default function DashboardNew() {
 
         // Mapear os dados reais dos alunos para o formato esperado
         const items = data.items.map((aluno: any) => {
-          const faixaEnum = aluno.faixa_atual || "BRANCA";
-          const faixaNome = convertFaixaEnumToDisplayName(faixaEnum);
-
           // Buscar a faixa ativa do aluno (relacionamento com aluno_faixa)
           const faixaAtiva = aluno.faixas?.find((f: any) => f.ativa === true);
+          const faixaNome = faixaAtiva?.faixaDef?.nome_exibicao || "BRANCA";
           const grausAtual = faixaAtiva?.graus_atual || 0;
           const presencasNoCiclo = faixaAtiva?.presencas_no_ciclo || 0;
 
           // Obter configuração para a faixa atual
+          const faixaEnum = faixaAtiva?.faixaDef?.codigo || "BRANCA";
           const configFaixa =
             graduationConfig[faixaEnum as keyof typeof graduationConfig] ||
             graduationConfig.BRANCA;

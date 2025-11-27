@@ -58,16 +58,16 @@ interface FaixaForm {
 const getFaixaColor = (faixa: string) => {
   const faixaUpper = faixa?.toUpperCase() || "";
   const colorMap: { [key: string]: string } = {
-    "BRANCA": "text-gray-600",
-    "CINZA": "text-gray-500",
-    "AMARELA": "text-yellow-600",
-    "LARANJA": "text-orange-600",
-    "VERDE": "text-green-600",
-    "AZUL": "text-blue-600",
-    "ROXA": "text-purple-600",
-    "MARROM": "text-yellow-800",
-    "PRETA": "text-gray-900",
-    "CORAL": "text-red-600",
+    BRANCA: "text-gray-600",
+    CINZA: "text-gray-500",
+    AMARELA: "text-yellow-600",
+    LARANJA: "text-orange-600",
+    VERDE: "text-green-600",
+    AZUL: "text-blue-600",
+    ROXA: "text-purple-600",
+    MARROM: "text-yellow-800",
+    PRETA: "text-gray-900",
+    CORAL: "text-red-600",
   };
   return colorMap[faixaUpper] || "text-purple-600";
 };
@@ -76,16 +76,16 @@ const getFaixaColor = (faixa: string) => {
 const getFaixaBorderColor = (faixa: string) => {
   const faixaUpper = faixa?.toUpperCase() || "";
   const colorMap: { [key: string]: string } = {
-    "BRANCA": "border-gray-400",
-    "CINZA": "border-gray-500",
-    "AMARELA": "border-yellow-500",
-    "LARANJA": "border-orange-500",
-    "VERDE": "border-green-500",
-    "AZUL": "border-blue-500",
-    "ROXA": "border-purple-500",
-    "MARROM": "border-yellow-800",
-    "PRETA": "border-gray-900",
-    "CORAL": "border-red-500",
+    BRANCA: "border-gray-400",
+    CINZA: "border-gray-500",
+    AMARELA: "border-yellow-500",
+    LARANJA: "border-orange-500",
+    VERDE: "border-green-500",
+    AZUL: "border-blue-500",
+    ROXA: "border-purple-500",
+    MARROM: "border-yellow-800",
+    PRETA: "border-gray-900",
+    CORAL: "border-red-500",
   };
   return colorMap[faixaUpper] || "border-purple-500";
 };
@@ -288,7 +288,9 @@ export default function MeuProgressoPage() {
   const handleSalvarFaixa = () => {
     // Validação: Faixa e Data de Início são sempre obrigatórios
     if (!faixaForm.faixaDestinoId || !faixaForm.dt_inicio) {
-      toast.error("Por favor, preencha a faixa conquistada e a data de início.");
+      toast.error(
+        "Por favor, preencha a faixa conquistada e a data de início."
+      );
       return;
     }
 
@@ -413,13 +415,6 @@ export default function MeuProgressoPage() {
           </div>
 
           <div className="flex gap-2">
-            <Button
-              className="bg-blue-600 hover:bg-blue-700"
-              onClick={handleAdicionarGrau}
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              Adicionar Grau
-            </Button>
             <Button variant="outline" onClick={handleAdicionarFaixa}>
               <Plus className="mr-2 h-4 w-4" />
               Adicionar Faixa Antiga
@@ -453,7 +448,9 @@ export default function MeuProgressoPage() {
                         className={`border-l-4 ${
                           isFaixaAtual(faixa.dt_fim)
                             ? "border-green-500 bg-green-50"
-                            : `${getFaixaBorderColor(faixa.faixaDestino)} bg-white`
+                            : `${getFaixaBorderColor(
+                                faixa.faixaDestino
+                              )} bg-white`
                         } pl-4 py-2 rounded-r-lg`}
                       >
                         {editingFaixa === faixa.id ? (
@@ -464,7 +461,9 @@ export default function MeuProgressoPage() {
                                 {faixa.faixaOrigem
                                   ? `${faixa.faixaOrigem} → `
                                   : ""}
-                                <span className={getFaixaColor(faixa.faixaDestino)}>
+                                <span
+                                  className={getFaixaColor(faixa.faixaDestino)}
+                                >
                                   {faixa.faixaDestino}
                                 </span>
                               </p>
@@ -535,7 +534,11 @@ export default function MeuProgressoPage() {
                                   {faixa.faixaOrigem
                                     ? `${faixa.faixaOrigem} → `
                                     : ""}
-                                  <span className={getFaixaColor(faixa.faixaDestino)}>
+                                  <span
+                                    className={getFaixaColor(
+                                      faixa.faixaDestino
+                                    )}
+                                  >
                                     {faixa.faixaDestino}
                                   </span>
                                 </p>
@@ -963,11 +966,30 @@ export default function MeuProgressoPage() {
                   <option value="">
                     Selecionar a faixa que você conquistou
                   </option>
-                  {faixas?.map((faixa: FaixaDef) => (
-                    <option key={faixa.id} value={faixa.id}>
-                      {faixa.nome}
-                    </option>
-                  ))}
+                  {faixas
+                    ?.filter((faixa: FaixaDef) => {
+                      // Buscar a faixa atual do aluno no histórico
+                      const faixaAtual = historico?.historicoFaixas?.find(
+                        (f: HistoricoFaixa) => !f.dt_fim
+                      );
+
+                      if (!faixaAtual) return true; // Se não tem faixa atual, mostra todas
+
+                      // Buscar a ordem da faixa atual
+                      const faixaAtualObj = faixas.find(
+                        (f: FaixaDef) => f.nome === faixaAtual.faixaDestino
+                      );
+
+                      if (!faixaAtualObj) return true;
+
+                      // Mostrar apenas faixas com ordem menor ou igual à atual
+                      return faixa.ordem <= faixaAtualObj.ordem;
+                    })
+                    .map((faixa: FaixaDef) => (
+                      <option key={faixa.id} value={faixa.id}>
+                        {faixa.nome}
+                      </option>
+                    ))}
                 </select>
               </div>
 

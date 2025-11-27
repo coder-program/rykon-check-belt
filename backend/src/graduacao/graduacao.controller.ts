@@ -42,7 +42,18 @@ export class GraduacaoController {
   async listarFaixas(
     @Query('categoria') categoria?: string,
   ): Promise<FaixaDef[]> {
-    return await this.graduacaoService.listarFaixas(categoria);
+    console.log(
+      '🌐 [CONTROLLER] GET /graduacao/faixas chamado. Categoria:',
+      categoria,
+    );
+    try {
+      const result = await this.graduacaoService.listarFaixas(categoria);
+      console.log('✅ [CONTROLLER] Retornando', result.length, 'faixas');
+      return result;
+    } catch (error) {
+      console.error('❌ [CONTROLLER] Erro ao listar faixas:', error);
+      throw error;
+    }
   }
 
   @Get('alunos/:alunoId/proxima-faixa')
