@@ -81,6 +81,8 @@ interface UnidadeFormData {
   horarios_funcionamento?: HorariosFuncionamento;
   status: StatusUnidade;
   requer_aprovacao_checkin?: boolean;
+  latitude?: number;
+  longitude?: number;
 }
 
 export default function PageUnidades() {
@@ -303,6 +305,8 @@ export default function PageUnidades() {
       status: "HOMOLOGACAO",
       horarios_funcionamento: {},
       requer_aprovacao_checkin: false,
+      latitude: undefined,
+      longitude: undefined,
     });
   };
 
@@ -430,6 +434,8 @@ export default function PageUnidades() {
       status: unidade.status || "HOMOLOGACAO",
       horarios_funcionamento: unidade.horarios_funcionamento || {},
       requer_aprovacao_checkin: unidade.requer_aprovacao_checkin || false,
+      latitude: unidade.latitude ?? undefined,
+      longitude: unidade.longitude ?? undefined,
     };
 
     // Buscar dados do endereço se houver endereco_id

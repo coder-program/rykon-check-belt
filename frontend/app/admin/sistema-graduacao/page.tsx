@@ -95,7 +95,10 @@ export default function SistemaGraduacaoPage() {
       .includes(p.toLowerCase());
 
   const podeGraduar =
-    hasPerfil("master") || hasPerfil("instrutor") || hasPerfil("franqueado");
+    hasPerfil("master") ||
+    hasPerfil("instrutor") ||
+    hasPerfil("franqueado") ||
+    hasPerfil("gerente_unidade");
 
   const faixasQuery = useQuery({
     queryKey: ["faixas-graduacao"],

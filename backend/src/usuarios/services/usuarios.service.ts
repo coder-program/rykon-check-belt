@@ -50,13 +50,15 @@ export class UsuariosService {
           perfisNomes.includes('INSTRUTOR');
         const isAluno = perfisNomes.includes('ALUNO');
         const isResponsavel = perfisNomes.includes('RESPONSAVEL');
+        const isTablet = perfisNomes.includes('TABLET_CHECKIN');
 
         const needsUnidade =
           isGerente ||
           isRecepcionista ||
           isProfessor ||
           isAluno ||
-          isResponsavel;
+          isResponsavel ||
+          isTablet;
 
         let unidade: any = null;
 
@@ -143,6 +145,24 @@ export class UsuariosService {
                FROM teamcruz.responsaveis r
                INNER JOIN teamcruz.unidades u ON u.id = r.unidade_id
                WHERE r.usuario_id = $1
+               LIMIT 1`,
+              [usuario.id],
+            );
+
+            if (unidadeData && unidadeData.length > 0) {
+              unidade = {
+                id: unidadeData[0].id,
+                nome: unidadeData[0].nome,
+                status: unidadeData[0].status,
+              };
+            }
+          } else if (isTablet) {
+            // Tablet: buscar via tabela tablet_unidades
+            const unidadeData = await this.usuarioRepository.query(
+              `SELECT u.id, u.nome, u.status
+               FROM teamcruz.tablet_unidades tu
+               INNER JOIN teamcruz.unidades u ON u.id = tu.unidade_id
+               WHERE tu.tablet_id = $1 AND tu.ativo = true
                LIMIT 1`,
               [usuario.id],
             );
@@ -400,6 +420,49 @@ export class UsuariosService {
           );
         }
 
+        // TABLET_CHECKIN: criar registro na tabela tablet_unidades
+        console.log('🔥 [CREATE TABLET] Perfil:', perfilNome);
+        console.log(
+          '🔥 [CREATE TABLET] unidade_id recebido:',
+          createUsuarioDto.unidade_id,
+        );
+        console.log(
+          '🔥 [CREATE TABLET] Condição:',
+          perfilNome === 'TABLET_CHECKIN' && createUsuarioDto.unidade_id,
+        );
+
+        if (perfilNome === 'TABLET_CHECKIN' && createUsuarioDto.unidade_id) {
+          console.log('✅ [CREATE TABLET] Inserindo em tablet_unidades...');
+          console.log('✅ [CREATE TABLET] tablet_id:', usuarioSalvo.id);
+          console.log(
+            '✅ [CREATE TABLET] unidade_id:',
+            createUsuarioDto.unidade_id,
+          );
+
+          await this.dataSource.query(
+            `
+            INSERT INTO teamcruz.tablet_unidades
+            (tablet_id, unidade_id, ativo, created_at, updated_at)
+            VALUES ($1, $2, $3, NOW(), NOW())
+            `,
+            [usuarioSalvo.id, createUsuarioDto.unidade_id, true],
+          );
+
+          console.log('✅ [CREATE TABLET] Vínculo criado com sucesso!');
+        } else {
+          console.log(
+            '❌ [CREATE TABLET] Vínculo NÃO foi criado. Motivos possíveis:',
+          );
+          console.log(
+            '   - Perfil não é TABLET_CHECKIN?',
+            perfilNome !== 'TABLET_CHECKIN',
+          );
+          console.log(
+            '   - unidade_id não foi enviado?',
+            !createUsuarioDto.unidade_id,
+          );
+        }
+
         // RESPONSAVEL: criar registro na tabela responsaveis
         if (perfilNome === 'RESPONSAVEL' && createUsuarioDto.unidade_id) {
           console.log(
@@ -586,6 +649,22 @@ export class UsuariosService {
       const franqueadoId = franqueadoData[0].id;
       console.log('🔍 [FIND ALL HIERARCHY] Franqueado ID:', franqueadoId);
 
+      // 🔥 LOG: Verificar tablets antes da query principal
+      const debugTablets = await this.usuarioRepository.query(
+        `SELECT u.id, u.nome, u.email, tu.unidade_id, un.franqueado_id, tu.ativo as tablet_ativo
+         FROM teamcruz.usuarios u
+         INNER JOIN teamcruz.usuario_perfis up ON up.usuario_id = u.id
+         INNER JOIN teamcruz.perfis p ON p.id = up.perfil_id
+         LEFT JOIN teamcruz.tablet_unidades tu ON tu.tablet_id = u.id
+         LEFT JOIN teamcruz.unidades un ON un.id = tu.unidade_id
+         WHERE p.nome = 'TABLET_CHECKIN'`,
+      );
+      console.log(
+        '🔥 [DEBUG TABLETS] Total de tablets no sistema:',
+        debugTablets.length,
+      );
+      console.log('🔥 [DEBUG TABLETS] Tablets:', debugTablets);
+
       const usuariosIds = await this.usuarioRepository.query(
         `
         SELECT DISTINCT u.id,
@@ -599,6 +678,7 @@ export class UsuariosService {
                  WHEN un_prof_pendente.franqueado_id = $1 THEN 'professor_pendente_da_unidade'
                  WHEN un_gerente.franqueado_id = $1 THEN 'gerente_da_unidade'
                  WHEN un_recep.franqueado_id = $1 THEN 'recepcionista_da_unidade'
+                 WHEN un_tablet.franqueado_id = $1 THEN 'tablet_da_unidade'
                  WHEN perfil.nome = 'RESPONSAVEL' AND resp.unidade_id IN (SELECT id FROM teamcruz.unidades WHERE franqueado_id = $1) THEN 'responsavel_da_unidade'
                  WHEN perfil.nome = 'RESPONSAVEL' AND un_resp_aluno.franqueado_id = $1 THEN 'responsavel_com_aluno_na_unidade'
                  ELSE 'outro'
@@ -616,6 +696,8 @@ export class UsuariosService {
         LEFT JOIN teamcruz.unidades un_gerente ON un_gerente.id = gu.unidade_id
         LEFT JOIN teamcruz.recepcionista_unidades ru ON ru.usuario_id = u.id AND ru.ativo = TRUE
         LEFT JOIN teamcruz.unidades un_recep ON un_recep.id = ru.unidade_id
+        LEFT JOIN teamcruz.tablet_unidades tu ON tu.tablet_id = u.id AND tu.ativo = TRUE
+        LEFT JOIN teamcruz.unidades un_tablet ON un_tablet.id = tu.unidade_id
         LEFT JOIN teamcruz.franqueados f ON f.usuario_id = u.id
         LEFT JOIN teamcruz.usuario_perfis up ON up.usuario_id = u.id
         LEFT JOIN teamcruz.perfis perfil ON perfil.id = up.perfil_id
@@ -624,7 +706,7 @@ export class UsuariosService {
         LEFT JOIN teamcruz.alunos aluno_resp ON aluno_resp.responsavel_id = resp.id
         LEFT JOIN teamcruz.unidades un_resp_aluno ON un_resp_aluno.id = aluno_resp.unidade_id
         WHERE (
-          (un_aluno.franqueado_id = $1 OR un_prof.franqueado_id = $1 OR un_prof_pendente.franqueado_id = $1 OR un_gerente.franqueado_id = $1 OR un_recep.franqueado_id = $1)
+          (un_aluno.franqueado_id = $1 OR un_prof.franqueado_id = $1 OR un_prof_pendente.franqueado_id = $1 OR un_gerente.franqueado_id = $1 OR un_recep.franqueado_id = $1 OR un_tablet.franqueado_id = $1)
           OR f.id = $1
           OR u.id = $2
           -- ✅ Incluir responsáveis vinculados às unidades do franqueado (mesmo sem alunos)
@@ -651,6 +733,7 @@ export class UsuariosService {
         '🔍 [FIND ALL HIERARCHY] Total de usuários encontrados:',
         usuariosIds.length,
       );
+      console.log('🔥 [DEBUG IDs] IDs retornados pela query:', usuariosIds);
       console.log(
         '🔍 [FIND ALL HIERARCHY] Motivos de inclusão:',
         usuariosIds.map((u: any) => ({
@@ -659,6 +742,21 @@ export class UsuariosService {
           motivo: u.motivo_inclusao,
         })),
       );
+
+      // 🔥 LOG: Comparar tablets do sistema com os retornados
+      const tabletsRetornados = usuariosIds.filter(
+        (u) => u.motivo_inclusao === 'tablet',
+      );
+      console.log(
+        '🔥 [DEBUG TABLETS] Tablets retornados na query principal:',
+        tabletsRetornados.length,
+      );
+      if (tabletsRetornados.length > 0) {
+        console.log(
+          '🔥 [DEBUG TABLETS] Tablets retornados:',
+          tabletsRetornados,
+        );
+      }
 
       // 🔥 LOG DETALHADO: Quantos alunos foram retornados pela query
       const totalAlunos = usuariosIds.filter(
@@ -946,6 +1044,38 @@ export class UsuariosService {
         } catch (error) {
           console.error(
             '❌ [UPDATE] Erro ao atualizar unidade:',
+            error.message,
+          );
+        }
+      }
+
+      if (perfisNomes.includes('TABLET_CHECKIN')) {
+        try {
+          // Verificar se já existe registro
+          const existing = await this.usuarioRepository.query(
+            `SELECT id FROM teamcruz.tablet_unidades WHERE usuario_id = $1`,
+            [id],
+          );
+
+          if (existing && existing.length > 0) {
+            // Atualizar registro existente
+            await this.usuarioRepository.query(
+              `UPDATE teamcruz.tablet_unidades
+               SET unidade_id = $1, updated_at = NOW()
+               WHERE usuario_id = $2`,
+              [updateData.unidade_id, id],
+            );
+          } else {
+            // Criar novo registro
+            await this.usuarioRepository.query(
+              `INSERT INTO teamcruz.tablet_unidades (tablet_id, unidade_id, ativo, created_at, updated_at)
+               VALUES ($1, $2, true, NOW(), NOW())`,
+              [id, updateData.unidade_id],
+            );
+          }
+        } catch (error) {
+          console.error(
+            '❌ [UPDATE] Erro ao atualizar tablet_unidades:',
             error.message,
           );
         }

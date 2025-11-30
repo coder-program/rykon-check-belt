@@ -178,6 +178,22 @@ export class AulaController {
 
     const unidadesDoUsuario = await this.getUnidadeIdsFromUser(req);
 
+    // Se for aluno, buscar a unidade dele automaticamente
+    if (!unidade_id && req?.user?.id) {
+      // Tentar buscar a unidade do aluno
+      const aluno = await this.dataSource.query(
+        `SELECT unidade_id FROM teamcruz.alunos WHERE usuario_id = $1 AND status = 'ATIVO'`,
+        [req.user.id],
+      );
+
+      if (aluno && aluno.length > 0 && aluno[0].unidade_id) {
+        console.log(
+          `✅ [AULAS HORARIOS] Aluno encontrado - usando unidade: ${aluno[0].unidade_id}`,
+        );
+        return this.aulaService.findHorariosDisponiveis(aluno[0].unidade_id);
+      }
+    }
+
     // Se for master/admin (null) ou não passou unidade_id, requer unidade no query
     if (
       unidadesDoUsuario === null ||

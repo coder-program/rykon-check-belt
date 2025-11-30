@@ -584,7 +584,7 @@ export default function UsuariosManagerNew() {
           foto: formData.foto || null, // ✅ Incluir foto
         };
 
-        // Se for GERENTE_UNIDADE, RECEPCIONISTA ou INSTRUTOR, adicionar unidade_id
+        // Se for GERENTE_UNIDADE, RECEPCIONISTA, INSTRUTOR ou TABLET_CHECKIN, adicionar unidade_id
         const isGerenteSelected = formData.perfil_ids.some((id) => {
           const perfil = perfisDisponiveis.find((p: any) => p.id === id);
           return perfil?.nome?.toUpperCase() === "GERENTE_UNIDADE";
@@ -600,10 +600,21 @@ export default function UsuariosManagerNew() {
           return perfil?.nome?.toUpperCase() === "INSTRUTOR";
         });
 
+        const isTabletCheckinSelected = formData.perfil_ids.some((id) => {
+          const perfil = perfisDisponiveis.find((p: any) => p.id === id);
+          return perfil?.nome?.toUpperCase() === "TABLET_CHECKIN";
+        });
+
+        // TABLET_CHECKIN sempre tem cadastro completo
+        if (isTabletCheckinSelected) {
+          createPayload.cadastro_completo = true;
+        }
+
         if (
           (isGerenteSelected ||
             isRecepcionistaSelected ||
-            isInstrutorSelected) &&
+            isInstrutorSelected ||
+            isTabletCheckinSelected) &&
           formData.unidade_id
         ) {
           createPayload.unidade_id = formData.unidade_id;

@@ -1261,19 +1261,40 @@ export class AlunosService {
     // Buscar unidade do usuário (TABLET_CHECKIN deve estar vinculado a uma unidade)
     let unidadeId: string | null = null;
 
+    console.log('🔍 [listarAlunosParaCheckin] User perfis:', user?.perfis);
+    console.log('🔍 [listarAlunosParaCheckin] User id:', user?.id);
+
     // Para TABLET_CHECKIN, buscar via tablet_unidades
-    if (user?.perfis?.includes('TABLET_CHECKIN')) {
+    const perfisNomes = (user?.perfis || []).map((p: any) =>
+      typeof p === 'string' ? p.toUpperCase() : p.nome?.toUpperCase(),
+    );
+
+    console.log(
+      '🔍 [listarAlunosParaCheckin] Perfis normalizados:',
+      perfisNomes,
+    );
+
+    if (perfisNomes.includes('TABLET_CHECKIN')) {
+      console.log(
+        '✅ [listarAlunosParaCheckin] Usuário é TABLET_CHECKIN, buscando unidade...',
+      );
       const result = await this.dataSource.query(
         `SELECT unidade_id FROM teamcruz.tablet_unidades WHERE tablet_id = $1 AND ativo = true LIMIT 1`,
         [user.id],
       );
+      console.log('🔍 [listarAlunosParaCheckin] Resultado query:', result);
       unidadeId = result[0]?.unidade_id || null;
+      console.log(
+        '🔍 [listarAlunosParaCheckin] unidadeId encontrado:',
+        unidadeId,
+      );
     }
 
     if (!unidadeId) {
       console.warn(
         '⚠️ [listarAlunosParaCheckin] Usuário não vinculado a unidade',
       );
+      console.warn('⚠️ [listarAlunosParaCheckin] Perfis:', perfisNomes);
       return [];
     }
 

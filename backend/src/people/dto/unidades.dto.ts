@@ -203,6 +203,27 @@ export class CreateUnidadeDto {
   @IsOptional()
   horarios_funcionamento?: HorariosFuncionamento;
 
+  @ApiPropertyOptional({
+    description: 'Define se check-ins da unidade precisam de aprovação',
+    default: false,
+  })
+  @IsOptional()
+  requer_aprovacao_checkin?: boolean;
+
+  @ApiPropertyOptional({
+    description: 'Latitude da localização da unidade',
+    example: -23.55052,
+  })
+  @IsOptional()
+  latitude?: number;
+
+  @ApiPropertyOptional({
+    description: 'Longitude da localização da unidade',
+    example: -46.633308,
+  })
+  @IsOptional()
+  longitude?: number;
+
   @ApiPropertyOptional({ description: 'ID do endereço da unidade' })
   @IsOptional()
   @IsString()
@@ -272,6 +293,20 @@ export class UpdateUnidadeDto {
   })
   @IsOptional()
   requer_aprovacao_checkin?: boolean;
+
+  @ApiPropertyOptional({
+    description: 'Latitude da localização da unidade',
+    example: -23.55052,
+  })
+  @IsOptional()
+  latitude?: number;
+
+  @ApiPropertyOptional({
+    description: 'Longitude da localização da unidade',
+    example: -46.633308,
+  })
+  @IsOptional()
+  longitude?: number;
 
   @ApiPropertyOptional({
     example: { seg: '06:00-22:00', ter: '06:00-22:00', sab: '08:00-16:00' },

@@ -20,9 +20,9 @@ export class UnidadesService {
     const q = `INSERT INTO teamcruz.unidades
       (franqueado_id, nome, cnpj, razao_social, nome_fantasia, inscricao_estadual, inscricao_municipal,
        telefone_fixo, telefone_celular, email, website, redes_sociais,
-       status, horarios_funcionamento, endereco_id, created_at, updated_at)
+       status, horarios_funcionamento, endereco_id, requer_aprovacao_checkin, created_at, updated_at)
       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,COALESCE($13,'HOMOLOGACAO')::teamcruz.status_unidade_enum,
-              $14,$15,NOW(),NOW())
+              $14,$15,COALESCE($16,FALSE),NOW(),NOW())
       RETURNING *`;
 
     const params = [
@@ -43,6 +43,7 @@ export class UnidadesService {
         ? JSON.stringify(dto.horarios_funcionamento)
         : null,
       dto.endereco_id ?? null,
+      dto.requer_aprovacao_checkin ?? false,
     ];
 
     try {
@@ -570,6 +571,9 @@ export class UnidadesService {
       // Status
       status: row.status,
       requer_aprovacao_checkin: row.requer_aprovacao_checkin || false,
+      // Geolocalização
+      latitude: row.latitude ? parseFloat(row.latitude) : null,
+      longitude: row.longitude ? parseFloat(row.longitude) : null,
       // Dados estruturais
       horarios_funcionamento: row.horarios_funcionamento,
       // Endereço

@@ -214,6 +214,13 @@ export default function GerenteDashboard() {
       color: "bg-yellow-500",
       urgent: stats.graduacoesPendentes > 0,
     },
+    {
+      title: "Sistema Graduação",
+      description: "Controle de faixas e graus",
+      icon: Trophy,
+      action: () => router.push("/admin/sistema-graduacao"),
+      color: "bg-amber-500",
+    },
     // TODO: Implementar funcionalidade de relatórios
     // {
     //   title: "Relatórios",

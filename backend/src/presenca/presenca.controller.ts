@@ -43,13 +43,24 @@ export class PresencaController {
       type: 'object',
       properties: {
         qrCode: { type: 'string' },
+        latitude: { type: 'number', description: 'Latitude do aluno' },
+        longitude: { type: 'number', description: 'Longitude do aluno' },
       },
+      required: ['qrCode'],
     },
   })
   @ApiResponse({ status: 200, description: 'Check-in realizado com sucesso' })
   @ApiResponse({ status: 400, description: 'QR Code inválido ou expirado' })
-  async checkInQR(@Body() body: { qrCode: string }, @Request() req) {
-    return this.presencaService.checkInQR(body.qrCode, req.user);
+  async checkInQR(
+    @Body() body: { qrCode: string; latitude?: number; longitude?: number },
+    @Request() req,
+  ) {
+    return this.presencaService.checkInQR(
+      body.qrCode,
+      req.user,
+      body.latitude,
+      body.longitude,
+    );
   }
 
   @Post('check-in-manual')
@@ -59,12 +70,23 @@ export class PresencaController {
       type: 'object',
       properties: {
         aulaId: { type: 'string' },
+        latitude: { type: 'number', description: 'Latitude do aluno' },
+        longitude: { type: 'number', description: 'Longitude do aluno' },
       },
+      required: ['aulaId'],
     },
   })
   @ApiResponse({ status: 200, description: 'Check-in manual realizado' })
-  async checkInManual(@Body() body: { aulaId: string }, @Request() req) {
-    return this.presencaService.checkInManual(body.aulaId, req.user);
+  async checkInManual(
+    @Body() body: { aulaId: string; latitude?: number; longitude?: number },
+    @Request() req,
+  ) {
+    return this.presencaService.checkInManual(
+      body.aulaId,
+      req.user,
+      body.latitude,
+      body.longitude,
+    );
   }
 
   @Post('check-in-dependente')
@@ -102,6 +124,15 @@ export class PresencaController {
   @ApiResponse({ status: 200, description: 'Histórico de presenças' })
   async getMinhaHistorico(@Request() req, @Query('limit') limit?: number) {
     return this.presencaService.getMinhaHistorico(req.user, limit);
+  }
+
+  @Get('minhas-pendentes')
+  @ApiOperation({
+    summary: 'Check-ins pendentes de aprovação do usuário logado',
+  })
+  @ApiResponse({ status: 200, description: 'Lista de check-ins pendentes' })
+  async getMinhasPendentes(@Request() req) {
+    return this.presencaService.getMinhasPendentes(req.user);
   }
 
   @Post('check-in-cpf')

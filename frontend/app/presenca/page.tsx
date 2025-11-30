@@ -108,10 +108,12 @@ export default function PresencaPage() {
   const [meusFilhos, setMeusFilhos] = useState<Aluno[]>([]);
   const [showResponsavelMode, setShowResponsavelMode] = useState(false);
   const [buscaHistorico, setBuscaHistorico] = useState("");
+  const [presencasPendentes, setPresencasPendentes] = useState<any[]>([]);
 
   useEffect(() => {
     loadAulaAtiva();
     loadHistoricoPresenca();
+    loadPresencasPendentes();
     loadEstatisticas();
     loadMeusFilhos();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -210,6 +212,28 @@ export default function PresencaPage() {
     }
   };
 
+  const loadPresencasPendentes = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/presenca/minhas-pendentes`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        setPresencasPendentes(data);
+      }
+    } catch (error) {
+      console.error("Erro ao carregar pendentes:", error);
+    }
+  };
+
   const loadEstatisticas = async () => {
     try {
       const token = localStorage.getItem("token");
@@ -305,6 +329,30 @@ export default function PresencaPage() {
   const processQRCode = async (qrData: string) => {
     setLoading(true);
     try {
+      // Obter geolocalização do usuário
+      let latitude: number | undefined;
+      let longitude: number | undefined;
+
+      try {
+        if (navigator.geolocation) {
+          const position = await new Promise<GeolocationPosition>(
+            (resolve, reject) => {
+              navigator.geolocation.getCurrentPosition(resolve, reject, {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 0,
+              });
+            }
+          );
+          latitude = position.coords.latitude;
+          longitude = position.coords.longitude;
+          console.log("📍 Localização obtida:", { latitude, longitude });
+        }
+      } catch (geoError) {
+        console.warn("⚠️ Não foi possível obter localização:", geoError);
+        // Continua sem localização - o backend decidirá se bloqueia ou não
+      }
+
       const token = localStorage.getItem("token");
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/presenca/check-in-qr`,
@@ -314,7 +362,11 @@ export default function PresencaPage() {
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ qrCode: qrData }),
+          body: JSON.stringify({
+            qrCode: qrData,
+            latitude,
+            longitude,
+          }),
         }
       );
 
@@ -326,6 +378,7 @@ export default function PresencaPage() {
           text: "Check-in realizado com sucesso!",
         });
         loadHistoricoPresenca();
+        loadPresencasPendentes();
         loadEstatisticas();
       } else {
         setMessage({
@@ -354,6 +407,34 @@ export default function PresencaPage() {
 
     setLoading(true);
     try {
+      // Obter geolocalização do usuário
+      let latitude: number | undefined;
+      let longitude: number | undefined;
+
+      try {
+        if (navigator.geolocation) {
+          const position = await new Promise<GeolocationPosition>(
+            (resolve, reject) => {
+              navigator.geolocation.getCurrentPosition(resolve, reject, {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 0,
+              });
+            }
+          );
+          latitude = position.coords.latitude;
+          longitude = position.coords.longitude;
+          console.log("📍 Localização obtida:", { latitude, longitude });
+        }
+      } catch (geoError) {
+        console.warn("⚠️ Não foi possível obter localização:", geoError);
+        toast.error(
+          "Não foi possível obter sua localização. Verifique as permissões do navegador."
+        );
+        setLoading(false);
+        return; // Bloqueia o check-in se não conseguir a localização
+      }
+
       const token = localStorage.getItem("token");
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/presenca/check-in-manual`,
@@ -363,7 +444,11 @@ export default function PresencaPage() {
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ aulaId: aulaAtiva.id }),
+          body: JSON.stringify({
+            aulaId: aulaAtiva.id,
+            latitude,
+            longitude,
+          }),
         }
       );
 
@@ -1274,6 +1359,34 @@ export default function PresencaPage() {
                 </div>
               </CardHeader>
               <CardContent>
+                {/* Aviso de Pendentes */}
+                {presencasPendentes.length > 0 && (
+                  <div className="mb-4 p-4 bg-amber-50 border-l-4 border-amber-500 rounded-lg">
+                    <div className="flex items-start gap-3">
+                      <Clock className="h-5 w-5 text-amber-600 mt-0.5" />
+                      <div className="flex-1">
+                        <h4 className="font-semibold text-amber-900">
+                          {presencasPendentes.length} check-in
+                          {presencasPendentes.length > 1 ? "s" : ""} aguardando
+                          aprovação
+                        </h4>
+                        <p className="text-sm text-amber-700 mt-1">
+                          Seu check-in foi registrado e está aguardando
+                          confirmação da recepção/professor.
+                        </p>
+                        <ul className="mt-2 space-y-1">
+                          {presencasPendentes.map((p) => (
+                            <li key={p.id} className="text-sm text-amber-600">
+                              • {p.aula} -{" "}
+                              {new Date(p.data).toLocaleString("pt-BR")}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Filtros */}
                 <div className="space-y-3 mb-6">
                   <div className="flex gap-2">

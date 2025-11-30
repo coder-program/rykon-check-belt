@@ -94,6 +94,13 @@ export class Unidade {
   })
   requer_aprovacao_checkin: boolean;
 
+  // Geolocalização
+  @Column({ type: 'decimal', precision: 10, scale: 8, nullable: true })
+  latitude: number;
+
+  @Column({ type: 'decimal', precision: 11, scale: 8, nullable: true })
+  longitude: number;
+
   // Dados estruturais (JSONB)
   @Column({ type: 'jsonb', nullable: true })
   horarios_funcionamento: HorariosFuncionamento | null;

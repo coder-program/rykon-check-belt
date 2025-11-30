@@ -110,7 +110,12 @@ interface ProfileData {
 }
 
 export default function MeuPerfilPage() {
-  const { user, isAuthenticated, loading: authLoading } = useAuth();
+  const {
+    user,
+    isAuthenticated,
+    loading: authLoading,
+    checkAuthStatus,
+  } = useAuth();
   const router = useRouter();
   const queryClient = useQueryClient();
 
@@ -709,9 +714,12 @@ export default function MeuPerfilPage() {
 
       return await userResponse.json();
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       setSuccessMessage("Perfil atualizado com sucesso!");
       setErrors({});
+
+      // Recarregar dados do usuário no AuthContext
+      await checkAuthStatus();
 
       // Invalidar queries para recarregar dados
       queryClient.invalidateQueries({ queryKey: ["user"] });
@@ -1037,14 +1045,19 @@ export default function MeuPerfilPage() {
       dataToSubmit.uf = formData.uf;
     }
 
-    // Remover campos vazios
+    // Remover campos vazios (exceto foto que pode ser base64 grande)
     Object.keys(dataToSubmit).forEach((key) => {
       const value = dataToSubmit[key as keyof ProfileData];
-      if (!value || value === "") {
+      // Não remover o campo foto mesmo se estiver vazio (para permitir remoção de foto)
+      if (key !== "foto" && (!value || value === "")) {
         delete dataToSubmit[key as keyof ProfileData];
       }
     });
 
+    console.log("📤 Enviando dados do perfil:", {
+      ...dataToSubmit,
+      foto: dataToSubmit.foto ? "base64..." : "vazio",
+    });
     updateProfileMutation.mutate(dataToSubmit);
   };
 

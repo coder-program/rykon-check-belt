@@ -61,6 +61,9 @@ interface UnidadeFormData {
   horarios_funcionamento?: HorariosFuncionamento;
   status: StatusUnidade;
   requer_aprovacao_checkin?: boolean;
+  // Geolocalização
+  latitude?: number;
+  longitude?: number;
 }
 
 interface Franqueado {
@@ -719,11 +722,16 @@ export default function UnidadeForm({
                           const input = e.currentTarget;
                           const cursorPos = input.selectionStart || 0;
                           const value = input.value;
-                          
+
                           // Se o cursor está logo após um caractere especial, remove-o também
-                          if (cursorPos > 0 && ["-", " ", "(", ")"].includes(value[cursorPos - 1])) {
+                          if (
+                            cursorPos > 0 &&
+                            ["-", " ", "(", ")"].includes(value[cursorPos - 1])
+                          ) {
                             e.preventDefault();
-                            const newValue = value.slice(0, cursorPos - 1) + value.slice(cursorPos);
+                            const newValue =
+                              value.slice(0, cursorPos - 1) +
+                              value.slice(cursorPos);
                             const formatted = formatPhone(newValue);
                             setFormData({
                               ...formData,
@@ -771,11 +779,16 @@ export default function UnidadeForm({
                           const input = e.currentTarget;
                           const cursorPos = input.selectionStart || 0;
                           const value = input.value;
-                          
+
                           // Se o cursor está logo após um caractere especial, remove-o também
-                          if (cursorPos > 0 && ["-", " ", "(", ")"].includes(value[cursorPos - 1])) {
+                          if (
+                            cursorPos > 0 &&
+                            ["-", " ", "(", ")"].includes(value[cursorPos - 1])
+                          ) {
                             e.preventDefault();
-                            const newValue = value.slice(0, cursorPos - 1) + value.slice(cursorPos);
+                            const newValue =
+                              value.slice(0, cursorPos - 1) +
+                              value.slice(cursorPos);
                             const formatted = formatPhoneFixo(newValue);
                             setFormData({
                               ...formData,
@@ -1103,6 +1116,154 @@ export default function UnidadeForm({
                       }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
+                  </div>
+                </div>
+
+                {/* Seção de Geolocalização */}
+                <div className="border-t pt-6 mt-6">
+                  <h4 className="text-md font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                    📍 Localização GPS
+                    <span className="text-xs font-normal text-gray-500">
+                      (necessário para validar check-in dos alunos)
+                    </span>
+                  </h4>
+
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                    <p className="text-sm text-blue-800 mb-2">
+                      <strong>Por que isso é necessário?</strong>
+                    </p>
+                    <p className="text-sm text-blue-700">
+                      A localização da unidade é usada para garantir que os
+                      alunos façam check-in apenas quando estiverem fisicamente
+                      na academia (dentro de um raio de 100 metros).
+                    </p>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="flex gap-3">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (navigator.geolocation) {
+                            toast.loading("Obtendo sua localização...");
+                            navigator.geolocation.getCurrentPosition(
+                              (position) => {
+                                toast.dismiss();
+                                setFormData({
+                                  ...formData,
+                                  latitude: position.coords.latitude,
+                                  longitude: position.coords.longitude,
+                                });
+                                toast.success(
+                                  "Localização obtida com sucesso!"
+                                );
+                              },
+                              (error) => {
+                                toast.dismiss();
+                                toast.error(
+                                  "Erro ao obter localização. Verifique se você permitiu o acesso à localização."
+                                );
+                                console.error("Erro de geolocalização:", error);
+                              }
+                            );
+                          } else {
+                            toast.error(
+                              "Seu navegador não suporta geolocalização"
+                            );
+                          }
+                        }}
+                        className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
+                      >
+                        📍 Obter Minha Localização Atual
+                      </button>
+
+                      {(formData.latitude || formData.longitude) && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setFormData({
+                              ...formData,
+                              latitude: undefined,
+                              longitude: undefined,
+                            });
+                            toast.success("Localização removida");
+                          }}
+                          className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                        >
+                          🗑️ Remover Localização
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Latitude
+                        </label>
+                        <input
+                          type="number"
+                          step="0.00000001"
+                          value={formData.latitude || ""}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              latitude: e.target.value
+                                ? parseFloat(e.target.value)
+                                : undefined,
+                            })
+                          }
+                          placeholder="Ex: -23.550520"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        />
+                        <p className="mt-1 text-xs text-gray-500">
+                          Valor entre -90 e 90
+                        </p>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Longitude
+                        </label>
+                        <input
+                          type="number"
+                          step="0.00000001"
+                          value={formData.longitude || ""}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              longitude: e.target.value
+                                ? parseFloat(e.target.value)
+                                : undefined,
+                            })
+                          }
+                          placeholder="Ex: -46.633308"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        />
+                        <p className="mt-1 text-xs text-gray-500">
+                          Valor entre -180 e 180
+                        </p>
+                      </div>
+                    </div>
+
+                    {formData.latitude && formData.longitude && (
+                      <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                        <p className="text-sm text-green-800 font-medium mb-2">
+                          ✅ Localização configurada
+                        </p>
+                        <p className="text-sm text-green-700">
+                          Coordenadas: {formData.latitude.toFixed(6)},{" "}
+                          {formData.longitude.toFixed(6)}
+                        </p>
+                        <a
+                          href={`https://www.google.com/maps?q=${formData.latitude},${formData.longitude}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm text-blue-600 hover:underline mt-2 inline-block"
+                        >
+                          🗺️ Ver no Google Maps
+                        </a>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

@@ -812,7 +812,22 @@ export default function AlunoDashboard({
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-4">
+              {/* Foto de Perfil */}
+              {user?.foto ? (
+                <img
+                  src={user.foto}
+                  alt={alunoNome || user?.nome || "Aluno"}
+                  className="h-16 w-16 rounded-full object-cover border-4 border-blue-500 shadow-lg"
+                />
+              ) : (
+                <div className="h-16 w-16 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center border-4 border-blue-400 shadow-lg">
+                  <span className="text-2xl font-bold text-white">
+                    {(alunoNome || user?.nome || "A").charAt(0).toUpperCase()}
+                  </span>
+                </div>
+              )}
+
               <GraduationCap className="h-8 w-8 text-blue-600" />
               <div>
                 <h1 className="text-3xl font-bold text-gray-900">

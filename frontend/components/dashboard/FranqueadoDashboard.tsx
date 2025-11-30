@@ -369,6 +369,13 @@ export default function FranqueadoDashboard() {
       color: "bg-yellow-500",
       urgent: graduacoesEsteTrimestre > 0,
     },
+    {
+      title: "Sistema Graduação",
+      description: "Controle de faixas e graus",
+      icon: Trophy,
+      action: () => router.push("/admin/sistema-graduacao"),
+      color: "bg-amber-500",
+    },
     // TODO: Implementar funcionalidade de relatórios
     // {
     //   title: "Relatórios",
