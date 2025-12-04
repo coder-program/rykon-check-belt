@@ -24,6 +24,7 @@ import {
   Loader2,
   UserCheck,
   Clock,
+  DollarSign,
 } from "lucide-react";
 
 export default function GerenteDashboard() {
@@ -220,6 +221,13 @@ export default function GerenteDashboard() {
       icon: Trophy,
       action: () => router.push("/admin/sistema-graduacao"),
       color: "bg-amber-500",
+    },
+    {
+      title: "Gestão Financeira",
+      description: "Dashboard e contas da unidade",
+      icon: DollarSign,
+      action: () => router.push("/financeiro/dashboard"),
+      color: "bg-emerald-500",
     },
     // TODO: Implementar funcionalidade de relatórios
     // {

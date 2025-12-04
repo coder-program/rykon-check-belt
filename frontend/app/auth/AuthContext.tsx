@@ -80,6 +80,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       if (typeof window !== "undefined") {
         localStorage.setItem("token", response.access_token);
+        localStorage.setItem("user", JSON.stringify(response.user));
       }
       setUser(response.user);
       setIsAuthenticated(true);

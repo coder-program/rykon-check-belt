@@ -1257,6 +1257,29 @@ export default function AlunoDashboard({
               </div>
             </CardContent>
           </Card>
+
+          {/* Card de Faturas */}
+          <Card className="mb-8">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                💰 Minhas Faturas
+              </CardTitle>
+              <CardDescription>
+                Acompanhe seus pagamentos e mensalidades
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-gray-600 mb-4">
+                Visualize o histórico de pagamentos e faturas pendentes
+              </p>
+              <button
+                onClick={() => router.push("/financeiro/minhas-faturas")}
+                className="w-full px-4 py-3 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors font-medium"
+              >
+                Ver Minhas Faturas
+              </button>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Ranking Completo - Top 10 */}

@@ -22,6 +22,7 @@ import {
   Trophy,
   Clock,
   MapPin,
+  DollarSign,
 } from "lucide-react";
 
 interface DashboardStats {
@@ -196,6 +197,14 @@ export default function MasterDashboard() {
       action: () => router.push("/admin/sistema-presenca"),
       color: "bg-green-600",
       badge: "Admin",
+    },
+    {
+      title: "Gestão Financeira",
+      description: "Dashboard financeiro completo de todas as unidades",
+      icon: DollarSign,
+      action: () => router.push("/financeiro/dashboard"),
+      color: "bg-emerald-500",
+      badge: "Novo!",
     },
     {
       title: "Horários de Aulas",

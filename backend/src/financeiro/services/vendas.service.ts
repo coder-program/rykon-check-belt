@@ -1,0 +1,244 @@
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository, Between } from 'typeorm';
+import { Venda, StatusVenda } from '../entities/venda.entity';
+import {
+  Transacao,
+  TipoTransacao,
+  OrigemTransacao,
+  StatusTransacao,
+  CategoriaTransacao,
+} from '../entities/transacao.entity';
+import {
+  CreateVendaDto,
+  UpdateVendaDto,
+  FiltroVendasDto,
+} from '../dto/venda.dto';
+
+@Injectable()
+export class VendasService {
+  constructor(
+    @InjectRepository(Venda)
+    private vendasRepository: Repository<Venda>,
+    @InjectRepository(Transacao)
+    private transacaoRepository: Repository<Transacao>,
+  ) {}
+
+  async create(createVendaDto: CreateVendaDto, user: any): Promise<Venda> {
+    // Gerar número da venda
+    const numero_venda = await this.gerarNumeroVenda();
+
+    const venda = this.vendasRepository.create({
+      ...createVendaDto,
+      numero_venda,
+      status: StatusVenda.PENDENTE,
+    });
+
+    const vendaSalva = await this.vendasRepository.save(venda);
+
+    // Aqui você pode chamar o gateway de pagamento para gerar link
+    // await this.gerarLinkPagamento(vendaSalva);
+
+    return this.findOne(vendaSalva.id);
+  }
+
+  async findAll(filtro: FiltroVendasDto): Promise<Venda[]> {
+    const query = this.vendasRepository
+      .createQueryBuilder('venda')
+      .leftJoinAndSelect('venda.aluno', 'aluno')
+      .leftJoinAndSelect('venda.unidade', 'unidade')
+      .leftJoinAndSelect('venda.fatura', 'fatura');
+
+    if (filtro.unidadeId) {
+      query.andWhere('venda.unidade_id = :unidadeId', {
+        unidadeId: filtro.unidadeId,
+      });
+    }
+
+    if (filtro.alunoId) {
+      query.andWhere('venda.aluno_id = :alunoId', { alunoId: filtro.alunoId });
+    }
+
+    if (filtro.status) {
+      query.andWhere('venda.status = :status', { status: filtro.status });
+    }
+
+    if (filtro.metodo) {
+      query.andWhere('venda.metodo_pagamento = :metodo', {
+        metodo: filtro.metodo,
+      });
+    }
+
+    if (filtro.dataInicio && filtro.dataFim) {
+      query.andWhere('venda.created_at BETWEEN :dataInicio AND :dataFim', {
+        dataInicio: new Date(filtro.dataInicio),
+        dataFim: new Date(filtro.dataFim),
+      });
+    }
+
+    query.orderBy('venda.created_at', 'DESC');
+
+    return query.getMany();
+  }
+
+  async findOne(id: string): Promise<Venda> {
+    const venda = await this.vendasRepository.findOne({
+      where: { id },
+      relations: ['aluno', 'unidade', 'fatura'],
+    });
+
+    if (!venda) {
+      throw new NotFoundException(`Venda com ID ${id} não encontrada`);
+    }
+
+    return venda;
+  }
+
+  async update(id: string, updateVendaDto: UpdateVendaDto): Promise<Venda> {
+    const venda = await this.findOne(id);
+
+    Object.assign(venda, updateVendaDto);
+
+    if (updateVendaDto.status === StatusVenda.PAGO && !venda.data_pagamento) {
+      venda.data_pagamento = new Date();
+    }
+
+    await this.vendasRepository.save(venda);
+
+    return this.findOne(id);
+  }
+
+  async baixar(
+    id: string,
+    dados: { metodo_pagamento?: string; observacoes?: string },
+    user: any,
+  ): Promise<Venda> {
+    const venda = await this.findOne(id);
+
+    venda.status = StatusVenda.PAGO;
+    venda.data_pagamento = new Date();
+
+    if (dados.metodo_pagamento) {
+      venda.metodo_pagamento = dados.metodo_pagamento as any;
+    }
+
+    await this.vendasRepository.save(venda);
+
+    // Criar transação de entrada
+    const transacao = this.transacaoRepository.create({
+      tipo: TipoTransacao.ENTRADA,
+      origem: OrigemTransacao.VENDA,
+      categoria: CategoriaTransacao.PRODUTO,
+      descricao: `Pagamento da venda ${venda.numero_venda} - ${venda.descricao}`,
+      aluno_id: venda.aluno_id,
+      unidade_id: venda.unidade_id,
+      valor: Number(venda.valor),
+      data: new Date(),
+      status: StatusTransacao.CONFIRMADA,
+      metodo_pagamento: venda.metodo_pagamento as any,
+      criado_por: user.id,
+    });
+
+    await this.transacaoRepository.save(transacao);
+
+    return this.findOne(id);
+  }
+
+  async cancelar(id: string): Promise<Venda> {
+    return this.update(id, { status: StatusVenda.CANCELADO });
+  }
+
+  async reenviarLink(
+    vendaId: string,
+    email?: string,
+    telefone?: string,
+  ): Promise<{ message: string; link?: string }> {
+    const venda = await this.findOne(vendaId);
+
+    if (venda.status === StatusVenda.PAGO) {
+      return { message: 'Venda já foi paga' };
+    }
+
+    if (venda.status === StatusVenda.CANCELADO) {
+      return { message: 'Venda cancelada' };
+    }
+
+    // Aqui você implementaria o envio real do link
+    // Por enquanto, retorna o link existente
+    return {
+      message: 'Link de pagamento reenviado com sucesso',
+      link: venda.link_pagamento,
+    };
+  }
+
+  async processarWebhook(dados: any): Promise<void> {
+    // Processar webhook do gateway de pagamento
+    const { gateway_payment_id, status } = dados;
+
+    const venda = await this.vendasRepository.findOne({
+      where: { gateway_payment_id },
+    });
+
+    if (!venda) {
+      throw new NotFoundException('Venda não encontrada');
+    }
+
+    // Atualizar status baseado no webhook
+    if (status === 'approved' || status === 'paid') {
+      await this.update(venda.id, {
+        status: StatusVenda.PAGO,
+        dados_gateway: dados,
+      });
+    } else if (status === 'failed' || status === 'rejected') {
+      await this.update(venda.id, {
+        status: StatusVenda.FALHOU,
+        dados_gateway: dados,
+      });
+    }
+  }
+
+  private async gerarNumeroVenda(): Promise<string> {
+    const ano = new Date().getFullYear();
+    const count = await this.vendasRepository.count();
+    const numero = (count + 1).toString().padStart(6, '0');
+    return `VND${ano}${numero}`;
+  }
+
+  async estatisticas(unidadeId?: string): Promise<any> {
+    const query = this.vendasRepository.createQueryBuilder('venda');
+
+    if (unidadeId) {
+      query.where('venda.unidade_id = :unidadeId', { unidadeId });
+    }
+
+    const totalVendas = await query.getCount();
+    const vendasPagas = await query
+      .andWhere('venda.status = :status', { status: StatusVenda.PAGO })
+      .getCount();
+    const vendasPendentes = await this.vendasRepository.count({
+      where: { status: StatusVenda.PENDENTE },
+    });
+    const vendasFalhas = await this.vendasRepository.count({
+      where: { status: StatusVenda.FALHOU },
+    });
+
+    const valorTotal = await query
+      .select('SUM(venda.valor)', 'total')
+      .getRawOne();
+
+    const valorPago = await this.vendasRepository
+      .createQueryBuilder('venda')
+      .select('SUM(venda.valor)', 'total')
+      .where('venda.status = :status', { status: StatusVenda.PAGO })
+      .getRawOne();
+
+    return {
+      totalVendas,
+      vendasPagas,
+      vendasPendentes,
+      vendasFalhas,
+      valorTotal: parseFloat(valorTotal?.total || 0),
+      valorPago: parseFloat(valorPago?.total || 0),
+    };
+  }
+}

@@ -27,6 +27,7 @@ import {
   Loader2,
   X,
   Check,
+  DollarSign,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 
@@ -194,6 +195,13 @@ export default function RecepcionistaDashboard() {
       icon: Calendar,
       action: () => router.push("/horarios"),
       color: "bg-cyan-500",
+    },
+    {
+      title: "Contas a Receber",
+      description: "Gerenciar faturas de alunos",
+      icon: DollarSign,
+      action: () => router.push("/financeiro/a-receber"),
+      color: "bg-emerald-500",
     },
   ];
 

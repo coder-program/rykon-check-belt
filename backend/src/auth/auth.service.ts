@@ -59,6 +59,7 @@ export interface LoginResponse {
     data_nascimento?: string;
     foto?: string;
     ativo?: boolean;
+    unidade_id?: string; // ✅ Adicionar unidade_id para gerentes e recepcionistas
     cadastro_completo: boolean;
     permissions: string[];
     permissionsDetail: PermissionDetail[];
@@ -165,6 +166,7 @@ export class AuthService {
     };
 
     let cadastroCompleto = user.cadastro_completo || false;
+    let unidade_id: string | undefined = undefined;
 
     // Verificar se é franqueado e se está em homologação
     const isFranqueado = perfis.some(
@@ -190,6 +192,47 @@ export class AuthService {
         console.error('Erro ao verificar situação do franqueado:', error);
       }
     }
+
+    // Buscar unidade_id do gerente se existir
+    console.log(
+      `🔍 [LOGIN] Buscando unidade_id para usuário ${user.username} (${user.id})`,
+    );
+    console.log(`👤 [LOGIN] Perfis do usuário:`, perfis);
+
+    try {
+      const gerente_unidade =
+        await this.gerenteUnidadesService.buscarPorUsuario(user.id);
+      console.log(`🏢 [LOGIN] Gerente encontrado:`, gerente_unidade);
+      if (gerente_unidade && gerente_unidade.unidade_id) {
+        unidade_id = gerente_unidade.unidade_id;
+        console.log(`✅ [LOGIN] unidade_id definido (gerente): ${unidade_id}`);
+      }
+    } catch (error) {
+      console.error(`❌ [LOGIN] Erro ao buscar gerente:`, error);
+    }
+
+    // Buscar unidade_id do recepcionista se existir
+    if (!unidade_id) {
+      try {
+        const vinculos = await this.recepcionistaUnidadesService.list({
+          usuario_id: user.id,
+          ativo: true,
+        });
+        console.log(`📋 [LOGIN] Vínculos recepcionista:`, vinculos);
+        if (vinculos && vinculos.length > 0) {
+          unidade_id = vinculos[0].unidade_id;
+          console.log(
+            `✅ [LOGIN] unidade_id definido (recepcionista): ${unidade_id}`,
+          );
+        }
+      } catch (error) {
+        console.error(`❌ [LOGIN] Erro ao buscar recepcionista:`, error);
+      }
+    }
+
+    console.log(
+      `🎯 [LOGIN] unidade_id final que será retornado: ${unidade_id}`,
+    );
 
     // Registrar LOGIN na auditoria
     /* try {
@@ -223,6 +266,7 @@ export class AuthService {
           : undefined,
         foto: user.foto,
         ativo: user.ativo,
+        unidade_id: unidade_id, // ✅ Adicionar unidade_id do gerente ou recepcionista
         cadastro_completo: cadastroCompleto,
         permissions,
         permissionsDetail,

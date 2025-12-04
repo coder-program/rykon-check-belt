@@ -24,6 +24,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
 import { CompeticoesModule } from './competicoes/competicoes.module';
 import { SupportModule } from './support/support.module';
 import { ModalidadesModule } from './modalidades/modalidades.module';
+import { FinanceiroModule } from './financeiro/financeiro.module';
 
 @Module({
   imports: [
@@ -79,6 +80,7 @@ import { ModalidadesModule } from './modalidades/modalidades.module';
     CompeticoesModule,
     SupportModule,
     ModalidadesModule,
+    FinanceiroModule,
   ],
 })
 export class AppModule {

@@ -32,6 +32,7 @@ import {
   Calendar,
   ChevronDown,
   ChevronRight,
+  DollarSign,
 } from "lucide-react";
 
 export default function FranqueadoDashboard() {
@@ -375,6 +376,13 @@ export default function FranqueadoDashboard() {
       icon: Trophy,
       action: () => router.push("/admin/sistema-graduacao"),
       color: "bg-amber-500",
+    },
+    {
+      title: "Gestão Financeira",
+      description: "Dashboard financeiro completo",
+      icon: DollarSign,
+      action: () => router.push("/financeiro/dashboard"),
+      color: "bg-emerald-500",
     },
     // TODO: Implementar funcionalidade de relatórios
     // {
