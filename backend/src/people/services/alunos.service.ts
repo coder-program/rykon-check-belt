@@ -182,7 +182,12 @@ export class AlunosService {
       params.faixa !== 'todos' &&
       faixasValidas.includes(params.faixa.toLowerCase())
     ) {
-      query.andWhere('aluno.faixa_atual = :faixa', { faixa: params.faixa });
+      query
+        .leftJoin('aluno.faixas', 'faixa_filtro', 'faixa_filtro.ativa = true')
+        .leftJoin('faixa_filtro.faixaDef', 'faixaDef_filtro')
+        .andWhere('faixaDef_filtro.codigo = :faixa', {
+          faixa: params.faixa.toUpperCase(),
+        });
     }
 
     // Ordenar por data de matrícula (mais recentes primeiro)
@@ -1072,7 +1077,9 @@ export class AlunosService {
     // Contadores por faixa (apenas alunos ativos)
     const faixaQuery = this.alunoRepository
       .createQueryBuilder('aluno')
-      .select('aluno.faixa_atual', 'faixa')
+      .leftJoin('aluno.faixas', 'faixa', 'faixa.ativa = true')
+      .leftJoin('faixa.faixaDef', 'faixaDef')
+      .select('faixaDef.codigo', 'faixa')
       .addSelect('COUNT(*)', 'count')
       .where('aluno.status = :status', { status: StatusAluno.ATIVO });
 
@@ -1113,9 +1120,7 @@ export class AlunosService {
       }
     }
 
-    const faixaStats = await faixaQuery
-      .groupBy('aluno.faixa_atual')
-      .getRawMany();
+    const faixaStats = await faixaQuery.groupBy('faixaDef.codigo').getRawMany();
 
     const faixaCounts = faixaStats.reduce((acc, item) => {
       acc[item.faixa] = parseInt(item.count);
