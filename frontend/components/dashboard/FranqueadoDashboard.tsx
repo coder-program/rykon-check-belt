@@ -81,25 +81,13 @@ export default function FranqueadoDashboard() {
 
   const unidades = unidadesData?.items || [];
 
-  // Remover duplicatas baseado no ID da unidade
+  // Remover duplicatas baseado no ID da unidade e garantir que tem ID válido
   const unidadesUnicas = unidades.filter(
     (unidade: any, index: number, arr: any[]) =>
-      arr.findIndex((u: any) => u.id === unidade.id) === index
+      unidade.id && arr.findIndex((u: any) => u.id === unidade.id) === index
   );
 
   const unidadeIds = unidadesUnicas.map((u: any) => u.id);
-
-  // Debug temporário para verificar os status das unidades
-  console.log("🔍 Debug Unidades Originais:", unidades.length);
-  console.log("🔍 Debug Unidades Únicas:", unidadesUnicas.length);
-  console.log(
-    "🔍 Debug Unidades:",
-    unidadesUnicas.map((u: any) => ({
-      nome: u.nome,
-      status: u.status,
-      id: u.id,
-    }))
-  );
 
   // Buscar alunos das unidades do franqueado
   const { data: alunosData } = useQuery({
@@ -632,17 +620,6 @@ export default function FranqueadoDashboard() {
                                 {unidade.cidade || "Não informado"}
                               </p>
                             </div>
-                          </div>
-                          <div className="flex gap-2 pt-2">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                router.push(`/admin/gestao-unidades`);
-                              }}
-                              className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                            >
-                              Ver Detalhes Completos
-                            </button>
                           </div>
                         </div>
                       )}
