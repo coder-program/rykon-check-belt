@@ -1,12 +1,13 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Despesa, StatusDespesa } from '../entities/despesa.entity';
+import { Despesa, StatusDespesa, CategoriaDespesa } from '../entities/despesa.entity';
 import {
   Transacao,
   TipoTransacao,
   OrigemTransacao,
   StatusTransacao,
+  CategoriaTransacao,
 } from '../entities/transacao.entity';
 import {
   CreateDespesaDto,
@@ -22,6 +23,34 @@ export class DespesasService {
     @InjectRepository(Transacao)
     private transacaoRepository: Repository<Transacao>,
   ) {}
+
+  /**
+   * Mapeia categoria de despesa para categoria de transação
+   */
+  private mapCategoriaDespesaToTransacao(
+    categoriaDespesa: CategoriaDespesa,
+  ): CategoriaTransacao {
+    const mapeamento: Record<CategoriaDespesa, CategoriaTransacao> = {
+      [CategoriaDespesa.SISTEMA]: CategoriaTransacao.SISTEMA,
+      [CategoriaDespesa.ALUGUEL]: CategoriaTransacao.ALUGUEL,
+      [CategoriaDespesa.SALARIO]: CategoriaTransacao.SALARIO,
+      [CategoriaDespesa.FORNECEDOR]: CategoriaTransacao.FORNECEDOR,
+      [CategoriaDespesa.TAXA]: CategoriaTransacao.TAXA,
+      // Mapear categorias de utilidades (agua, luz, internet, telefone) para UTILIDADE
+      [CategoriaDespesa.AGUA]: CategoriaTransacao.UTILIDADE,
+      [CategoriaDespesa.LUZ]: CategoriaTransacao.UTILIDADE,
+      [CategoriaDespesa.INTERNET]: CategoriaTransacao.UTILIDADE,
+      [CategoriaDespesa.TELEFONE]: CategoriaTransacao.UTILIDADE,
+      // Mapear outras categorias para OUTRO
+      [CategoriaDespesa.MANUTENCAO]: CategoriaTransacao.OUTRO,
+      [CategoriaDespesa.MATERIAL]: CategoriaTransacao.OUTRO,
+      [CategoriaDespesa.LIMPEZA]: CategoriaTransacao.OUTRO,
+      [CategoriaDespesa.MARKETING]: CategoriaTransacao.OUTRO,
+      [CategoriaDespesa.OUTRO]: CategoriaTransacao.OUTRO,
+    };
+
+    return mapeamento[categoriaDespesa] || CategoriaTransacao.OUTRO;
+  }
 
   async create(
     createDespesaDto: CreateDespesaDto,
@@ -102,7 +131,7 @@ export class DespesasService {
     const transacao = this.transacaoRepository.create({
       tipo: TipoTransacao.SAIDA,
       origem: OrigemTransacao.DESPESA,
-      categoria: despesa.categoria as any,
+      categoria: this.mapCategoriaDespesaToTransacao(despesa.categoria),
       descricao: despesa.descricao,
       unidade_id: despesa.unidade_id,
       despesa_id: despesa.id,
