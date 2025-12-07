@@ -488,7 +488,9 @@ export default function MinhaFranquiaPage() {
       if (response.ok) {
         // Se foi um novo cadastro, redirecionar para o dashboard após um breve delay
         if (!franquiaExistente) {
-          toast.success("Franquia cadastrada com sucesso!");
+          toast.success("Franquia cadastrada com sucesso!", {
+            duration: 1500, // Toast desaparece antes do redirecionamento
+          });
 
           // Atualizar o estado do usuário para marcar cadastro como completo
           if (user && updateUser) {
@@ -500,7 +502,7 @@ export default function MinhaFranquiaPage() {
 
           setTimeout(() => {
             router.push("/dashboard");
-          }, 2000);
+          }, 1500);
         } else {
           toast.success("Franquia atualizada com sucesso!");
         }

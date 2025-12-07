@@ -128,25 +128,65 @@ export default function CompeticoesPage() {
     derrotas: "",
     observacoes: "",
   });
-  
+
   const [erroLutas, setErroLutas] = useState("");
 
   // Função para obter as cores da faixa
   const getFaixaColors = (faixa: string) => {
     const faixaUpper = faixa?.toUpperCase() || "";
-    const colorMap: { [key: string]: { bg: string; text: string; border: string } } = {
-      "BRANCA": { bg: "bg-white", text: "text-gray-800", border: "border-gray-300" },
-      "CINZA": { bg: "bg-gray-400", text: "text-white", border: "border-gray-500" },
-      "AMARELA": { bg: "bg-yellow-400", text: "text-gray-800", border: "border-yellow-500" },
-      "LARANJA": { bg: "bg-orange-400", text: "text-white", border: "border-orange-500" },
-      "VERDE": { bg: "bg-green-500", text: "text-white", border: "border-green-600" },
-      "AZUL": { bg: "bg-blue-500", text: "text-white", border: "border-blue-600" },
-      "ROXA": { bg: "bg-purple-500", text: "text-white", border: "border-purple-600" },
-      "MARROM": { bg: "bg-yellow-800", text: "text-white", border: "border-yellow-900" },
-      "PRETA": { bg: "bg-black", text: "text-white", border: "border-gray-900" },
-      "CORAL": { bg: "bg-red-600", text: "text-white", border: "border-red-700" },
+    const colorMap: {
+      [key: string]: { bg: string; text: string; border: string };
+    } = {
+      BRANCA: {
+        bg: "bg-white",
+        text: "text-gray-800",
+        border: "border-gray-300",
+      },
+      CINZA: {
+        bg: "bg-gray-400",
+        text: "text-white",
+        border: "border-gray-500",
+      },
+      AMARELA: {
+        bg: "bg-yellow-400",
+        text: "text-gray-800",
+        border: "border-yellow-500",
+      },
+      LARANJA: {
+        bg: "bg-orange-400",
+        text: "text-white",
+        border: "border-orange-500",
+      },
+      VERDE: {
+        bg: "bg-green-500",
+        text: "text-white",
+        border: "border-green-600",
+      },
+      AZUL: {
+        bg: "bg-blue-500",
+        text: "text-white",
+        border: "border-blue-600",
+      },
+      ROXA: {
+        bg: "bg-purple-500",
+        text: "text-white",
+        border: "border-purple-600",
+      },
+      MARROM: {
+        bg: "bg-yellow-800",
+        text: "text-white",
+        border: "border-yellow-900",
+      },
+      PRETA: { bg: "bg-black", text: "text-white", border: "border-gray-900" },
+      CORAL: { bg: "bg-red-600", text: "text-white", border: "border-red-700" },
     };
-    return colorMap[faixaUpper] || { bg: "bg-purple-100", text: "text-purple-700", border: "border-purple-200" };
+    return (
+      colorMap[faixaUpper] || {
+        bg: "bg-purple-100",
+        text: "text-purple-700",
+        border: "border-purple-200",
+      }
+    );
   };
 
   useEffect(() => {
@@ -183,8 +223,8 @@ export default function CompeticoesPage() {
       const data = await response.json();
       const nomeCidades = data
         .map((cidade: { nome: string }) => cidade.nome)
-        .sort((a: string, b: string) => 
-          a.localeCompare(b, 'pt-BR', { sensitivity: 'base' })
+        .sort((a: string, b: string) =>
+          a.localeCompare(b, "pt-BR", { sensitivity: "base" })
         );
       setCidades(nomeCidades);
     } catch (error) {
@@ -550,13 +590,21 @@ export default function CompeticoesPage() {
                           // Previne entrada de valores que tornariam a data inválida
                           const input = e.currentTarget;
                           const value = input.value;
-                          
+
                           // Se já tem uma data completa e válida, previne mais digitação
                           if (value && value.length >= 10) {
-                            const year = parseInt(value.split('-')[0]);
+                            const year = parseInt(value.split("-")[0]);
                             if (year >= 1000 && year <= 9999) {
                               // Permite apenas teclas de navegação
-                              if (!['Backspace', 'Delete', 'Tab', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+                              if (
+                                ![
+                                  "Backspace",
+                                  "Delete",
+                                  "Tab",
+                                  "ArrowLeft",
+                                  "ArrowRight",
+                                ].includes(e.key)
+                              ) {
                                 e.preventDefault();
                               }
                             }
@@ -565,20 +613,26 @@ export default function CompeticoesPage() {
                         onInput={(e) => {
                           const input = e.currentTarget;
                           const value = input.value;
-                          
+
                           // Valida o formato e limita o ano
                           if (value) {
-                            const parts = value.split('-');
+                            const parts = value.split("-");
                             if (parts[0] && parts[0].length > 4) {
                               // Corta o ano para 4 dígitos
-                              const fixedValue = parts[0].substring(0, 4) + '-' + (parts[1] || '') + (parts[2] ? '-' + parts[2] : '');
+                              const fixedValue =
+                                parts[0].substring(0, 4) +
+                                "-" +
+                                (parts[1] || "") +
+                                (parts[2] ? "-" + parts[2] : "");
                               input.value = fixedValue;
                               setFormData({ ...formData, data: fixedValue });
                               return;
                             }
-                            
+
                             if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-                              input.setCustomValidity("Data inválida. Use o formato AAAA-MM-DD com ano de 4 dígitos.");
+                              input.setCustomValidity(
+                                "Data inválida. Use o formato AAAA-MM-DD com ano de 4 dígitos."
+                              );
                             } else {
                               input.setCustomValidity("");
                             }
@@ -588,9 +642,13 @@ export default function CompeticoesPage() {
                           let value = e.target.value;
                           // Garante que o ano tenha no máximo 4 dígitos
                           if (value) {
-                            const parts = value.split('-');
+                            const parts = value.split("-");
                             if (parts[0] && parts[0].length > 4) {
-                              value = parts[0].substring(0, 4) + '-' + (parts[1] || '') + (parts[2] ? '-' + parts[2] : '');
+                              value =
+                                parts[0].substring(0, 4) +
+                                "-" +
+                                (parts[1] || "") +
+                                (parts[2] ? "-" + parts[2] : "");
                             }
                           }
                           setFormData({ ...formData, data: value });
@@ -717,20 +775,42 @@ export default function CompeticoesPage() {
                         className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
                       >
                         <option value="">Selecione a categoria de idade</option>
-                        <option value="PRÉ MIRIM">PRÉ MIRIM (4 e 5 anos)</option>
+                        <option value="PRÉ MIRIM">
+                          PRÉ MIRIM (4 e 5 anos)
+                        </option>
                         <option value="MIRIM">MIRIM (6 e 7 anos)</option>
-                        <option value="INFANTIL A">INFANTIL A (8 e 9 anos)</option>
-                        <option value="INFANTIL B">INFANTIL B (10 e 11 anos)</option>
-                        <option value="INFANTO A">INFANTO A (12 e 13 anos)</option>
-                        <option value="INFANTO B">INFANTO B (14 e 15 anos)</option>
+                        <option value="INFANTIL A">
+                          INFANTIL A (8 e 9 anos)
+                        </option>
+                        <option value="INFANTIL B">
+                          INFANTIL B (10 e 11 anos)
+                        </option>
+                        <option value="INFANTO A">
+                          INFANTO A (12 e 13 anos)
+                        </option>
+                        <option value="INFANTO B">
+                          INFANTO B (14 e 15 anos)
+                        </option>
                         <option value="JUVENIL">JUVENIL (16 e 17 anos)</option>
                         <option value="ADULTO">ADULTO (18 até 29 anos)</option>
-                        <option value="MASTER 1">MASTER 1 (30 até 35 anos)</option>
-                        <option value="MASTER 2">MASTER 2 (36 até 40 anos)</option>
-                        <option value="MASTER 3">MASTER 3 (41 até 45 anos)</option>
-                        <option value="MASTER 4">MASTER 4 (46 até 50 anos)</option>
-                        <option value="MASTER 5">MASTER 5 (51 até 55 anos)</option>
-                        <option value="MASTER 6">MASTER 6 (Acima de 56 anos)</option>
+                        <option value="MASTER 1">
+                          MASTER 1 (30 até 35 anos)
+                        </option>
+                        <option value="MASTER 2">
+                          MASTER 2 (36 até 40 anos)
+                        </option>
+                        <option value="MASTER 3">
+                          MASTER 3 (41 até 45 anos)
+                        </option>
+                        <option value="MASTER 4">
+                          MASTER 4 (46 até 50 anos)
+                        </option>
+                        <option value="MASTER 5">
+                          MASTER 5 (51 até 55 anos)
+                        </option>
+                        <option value="MASTER 6">
+                          MASTER 6 (Acima de 56 anos)
+                        </option>
                       </select>
                     </div>
 
@@ -815,7 +895,10 @@ export default function CompeticoesPage() {
                       />
                       {formData.colocacao && (
                         <div className="mt-1 text-sm text-gray-600">
-                          Você ficou em: <span className="font-semibold text-blue-600">{formData.colocacao}º lugar</span>
+                          Você ficou em:{" "}
+                          <span className="font-semibold text-blue-600">
+                            {formData.colocacao}º lugar
+                          </span>
                         </div>
                       )}
                     </div>
@@ -831,7 +914,10 @@ export default function CompeticoesPage() {
                         value={formData.total_lutas}
                         onChange={(e) => {
                           const value = e.target.value;
-                          if (value === "" || (parseInt(value) >= 0 && parseInt(value) <= 999)) {
+                          if (
+                            value === "" ||
+                            (parseInt(value) >= 0 && parseInt(value) <= 999)
+                          ) {
                             setFormData({
                               ...formData,
                               total_lutas: value,
@@ -859,14 +945,23 @@ export default function CompeticoesPage() {
                         value={formData.vitorias}
                         onChange={(e) => {
                           const value = e.target.value;
-                          const totalLutas = parseInt(formData.total_lutas) || 0;
+                          const totalLutas =
+                            parseInt(formData.total_lutas) || 0;
                           const derrotas = parseInt(formData.derrotas) || 0;
                           const vitorias = parseInt(value) || 0;
-                          
-                          if (value === "" || (vitorias >= 0 && vitorias <= 999)) {
+
+                          if (
+                            value === "" ||
+                            (vitorias >= 0 && vitorias <= 999)
+                          ) {
                             // Verifica se vitórias + derrotas não ultrapassa o total de lutas
-                            if (totalLutas > 0 && (vitorias + derrotas) > totalLutas) {
-                              setErroLutas(`Vitórias + Derrotas não podem ultrapassar o Total de Lutas (${totalLutas})`);
+                            if (
+                              totalLutas > 0 &&
+                              vitorias + derrotas > totalLutas
+                            ) {
+                              setErroLutas(
+                                `Vitórias + Derrotas não podem ultrapassar o Total de Lutas (${totalLutas})`
+                              );
                               return;
                             }
                             setErroLutas("");
@@ -879,13 +974,15 @@ export default function CompeticoesPage() {
                             input.value = input.value.slice(0, 3);
                           }
                         }}
-                        className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${erroLutas ? 'border-red-500' : ''}`}
+                        className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${
+                          erroLutas ? "border-red-500" : ""
+                        }`}
                       />
                     </div>
 
                     <div>
                       <label className="block text-sm font-medium mb-2">
-                        ❌ Derrotas
+                        Derrotas
                       </label>
                       <input
                         type="number"
@@ -894,14 +991,23 @@ export default function CompeticoesPage() {
                         value={formData.derrotas}
                         onChange={(e) => {
                           const value = e.target.value;
-                          const totalLutas = parseInt(formData.total_lutas) || 0;
+                          const totalLutas =
+                            parseInt(formData.total_lutas) || 0;
                           const vitorias = parseInt(formData.vitorias) || 0;
                           const derrotas = parseInt(value) || 0;
-                          
-                          if (value === "" || (derrotas >= 0 && derrotas <= 999)) {
+
+                          if (
+                            value === "" ||
+                            (derrotas >= 0 && derrotas <= 999)
+                          ) {
                             // Verifica se vitórias + derrotas não ultrapassa o total de lutas
-                            if (totalLutas > 0 && (vitorias + derrotas) > totalLutas) {
-                              setErroLutas(`Vitórias + Derrotas não podem ultrapassar o Total de Lutas (${totalLutas})`);
+                            if (
+                              totalLutas > 0 &&
+                              vitorias + derrotas > totalLutas
+                            ) {
+                              setErroLutas(
+                                `Vitórias + Derrotas não podem ultrapassar o Total de Lutas (${totalLutas})`
+                              );
                               return;
                             }
                             setErroLutas("");
@@ -914,21 +1020,34 @@ export default function CompeticoesPage() {
                             input.value = input.value.slice(0, 3);
                           }
                         }}
-                        className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${erroLutas ? 'border-red-500' : ''}`}
+                        className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${
+                          erroLutas ? "border-red-500" : ""
+                        }`}
                       />
                       {erroLutas && (
                         <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded-lg">
-                          <p className="text-sm text-red-600 font-medium">⚠️ {erroLutas}</p>
+                          <p className="text-sm text-red-600 font-medium">
+                            ⚠️ {erroLutas}
+                          </p>
                         </div>
                       )}
-                      {!erroLutas && formData.total_lutas && (parseInt(formData.vitorias || "0") + parseInt(formData.derrotas || "0")) > 0 && (
-                        <div className="mt-1 text-sm text-gray-600">
-                          Total: {parseInt(formData.vitorias || "0") + parseInt(formData.derrotas || "0")} de {formData.total_lutas} lutas
-                          {parseInt(formData.vitorias || "0") + parseInt(formData.derrotas || "0") === parseInt(formData.total_lutas) && (
-                            <span className="text-green-600 ml-2">✓</span>
-                          )}
-                        </div>
-                      )}
+                      {!erroLutas &&
+                        formData.total_lutas &&
+                        parseInt(formData.vitorias || "0") +
+                          parseInt(formData.derrotas || "0") >
+                          0 && (
+                          <div className="mt-1 text-sm text-gray-600">
+                            Total:{" "}
+                            {parseInt(formData.vitorias || "0") +
+                              parseInt(formData.derrotas || "0")}{" "}
+                            de {formData.total_lutas} lutas
+                            {parseInt(formData.vitorias || "0") +
+                              parseInt(formData.derrotas || "0") ===
+                              parseInt(formData.total_lutas) && (
+                              <span className="text-green-600 ml-2">✓</span>
+                            )}
+                          </div>
+                        )}
                     </div>
 
                     <div className="md:col-span-2">
@@ -1047,7 +1166,15 @@ export default function CompeticoesPage() {
                               </span>
                             )}
                             {part.categoria_faixa && (
-                              <span className={`px-2 py-1 rounded text-xs border ${getFaixaColors(part.categoria_faixa).bg} ${getFaixaColors(part.categoria_faixa).text} ${getFaixaColors(part.categoria_faixa).border}`}>
+                              <span
+                                className={`px-2 py-1 rounded text-xs border ${
+                                  getFaixaColors(part.categoria_faixa).bg
+                                } ${
+                                  getFaixaColors(part.categoria_faixa).text
+                                } ${
+                                  getFaixaColors(part.categoria_faixa).border
+                                }`}
+                              >
                                 {part.categoria_faixa}
                               </span>
                             )}

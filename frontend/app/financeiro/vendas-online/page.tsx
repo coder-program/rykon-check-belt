@@ -218,11 +218,11 @@ export default function VendasOnline() {
         carregarDados(unidadeIdAtual);
       } else {
         const error = await response.text();
-        alert(`❌ Erro ao criar venda: ${error}`);
+        alert(` Erro ao criar venda: ${error}`);
       }
     } catch (error) {
       console.error("Erro ao criar venda:", error);
-      alert("❌ Erro ao criar venda");
+      alert(" Erro ao criar venda");
     }
   };
 
@@ -234,8 +234,6 @@ export default function VendasOnline() {
     try {
       setLoading(true);
       const token = localStorage.getItem("token");
-
-      console.log("🛍️ Carregando vendas para unidade:", unidadeId || "todas");
 
       // Buscar vendas
       const paramsVendas = new URLSearchParams();
@@ -252,9 +250,6 @@ export default function VendasOnline() {
         ? `${process.env.NEXT_PUBLIC_API_URL}/vendas/estatisticas?unidadeId=${unidadeId}`
         : `${process.env.NEXT_PUBLIC_API_URL}/vendas/estatisticas`;
 
-      console.log("📊 Buscando vendas:", vendasUrl);
-      console.log("📊 Buscando estatísticas:", statsUrl);
-
       const [resVendas, resStats] = await Promise.all([
         fetch(vendasUrl, {
           headers: { Authorization: `Bearer ${token}` },
@@ -268,7 +263,7 @@ export default function VendasOnline() {
 
       if (!resVendas.ok) {
         console.error(
-          "❌ Erro ao buscar vendas:",
+          " Erro ao buscar vendas:",
           resVendas.status,
           resVendas.statusText
         );
@@ -277,7 +272,7 @@ export default function VendasOnline() {
 
       if (!resStats.ok) {
         console.error(
-          "❌ Erro ao buscar estatísticas:",
+          " Erro ao buscar estatísticas:",
           resStats.status,
           resStats.statusText
         );
@@ -287,14 +282,11 @@ export default function VendasOnline() {
       const dataVendas = await resVendas.json();
       const dataStats = await resStats.json();
 
-      console.log("✅ Vendas carregadas:", dataVendas);
-      console.log("✅ Estatísticas carregadas:", dataStats);
-
       setVendas(dataVendas);
       setEstatisticas(dataStats);
     } catch (error) {
       clearTimeout(timeoutId);
-      console.error("❌ Erro ao carregar vendas:", error);
+      console.error(" Erro ao carregar vendas:", error);
       setVendas([]);
       setEstatisticas({
         totalVendas: 0,
@@ -336,11 +328,11 @@ export default function VendasOnline() {
         carregarDados(unidadeIdAtual);
       } else {
         const error = await response.text();
-        alert(`❌ Erro ao registrar pagamento: ${error}`);
+        alert(` Erro ao registrar pagamento: ${error}`);
       }
     } catch (error) {
       console.error("Erro ao registrar pagamento:", error);
-      alert("❌ Erro ao registrar pagamento");
+      alert(" Erro ao registrar pagamento");
     }
   };
 

@@ -8,17 +8,17 @@ Franqueados estavam vendo **TODOS** os alunos do sistema ao invés de apenas os 
 
 ### 1. **Frontend - Falta de Autenticação nas Requisições**
 
-- ❌ `listAlunos()` não estava enviando `{ auth: true }`
-- ❌ `listUnidades()` não estava enviando `{ auth: true }`
-- ❌ `getAlunosStats()` não estava enviando `{ auth: true }`
+- `listAlunos()` não estava enviando `{ auth: true }`
+- `listUnidades()` não estava enviando `{ auth: true }`
+- `getAlunosStats()` não estava enviando `{ auth: true }`
 
 **Resultado**: Backend não recebia o token JWT e não conseguia identificar o usuário/franqueado logado.
 
 ### 2. **Backend - Método getStats sem Filtro de Franqueado**
 
-- ❌ Controller `getStats()` não recebia parâmetro `@Request() req`
-- ❌ Service `getStats()` não recebia parâmetro `user`
-- ❌ Queries de estatísticas não filtravam por unidades do franqueado
+- Controller `getStats()` não recebia parâmetro `@Request() req`
+- Service `getStats()` não recebia parâmetro `user`
+- Queries de estatísticas não filtravam por unidades do franqueado
 
 **Resultado**: Contadores e estatísticas mostravam dados de TODO o sistema.
 

@@ -5,7 +5,7 @@
 **Franqueado Deleon Leite vê:**
 
 - ✅ **Gerenciar Usuários** - Mostra apenas 1 aluno (Aluno Osasco) + 7 outros usuários
-- ❌ **Graduação (/teamcruz)** - Mostra vários alunos na lista "Próximos a Receber Grau"
+- **Graduação (/teamcruz)** - Mostra vários alunos na lista "Próximos a Receber Grau"
 
 ## Hipóteses
 

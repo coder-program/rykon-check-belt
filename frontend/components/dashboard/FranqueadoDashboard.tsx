@@ -120,19 +120,6 @@ export default function FranqueadoDashboard() {
       // O backend já filtra automaticamente baseado no perfil do usuário logado
       const resultado = await listProfessores({ pageSize: 1000 });
 
-      console.log(
-        "🔍 [DASHBOARD] Total de professores recebidos da API:",
-        resultado.items?.length || 0
-      );
-      console.log(
-        "🔍 [DASHBOARD] Professores:",
-        resultado.items?.map((p: any) => ({
-          id: p.id,
-          usuario_id: p.usuario_id,
-          nome: p.nome,
-        }))
-      );
-
       return resultado;
     },
     enabled: !!user,

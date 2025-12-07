@@ -80,9 +80,9 @@ console.log(
 
 ## 🎯 O QUE O FRONTEND NÃO PRECISA FAZER
 
-❌ **Não precisa enviar `unidade_id` na query**
-❌ **Não precisa filtrar dados no frontend**
-❌ **Não precisa validar permissões**
+**Não precisa enviar `unidade_id` na query**
+**Não precisa filtrar dados no frontend**
+**Não precisa validar permissões**
 
 **Por quê?** Tudo é feito automaticamente no backend! 🛡️
 
@@ -220,9 +220,9 @@ const response = await fetch("/aulas/horarios");
 
 **O que NÃO foi necessário:**
 
-- ❌ Não foi preciso mudar lógica
-- ❌ Não foi preciso adicionar filtros manuais
-- ❌ Não foi preciso enviar `unidade_id`
+- Não foi preciso mudar lógica
+- Não foi preciso adicionar filtros manuais
+- Não foi preciso enviar `unidade_id`
 
 **Por quê?** O backend faz todo o trabalho de segurança! 🛡️
 

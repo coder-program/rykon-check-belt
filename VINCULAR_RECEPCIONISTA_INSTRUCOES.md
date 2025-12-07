@@ -161,7 +161,7 @@ Quando o recepcionista listar alunos, o backend deve logar:
 
 ---
 
-## ❌ Problemas Comuns
+## Problemas Comuns
 
 ### Problema 1: "Recepcionista não vê nenhum aluno"
 

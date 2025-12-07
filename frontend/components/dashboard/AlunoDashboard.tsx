@@ -316,14 +316,9 @@ export default function AlunoDashboard({
             { auth: true }
           );
           realAlunoId = alunoByUsuario.id; // Usar o ID do aluno, não do usuário
-          console.log("🔍 [ALUNO DASHBOARD] Aluno encontrado por usuario_id:", {
-            usuario_id: targetAlunoId,
-            aluno_id: realAlunoId,
-            nome: alunoByUsuario.nome_completo,
-          });
         } catch (err) {
           console.error(
-            "❌ [ALUNO DASHBOARD] Erro ao buscar aluno por usuario_id:",
+            " [ALUNO DASHBOARD] Erro ao buscar aluno por usuario_id:",
             err
           );
           setError("Não foi possível carregar os dados do aluno.");
@@ -400,14 +395,10 @@ export default function AlunoDashboard({
 
       // Processar resultados
       if (graduacaoData.status === "fulfilled") {
-        console.log(
-          "🔍 [GRADUACAO DATA] Dados recebidos da API:",
-          graduacaoData.value
-        );
         setStatusGraduacao(graduacaoData.value);
       } else {
         console.error(
-          "❌ Erro ao carregar status de graduação:",
+          " Erro ao carregar status de graduação:",
           graduacaoData.reason
         );
       }
@@ -423,7 +414,7 @@ export default function AlunoDashboard({
       if (rankingDataResult.status === "fulfilled") {
         setRankingData(rankingDataResult.value);
       } else {
-        console.error("❌ Erro ao carregar ranking:", rankingDataResult.reason);
+        console.error(" Erro ao carregar ranking:", rankingDataResult.reason);
       }
 
       if (competicoesData.status === "fulfilled") {
@@ -433,10 +424,7 @@ export default function AlunoDashboard({
         );
         setEstatisticasCompeticoes(data.estatisticas || null);
       } else {
-        console.error(
-          "❌ Erro ao carregar competições:",
-          competicoesData.reason
-        );
+        console.error(" Erro ao carregar competições:", competicoesData.reason);
       }
 
       if (alunoData.status === "fulfilled") {
@@ -454,30 +442,15 @@ export default function AlunoDashboard({
           });
         }
       } else {
-        console.error("❌ Erro ao carregar dados do aluno:", alunoData.reason);
+        console.error(" Erro ao carregar dados do aluno:", alunoData.reason);
       }
 
       if (dependentesData.status === "fulfilled") {
-        console.log(
-          "🎯 [LOAD DASHBOARD] Dependentes recebidos do backend:",
-          dependentesData.value
-        );
         const dependentesArray = Array.isArray(dependentesData.value)
           ? dependentesData.value
           : [];
-        console.log(
-          "🎯 [LOAD DASHBOARD] Setando dependentes no estado:",
-          dependentesArray
-        );
         setDependentes(dependentesArray);
-        console.log("✅ [LOAD DASHBOARD] Estado de dependentes atualizado!");
-      } else {
-        console.log(
-          "ℹ️ Sem dependentes ou erro ao carregar:",
-          dependentesData.reason
-        );
       }
-
       // Histórico será implementado futuramente
       // if (historicoData.status === "fulfilled") {
       //   setHistoricoPresenca(Array.isArray(historicoData.value) ? historicoData.value : []);
@@ -586,9 +559,6 @@ export default function AlunoDashboard({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    console.log("🚀 [SUBMIT] FormData completo antes de processar:", formData);
-    console.log("🏢 [SUBMIT] unidade_id no formData:", formData.unidade_id);
-
     try {
       if (isEditMode && editingDependenteId) {
         // Editar dependente existente - remover campos vazios e limpar máscaras
@@ -612,22 +582,11 @@ export default function AlunoDashboard({
           {} as Record<string, unknown>
         );
 
-        console.log(
-          "📦 [SUBMIT] Dados que serão enviados no PATCH:",
-          dataToSend
-        );
-        console.log(
-          "🏢 [SUBMIT] unidade_id nos dados enviados:",
-          dataToSend.unidade_id
-        );
-
         const response = await http(`/alunos/${editingDependenteId}`, {
           method: "PATCH",
           body: dataToSend,
           auth: true,
         });
-
-        console.log("✅ [SUBMIT] Resposta do backend:", response);
 
         if (response) {
           toast.success("Dependente atualizado com sucesso!");
@@ -646,9 +605,7 @@ export default function AlunoDashboard({
       }
 
       // Recarregar dados ANTES de fechar modal
-      console.log("🔄 [SUBMIT] Iniciando loadDashboardData após salvar...");
       await loadDashboardData();
-      console.log("✅ [SUBMIT] loadDashboardData concluído!");
 
       // Limpar e fechar modal
       setShowModal(false);
@@ -1542,7 +1499,6 @@ export default function AlunoDashboard({
         <DependenteForm
           formData={formData}
           setFormData={(data) => {
-            console.log("📝 [ALUNO DASHBOARD] Atualizando formData:", data);
             setFormData(data);
           }}
           onSubmit={handleSubmit}

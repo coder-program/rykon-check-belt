@@ -51,12 +51,6 @@ export async function getAulas(params?: {
     queryParams.toString() ? `?${queryParams.toString()}` : ""
   }`;
 
-  console.log("🔥 [AULAS API] Buscando aulas:", {
-    url,
-    params,
-    API_URL,
-  });
-
   const response = await fetch(url, {
     headers: {
       Authorization: `Bearer ${token}`,
@@ -65,16 +59,10 @@ export async function getAulas(params?: {
   });
 
   if (!response.ok) {
-    console.error(
-      "❌ [AULAS API] Erro na resposta:",
-      response.status,
-      response.statusText
-    );
     throw new Error("Erro ao buscar aulas");
   }
 
   const data = await response.json();
-  console.log("✅ [AULAS API] Aulas recebidas:", data);
 
   return data;
 }
@@ -86,19 +74,12 @@ export async function getAulasHoje(unidade_id?: string): Promise<AulaHoje[]> {
   const token = localStorage.getItem("token");
   const dataHoje = new Date().toLocaleDateString("pt-BR");
 
-  console.log("🔥 [AULAS HOJE] Iniciando busca:", {
-    unidade_id,
-    data_hoje: dataHoje,
-  });
-
   const queryParams = new URLSearchParams();
   if (unidade_id) queryParams.append("unidade_id", unidade_id);
 
   const url = `${API_URL}/aulas/hoje/lista${
     queryParams.toString() ? `?${queryParams.toString()}` : ""
   }`;
-
-  console.log("🔥 [AULAS HOJE API] URL:", url);
 
   const response = await fetch(url, {
     headers: {
@@ -109,7 +90,7 @@ export async function getAulasHoje(unidade_id?: string): Promise<AulaHoje[]> {
 
   if (!response.ok) {
     console.error(
-      "❌ [AULAS HOJE API] Erro na resposta:",
+      " [AULAS HOJE API] Erro na resposta:",
       response.status,
       response.statusText
     );
@@ -117,17 +98,10 @@ export async function getAulasHoje(unidade_id?: string): Promise<AulaHoje[]> {
   }
 
   const aulas = await response.json();
-  console.log(
-    "✅ [AULAS HOJE API] Aulas recebidas do backend:",
-    aulas.length,
-    aulas
-  );
 
   // Transformar para formato do dashboard
   const aulasFormatadas = aulas.map((aula: any, index: number) => {
     try {
-      console.log(`🔥 [AULAS HOJE] Processando aula ${index}:`, aula);
-
       // Extrair horário do data_hora_inicio (formato: HH:MM)
       const horario = aula.data_hora_inicio
         ? new Date(aula.data_hora_inicio).toLocaleTimeString("pt-BR", {
@@ -135,8 +109,6 @@ export async function getAulasHoje(unidade_id?: string): Promise<AulaHoje[]> {
             minute: "2-digit",
           })
         : "00:00";
-
-      console.log(`🔥 [AULAS HOJE] Horário extraído:`, horario);
 
       const aulaFormatada = {
         id: aula.id,
@@ -148,23 +120,16 @@ export async function getAulasHoje(unidade_id?: string): Promise<AulaHoje[]> {
         presencas: 0,
       };
 
-      console.log("✅ [AULAS HOJE] Aula formatada:", aulaFormatada);
       return aulaFormatada;
     } catch (error) {
       console.error(
-        `❌ [AULAS HOJE] Erro ao formatar aula ${index}:`,
+        ` [AULAS HOJE] Erro ao formatar aula ${index}:`,
         error,
         aula
       );
       throw error;
     }
   });
-
-  console.log(
-    "✅ [AULAS HOJE] Total formatadas:",
-    aulasFormatadas.length,
-    aulasFormatadas
-  );
 
   return aulasFormatadas;
 }

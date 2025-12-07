@@ -327,7 +327,7 @@ const UsuariosManager = () => {
                             user.cadastro_completo ? "active" : "inactive"
                           }`}
                         >
-                          {user.cadastro_completo ? "✅ Sim" : "❌ Não"}
+                          {user.cadastro_completo ? "✅ Sim" : " Não"}
                         </span>
                       </td>
                       <td>

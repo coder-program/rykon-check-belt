@@ -44,18 +44,9 @@ export class DashboardService {
 
       // Se for FRANQUEADO, buscar suas unidades
       if (isFranqueado && !isMaster) {
-        console.log(
-          '🔥 [DASHBOARD SERVICE] Buscando franqueado para userId:',
-          userId,
-        );
         const franqueado = await this.franqueadoRepository.findOne({
           where: { usuario_id: userId },
         });
-
-        console.log(
-          '🔥 [DASHBOARD SERVICE] Franqueado encontrado:',
-          franqueado,
-        );
 
         if (franqueado) {
           // Buscar unidades pelo franqueado_id
@@ -63,26 +54,9 @@ export class DashboardService {
             where: { franqueado_id: franqueado.id },
           });
 
-          console.log(
-            '🔥 [DASHBOARD SERVICE] Unidades do franqueado:',
-            unidades,
-          );
-
           if (unidades && unidades.length > 0) {
             unidadesDoFranqueado = unidades.map((u) => u.id);
-            console.log(
-              '🔥 [DASHBOARD SERVICE] IDs das unidades do franqueado:',
-              unidadesDoFranqueado,
-            );
-          } else {
-            console.log(
-              '⚠️ [DASHBOARD SERVICE] Franqueado não possui unidades!',
-            );
           }
-        } else {
-          console.log(
-            '⚠️ [DASHBOARD SERVICE] Franqueado não encontrado no banco!',
-          );
         }
       }
 
@@ -96,16 +70,8 @@ export class DashboardService {
 
         if (unidadesGerente && unidadesGerente.length > 0) {
           unidadesDoFranqueado = unidadesGerente.map((u) => u.id);
-          console.log(
-            '🔥 [DASHBOARD SERVICE] Gerente possui unidades:',
-            unidadesDoFranqueado,
-          );
         }
       }
-      console.log(
-        '🔥 [DASHBOARD SERVICE] Filtro final de unidades:',
-        unidadesDoFranqueado,
-      );
 
       // Se for franqueado sem unidades, retornar tudo zerado
       if (
@@ -113,9 +79,6 @@ export class DashboardService {
         !isMaster &&
         (!unidadesDoFranqueado || unidadesDoFranqueado.length === 0)
       ) {
-        console.log(
-          '⚠️ [DASHBOARD SERVICE] Franqueado sem unidades, retornando stats zerados',
-        );
         return {
           totalUsuarios: 0,
           usuariosPendentes: 0,
@@ -173,25 +136,8 @@ export class DashboardService {
         });
       }
 
-      console.log(
-        '🔥 [DASHBOARD SERVICE] Total de alunos encontrados:',
-        totalAlunos,
-        'Perfis:',
-        perfis,
-        'Unidades:',
-        unidadesDoFranqueado,
-      );
-
       // Total de professores (usando a tabela professor_unidades)
       let totalProfessores = 0;
-
-      console.log('🔍 [PROFESSORES COUNT] Iniciando contagem de professores', {
-        unidadeId,
-        isFranqueado,
-        isGerenteUnidade,
-        isMaster,
-        unidadesDoFranqueado,
-      });
 
       if (unidadeId) {
         // Contar professores vinculados a uma unidade específica
@@ -205,11 +151,6 @@ export class DashboardService {
           [unidadeId],
         );
         totalProfessores = parseInt(result[0]?.total || '0');
-        console.log('🔍 [PROFESSORES COUNT] Contagem por unidadeId:', {
-          unidadeId,
-          totalProfessores,
-          result,
-        });
       } else if (isFranqueado && unidadesDoFranqueado.length > 0) {
         // Contar professores vinculados às unidades do franqueado
         const result = await this.dataSource.query(
@@ -222,11 +163,6 @@ export class DashboardService {
           [unidadesDoFranqueado],
         );
         totalProfessores = parseInt(result[0]?.total || '0');
-        console.log('🔍 [PROFESSORES COUNT] Contagem Franqueado:', {
-          unidadesDoFranqueado,
-          totalProfessores,
-          result,
-        });
       } else if (isGerenteUnidade && unidadesDoFranqueado.length > 0) {
         // Contar professores vinculados às unidades do gerente
         const result = await this.dataSource.query(
@@ -239,25 +175,12 @@ export class DashboardService {
           [unidadesDoFranqueado],
         );
         totalProfessores = parseInt(result[0]?.total || '0');
-        console.log('🔍 [PROFESSORES COUNT] Contagem Gerente:', {
-          unidadesDoFranqueado,
-          totalProfessores,
-          result,
-        });
       } else if (isMaster) {
         // Master vê todos os professores cadastrados
         totalProfessores = await this.personRepository.count({
           where: { tipo_cadastro: TipoCadastro.PROFESSOR },
         });
-        console.log('🔍 [PROFESSORES COUNT] Contagem Master (TODOS):', {
-          totalProfessores,
-        });
       }
-
-      console.log(
-        '✅ [PROFESSORES COUNT] Total final de professores:',
-        totalProfessores,
-      );
 
       // Total de unidades - filtrado por franquia
       let totalUnidades = 0;
@@ -288,7 +211,7 @@ export class DashboardService {
       };
       return stats;
     } catch (error) {
-      console.error('❌ Erro ao carregar estatísticas:', error);
+      console.error(' Erro ao carregar estatísticas:', error);
       return {
         totalUsuarios: 0,
         usuariosPendentes: 0,

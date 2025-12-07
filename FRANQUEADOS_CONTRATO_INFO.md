@@ -220,7 +220,7 @@ IP: client
 ### Controle de Acesso
 
 - ✅ **Super Admin**: Vê as informações de contrato
-- ❌ **Admin/Franqueado/Outros**: NÃO vê as informações
+- **Admin/Franqueado/Outros**: NÃO vê as informações
 
 ### Lógica de Exibição
 

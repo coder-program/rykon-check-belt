@@ -24,7 +24,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 
     if (!user) {
       console.error(
-        '❌ [JwtStrategy.validate] Usuário não encontrado para payload',
+        ' [JwtStrategy.validate] Usuário não encontrado para payload',
       );
       throw new UnauthorizedException();
     }

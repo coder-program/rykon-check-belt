@@ -1637,7 +1637,7 @@ export default function FranqueadoForm({
                       >
                         {formData.ativo
                           ? "✅ Franqueado tem acesso completo ao sistema"
-                          : "❌ Franqueado com acesso bloqueado/suspenso"}
+                          : " Franqueado com acesso bloqueado/suspenso"}
                       </p>
                     </div>
                   </div>

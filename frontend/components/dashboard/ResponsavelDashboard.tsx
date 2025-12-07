@@ -101,7 +101,6 @@ export default function ResponsavelDashboard() {
   } = useQuery<Aluno[]>({
     queryKey: ["meus-dependentes", user?.id],
     queryFn: async () => {
-      console.log("[RESPONSAVEL DASHBOARD] Buscando dependentes...");
       const token = localStorage.getItem("token");
       const response = await fetch(`${API_URL}/alunos/meus-dependentes`, {
         headers: {
@@ -116,11 +115,6 @@ export default function ResponsavelDashboard() {
         throw new Error("Erro ao carregar alunos");
       }
       const data = await response.json();
-      console.log("[RESPONSAVEL DASHBOARD] Dependentes recebidos:", data);
-      console.log(
-        "[RESPONSAVEL DASHBOARD] Primeiro dependente:",
-        JSON.stringify(data[0], null, 2)
-      );
       return data;
     },
     enabled: !!user?.id,
@@ -130,26 +124,11 @@ export default function ResponsavelDashboard() {
   const { data: unidades } = useQuery({
     queryKey: ["unidades-publicas-ativas-v2"],
     queryFn: async () => {
-      console.log("🔍 [RESPONSAVEL DASHBOARD] Buscando unidades ativas...");
       const data = await http("/unidades/public/ativas", { auth: false });
-      console.log("✅ [RESPONSAVEL DASHBOARD] Unidades recebidas:", data);
-      console.log(
-        "📊 [RESPONSAVEL DASHBOARD] Total de unidades:",
-        data?.length || 0
-      );
       return data || [];
     },
     staleTime: 0,
     gcTime: 0,
-  });
-
-  console.log("[RESPONSAVEL DASHBOARD] Estado:", {
-    alunos,
-    loadingAlunos,
-    error,
-    userId: user?.id,
-    alunosLength: alunos?.length,
-    isArray: Array.isArray(alunos),
   });
 
   const handleEditDependente = (aluno: Aluno) => {
@@ -259,21 +238,16 @@ export default function ResponsavelDashboard() {
   };
 
   const handleCheckin = async (alunoId: string) => {
-    console.log("[CHECKIN] Iniciando check-in para aluno:", alunoId);
     setLoadingCheckin(alunoId);
     try {
       const token = localStorage.getItem("token");
-      console.log("[CHECKIN] Token obtido:", token ? "Presente" : "Ausente");
 
       // Primeiro buscar a aula ativa
-      console.log("[CHECKIN] Buscando aula ativa...");
       const aulaResponse = await fetch(`${API_URL}/presenca/aula-ativa`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
-
-      console.log("[CHECKIN] Status resposta aula ativa:", aulaResponse.status);
 
       if (!aulaResponse.ok) {
         console.error("[CHECKIN] Não há aula ativa");
@@ -283,7 +257,6 @@ export default function ResponsavelDashboard() {
 
       // Pegar o texto antes de parsear
       const aulaText = await aulaResponse.text();
-      console.log("[CHECKIN] Resposta aula ativa (text):", aulaText);
 
       let aulaAtiva;
       try {
@@ -297,8 +270,6 @@ export default function ResponsavelDashboard() {
         return;
       }
 
-      console.log("[CHECKIN] Aula ativa encontrada:", aulaAtiva);
-
       // Verificar se realmente tem aula ativa
       if (!aulaAtiva || !aulaAtiva.id) {
         console.error("[CHECKIN] Nenhuma aula ativa no momento");
@@ -307,8 +278,6 @@ export default function ResponsavelDashboard() {
       }
 
       // Fazer check-in usando o ID do aluno
-      console.log("[CHECKIN] Fazendo check-in...");
-      console.log("[CHECKIN] Payload:", { alunoId, aulaId: aulaAtiva.id });
 
       const checkinResponse = await fetch(
         `${API_URL}/presenca/check-in-dependente`,
@@ -325,20 +294,9 @@ export default function ResponsavelDashboard() {
         }
       );
 
-      console.log(
-        "[CHECKIN] Status resposta check-in:",
-        checkinResponse.status
-      );
-      console.log(
-        "[CHECKIN] Headers:",
-        Object.fromEntries(checkinResponse.headers.entries())
-      );
-
       const result = await checkinResponse.json();
-      console.log("[CHECKIN] Resultado:", result);
 
       if (checkinResponse.ok) {
-        console.log("[CHECKIN] Sucesso!");
         toast.success(result.message || "Check-in realizado com sucesso!");
         refetch(); // Atualizar lista
       } else {
@@ -353,7 +311,6 @@ export default function ResponsavelDashboard() {
       );
       toast.error("Erro ao processar check-in");
     } finally {
-      console.log("[CHECKIN] Finalizando...");
       setLoadingCheckin(null);
     }
   };
@@ -679,10 +636,6 @@ export default function ResponsavelDashboard() {
         <DependenteForm
           formData={formData}
           setFormData={(data) => {
-            console.log(
-              "📝 [RESPONSAVEL DASHBOARD] Atualizando formData:",
-              data
-            );
             setFormData(data);
           }}
           onSubmit={handleSubmit}
@@ -707,13 +660,6 @@ export default function ResponsavelDashboard() {
           }}
           isLoading={false}
           unidades={(() => {
-            console.log(
-              "🎯 [RESPONSAVEL DASHBOARD] Passando unidades para DependenteForm:",
-              {
-                total: unidades?.length || 0,
-                unidades: unidades,
-              }
-            );
             return unidades || [];
           })()}
           isEditMode={isEditMode}

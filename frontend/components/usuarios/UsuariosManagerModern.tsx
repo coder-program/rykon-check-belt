@@ -234,7 +234,7 @@ export default function UsuariosManagerNew() {
       );
       if (!response.ok) {
         console.error(
-          "❌ [UsuariosManager] Erro ao buscar unidades:",
+          " [UsuariosManager] Erro ao buscar unidades:",
           response.status
         );
         throw new Error("Erro ao buscar unidades");

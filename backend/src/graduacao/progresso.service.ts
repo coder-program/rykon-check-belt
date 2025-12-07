@@ -196,7 +196,7 @@ export class ProgressoService {
         })),
       };
     } catch (error) {
-      console.error('❌ Erro no serviço progresso:', error);
+      console.error(' Erro no serviço progresso:', error);
       throw error;
     }
   }

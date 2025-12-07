@@ -23,13 +23,7 @@ export default function FinanceiroLayout({
 
       const isAluno = userPerfis.includes("aluno");
 
-      console.log("🔍 [FINANCEIRO LAYOUT] Perfis:", userPerfis);
-      console.log("🎓 [FINANCEIRO LAYOUT] É aluno?", isAluno);
-
       if (isAluno) {
-        console.log(
-          "❌ [FINANCEIRO LAYOUT] Aluno tentou acessar financeiro - redirecionando"
-        );
         router.push("/dashboard");
         return;
       }

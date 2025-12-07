@@ -544,7 +544,6 @@ export default function DashboardNew() {
         perfilNome?.toLowerCase() === "gerente"
       );
     });
-    console.log("🔍 [DASHBOARD] É gerente?", resultado, "Perfis:", user.perfis);
     return resultado;
   }, [user]);
 
@@ -587,8 +586,6 @@ export default function DashboardNew() {
       );
       if (!response.ok) throw new Error("Erro ao buscar dados do usuário");
       const data = await response.json();
-      console.log("🔍 [DASHBOARD] Dados do usuário:", data);
-      console.log("🔍 [DASHBOARD] Unidades:", data.unidades);
       return data;
     },
     enabled: !!user && isGerenteUnidade,
@@ -597,17 +594,12 @@ export default function DashboardNew() {
   // Extrair unidade_id e nome do gerente
   const unidadeDoGerente = React.useMemo(() => {
     if (!isGerenteUnidade || !userData) {
-      console.log("🔍 [DASHBOARD] Não é gerente ou userData vazio", {
-        isGerenteUnidade,
-        userData,
-      });
       return null;
     }
     const unidade = {
       id: userData.unidades?.[0]?.id || null,
       nome: userData.unidades?.[0]?.nome || "Sua Unidade",
     };
-    console.log("🔍 [DASHBOARD] Unidade do gerente:", unidade);
     return unidade;
   }, [isGerenteUnidade, userData]);
 
@@ -649,43 +641,18 @@ export default function DashboardNew() {
   const aulasHojeQuery = useQuery({
     queryKey: ["aulas-hoje", selectedUnidade],
     queryFn: async () => {
-      console.log(
-        "🔥 [AULAS QUERY] Executando query com selectedUnidade:",
-        selectedUnidade
-      );
-
       // Para franqueados: se "todas" ou undefined, chama sem filtro (backend retorna todas as unidades do franqueado)
       // Para outros perfis: se não tem unidade selecionada, retorna vazio
       if (!selectedUnidade || selectedUnidade === "todas") {
         if (perfis.includes("FRANQUEADO")) {
-          console.log(
-            "🔥 [AULAS QUERY] Franqueado - chamando sem filtro de unidade"
-          );
           const result = await getAulasHoje();
-          console.log(
-            "🔥 [AULAS QUERY] Resultado recebido:",
-            result.length,
-            "aulas"
-          );
           return result;
         } else {
-          console.log(
-            "🔥 [AULAS QUERY] Retornando array vazio (não franqueado sem unidade)"
-          );
           return [];
         }
       }
 
-      console.log(
-        "🔥 [AULAS QUERY] Chamando getAulasHoje com unidade:",
-        selectedUnidade
-      );
       const result = await getAulasHoje(selectedUnidade);
-      console.log(
-        "🔥 [AULAS QUERY] Resultado recebido:",
-        result.length,
-        "aulas"
-      );
       return result;
     },
     enabled:
@@ -697,16 +664,7 @@ export default function DashboardNew() {
 
   // useEffect para forçar unidade do gerente
   React.useEffect(() => {
-    console.log("🔥 [EFFECT] useEffect rodando:", {
-      isGerenteUnidade,
-      unidadeDoGerente,
-      selectedUnidade,
-    });
     if (isGerenteUnidade && unidadeDoGerente?.id) {
-      console.log(
-        "🔥 [EFFECT] Setando selectedUnidade para:",
-        unidadeDoGerente.id
-      );
       setSelectedUnidade(unidadeDoGerente.id);
     }
   }, [isGerenteUnidade, unidadeDoGerente]);
@@ -802,11 +760,6 @@ export default function DashboardNew() {
           params.toString() ? `?${params.toString()}` : ""
         }`;
 
-        console.log("🔥 [STATS] Buscando estatísticas:", {
-          url,
-          selectedUnidade,
-        });
-
         const response = await fetch(url, {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -815,13 +768,11 @@ export default function DashboardNew() {
         });
 
         if (!response.ok) {
-          console.error("❌ [STATS] Erro na resposta:", response.status);
+          console.error(" [STATS] Erro na resposta:", response.status);
           throw new Error("Erro ao buscar estatísticas");
         }
 
         const data = await response.json();
-
-        console.log("✅ [STATS] Dados recebidos:", data);
 
         const stats = {
           totalAlunos: data.totalAlunos || 0,
@@ -834,11 +785,9 @@ export default function DashboardNew() {
           totalUnidades: data.totalUnidades || 0,
         };
 
-        console.log("📊 [STATS] Stats formatadas:", stats);
-
         return stats;
       } catch (error) {
-        console.error("❌ [STATS] Erro ao buscar estatísticas:", error);
+        console.error(" [STATS] Erro ao buscar estatísticas:", error);
         // Fallback para dados zerados em caso de erro
         return {
           totalAlunos: 0,
@@ -936,8 +885,6 @@ export default function DashboardNew() {
         faixa: faixaParam,
         unidade_id: unidadeDoGerente?.id, // Filtrar pela unidade do gerente/franqueado
       });
-
-      console.log("🔍 [FRONTEND] Response de listProfessores:", response);
 
       return {
         items: response.items,
@@ -3023,18 +2970,6 @@ export default function DashboardNew() {
                           {(() => {
                             const total =
                               professoresQuery.data?.pages[0]?.total || 0;
-                            console.log(
-                              "🔍 [FRONTEND] Total de Professores exibido:",
-                              total
-                            );
-                            console.log(
-                              "🔍 [FRONTEND] professoresQuery.data:",
-                              professoresQuery.data
-                            );
-                            console.log(
-                              "🔍 [FRONTEND] Items:",
-                              professoresQuery.data?.pages[0]?.items
-                            );
                             return total;
                           })()}
                         </p>
@@ -3192,21 +3127,6 @@ export default function DashboardNew() {
                     {(() => {
                       const professores =
                         professoresQuery.data?.pages[0]?.items || [];
-                      console.log(
-                        "🔍 [FRONTEND] Professores por Faixa - total items:",
-                        professores.length
-                      );
-                      console.log(
-                        "🔍 [FRONTEND] Professores por Faixa - items DETALHADO:",
-                        professores.map((p: any) => ({
-                          id: p.id,
-                          usuario_id: p.usuario_id,
-                          nome: p.nome_completo || p.nome,
-                          faixa_ministrante: p.faixa_ministrante,
-                          perfis: p.perfis,
-                          unidades: p.unidades,
-                        }))
-                      );
                       const faixas = professores.reduce(
                         (acc: any, prof: any) => {
                           const faixa =

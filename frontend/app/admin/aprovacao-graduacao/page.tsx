@@ -143,10 +143,9 @@ export default function AprovacaoGraduacaoPage() {
           "ADULTO"
         );
 
-        console.log("🎯 Faixas válidas retornadas:", faixasValidas);
         return faixasValidas;
       } catch (error) {
-        console.error("❌ Erro ao buscar faixas válidas:", error);
+        console.error(" Erro ao buscar faixas válidas:", error);
         // Retorna array vazio em caso de erro
         return [];
       }

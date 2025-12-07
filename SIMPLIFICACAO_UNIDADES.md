@@ -4,7 +4,7 @@
 **Atualização**: 11 de novembro de 2025 - Removido também codigo_interno
 **Objetivo**: Remover campos desnecessários do cadastro de unidades conforme solicitado pelo usuário
 
-## ❌ Campos Removidos
+## Campos Removidos
 
 ### 1. Responsável pela Unidade (4 campos)
 

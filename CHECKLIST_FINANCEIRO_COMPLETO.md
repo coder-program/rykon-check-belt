@@ -348,8 +348,8 @@
 | **RECEPCIONISTA** | RecepcionistaDashboard.tsx | ✅ SIM           | `/financeiro/a-receber`                        | ✅ IMPLEMENTADO          |
 | **ALUNO**         | AlunoDashboard.tsx         | ✅ SIM           | `/financeiro/minhas-faturas`                   | ✅ IMPLEMENTADO          |
 | **RESPONSÁVEL**   | ResponsavelDashboard.tsx   | ✅ SIM           | `/financeiro/minhas-faturas` (dos dependentes) | ✅ IMPLEMENTADO          |
-| **PROFESSOR**     | InstrutorDashboard.tsx     | ❌ NÃO           | -                                              | ✅ CORRETO (não precisa) |
-| **SUPER_ADMIN**   | -                          | ❌ NÃO           | -                                              | ✅ CORRETO (não precisa) |
+| **PROFESSOR**     | InstrutorDashboard.tsx     | NÃO              | -                                              | ✅ CORRETO (não precisa) |
+| **SUPER_ADMIN**   | -                          | NÃO              | -                                              | ✅ CORRETO (não precisa) |
 
 ### Detalhamento por Perfil
 
@@ -416,11 +416,11 @@ onClick={() => router.push("/financeiro/minhas-faturas")}
 
 #### 7. **PROFESSOR** ✅
 
-**Acesso:** ❌ Nenhum (correto - professores não precisam acessar financeiro)
+**Acesso:** Nenhum (correto - professores não precisam acessar financeiro)
 
 #### 8. **SUPER_ADMIN** ✅
 
-**Acesso:** ❌ Nenhum (correto - super admin não precisa dessa parte)
+**Acesso:** Nenhum (correto - super admin não precisa dessa parte)
 
 ---
 

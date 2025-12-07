@@ -25,7 +25,7 @@
 - ✅ Endpoint `/usuarios/pendentes/list` existe e funciona
 - ✅ Frontend está fazendo a query correta
 
-### ❌ Possíveis Causas do Problema
+### Possíveis Causas do Problema
 
 #### 1. **Usuário Não Completou Cadastro**
 

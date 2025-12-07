@@ -13,7 +13,7 @@
 
 **Depois:**
 
-- ❌ **NÃO clicável** (cursor not-allowed)
+- **NÃO clicável** (cursor not-allowed)
 - 🎨 Cor cinza (`bg-gray-400`)
 - 📝 Descrição: **"Plano não contratado"** (em itálico)
 - 🚫 Action vazio (não faz nada ao clicar)

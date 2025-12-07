@@ -421,24 +421,7 @@ export class UsuariosService {
         }
 
         // TABLET_CHECKIN: criar registro na tabela tablet_unidades
-        console.log('🔥 [CREATE TABLET] Perfil:', perfilNome);
-        console.log(
-          '🔥 [CREATE TABLET] unidade_id recebido:',
-          createUsuarioDto.unidade_id,
-        );
-        console.log(
-          '🔥 [CREATE TABLET] Condição:',
-          perfilNome === 'TABLET_CHECKIN' && createUsuarioDto.unidade_id,
-        );
-
         if (perfilNome === 'TABLET_CHECKIN' && createUsuarioDto.unidade_id) {
-          console.log('✅ [CREATE TABLET] Inserindo em tablet_unidades...');
-          console.log('✅ [CREATE TABLET] tablet_id:', usuarioSalvo.id);
-          console.log(
-            '✅ [CREATE TABLET] unidade_id:',
-            createUsuarioDto.unidade_id,
-          );
-
           await this.dataSource.query(
             `
             INSERT INTO teamcruz.tablet_unidades
@@ -447,45 +430,10 @@ export class UsuariosService {
             `,
             [usuarioSalvo.id, createUsuarioDto.unidade_id, true],
           );
-
-          console.log('✅ [CREATE TABLET] Vínculo criado com sucesso!');
-        } else {
-          console.log(
-            '❌ [CREATE TABLET] Vínculo NÃO foi criado. Motivos possíveis:',
-          );
-          console.log(
-            '   - Perfil não é TABLET_CHECKIN?',
-            perfilNome !== 'TABLET_CHECKIN',
-          );
-          console.log(
-            '   - unidade_id não foi enviado?',
-            !createUsuarioDto.unidade_id,
-          );
         }
 
         // RESPONSAVEL: criar registro na tabela responsaveis
         if (perfilNome === 'RESPONSAVEL' && createUsuarioDto.unidade_id) {
-          console.log(
-            '🔍 [CREATE RESPONSAVEL] Iniciando criação do registro de responsável...',
-          );
-          console.log('🔍 [CREATE RESPONSAVEL] usuario_id:', usuarioSalvo.id);
-          console.log(
-            '🔍 [CREATE RESPONSAVEL] unidade_id:',
-            createUsuarioDto.unidade_id,
-          );
-          console.log('🔍 [CREATE RESPONSAVEL] nome:', usuarioSalvo.nome);
-          console.log('🔍 [CREATE RESPONSAVEL] cpf:', cpfLimpo);
-          console.log('🔍 [CREATE RESPONSAVEL] email:', usuarioSalvo.email);
-          console.log('🔍 [CREATE RESPONSAVEL] telefone:', telefoneLimpo);
-          console.log(
-            '🔍 [CREATE RESPONSAVEL] data_nascimento:',
-            createUsuarioDto.data_nascimento,
-          );
-          console.log(
-            '🔍 [CREATE RESPONSAVEL] genero:',
-            createUsuarioDto.genero,
-          );
-
           const responsavelResult = await this.dataSource.query(
             `
             INSERT INTO teamcruz.responsaveis
@@ -505,11 +453,6 @@ export class UsuariosService {
               createUsuarioDto.genero || 'MASCULINO',
               true, // Responsável ativo por padrão
             ],
-          );
-
-          console.log(
-            '✅ [CREATE RESPONSAVEL] Registro de responsável criado com sucesso!',
-            responsavelResult[0].id,
           );
         }
       } catch (error) {
@@ -536,20 +479,11 @@ export class UsuariosService {
       perfisQueRecebemEmail.includes(perfil),
     );
 
-    console.log('📧 [EMAIL] Verificando envio de email...');
-    console.log('📧 [EMAIL] Perfis do usuário:', perfisDoUsuario);
-    console.log('📧 [EMAIL] Deve enviar email?', deveEnviarEmail);
-    console.log('📧 [EMAIL] Email do usuário:', usuarioSalvo.email);
-
     if (deveEnviarEmail && usuarioSalvo.email) {
       // Enviar email em background (não bloqueia a resposta)
       const perfilPrincipal =
         perfisDoUsuario.find((p) => perfisQueRecebemEmail.includes(p)) ||
         'USUARIO';
-
-      console.log('📧 [EMAIL] Preparando envio para:', usuarioSalvo.email);
-      console.log('📧 [EMAIL] Perfil:', perfilPrincipal);
-      console.log('📧 [EMAIL] Username:', usuarioSalvo.username);
 
       this.emailService
         .sendCredentialsEmail(
@@ -559,26 +493,14 @@ export class UsuariosService {
           createUsuarioDto.password, // Senha em texto plano antes do hash
           perfilPrincipal,
         )
-        .then(() => {
-          console.log(
-            `✅ [EMAIL] Email de credenciais enviado com sucesso para ${usuarioSalvo.email}`,
-          );
-        })
+        .then(() => {})
         .catch((error) => {
           // Log do erro mas não falha a criação do usuário
           console.error(
-            `❌ [EMAIL] Erro ao enviar email de credenciais para ${usuarioSalvo.email}:`,
+            ` [EMAIL] Erro ao enviar email de credenciais para ${usuarioSalvo.email}:`,
             error.message,
           );
         });
-    } else {
-      console.log('⚠️ [EMAIL] Email não será enviado');
-      if (!deveEnviarEmail) {
-        console.log('⚠️ [EMAIL] Motivo: Perfil não requer envio de email');
-      }
-      if (!usuarioSalvo.email) {
-        console.log('⚠️ [EMAIL] Motivo: Usuário não tem email cadastrado');
-      }
     }
 
     return usuarioSalvo;
@@ -629,27 +551,18 @@ export class UsuariosService {
 
     // Franqueado vê apenas usuários das suas unidades
     if (isFranqueado) {
-      console.log(
-        '🔍 [FIND ALL HIERARCHY] Usuario logado como FRANQUEADO:',
-        user.id,
-      );
-
       const franqueadoData = await this.usuarioRepository.query(
         `SELECT id FROM teamcruz.franqueados WHERE usuario_id = $1`,
         [user.id],
       );
 
       if (!franqueadoData || franqueadoData.length === 0) {
-        console.log(
-          '❌ [FIND ALL HIERARCHY] Franqueado não encontrado na tabela franqueados',
-        );
         return [];
       }
 
       const franqueadoId = franqueadoData[0].id;
-      console.log('🔍 [FIND ALL HIERARCHY] Franqueado ID:', franqueadoId);
 
-      // 🔥 LOG: Verificar tablets antes da query principal
+      // LOG: Verificar tablets antes da query principal
       const debugTablets = await this.usuarioRepository.query(
         `SELECT u.id, u.nome, u.email, tu.unidade_id, un.franqueado_id, tu.ativo as tablet_ativo
          FROM teamcruz.usuarios u
@@ -659,11 +572,6 @@ export class UsuariosService {
          LEFT JOIN teamcruz.unidades un ON un.id = tu.unidade_id
          WHERE p.nome = 'TABLET_CHECKIN'`,
       );
-      console.log(
-        '🔥 [DEBUG TABLETS] Total de tablets no sistema:',
-        debugTablets.length,
-      );
-      console.log('🔥 [DEBUG TABLETS] Tablets:', debugTablets);
 
       const usuariosIds = await this.usuarioRepository.query(
         `
@@ -687,7 +595,6 @@ export class UsuariosService {
         LEFT JOIN teamcruz.alunos a ON a.usuario_id = u.id
         LEFT JOIN teamcruz.professores p ON p.usuario_id = u.id
         LEFT JOIN teamcruz.professor_unidades pu ON pu.professor_id = p.id
-        -- ✅ JOIN para professores pendentes (sem registro em professores ainda)
         LEFT JOIN teamcruz.professor_unidades pu_pendente ON pu_pendente.usuario_id = u.id AND pu_pendente.professor_id IS NULL
         LEFT JOIN teamcruz.unidades un_aluno ON un_aluno.id = a.unidade_id
         LEFT JOIN teamcruz.unidades un_prof ON un_prof.id = pu.unidade_id
@@ -701,7 +608,6 @@ export class UsuariosService {
         LEFT JOIN teamcruz.franqueados f ON f.usuario_id = u.id
         LEFT JOIN teamcruz.usuario_perfis up ON up.usuario_id = u.id
         LEFT JOIN teamcruz.perfis perfil ON perfil.id = up.perfil_id
-        -- ✅ JOIN para responsáveis vinculados à unidade do franqueado
         LEFT JOIN teamcruz.responsaveis resp ON resp.usuario_id = u.id
         LEFT JOIN teamcruz.alunos aluno_resp ON aluno_resp.responsavel_id = resp.id
         LEFT JOIN teamcruz.unidades un_resp_aluno ON un_resp_aluno.id = aluno_resp.unidade_id
@@ -709,9 +615,7 @@ export class UsuariosService {
           (un_aluno.franqueado_id = $1 OR un_prof.franqueado_id = $1 OR un_prof_pendente.franqueado_id = $1 OR un_gerente.franqueado_id = $1 OR un_recep.franqueado_id = $1 OR un_tablet.franqueado_id = $1)
           OR f.id = $1
           OR u.id = $2
-          -- ✅ Incluir responsáveis vinculados às unidades do franqueado (mesmo sem alunos)
           OR (UPPER(perfil.nome) = 'RESPONSAVEL' AND resp.unidade_id IN (SELECT id FROM teamcruz.unidades WHERE franqueado_id = $1))
-          -- ✅ Responsáveis que têm alunos nas unidades do franqueado
           OR (UPPER(perfil.nome) = 'RESPONSAVEL' AND un_resp_aluno.franqueado_id = $1)
         )
         -- Excluir usuários que são FRANQUEADOS de outras franquias
@@ -729,50 +633,19 @@ export class UsuariosService {
         [franqueadoId, user.id],
       );
 
-      console.log(
-        '🔍 [FIND ALL HIERARCHY] Total de usuários encontrados:',
-        usuariosIds.length,
-      );
-      console.log('🔥 [DEBUG IDs] IDs retornados pela query:', usuariosIds);
-      console.log(
-        '🔍 [FIND ALL HIERARCHY] Motivos de inclusão:',
-        usuariosIds.map((u: any) => ({
-          nome: u.nome,
-          email: u.email,
-          motivo: u.motivo_inclusao,
-        })),
-      );
-
       // 🔥 LOG: Comparar tablets do sistema com os retornados
       const tabletsRetornados = usuariosIds.filter(
         (u) => u.motivo_inclusao === 'tablet',
       );
-      console.log(
-        '🔥 [DEBUG TABLETS] Tablets retornados na query principal:',
-        tabletsRetornados.length,
-      );
-      if (tabletsRetornados.length > 0) {
-        console.log(
-          '🔥 [DEBUG TABLETS] Tablets retornados:',
-          tabletsRetornados,
-        );
-      }
 
       // 🔥 LOG DETALHADO: Quantos alunos foram retornados pela query
       const totalAlunos = usuariosIds.filter(
         (u: any) => u.motivo_inclusao === 'aluno_da_unidade',
       ).length;
-      console.log(
-        '🔥 [FIND ALL HIERARCHY] Total de ALUNOS retornados:',
-        totalAlunos,
-      );
 
       const ids = usuariosIds.map((row: any) => row.id);
 
       if (ids.length === 0) {
-        console.log(
-          '⚠️ [FIND ALL HIERARCHY] Nenhum usuário encontrado para este franqueado',
-        );
         return [];
       }
 
@@ -794,22 +667,11 @@ export class UsuariosService {
         },
       });
 
-      console.log(
-        '✅ [FIND ALL HIERARCHY] Retornando',
-        resultado.length,
-        'usuários',
-      );
-
       return this.enrichUsersWithUnidade(resultado);
     }
 
     // Gerente vê apenas usuários da sua unidade
     if (isGerente) {
-      console.log(
-        '🔍 [FIND ALL HIERARCHY] Usuario logado como GERENTE:',
-        user.id,
-      );
-
       // Buscar unidade do gerente via tabela gerente_unidades
       const gerenteUnidade = await this.usuarioRepository.query(
         `SELECT unidade_id FROM teamcruz.gerente_unidades
@@ -818,14 +680,10 @@ export class UsuariosService {
       );
 
       if (!gerenteUnidade || gerenteUnidade.length === 0) {
-        console.log(
-          '❌ [FIND ALL HIERARCHY] Gerente não vinculado a nenhuma unidade',
-        );
         return [];
       }
 
       const unidadeId = gerenteUnidade[0].unidade_id;
-      console.log('🔍 [FIND ALL HIERARCHY] Unidade do gerente:', unidadeId);
 
       // Buscar usuários relacionados à unidade do gerente
       // Incluindo o próprio gerente para que ele apareça na lista
@@ -854,17 +712,9 @@ export class UsuariosService {
         [unidadeId, user.id],
       );
 
-      console.log(
-        '🔍 [FIND ALL HIERARCHY] Total de usuários encontrados:',
-        usuariosIds.length,
-      );
-
       const ids = usuariosIds.map((row: any) => row.id);
 
       if (ids.length === 0) {
-        console.log(
-          '⚠️ [FIND ALL HIERARCHY] Nenhum usuário encontrado para este gerente',
-        );
         return [];
       }
 
@@ -885,12 +735,6 @@ export class UsuariosService {
           updated_at: true,
         },
       });
-
-      console.log(
-        '✅ [FIND ALL HIERARCHY] Retornando',
-        usuarios.length,
-        'usuários',
-      );
 
       return this.enrichUsersWithUnidade(usuarios);
     }
@@ -1042,10 +886,7 @@ export class UsuariosService {
             );
           }
         } catch (error) {
-          console.error(
-            '❌ [UPDATE] Erro ao atualizar unidade:',
-            error.message,
-          );
+          console.error(' [UPDATE] Erro ao atualizar unidade:', error.message);
         }
       }
 
@@ -1075,7 +916,7 @@ export class UsuariosService {
           }
         } catch (error) {
           console.error(
-            '❌ [UPDATE] Erro ao atualizar tablet_unidades:',
+            ' [UPDATE] Erro ao atualizar tablet_unidades:',
             error.message,
           );
         }
@@ -1102,7 +943,7 @@ export class UsuariosService {
             );
           }
         } catch (error) {
-          console.error('❌ [UPDATE] Erro ao vincular gerente:', error.message);
+          console.error(' [UPDATE] Erro ao vincular gerente:', error.message);
         }
       }
 
@@ -1137,10 +978,7 @@ export class UsuariosService {
             }
           }
         } catch (error) {
-          console.error(
-            '❌ [UPDATE] Erro ao vincular professor:',
-            error.message,
-          );
+          console.error(' [UPDATE] Erro ao vincular professor:', error.message);
         }
       }
 
@@ -1287,19 +1125,12 @@ export class UsuariosService {
   }
 
   async findPendingApproval(user?: any): Promise<any[]> {
-    console.log('🔍 [PENDENTES] Buscando usuários pendentes para:', {
-      user_id: user?.id,
-      user_nome: user?.nome,
-    });
-
     // Detectar perfil do usuário logado
     const perfis =
       user?.perfis?.map((p: any) => (typeof p === 'string' ? p : p.nome)) || [];
 
     // Converter tudo para minúsculas para comparação case-insensitive
     const perfisLower = perfis.map((p: string) => p.toLowerCase());
-
-    console.log('🔍 [PENDENTES] Perfis do usuário:', perfisLower);
 
     const isMaster =
       perfisLower.includes('master') || perfisLower.includes('admin');
@@ -1342,8 +1173,6 @@ export class UsuariosService {
       if (franqueadoData && franqueadoData.length > 0) {
         const franqueadoId = franqueadoData[0].id;
 
-        console.log('🔍 [PENDENTES] Franqueado ID:', franqueadoId);
-
         // DEBUG: Verificar usuários inativos no banco
         const usuariosInativos = await this.usuarioRepository.query(
           `SELECT u.id, u.nome, u.email, u.ativo, u.created_at
@@ -1351,14 +1180,6 @@ export class UsuariosService {
            WHERE u.ativo = false
            ORDER BY u.created_at DESC
            LIMIT 10`,
-        );
-        console.log(
-          '🔍 [PENDENTES DEBUG] Total de usuários inativos no banco:',
-          usuariosInativos.length,
-        );
-        console.log(
-          '🔍 [PENDENTES DEBUG] Usuários inativos:',
-          usuariosInativos,
         );
 
         // DEBUG: Verificar alunos vinculados a usuários inativos
@@ -1373,11 +1194,6 @@ export class UsuariosService {
            ORDER BY u.created_at DESC
            LIMIT 10`,
         );
-        console.log(
-          '🔍 [PENDENTES DEBUG] Alunos com usuário inativo:',
-          alunosInativos.length,
-        );
-        console.log('🔍 [PENDENTES DEBUG] Alunos:', alunosInativos);
 
         // DEBUG: Verificar perfis dos usuários inativos
         const perfisInativos = await this.usuarioRepository.query(
@@ -1388,10 +1204,6 @@ export class UsuariosService {
            WHERE u.ativo = false
            ORDER BY u.created_at DESC
            LIMIT 20`,
-        );
-        console.log(
-          '🔍 [PENDENTES DEBUG] Perfis de usuários inativos:',
-          perfisInativos,
         );
 
         // Buscar GERENTES, ALUNOS, RECEPCIONISTAS, PROFESSORES e RESPONSAVEIS pendentes das unidades do franqueado
@@ -1438,22 +1250,6 @@ export class UsuariosService {
           ORDER BY u.created_at DESC
           `,
           [franqueadoId],
-        );
-
-        console.log(
-          '🔍 [PENDENTES] Usuários pendentes encontrados:',
-          usuariosPendentes.length,
-        );
-        console.log(
-          '🔍 [PENDENTES] Dados:',
-          usuariosPendentes.map((u: any) => ({
-            id: u.id,
-            nome: u.nome,
-            email: u.email,
-            ativo: u.ativo,
-            unidade_id: u.unidade_id,
-            unidade_nome: u.unidade_nome,
-          })),
         );
 
         // Buscar perfis e unidade para cada usuário

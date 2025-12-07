@@ -184,10 +184,6 @@ export default function RegisterPage() {
       try {
         const API_URL =
           process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api";
-        console.log(
-          "🔍 Tentando carregar faixas de:",
-          `${API_URL}/graduacao/faixas`
-        );
 
         const response = await fetch(`${API_URL}/graduacao/faixas`, {
           method: "GET",
@@ -196,15 +192,9 @@ export default function RegisterPage() {
           },
         });
 
-        console.log(
-          "📡 Status da resposta:",
-          response.status,
-          response.statusText
-        );
-
         if (!response.ok) {
           const errorText = await response.text();
-          console.error("❌ Erro na resposta:", errorText);
+          console.error(" Erro na resposta:", errorText);
           throw new Error(
             `Erro ao carregar faixas: ${response.status} - ${errorText}`
           );

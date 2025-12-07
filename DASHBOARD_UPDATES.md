@@ -7,6 +7,7 @@
 #### ➕ Novos Cards Adicionados:
 
 **1. Horários de Aulas** 🆕
+
 ```tsx
 <Card onClick={() => router.push("/horarios")}>
   <CardTitle>Horários de Aulas</CardTitle>
@@ -16,12 +17,14 @@
   <Badge>Novo!</Badge>
 </Card>
 ```
+
 - **Cor:** Rosa (pink)
 - **Ação:** Redireciona para `/horarios`
 - **Status:** Novo!
 - **Descrição:** Alunos podem ver aulas da sua unidade
 
 **2. Presença** ✅
+
 ```tsx
 <Card onClick={() => router.push("/presenca")}>
   <CardTitle>Presença</CardTitle>
@@ -31,6 +34,7 @@
   <Badge>Ativo</Badge>
 </Card>
 ```
+
 - **Cor:** Verde esmeralda (emerald)
 - **Ação:** Redireciona para `/presenca`
 - **Status:** Ativo
@@ -43,6 +47,7 @@
 #### 🚫 Mocks Removidos:
 
 **Antes:**
+
 ```typescript
 const tempoNaGraduacao = "8 meses"; // TODO: calcular baseado na data de início
 const ranking = 15; // TODO: implementar cálculo de ranking
@@ -54,6 +59,7 @@ const conquistas = [
 ```
 
 **Depois:**
+
 ```typescript
 // ✅ Dados reais do backend
 const tempoNaGraduacao = statusGraduacao?.tempoNaFaixa || "Calculando...";
@@ -102,21 +108,21 @@ if (progressoPercentual >= 90) {
 
 ## 📋 CARDS NO DASHBOARD PRINCIPAL
 
-| Card | Cor | Status | Ação | Descrição |
-|------|-----|--------|------|-----------|
-| **Gestão de Usuários** | Verde | Ativo | `/usuarios` | CRUD completo de usuários |
-| **Autenticação JWT** | Cinza | Ativo | - | Login, logout, tokens |
-| **Sistema de Auditoria** | Cinza | Ativo | - | Logs automáticos |
-| **Reset de Senha** | Amarelo | Implementado | - | Recuperação via email |
-| **Alunos** | Azul | Ativo | `/alunos` | Gestão de alunos |
-| **Professores** | Roxo | Novo! | `/professores` | Cadastro de instrutores |
-| **Aprovação de Alunos** | Amarelo | Pendente | `/aprovacao-alunos` | Validação de cadastros |
-| **Meus Alunos** | Ciano | Personalizado | `/meus-alunos` | Alunos sob responsabilidade |
-| **TeamCruz Jiu-Jitsu** | Vermelho | Sistema | `/teamcruz` | Presença e graduação |
-| **Franqueados** | Índigo | Master | `/franqueados` | Gestão de franquias |
-| **Unidades** | Verde-azulado | Restrito | `/unidades` | Administração de unidades |
-| **Horários de Aulas** 🆕 | Rosa | **Novo!** | `/horarios` | **Ver aulas da unidade** |
-| **Presença** 🆕 | Verde esmeralda | Ativo | `/presenca` | **Check-in nas aulas** |
+| Card                     | Cor             | Status        | Ação                | Descrição                   |
+| ------------------------ | --------------- | ------------- | ------------------- | --------------------------- |
+| **Gestão de Usuários**   | Verde           | Ativo         | `/usuarios`         | CRUD completo de usuários   |
+| **Autenticação JWT**     | Cinza           | Ativo         | -                   | Login, logout, tokens       |
+| **Sistema de Auditoria** | Cinza           | Ativo         | -                   | Logs automáticos            |
+| **Reset de Senha**       | Amarelo         | Implementado  | -                   | Recuperação via email       |
+| **Alunos**               | Azul            | Ativo         | `/alunos`           | Gestão de alunos            |
+| **Professores**          | Roxo            | Novo!         | `/professores`      | Cadastro de instrutores     |
+| **Aprovação de Alunos**  | Amarelo         | Pendente      | `/aprovacao-alunos` | Validação de cadastros      |
+| **Meus Alunos**          | Ciano           | Personalizado | `/meus-alunos`      | Alunos sob responsabilidade |
+| **TeamCruz Jiu-Jitsu**   | Vermelho        | Sistema       | `/teamcruz`         | Presença e graduação        |
+| **Franqueados**          | Índigo          | Master        | `/franqueados`      | Gestão de franquias         |
+| **Unidades**             | Verde-azulado   | Restrito      | `/unidades`         | Administração de unidades   |
+| **Horários de Aulas** 🆕 | Rosa            | **Novo!**     | `/horarios`         | **Ver aulas da unidade**    |
+| **Presença** 🆕          | Verde esmeralda | Ativo         | `/presenca`         | **Check-in nas aulas**      |
 
 ---
 
@@ -203,24 +209,24 @@ if (progressoPercentual >= 90) {
 
 ### ✅ Dados Reais (do Backend)
 
-| Campo | Fonte | API Endpoint |
-|-------|-------|--------------|
-| Graduação Atual | Backend | `/graduacao/status` |
-| Tempo na Faixa | Backend | `/graduacao/status` |
-| Presença Mensal | Backend | `/presenca/minhas-estatisticas` |
-| Aulas no Mês | Backend | `/presenca/minhas-estatisticas` |
-| Pontos Graduação | Backend | `/graduacao/status` |
-| Próximas Aulas | Backend | `/presenca/aulas-disponiveis` |
-| Histórico | Backend | `/presenca/minha-historico` |
-| Ranking | Backend | `/presenca/minhas-estatisticas` |
+| Campo            | Fonte   | API Endpoint                    |
+| ---------------- | ------- | ------------------------------- |
+| Graduação Atual  | Backend | `/graduacao/status`             |
+| Tempo na Faixa   | Backend | `/graduacao/status`             |
+| Presença Mensal  | Backend | `/presenca/minhas-estatisticas` |
+| Aulas no Mês     | Backend | `/presenca/minhas-estatisticas` |
+| Pontos Graduação | Backend | `/graduacao/status`             |
+| Próximas Aulas   | Backend | `/presenca/aulas-disponiveis`   |
+| Histórico        | Backend | `/presenca/minha-historico`     |
+| Ranking          | Backend | `/presenca/minhas-estatisticas` |
 
-### ❌ Removidos (eram mocks)
+### Removidos (eram mocks)
 
-| Campo | Status Anterior |
-|-------|-----------------|
-| Tempo na Graduação | ❌ "8 meses" (fixo) → ✅ Backend |
-| Ranking | ❌ 15 (fixo) → ✅ Backend ou null |
-| Conquistas | ❌ Array fixo → ✅ Dinâmico baseado em dados |
+| Campo              | Status Anterior                           |
+| ------------------ | ----------------------------------------- |
+| Tempo na Graduação | "8 meses" (fixo) → ✅ Backend             |
+| Ranking            | 15 (fixo) → ✅ Backend ou null            |
+| Conquistas         | Array fixo → ✅ Dinâmico baseado em dados |
 
 ---
 

@@ -346,7 +346,6 @@ export default function PresencaPage() {
           );
           latitude = position.coords.latitude;
           longitude = position.coords.longitude;
-          console.log("📍 Localização obtida:", { latitude, longitude });
         }
       } catch (geoError) {
         console.warn("⚠️ Não foi possível obter localização:", geoError);
@@ -424,10 +423,9 @@ export default function PresencaPage() {
           );
           latitude = position.coords.latitude;
           longitude = position.coords.longitude;
-          console.log("📍 Localização obtida:", { latitude, longitude });
         }
       } catch (geoError) {
-        console.warn("⚠️ Não foi possível obter localização:", geoError);
+        console.warn(" Não foi possível obter localização:", geoError);
         toast.error(
           "Não foi possível obter sua localização. Verifique as permissões do navegador."
         );

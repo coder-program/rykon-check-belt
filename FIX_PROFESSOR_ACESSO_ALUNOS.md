@@ -87,16 +87,16 @@ else if (user && this.isProfessor(user)) {
 ```typescript
 {
   action: () => router.push("/presenca/registrar");
-} // ❌ Rota não existe
+} //  Rota não existe
 {
   action: () => router.push("/meus-alunos");
-} // ❌ Rota errada
+} //  Rota errada
 {
   action: () => router.push("/graduacoes");
-} // ❌ Rota errada
+} //  Rota errada
 {
   action: () => router.push("/relatorios");
-} // ❌ Rota não existe
+} //  Rota não existe
 ```
 
 **Depois:**
@@ -289,7 +289,7 @@ GET /alunos
 1. Login como professor vinculado às unidades "A" e "B"
 2. Acessar `/alunos`
 3. ✅ Ver alunos das unidades "A" e "B"
-4. ❌ NÃO ver alunos da unidade "C"
+4. NÃO ver alunos da unidade "C"
 
 ### Teste 3: Professor sem Unidades
 

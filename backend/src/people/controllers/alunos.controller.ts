@@ -70,7 +70,7 @@ export class AlunosController {
     status: 200,
     description: '✅ Lista de dependentes do responsável',
   })
-  @ApiResponse({ status: 401, description: '❌ Token inválido ou expirado' })
+  @ApiResponse({ status: 401, description: ' Token inválido ou expirado' })
   async getMeusDependentes(@Request() req) {
     return this.service.getMeusDependentes(req.user);
   }
@@ -86,8 +86,8 @@ export class AlunosController {
     status: 201,
     description: '✅ Responsável convertido em aluno com sucesso',
   })
-  @ApiResponse({ status: 400, description: '❌ Responsável já é aluno' })
-  @ApiResponse({ status: 401, description: '❌ Token inválido ou expirado' })
+  @ApiResponse({ status: 400, description: ' Responsável já é aluno' })
+  @ApiResponse({ status: 401, description: ' Token inválido ou expirado' })
   async responsavelViraAluno(@Request() req) {
     return this.service.responsavelViraAluno(req.user);
   }
@@ -105,7 +105,7 @@ export class AlunosController {
     description: 'ID da unidade para filtrar',
   })
   @ApiResponse({ status: 200, description: '✅ Estatísticas retornadas' })
-  @ApiResponse({ status: 401, description: '❌ Token inválido ou expirado' })
+  @ApiResponse({ status: 401, description: ' Token inválido ou expirado' })
   async getStats(@Query(ValidationPipe) query: any, @Request() req) {
     const user = req?.user || null;
     return this.service.getStats(query, user);
@@ -132,23 +132,8 @@ export class AlunosController {
     @Body(new ValidationPipe({ skipMissingProperties: true })) dto: any,
     @Request() req,
   ) {
-    console.log('🔥 [ALUNO CREATE CONTROLLER] ===== INÍCIO ===== ');
-    console.log(
-      '🔥 [ALUNO CREATE CONTROLLER] DTO recebido:',
-      JSON.stringify(dto, null, 2),
-    );
-    console.log('🔥 [ALUNO CREATE CONTROLLER] Usuário:', req.user?.id);
-    console.log('🔥 [ALUNO CREATE CONTROLLER] CPF no DTO:', dto.cpf);
-    console.log(
-      '🔥 [ALUNO CREATE CONTROLLER] responsavel_id no DTO:',
-      dto.responsavel_id,
-    );
-
     // Se o usuário logado for responsável e não foi fornecido responsavel_id, buscar automaticamente
     if (!dto.responsavel_id && req.user) {
-      console.log(
-        '🔍 [ALUNO CREATE CONTROLLER] Buscando responsável do usuário...',
-      );
       try {
         // Primeiro tentar buscar responsável do usuário logado
         const responsavel = await this.dataSource.query(
@@ -156,45 +141,23 @@ export class AlunosController {
           [req.user.id],
         );
 
-        console.log(
-          '🔍 [ALUNO CREATE CONTROLLER] Responsável encontrado:',
-          responsavel,
-        );
-
         if (responsavel && responsavel.length > 0) {
           dto.responsavel_id = responsavel[0].id;
           (dto as any).is_dependente_cadastro = true;
-          console.log(
-            '✅ [ALUNO CREATE CONTROLLER] Responsável cadastrando dependente:',
-            dto.responsavel_id,
-          );
         } else {
           // Se não for responsável, verificar se é um aluno (qualquer aluno pode cadastrar dependentes)
-          console.log(
-            '🔍 [ALUNO CREATE CONTROLLER] Buscando se usuário é aluno...',
-          );
           const aluno = await this.dataSource.query(
             `SELECT id, responsavel_id FROM teamcruz.alunos WHERE usuario_id = $1 LIMIT 1`,
             [req.user.id],
           );
-
-          console.log('🔍 [ALUNO CREATE CONTROLLER] Aluno encontrado:', aluno);
 
           if (aluno && aluno.length > 0) {
             // Se o aluno tem responsavel_id, usar o mesmo (cadastrar irmão/dependente)
             if (aluno[0].responsavel_id) {
               dto.responsavel_id = aluno[0].responsavel_id;
               (dto as any).is_dependente_cadastro = true;
-              console.log(
-                '✅ [ALUNO CREATE CONTROLLER] Aluno cadastrando dependente, usando responsavel_id:',
-                dto.responsavel_id,
-              );
             } else {
               // Aluno SEM responsavel_id: criar responsável com dados fornecidos
-              console.log(
-                '🔍 [ALUNO CREATE CONTROLLER] Aluno sem responsável, criando com dados fornecidos...',
-              );
-
               // Usar dados do responsável fornecidos no DTO ou do próprio usuário
               const nomeResp = dto.responsavel_nome || dto.nome_completo;
               // Limpar CPF removendo caracteres não numéricos
@@ -231,35 +194,13 @@ export class AlunosController {
                   `UPDATE teamcruz.alunos SET responsavel_id = $1 WHERE id = $2`,
                   [dto.responsavel_id, aluno[0].id],
                 );
-
-                console.log(
-                  '✅ [ALUNO CREATE CONTROLLER] Responsável criado e vinculado:',
-                  dto.responsavel_id,
-                );
               }
             }
           } else {
-            console.log(
-              '❌ [ALUNO CREATE CONTROLLER] Nenhum responsável ou aluno encontrado para o usuário',
-            );
           }
         }
-      } catch (error) {
-        console.log(
-          '⚠️ [ALUNO CREATE CONTROLLER] Erro ao buscar responsável:',
-          error.message,
-        );
-      }
-    } else {
-      console.log(
-        'ℹ️ [ALUNO CREATE CONTROLLER] responsavel_id já presente ou sem usuário',
-      );
+      } catch (error) {}
     }
-
-    console.log(
-      '🔥 [ALUNO CREATE CONTROLLER] DTO final antes do service:',
-      JSON.stringify(dto, null, 2),
-    );
 
     return this.service.create(dto);
   }
@@ -288,12 +229,6 @@ export class AlunosController {
     @Body(ValidationPipe) dto: UpdateAlunoDto,
     @Request() req,
   ) {
-    console.log('📝 [ALUNO PATCH CONTROLLER] DTO recebido:', dto);
-    console.log('📝 [ALUNO PATCH CONTROLLER] faixa_atual:', dto.faixa_atual);
-    console.log(
-      '📝 [ALUNO PATCH CONTROLLER] typeof faixa_atual:',
-      typeof dto.faixa_atual,
-    );
     const user = req?.user || null;
     return this.service.update(id, dto, user);
   }

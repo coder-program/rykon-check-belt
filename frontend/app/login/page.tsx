@@ -160,26 +160,14 @@ function LoginContent() {
       );
 
       if (isFranqueado) {
-        console.log("🔥 [LOGIN] É FRANQUEADO");
-        console.log("🔥 [LOGIN] result.user:", result.user);
-        console.log(
-          "🔥 [LOGIN] cadastro_completo:",
-          result.user?.cadastro_completo
-        );
-        console.log("🔥 [LOGIN] tipo:", typeof result.user?.cadastro_completo);
-
         // Franqueado com cadastro incompleto vai para /minha-franquia
         if (result.user?.cadastro_completo === false) {
-          console.log(
-            "🔥 [LOGIN] Cadastro INCOMPLETO - indo para /minha-franquia"
-          );
           toast("Complete o cadastro da sua franquia para acessar o sistema", {
             icon: "📋",
             duration: 3000,
           });
           router.push("/minha-franquia");
         } else {
-          console.log("🔥 [LOGIN] Cadastro COMPLETO - indo para /dashboard");
           // Franqueado com cadastro completo vai para /dashboard
           router.push("/dashboard");
         }

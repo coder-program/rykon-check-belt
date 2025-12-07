@@ -297,9 +297,9 @@ const { data: alunosData } = useQuery({
 
 ### Antes (SEM Proteção)
 
-- ❌ Buscava TODOS os 1000+ alunos do banco
-- ❌ Filtrava no frontend (lento e inseguro)
-- ❌ Trafegava dados desnecessários pela rede
+- Buscava TODOS os 1000+ alunos do banco
+- Filtrava no frontend (lento e inseguro)
+- Trafegava dados desnecessários pela rede
 
 ### Depois (COM Proteção)
 

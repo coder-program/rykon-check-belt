@@ -111,7 +111,6 @@ export class PresencaService {
   ): { valido: boolean; distancia: number; mensagem?: string } {
     // Se a unidade não tem coordenadas cadastradas, permite o check-in
     if (!unidade.latitude || !unidade.longitude) {
-      console.log('⚠️ Unidade sem coordenadas cadastradas - check-in liberado');
       return { valido: true, distancia: 0 };
     }
 
@@ -121,8 +120,6 @@ export class PresencaService {
       unidade.latitude,
       unidade.longitude,
     );
-
-    console.log(`📍 Distância calculada: ${distancia.toFixed(2)} metros`);
 
     const RAIO_PERMITIDO = 100; // 100 metros
 
@@ -227,12 +224,6 @@ export class PresencaService {
       if (!validacao.valido) {
         throw new BadRequestException(validacao.mensagem);
       }
-
-      console.log(`✅ Check-in aprovado - distância: ${validacao.distancia}m`);
-    } else {
-      console.log(
-        '⚠️ Check-in sem validação de localização (coordenadas não fornecidas)',
-      );
     }
 
     // Buscar aluno
@@ -290,7 +281,7 @@ export class PresencaService {
       }
     } catch (error) {
       console.error(
-        '❌ [checkInQR] Erro ao incrementar graduação:',
+        ' [checkInQR] Erro ao incrementar graduação:',
         error.message,
       );
     }
@@ -338,14 +329,6 @@ export class PresencaService {
       if (!validacao.valido) {
         throw new BadRequestException(validacao.mensagem);
       }
-
-      console.log(
-        `✅ Check-in manual aprovado - distância: ${validacao.distancia}m`,
-      );
-    } else {
-      console.log(
-        '⚠️ Check-in manual sem validação de localização (coordenadas não fornecidas)',
-      );
     }
 
     // Verificar se já existe check-in hoje (apenas 1 check-in por dia permitido)
@@ -396,7 +379,7 @@ export class PresencaService {
       }
     } catch (error) {
       console.error(
-        '❌ [checkInManual] Erro ao incrementar graduação:',
+        ' [checkInManual] Erro ao incrementar graduação:',
         error.message,
       );
     }
@@ -514,7 +497,7 @@ export class PresencaService {
         }
       } catch (error) {
         console.error(
-          '❌ [checkInDependente] Erro ao incrementar graduação:',
+          ' [checkInDependente] Erro ao incrementar graduação:',
           error.message,
         );
       }
@@ -580,31 +563,14 @@ export class PresencaService {
   }
 
   async getMinhaHistorico(user: any, limit: number = 10) {
-    console.log('🔍 [MINHA HISTORICO] ========== INÍCIO ==========');
-    console.log('🔍 [MINHA HISTORICO] User ID:', user.id);
-    console.log('🔍 [MINHA HISTORICO] Limit:', limit);
-
     // Buscar aluno pelo usuario_id
     const aluno = await this.alunoRepository.findOne({
       where: { usuario_id: user.id },
     });
 
-    console.log(
-      '🔍 [MINHA HISTORICO] Aluno encontrado:',
-      aluno ? { id: aluno.id, nome: aluno.nome_completo } : 'não encontrado',
-    );
-
     if (!aluno) {
-      console.log(
-        '⚠️ [MINHA HISTORICO] Retornando vazio - aluno não encontrado',
-      );
       return [];
     }
-
-    console.log(
-      '🔍 [MINHA HISTORICO] Buscando presenças para aluno_id:',
-      aluno.id,
-    );
 
     // Buscar apenas presenças APROVADAS
     const presencas = await this.presencaRepository.find({
@@ -617,38 +583,11 @@ export class PresencaService {
       take: limit,
     });
 
-    console.log(
-      '🔍 [MINHA HISTORICO] Total de presenças APROVADAS encontradas:',
-      presencas.length,
-    );
-
-    if (presencas.length > 0) {
-      console.log('🔍 [MINHA HISTORICO] Primeira presença:', {
-        id: presencas[0].id,
-        created_at: presencas[0].created_at,
-        aula_id: presencas[0].aula_id,
-      });
-    }
-
-    console.log('🔍 [MINHA HISTORICO] Buscando faixa ativa...');
-
     // Buscar faixa ativa do aluno
     const faixaAtiva = await this.alunoFaixaRepository.findOne({
       where: { aluno_id: aluno.id, ativa: true },
       relations: ['faixaDef'],
     });
-
-    console.log(
-      '🔍 [MINHA HISTORICO] Faixa ativa:',
-      faixaAtiva
-        ? {
-            id: faixaAtiva.id,
-            faixa: faixaAtiva.faixaDef?.nome_exibicao,
-            codigo: faixaAtiva.faixaDef?.codigo,
-            graus: faixaAtiva.graus_atual,
-          }
-        : 'não encontrada',
-    );
 
     // Mapear as presenças com informações das aulas
     const presencasComAulas = presencas.map((p) => {
@@ -668,18 +607,10 @@ export class PresencaService {
       };
     });
 
-    console.log(
-      '✅ [MINHA HISTORICO] Retornando:',
-      presencasComAulas.length,
-      'presenças',
-    );
-    console.log('🔍 [MINHA HISTORICO] ========== FIM ==========');
     return presencasComAulas;
   }
 
   async getMinhasPendentes(user: any) {
-    console.log('🔍 [MINHAS PENDENTES] User ID:', user.id);
-
     // Buscar aluno pelo usuario_id
     const aluno = await this.alunoRepository.findOne({
       where: { usuario_id: user.id },
@@ -688,8 +619,6 @@ export class PresencaService {
     if (!aluno) {
       return [];
     }
-
-    console.log('🔍 [MINHAS PENDENTES] Aluno ID:', aluno.id);
 
     // Buscar presenças PENDENTES do aluno
     const presencasPendentes = await this.presencaRepository.find({
@@ -700,11 +629,6 @@ export class PresencaService {
       relations: ['aula', 'aula.unidade'],
       order: { created_at: 'DESC' },
     });
-
-    console.log(
-      '🔍 [MINHAS PENDENTES] Total pendentes:',
-      presencasPendentes.length,
-    );
 
     return presencasPendentes.map((p) => ({
       id: p.id,
@@ -1374,7 +1298,7 @@ export class PresencaService {
 
       return aulasFormatadas;
     } catch (error) {
-      console.error('❌ [getAulasDisponiveis] Erro ao buscar aulas:', error);
+      console.error(' [getAulasDisponiveis] Erro ao buscar aulas:', error);
       // Em caso de erro, retornar array vazio ao invés de falhar
       return [];
     }
@@ -1643,7 +1567,7 @@ export class PresencaService {
         ranking: top10,
       };
     } catch (error) {
-      console.error('❌ [getRankingUnidade] Erro ao buscar ranking:', error);
+      console.error(' [getRankingUnidade] Erro ao buscar ranking:', error);
       return {
         posicao: null,
         totalAlunos: 0,
@@ -1700,24 +1624,17 @@ export class PresencaService {
     metodo: string,
     user: any,
   ) {
-    console.log('🔍 [checkInTablet] User perfis:', user?.perfis);
-    console.log('🔍 [checkInTablet] User id:', user?.id);
-
     // Validar perfil TABLET_CHECKIN
     const perfisNomes = (user?.perfis || []).map((p: any) =>
       typeof p === 'string' ? p.toUpperCase() : p.nome?.toUpperCase(),
     );
 
-    console.log('🔍 [checkInTablet] Perfis normalizados:', perfisNomes);
-
     if (!perfisNomes.includes('TABLET_CHECKIN')) {
-      console.error('❌ [checkInTablet] Perfil não autorizado:', perfisNomes);
+      console.error(' [checkInTablet] Perfil não autorizado:', perfisNomes);
       throw new ForbiddenException(
         'Apenas perfil TABLET_CHECKIN pode fazer check-in via tablet',
       );
     }
-
-    console.log('✅ [checkInTablet] Perfil TABLET_CHECKIN validado');
 
     // Buscar unidade do usuário tablet
     const unidadeTablet = await this.getUnidadeTablet(user.id);
@@ -1727,29 +1644,22 @@ export class PresencaService {
       );
     }
 
-    console.log('🔍 [checkInTablet] Unidade do tablet:', unidadeTablet);
-    console.log('🔍 [checkInTablet] Aluno ID recebido:', alunoId);
-
     // Verificar se aluno existe
     const aluno = await this.alunoRepository.findOne({
       where: { id: alunoId },
     });
 
-    console.log('🔍 [checkInTablet] Aluno encontrado:', aluno ? 'SIM' : 'NÃO');
-
     if (!aluno) {
       console.error(
-        '❌ [checkInTablet] Aluno não encontrado no banco. ID:',
+        ' [checkInTablet] Aluno não encontrado no banco. ID:',
         alunoId,
       );
       throw new NotFoundException('Aluno não encontrado');
     }
 
-    console.log('🔍 [checkInTablet] Aluno unidade_id:', aluno.unidade_id);
-
     // Verificar se o aluno pertence à mesma unidade do tablet
     if (aluno.unidade_id !== unidadeTablet) {
-      console.error('❌ [checkInTablet] Aluno de outra unidade:', {
+      console.error(' [checkInTablet] Aluno de outra unidade:', {
         alunoUnidade: aluno.unidade_id,
         tabletUnidade: unidadeTablet,
       });
@@ -1845,9 +1755,6 @@ export class PresencaService {
   }
 
   async getPresencasPendentes(user: any, data?: string, aulaId?: string) {
-    console.log('🔍 [getPresencasPendentes] User perfis:', user?.perfis);
-    console.log('🔍 [getPresencasPendentes] User id:', user?.id);
-
     // Verificar permissão
     const perfisPermitidos = [
       'RECEPCIONISTA',
@@ -1860,15 +1767,11 @@ export class PresencaService {
       typeof p === 'string' ? p.toUpperCase() : p.nome?.toUpperCase(),
     );
 
-    console.log('🔍 [getPresencasPendentes] Perfis normalizados:', perfisNomes);
-
     const temPermissao = perfisNomes.some((p) => perfisPermitidos.includes(p));
-
-    console.log('🔍 [getPresencasPendentes] Tem permissão?', temPermissao);
 
     if (!temPermissao) {
       console.error(
-        '❌ [getPresencasPendentes] Usuário sem permissão:',
+        ' [getPresencasPendentes] Usuário sem permissão:',
         perfisNomes,
       );
       throw new ForbiddenException(
@@ -1878,16 +1781,12 @@ export class PresencaService {
 
     // Determinar unidade do usuário
     const unidadeId = await this.getUnidadeUsuario(user);
-    console.log('🔍 [getPresencasPendentes] Unidade do usuário:', unidadeId);
-
     if (!unidadeId) {
-      console.error('❌ [getPresencasPendentes] Usuário sem unidade');
+      console.error(' [getPresencasPendentes] Usuário sem unidade');
       throw new ForbiddenException(
         'Usuário não está vinculado a nenhuma unidade',
       );
     }
-
-    console.log('🔍 [getPresencasPendentes] Buscando presenças pendentes...');
 
     // Construir query
     const where: any = {
@@ -1929,23 +1828,8 @@ export class PresencaService {
 
     const { raw, entities } = presencas;
 
-    console.log(
-      '🔍 [getPresencasPendentes] Total de presenças encontradas:',
-      entities.length,
-    );
-
-    if (raw.length > 0) {
-      console.log('🔍 [getPresencasPendentes] Primeira presença raw:', raw[0]);
-    }
-
     return entities.map((p, index) => {
       const rawData = raw[index];
-      console.log('🔍 [getPresencasPendentes] Mapeando presença:', {
-        id: p.id,
-        aluno_id: p.aluno_id,
-        aluno_nome_completo: rawData?.aluno_nome_completo,
-        aluno_cpf: rawData?.aluno_cpf,
-      });
 
       return {
         id: p.id,
@@ -2042,7 +1926,7 @@ export class PresencaService {
       }
     } catch (error) {
       console.error(
-        '❌ [aprovarPresenca] Erro ao incrementar graduação:',
+        ' [aprovarPresenca] Erro ao incrementar graduação:',
         error.message,
       );
     }
@@ -2124,37 +2008,24 @@ export class PresencaService {
   }
 
   private async getUnidadeUsuario(user: any): Promise<string | null> {
-    console.log('🔍 [getUnidadeUsuario] User perfis:', user.perfis);
-    console.log('🔍 [getUnidadeUsuario] User id:', user.id);
-
     // Normalizar perfis
     const perfisNomes = (user?.perfis || []).map((p: any) =>
       typeof p === 'string' ? p.toUpperCase() : p.nome?.toUpperCase(),
     );
 
-    console.log('🔍 [getUnidadeUsuario] Perfis normalizados:', perfisNomes);
-
     if (perfisNomes.includes('GERENTE_UNIDADE')) {
-      console.log(
-        '🔍 [getUnidadeUsuario] Buscando unidade de GERENTE_UNIDADE...',
-      );
       const result = await this.personRepository.query(
         `SELECT unidade_id FROM teamcruz.gerente_unidades WHERE usuario_id = $1 AND ativo = true LIMIT 1`,
         [user.id],
       );
-      console.log('🔍 [getUnidadeUsuario] Resultado GERENTE:', result);
       return result[0]?.unidade_id || null;
     }
 
     if (perfisNomes.includes('RECEPCIONISTA')) {
-      console.log(
-        '🔍 [getUnidadeUsuario] Buscando unidade de RECEPCIONISTA...',
-      );
       const result = await this.personRepository.query(
         `SELECT unidade_id FROM teamcruz.recepcionista_unidades WHERE usuario_id = $1 AND ativo = true LIMIT 1`,
         [user.id],
       );
-      console.log('🔍 [getUnidadeUsuario] Resultado RECEPCIONISTA:', result);
       return result[0]?.unidade_id || null;
     }
 
@@ -2162,9 +2033,6 @@ export class PresencaService {
       perfisNomes.includes('PROFESSOR') ||
       perfisNomes.includes('INSTRUTOR')
     ) {
-      console.log(
-        '🔍 [getUnidadeUsuario] Buscando unidade de PROFESSOR/INSTRUTOR...',
-      );
       const result = await this.personRepository.query(
         `SELECT pu.unidade_id
          FROM teamcruz.professor_unidades pu
@@ -2173,7 +2041,6 @@ export class PresencaService {
          LIMIT 1`,
         [user.id],
       );
-      console.log('🔍 [getUnidadeUsuario] Resultado PROFESSOR:', result);
       return result[0]?.unidade_id || null;
     }
 

@@ -116,11 +116,11 @@ No terminal do backend, deve aparecer logs assim:
 
 **Possíveis causas:**
 
-1. ❌ Não fez logout/login após correção
-2. ❌ Cache do navegador não foi limpo
-3. ❌ Token JWT expirado ou inválido
-4. ❌ Backend não está rodando a versão atualizada
-5. ❌ Usuário tem perfil MASTER além de FRANQUEADO
+1.  Não fez logout/login após correção
+2.  Cache do navegador não foi limpo
+3.  Token JWT expirado ou inválido
+4.  Backend não está rodando a versão atualizada
+5.  Usuário tem perfil MASTER além de FRANQUEADO
 
 **Soluções:**
 

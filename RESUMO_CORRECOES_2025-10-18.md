@@ -8,7 +8,7 @@
 
 ### Problema
 
-❌ **Erro 400 ao completar cadastro de professor:**
+**Erro 400 ao completar cadastro de professor:**
 
 ```
 Error: Professores devem ter faixa Azul, Roxa, Marrom, Preta, Coral ou Vermelha
@@ -51,7 +51,7 @@ POST http://localhost:4000/api/auth/complete-profile 400 (Bad Request)
 
 ### Problema
 
-❌ **Runtime TypeError:**
+**Runtime TypeError:**
 
 ```
 Cannot read properties of undefined (reading 'novasInscricoes')

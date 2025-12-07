@@ -207,7 +207,7 @@ private async realizarCheckInAdmin(
       await this.alunoFaixaRepository.save(alunoFaixaAtiva);
     }
   } catch (error) {
-    console.error('❌ Erro ao incrementar graduação:', error.message);
+    console.error(' Erro ao incrementar graduação:', error.message);
   }
 
   return {

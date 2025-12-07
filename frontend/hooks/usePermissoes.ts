@@ -30,13 +30,9 @@ export function usePermissoes() {
     const userData = localStorage.getItem("user");
     if (userData) {
       const user = JSON.parse(userData);
-      console.log("🔍 [PERMISSOES] User completo:", user);
-      console.log("👥 [PERMISSOES] Perfis originais:", user.perfis);
-
       const userPerfis = (user.perfis || []).map((p: any) =>
         typeof p === "string" ? p.toLowerCase() : p?.nome?.toLowerCase()
       );
-      console.log("✅ [PERMISSOES] Perfis processados:", userPerfis);
 
       setPerfis(userPerfis);
 
@@ -47,13 +43,6 @@ export function usePermissoes() {
         userPerfis.includes("gerente") ||
         userPerfis.includes("gerente_unidade");
       const isRecepcionista = userPerfis.includes("recepcionista");
-
-      console.log("🎯 [PERMISSOES] Flags:", {
-        isAdmin,
-        isFranqueado,
-        isGerente,
-        isRecepcionista,
-      });
 
       setPermissoes({
         // Dashboard completo: apenas admin, franqueado e gerente
@@ -82,8 +71,6 @@ export function usePermissoes() {
         podeEnviarLinkPagamento:
           isAdmin || isFranqueado || isGerente || isRecepcionista,
       });
-
-      console.log("🔐 [PERMISSOES] Permissões finais definidas");
     }
     setLoading(false);
   }, []);

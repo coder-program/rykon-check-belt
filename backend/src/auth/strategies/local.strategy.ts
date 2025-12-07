@@ -19,7 +19,7 @@ export class LocalStrategy extends PassportStrategy(Strategy) {
     );
 
     if (!result.user) {
-      console.error('❌ LocalStrategy.validate -', result.error);
+      console.error(' LocalStrategy.validate -', result.error);
       throw new UnauthorizedException(result.error || 'Credenciais inválidas');
     }
 

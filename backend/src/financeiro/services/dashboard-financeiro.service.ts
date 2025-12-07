@@ -30,16 +30,10 @@ export class DashboardFinanceiroService {
       let unidadesIds: string[] = [];
 
       if (!unidade_id && user.tipo_usuario === 'FRANQUEADO') {
-        console.log(
-          '🔍 Franqueado detectado, buscando unidades do franqueado:',
-          user.id,
-        );
         const unidades = await this.unidadeRepository.find({
           where: { franqueado_id: user.id },
           select: ['id'],
         });
-        console.log('📍 Unidades encontradas:', unidades.length);
-
         if (unidades.length === 0) {
           console.warn('⚠️ Franqueado sem unidades');
           return this.getEmptyDashboard();

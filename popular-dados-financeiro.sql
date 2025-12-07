@@ -232,7 +232,7 @@ BEGIN
   LIMIT 1;
 
   IF v_aluno_id IS NULL THEN
-    RAISE NOTICE '❌ Nenhum aluno encontrado! Cadastre alunos primeiro.';
+    RAISE NOTICE ' Nenhum aluno encontrado! Cadastre alunos primeiro.';
     RETURN;
   END IF;
 

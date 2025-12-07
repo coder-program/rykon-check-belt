@@ -363,7 +363,7 @@ export async function graduarAlunoAutomatico(
         observacao || `Graduação automática para ${proximaFaixa.nome_exibicao}`,
     });
   } catch (error) {
-    console.error("❌ Erro na graduação automática:", error);
+    console.error(" Erro na graduação automática:", error);
     throw error;
   }
 }
@@ -438,29 +438,22 @@ export async function listarFaixasValidasParaGraduacao(
 ): Promise<any[]> {
   const token = localStorage.getItem("token");
 
-  console.log("🔥 [API] Buscando próxima faixa para aluno:", alunoId);
-
   try {
     // Usar o novo endpoint que retorna apenas a próxima faixa válida
     const url = `${API_URL}/graduacao/alunos/${alunoId}/proxima-faixa`;
-    console.log("🔥 [API] URL:", url);
-
     const response = await fetch(url, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
     });
 
-    console.log("🔥 [API] Response status:", response.status);
-
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("🔥 [API] Erro response:", errorText);
+      console.error(" [API] Erro response:", errorText);
       return [];
     }
 
     const data = await response.json();
-    console.log("🔥 [API] Faixas retornadas do backend:", data);
     return data;
   } catch (error) {
     console.error("🔥 [API] Erro ao buscar faixas válidas:", error);
@@ -475,12 +468,9 @@ export async function listarFaixasValidasParaGraduacaoManual(
 ): Promise<any[]> {
   const token = localStorage.getItem("token");
 
-  console.log("🔥 [API MANUAL] Buscando próxima faixa para aluno:", alunoId);
-
   try {
     // Usar o endpoint de graduação manual que NÃO valida graus
     const url = `${API_URL}/graduacao/alunos/${alunoId}/proxima-faixa-manual`;
-    console.log("🔥 [API MANUAL] URL:", url);
 
     const response = await fetch(url, {
       headers: {
@@ -488,19 +478,16 @@ export async function listarFaixasValidasParaGraduacaoManual(
       },
     });
 
-    console.log("🔥 [API MANUAL] Response status:", response.status);
-
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("🔥 [API MANUAL] Erro response:", errorText);
+      console.error(" [API MANUAL] Erro response:", errorText);
       return [];
     }
 
     const data = await response.json();
-    console.log("🔥 [API MANUAL] Faixas retornadas do backend:", data);
     return data;
   } catch (error) {
-    console.error("🔥 [API MANUAL] Erro ao buscar faixas válidas:", error);
+    console.error(" [API MANUAL] Erro ao buscar faixas válidas:", error);
     return [];
   }
 }

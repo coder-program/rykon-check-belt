@@ -96,14 +96,14 @@ Perfil: master
 
 **O que NÃO PODE fazer:**
 
-- ❌ Ver ou gerenciar **outras unidades** da franquia
-- ❌ Criar, editar ou excluir professores
-- ❌ Excluir alunos (apenas inativar)
-- ❌ Excluir a unidade
-- ❌ Alterar configurações da franquia
-- ❌ Criar outros gerentes
-- ❌ Alterar permissões de usuários
-- ❌ Acessar dados financeiros globais
+- Ver ou gerenciar **outras unidades** da franquia
+- Criar, editar ou excluir professores
+- Excluir alunos (apenas inativar)
+- Excluir a unidade
+- Alterar configurações da franquia
+- Criar outros gerentes
+- Alterar permissões de usuários
+- Acessar dados financeiros globais
 
 **Dashboard do Gerente:**
 

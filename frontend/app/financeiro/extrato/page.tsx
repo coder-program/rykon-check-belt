@@ -60,26 +60,17 @@ export default function Extrato() {
 
     // Detectar franqueado e carregar unidades
     const userData = localStorage.getItem("user");
-    console.log("🔍 [EXTRATO] userData do localStorage:", userData);
     if (userData) {
       const user = JSON.parse(userData);
-      console.log("👤 [EXTRATO] Objeto user parseado:", user);
-      console.log("🏢 [EXTRATO] user.unidade_id:", user.unidade_id);
-      console.log("👥 [EXTRATO] user.perfis:", user.perfis);
 
       const isFranqueadoUser = user.perfis?.some(
         (p: any) =>
           (typeof p === "string" && p.toLowerCase() === "franqueado") ||
           (typeof p === "object" && p?.nome?.toLowerCase() === "franqueado")
       );
-      console.log("🎯 [EXTRATO] É franqueado?", isFranqueadoUser);
 
       setIsFranqueado(isFranqueadoUser);
       setUnidadeId(user.unidade_id || "");
-      console.log(
-        "✅ [EXTRATO] unidadeId definido como:",
-        user.unidade_id || "(vazio)"
-      );
 
       if (isFranqueadoUser) {
         carregarUnidades();
@@ -146,16 +137,6 @@ export default function Extrato() {
         params.append("categoria", categoriaFilter);
       }
 
-      console.log("🔍 Buscando transações com filtros:", {
-        data_inicio: dataInicio,
-        data_fim: dataFim,
-        unidade_id: unidadeParam,
-        tipo: tipoFilter !== "all" ? tipoFilter : "todos",
-        categoria: categoriaFilter !== "all" ? categoriaFilter : "todas",
-        isFranqueado,
-        url: `${process.env.NEXT_PUBLIC_API_URL}/transacoes?${params}`,
-      });
-
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/transacoes?${params}`,
         {
@@ -167,14 +148,10 @@ export default function Extrato() {
 
       if (response.ok) {
         const data = await response.json();
-        console.log("✅ Transações recebidas:", {
-          quantidade: data.length,
-          transacoes: data,
-        });
         setTransacoes(data);
       } else {
         console.error(
-          "❌ Erro na resposta:",
+          " Erro na resposta:",
           response.status,
           await response.text()
         );

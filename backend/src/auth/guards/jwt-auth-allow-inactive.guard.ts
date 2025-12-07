@@ -44,7 +44,7 @@ export class JwtAuthGuardAllowInactive extends AuthGuard('jwt') {
 
       return true;
     } catch (error) {
-      console.error('❌ [JwtAuthGuardAllowInactive] Erro:', error.message);
+      console.error(' [JwtAuthGuardAllowInactive] Erro:', error.message);
       throw new UnauthorizedException('Token inválido');
     }
   }

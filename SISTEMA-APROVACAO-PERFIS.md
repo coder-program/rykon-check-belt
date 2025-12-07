@@ -51,7 +51,7 @@ Exatamente! Não podemos permitir que qualquer pessoa se cadastre como "Instruto
    ↓
 8. Redirecionado para login com mensagem amarela
    ↓
-9. ❌ Se tentar fazer login: ACESSO NEGADO
+9.  Se tentar fazer login: ACESSO NEGADO
    "Sua conta está inativa"
    ↓
 10. ⏳ AGUARDA APROVAÇÃO DO ADMIN
@@ -135,7 +135,7 @@ if (requerAprovacao) {
 ### **Camada 2: Validação Backend**
 
 - 🔒 Verificação automática do tipo de perfil
-- ❌ Conta criada como INATIVA se perfil requer aprovação
+- Conta criada como INATIVA se perfil requer aprovação
 - 📋 Log de segurança no console
 
 ### **Camada 3: Bloqueio de Login**
@@ -155,12 +155,12 @@ if (requerAprovacao) {
 
 | Perfil                 | Acesso Livre | Requer Aprovação | Status Inicial |
 | ---------------------- | ------------ | ---------------- | -------------- |
-| **Aluno**              | ✅ Sim       | ❌ Não           | ATIVO          |
-| **Instrutor**          | ❌ Não       | ✅ Sim           | INATIVO        |
-| **Professor**          | ❌ Não       | ✅ Sim           | INATIVO        |
-| **Gerente de Unidade** | ❌ Não       | ✅ Sim           | INATIVO        |
-| **Franqueado**         | ❌ Não       | ✅ Sim           | INATIVO        |
-| **Master**             | ❌ Não       | ✅ Sim           | INATIVO        |
+| **Aluno**              | ✅ Sim       | Não              | ATIVO          |
+| **Instrutor**          | Não          | ✅ Sim           | INATIVO        |
+| **Professor**          | Não          | ✅ Sim           | INATIVO        |
+| **Gerente de Unidade** | Não          | ✅ Sim           | INATIVO        |
+| **Franqueado**         | Não          | ✅ Sim           | INATIVO        |
+| **Master**             | Não          | ✅ Sim           | INATIVO        |
 
 ---
 
@@ -184,7 +184,7 @@ if (requerAprovacao) {
    "Sua conta ficará inativa até aprovação"
 3. Completa cadastro
 4. ⚠️ "Aguarde aprovação do administrador"
-5. Tenta fazer login → ❌ ACESSO NEGADO
+5. Tenta fazer login →  ACESSO NEGADO
 6. Aguarda aprovação...
 7. Admin aprova ✅
 8. Faz login → ✅ ACESSO PERMITIDO
@@ -223,7 +223,7 @@ if (requerAprovacao) {
 │  📄 CPF: 123.456.789-00                  │
 │  📞 (11) 99999-9999                      │
 │                                          │
-│  [✅ Aprovar]  [❌ Rejeitar]             │
+│  [✅ Aprovar]  [ Rejeitar]             │
 │                                          │
 ├──────────────────────────────────────────┤
 │  ... outros usuários pendentes           │
@@ -281,7 +281,7 @@ if (requerAprovacao) {
 ### **Ataque 1: Cadastro Malicioso como Admin**
 
 ```
-❌ Tentativa: Usuário tenta se cadastrar como "Master"
+ Tentativa: Usuário tenta se cadastrar como "Master"
 ✅ Defesa: Conta criada como INATIVA
 ✅ Resultado: Não consegue acessar sistema até aprovação manual
 ```
@@ -289,7 +289,7 @@ if (requerAprovacao) {
 ### **Ataque 2: Modificação de perfil_id na requisição**
 
 ```
-❌ Tentativa: Usuário altera perfil_id no frontend
+ Tentativa: Usuário altera perfil_id no frontend
 ✅ Defesa: Backend valida perfil e marca como INATIVO se necessário
 ✅ Resultado: Sistema se protege mesmo com tentativa de bypass
 ```
@@ -297,7 +297,7 @@ if (requerAprovacao) {
 ### **Ataque 3: Múltiplos Cadastros**
 
 ```
-❌ Tentativa: Criar várias contas com perfis elevados
+ Tentativa: Criar várias contas com perfis elevados
 ✅ Defesa: Todas ficam INATIVAS aguardando aprovação
 ✅ Resultado: Admin vê todas e pode bloquear/investigar
 ```

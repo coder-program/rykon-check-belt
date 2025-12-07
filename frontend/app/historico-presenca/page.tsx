@@ -66,7 +66,6 @@ export default function HistoricoPresencaPage() {
 
       if (response.ok) {
         const data = await response.json();
-        console.log("📊 Dados recebidos:", data);
         setPresencas(data);
       } else {
         toast.error("Erro ao carregar histórico");
@@ -115,10 +114,6 @@ export default function HistoricoPresencaPage() {
 
     return true;
   });
-
-  console.log("🔍 Presencas totais:", presencas.length);
-  console.log("🔍 Presencas filtradas:", presencasFiltradas.length);
-  console.log("🔍 Filtro faixa ativo:", filtroFaixa);
 
   return (
     <ProtectedRoute>

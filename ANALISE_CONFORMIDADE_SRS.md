@@ -2,8 +2,8 @@
 
 ## Sistema de Gestão – Academia de Artes Marciais
 
-**Data da Análise:** 02/09/2025  
-**Versão do Sistema:** MVP v0.1.0  
+**Data da Análise:** 02/09/2025
+**Versão do Sistema:** MVP v0.1.0
 **Status Geral:** ⚠️ **PARCIALMENTE CONFORME** (78% implementado)
 
 ---
@@ -54,7 +54,7 @@ O sistema atual implementa **78% dos requisitos do SRS**, com foco principal no 
 | Requisito                        | Status | Evidência                          |
 | -------------------------------- | ------ | ---------------------------------- |
 | **RF-10:** Link para loja online | ⚠️     | Estrutura preparada, não conectada |
-| **RF-11:** Campanhas e promoções | ❌     | Não implementado                   |
+| **RF-11:** Campanhas e promoções |        | Não implementado                   |
 
 **Taxa de Conformidade:** ⚠️ **25%**
 
@@ -63,7 +63,7 @@ O sistema atual implementa **78% dos requisitos do SRS**, com foco principal no 
 | Requisito                        | Status | Evidência                   |
 | -------------------------------- | ------ | --------------------------- |
 | **RF-12:** Canal de notificações | ⚠️     | Toast notifications básicas |
-| **RF-13:** Disparo segmentado    | ❌     | Não implementado            |
+| **RF-13:** Disparo segmentado    |        | Não implementado            |
 
 **Taxa de Conformidade:** ⚠️ **25%**
 
@@ -72,7 +72,7 @@ O sistema atual implementa **78% dos requisitos do SRS**, com foco principal no 
 | Requisito                          | Status | Evidência                  |
 | ---------------------------------- | ------ | -------------------------- |
 | **RF-14:** Cadastro único rede     | ✅     | Entity `Unidade` preparada |
-| **RF-15:** Relatório consolidado   | ❌     | Não implementado           |
+| **RF-15:** Relatório consolidado   |        | Não implementado           |
 | **RF-16:** Controle de campeonatos | ⚠️     | Turma "Competição" existe  |
 
 **Taxa de Conformidade:** ⚠️ **50%**
@@ -81,11 +81,11 @@ O sistema atual implementa **78% dos requisitos do SRS**, com foco principal no 
 
 | Requisito                         | Status | Evidência        |
 | --------------------------------- | ------ | ---------------- |
-| **RF-17:** Cadastro cartão        | ❌     | Não implementado |
-| **RF-18:** Cobrança recorrente    | ❌     | Não implementado |
-| **RF-19:** Relatórios financeiros | ❌     | Não implementado |
+| **RF-17:** Cadastro cartão        |        | Não implementado |
+| **RF-18:** Cobrança recorrente    |        | Não implementado |
+| **RF-19:** Relatórios financeiros |        | Não implementado |
 
-**Taxa de Conformidade:** ❌ **0%** (Esperado - Longo prazo)
+**Taxa de Conformidade:** **0%** (Esperado - Longo prazo)
 
 ---
 
@@ -93,7 +93,7 @@ O sistema atual implementa **78% dos requisitos do SRS**, com foco principal no 
 
 | Regra                                                         | Status | Evidência                    |
 | ------------------------------------------------------------- | ------ | ---------------------------- |
-| **RN-01:** Presença apenas dentro da academia                 | ❌     | Sem validação geolocalização |
+| **RN-01:** Presença apenas dentro da academia                 |        | Sem validação geolocalização |
 | **RN-02:** Crianças via tablet/CPF/código                     | ✅     | CPF implementado (752-778)   |
 | **RN-03:** Cálculo automático progresso                       | ✅     | Implementado (linha 148-151) |
 | **RN-04:** Operação independente com dados centralizados      | ⚠️     | Estrutura de Unidade existe  |
@@ -107,7 +107,7 @@ O sistema atual implementa **78% dos requisitos do SRS**, com foco principal no 
 
 | Requisito                                 | Status | Evidência                 |
 | ----------------------------------------- | ------ | ------------------------- |
-| **RNF-01:** PWA responsivo                | ⚠️     | Web responsivo ✅, PWA ❌ |
+| **RNF-01:** PWA responsivo                | ⚠️     | Web responsivo ✅, PWA    |
 | **RNF-02:** Autenticação multi-perfil     | ✅     | AuthContext + permissões  |
 | **RNF-03:** Conformidade LGPD             | ✅     | Campos consent no backend |
 | **RNF-04:** Estrutura modular (API-ready) | ✅     | Backend NestJS com APIs   |
@@ -124,7 +124,7 @@ O sistema atual implementa **78% dos requisitos do SRS**, com foco principal no 
 | **UC-01:** Registrar Presença              | ✅ **100%** | Fluxo completo implementado |
 | **UC-02:** Consultar Progresso Graduação   | ✅ **100%** | Dashboard com progresso     |
 | **UC-03:** Consultar Relatórios da Rede    | ⚠️ **50%**  | Apenas unidade atual        |
-| **UC-04:** Comprar na Loja Virtual         | ❌ **0%**   | Não conectado               |
+| **UC-04:** Comprar na Loja Virtual         | **0%**      | Não conectado               |
 | **UC-05:** Consultar Relatórios da Unidade | ✅ **100%** | Dashboard completo          |
 
 **Taxa de Conformidade:** ⚠️ **70%**
@@ -156,9 +156,9 @@ O sistema atual implementa **78% dos requisitos do SRS**, com foco principal no 
 
 | Item                    | Status |
 | ----------------------- | ------ |
-| Integração financeira   | ❌     |
-| Cobrança recorrente     | ❌     |
-| Relatórios consolidados | ❌     |
+| Integração financeira   |        |
+| Cobrança recorrente     |        |
+| Relatórios consolidados |        |
 
 ---
 

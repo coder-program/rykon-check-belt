@@ -29,7 +29,7 @@ async function testEmail() {
       `,
     });
   } catch (error) {
-    console.error('❌ Erro:', error.message);
+    console.error(' Erro:', error.message);
   }
 }
 

@@ -37,7 +37,7 @@ export class UsuariosController {
   @ApiResponse({ status: 201, description: '✅ Usuário criado com sucesso' })
   @ApiResponse({
     status: 400,
-    description: '❌ Dados inválidos ou email já existe',
+    description: ' Dados inválidos ou email já existe',
   })
   create(@Body() createUsuarioDto: CreateUsuarioDto) {
     return this.usuariosService.create(createUsuarioDto);
@@ -56,7 +56,7 @@ export class UsuariosController {
     description: 'Filtrar por tipo de perfil específico',
   })
   @ApiResponse({ status: 200, description: '✅ Lista de usuários retornada' })
-  @ApiResponse({ status: 401, description: '❌ Token inválido ou expirado' })
+  @ApiResponse({ status: 401, description: ' Token inválido ou expirado' })
   findAll(@Query('perfil') perfil?: string, @Request() req?) {
     if (perfil) {
       return this.usuariosService.findByPerfil(perfil);
@@ -77,7 +77,7 @@ export class UsuariosController {
     status: 200,
     description: '✅ Dados do responsável retornados',
   })
-  @ApiResponse({ status: 404, description: '❌ Responsável não encontrado' })
+  @ApiResponse({ status: 404, description: ' Responsável não encontrado' })
   async getMyResponsavel(@Request() req) {
     return this.usuariosService.findMyResponsavel(req.user.id);
   }
@@ -111,7 +111,7 @@ export class UsuariosController {
     status: 200,
     description: '✅ Dados do usuário retornados',
   })
-  @ApiResponse({ status: 401, description: '❌ Token inválido ou expirado' })
+  @ApiResponse({ status: 401, description: ' Token inválido ou expirado' })
   async getMe(@Request() req) {
     return this.usuariosService.findOne(req.user.id);
   }

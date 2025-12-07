@@ -63,7 +63,6 @@ export default function RelatorioPresencasPage() {
         }
 
         const data = await response.json();
-        console.log("🔥 [RELATORIO] Unidades carregadas:", data);
         return data.items || [];
       } catch (error) {
         console.error("Erro ao buscar unidades:", error);

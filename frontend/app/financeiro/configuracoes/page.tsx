@@ -106,7 +106,7 @@ export default function ConfiguracoesFinanceiro() {
         setLoading(false);
       }
     } else {
-      console.error("❌ Dados do usuário não encontrados");
+      console.error(" Dados do usuário não encontrados");
       setLoading(false);
     }
   }, []);
@@ -120,27 +120,23 @@ export default function ConfiguracoesFinanceiro() {
 
   const carregarConfiguracoes = async (unidadeId: string) => {
     try {
-      console.log("⚙️ Carregando configurações para unidade:", unidadeId);
       const token = localStorage.getItem("token");
       const url = `${process.env.NEXT_PUBLIC_API_URL}/configuracoes-cobranca/unidade/${unidadeId}`;
-      console.log("📊 Buscando configurações:", url);
-
       const response = await fetch(url, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
       if (response.ok) {
         const data = await response.json();
-        console.log("✅ Configurações carregadas:", data);
         setConfig(data);
       } else {
         console.warn(
-          "⚠️ Configurações não encontradas (usando padrão):",
+          " Configurações não encontradas (usando padrão):",
           response.status
         );
       }
     } catch (error) {
-      console.error("❌ Erro ao carregar configurações:", error);
+      console.error(" Erro ao carregar configurações:", error);
     } finally {
       setLoading(false);
     }

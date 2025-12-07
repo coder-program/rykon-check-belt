@@ -143,7 +143,6 @@ function AlunosContent() {
       // Se vier com responsavel=true, marcar como cadastro de dependente
       if (responsavelParam === "true") {
         // Aqui você pode adicionar lógica específica para dependentes
-        console.log("Abrindo modal para cadastro de dependente");
       }
     }
   }, [searchParams]);

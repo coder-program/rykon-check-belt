@@ -179,7 +179,7 @@ useEffect(() => {
 **Comportamento:**
 
 - ✅ Recepcionista com `cadastro_completo = true` → Dashboard normal
-- ❌ Recepcionista com `cadastro_completo = false` → Redireciona para onboarding
+- Recepcionista com `cadastro_completo = false` → Redireciona para onboarding
 - ✅ Outros perfis → Não são afetados
 
 ### No Onboarding:

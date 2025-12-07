@@ -38,13 +38,7 @@ export class UnidadesController {
     summary: 'Listar unidades ativas (público - sem autenticação)',
   })
   async listarAtivas(@Request() req) {
-    console.log(
-      '🔍 [UNIDADES CONTROLLER] Buscando unidades públicas ativas...',
-    );
     const result = await this.unidadesService.listarPublicasAtivas();
-    console.log(
-      `✅ [UNIDADES CONTROLLER] Retornando ${result.length} unidades`,
-    );
     return result;
   }
 

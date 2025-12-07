@@ -35,7 +35,7 @@ const defaultStats: InstrutorStats = {
 
 const stats = instrutorStats || defaultStats;
 
-// ❌ Mas usava instrutorStats diretamente no JSX
+//  Mas usava instrutorStats diretamente no JSX
 <div className="text-2xl font-bold text-blue-600 mt-2">
   +{instrutorStats.novasInscricoes} {/* Erro aqui! */}
 </div>;
@@ -52,7 +52,7 @@ Quando a requisição para `/api/dashboard/instrutor/stats` estava pendente ou f
 Substituído todas as referências diretas de `instrutorStats` por `stats`:
 
 ```tsx
-// ❌ ANTES (linhas 400, 410, 431)
+//  ANTES (linhas 400, 410, 431)
 +{instrutorStats.novasInscricoes}
 {instrutorStats.presencaMedia}%
 {instrutorStats.avaliacoesPendentes}
@@ -66,7 +66,7 @@ Substituído todas as referências diretas de `instrutorStats` por `stats`:
 ### 2. Remover Imports Não Utilizados
 
 ```tsx
-// ❌ ANTES
+//  ANTES
 import React, { useEffect, useState } from "react";
 
 // ✅ DEPOIS
@@ -76,7 +76,7 @@ import React from "react";
 ### 3. Remover Parâmetro Não Utilizado
 
 ```tsx
-// ❌ ANTES
+//  ANTES
 alunosDestaque.map((aluno, index) => (
 
 // ✅ DEPOIS
@@ -171,9 +171,9 @@ const stats = instrutorStats || defaultStats;
 
 ### Antes
 
-- ❌ Crash ao carregar a página (instrutorStats undefined)
-- ❌ Não exibe nada ao usuário
-- ❌ Console cheio de erros
+- Crash ao carregar a página (instrutorStats undefined)
+- Não exibe nada ao usuário
+- Console cheio de erros
 
 ### Depois
 
@@ -198,7 +198,7 @@ const safeData = data || defaultData;
 
 // 4. SEMPRE usar safeData no JSX, NUNCA data diretamente
 <div>{safeData.propriedade}</div>  {/* ✅ Correto */}
-<div>{data.propriedade}</div>       {/* ❌ Evitar */}
+<div>{data.propriedade}</div>       {/*  Evitar */}
 ```
 
 ## Arquivos Modificados

@@ -206,7 +206,7 @@ export default function CompleteProfilePage() {
             );
           }
         } catch (err) {
-          console.error("❌ [RECEP/PROF] Erro ao buscar unidade:", err);
+          console.error(" [RECEP/PROF] Erro ao buscar unidade:", err);
         }
       };
       buscarUnidade();
@@ -239,7 +239,7 @@ export default function CompleteProfilePage() {
 
         if (!response.ok) {
           const errorText = await response.text();
-          console.error("❌ [loadUnidades] Erro na resposta:", errorText);
+          console.error(" [loadUnidades] Erro na resposta:", errorText);
           throw new Error("Erro ao buscar unidade do gerente");
         }
 
@@ -302,7 +302,7 @@ export default function CompleteProfilePage() {
     try {
       // Validar campos obrigatórios
       if (!formData.unidade_id) {
-        console.error("❌ [handleSubmit] unidade_id não informado");
+        console.error(" [handleSubmit] unidade_id não informado");
         throw new Error("Selecione uma unidade");
       }
 

@@ -113,9 +113,9 @@ Exibir um alert detalhado com todas as permissões do usuário logado, mostrando
 - ✅ Banco de dados populado com dados
 - ✅ Sistema de permissões hierárquico funcional
 
-### **❌ Pendência**
+### ** Pendência**
 
-- ❌ **Conexão TypeORM**: Problema de autenticação entre NestJS e PostgreSQL
+- **Conexão TypeORM**: Problema de autenticação entre NestJS e PostgreSQL
 - ✅ **Solução Alternativa**: Tabelas e dados criados via script direto com driver `pg`
 
 ## 🧪 **Como Testar**

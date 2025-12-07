@@ -268,15 +268,13 @@ export default function PageUnidades() {
   const totalPages = Math.ceil(totalItems / 10); // Calcular baseado no total e pageSize
 
   // DEBUG LOG
-  React.useEffect(() => {
-    console.log("=== DEBUG PAGINAÇÃO ===");
-    console.log("Query data:", query.data);
-    console.log("Items:", items.length);
-    console.log("Total Pages:", totalPages);
-    console.log("Total Items:", totalItems);
-    console.log("Current Page:", currentPage);
-    console.log("======================");
-  }, [query.data, items, totalPages, totalItems, currentPage]);
+  React.useEffect(() => {}, [
+    query.data,
+    items,
+    totalPages,
+    totalItems,
+    currentPage,
+  ]);
 
   const resetForm = () => {
     setFormData({
@@ -387,7 +385,7 @@ export default function PageUnidades() {
         createMutation.mutate(cleanedData);
       }
     } catch (error) {
-      console.error("❌ Erro ao processar endereço:", error);
+      console.error(" Erro ao processar endereço:", error);
       // Continuar com o salvamento mesmo se o endereço der erro
       const cleanedData = {
         ...formData,

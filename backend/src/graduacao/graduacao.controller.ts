@@ -42,16 +42,11 @@ export class GraduacaoController {
   async listarFaixas(
     @Query('categoria') categoria?: string,
   ): Promise<FaixaDef[]> {
-    console.log(
-      '🌐 [CONTROLLER] GET /graduacao/faixas chamado. Categoria:',
-      categoria,
-    );
     try {
       const result = await this.graduacaoService.listarFaixas(categoria);
-      console.log('✅ [CONTROLLER] Retornando', result.length, 'faixas');
       return result;
     } catch (error) {
-      console.error('❌ [CONTROLLER] Erro ao listar faixas:', error);
+      console.error(' [CONTROLLER] Erro ao listar faixas:', error);
       throw error;
     }
   }
@@ -297,9 +292,6 @@ export class GraduacaoController {
   @ApiOperation({ summary: 'Lista graduações aprovadas' })
   @ApiResponse({ status: 200, description: 'Lista de graduações aprovadas' })
   async listarGraduacoesAprovadas(@Request() req: any) {
-    console.log('🎯 [CONTROLLER] req completo:', !!req);
-    console.log('🎯 [CONTROLLER] req.user:', req?.user);
-    console.log('🎯 [CONTROLLER] req.headers:', req?.headers?.authorization);
     return await this.graduacaoService.listarGraduacoesAprovadas(req?.user);
   }
 

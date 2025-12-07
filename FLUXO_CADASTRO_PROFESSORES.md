@@ -20,7 +20,7 @@ O cadastro de professores agora segue um **fluxo de onboarding em duas etapas**:
 - ✅ MASTER
 - ✅ FRANQUEADO
 - ✅ GERENTE_UNIDADE
-- ❌ SUPER_ADMIN (não pode criar professores)
+- SUPER_ADMIN (não pode criar professores)
 
 **Passos:**
 
@@ -185,7 +185,7 @@ WHERE id = <professor_id>;
 
 ## 🚫 O que Foi Removido
 
-### ❌ Botão "Novo Professor" em `/professores`
+### Botão "Novo Professor" em `/professores`
 
 **Antes:**
 
@@ -196,7 +196,7 @@ WHERE id = <professor_id>;
 </Button>
 ```
 
-**Agora:** REMOVIDO ❌
+**Agora:** REMOVIDO
 
 **Motivo:** Professores agora são criados apenas via `/usuarios` para garantir consistência no fluxo de onboarding.
 
@@ -230,11 +230,11 @@ WHERE id = <professor_id>;
 
 | Ação                    | MASTER | FRANQUEADO | GERENTE | SUPER_ADMIN |
 | ----------------------- | ------ | ---------- | ------- | ----------- |
-| Criar usuário professor | ✅     | ✅         | ✅      | ❌          |
+| Criar usuário professor | ✅     | ✅         | ✅      |             |
 | Visualizar professores  | ✅     | ✅         | ✅      | ✅          |
 | Editar professor        | ✅     | ✅         | ✅      | ✅          |
-| Alterar status          | ✅     | ✅         | ✅      | ❌          |
-| Excluir professor       | ✅     | ❌         | ❌      | ❌          |
+| Alterar status          | ✅     | ✅         | ✅      |             |
+| Excluir professor       | ✅     |            |         |             |
 
 ---
 

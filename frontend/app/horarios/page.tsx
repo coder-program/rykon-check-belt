@@ -96,11 +96,11 @@ export default function HorariosPage() {
         const data = await response.json();
         setHorarios(data);
       } else {
-        console.error("❌ Erro ao buscar horários:", response.status);
+        console.error(" Erro ao buscar horários:", response.status);
         setHorarios([]);
       }
     } catch (error) {
-      console.error("❌ Erro ao carregar horários:", error);
+      console.error(" Erro ao carregar horários:", error);
       setHorarios([]);
     } finally {
       setLoading(false);

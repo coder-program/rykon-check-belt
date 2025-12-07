@@ -33,7 +33,7 @@ cd frontend && npm run build  ✅
 
 - **PostgreSQL**: ✅ **Funcionando** (confirmado via DBeaver)
 - **Conexão Direta**: ✅ **Funcionando** (via docker exec)
-- **TypeORM**: ❌ **Erro de autenticação** (problema conhecido com algumas configurações)
+- **TypeORM**: **Erro de autenticação** (problema conhecido com algumas configurações)
 
 **Erro:** `autenticação do tipo senha falhou para o usuário "postgres"`
 
@@ -129,14 +129,14 @@ docker-compose up -d            # Tudo
 
 ## 📊 **RESUMO TÉCNICO**
 
-| Componente         | Status   | Observação               |
-| ------------------ | -------- | ------------------------ |
-| Backend NestJS     | ✅ 100%  | Compilando sem erros     |
-| Frontend React     | ✅ 100%  | Compilando sem avisos    |
-| PostgreSQL Docker  | ✅ 100%  | Rodando na porta 5434    |
-| TypeORM Connection | ❌ Issue | Problema de autenticação |
-| Estrutura Base     | ✅ 100%  | Limpa e pronta para uso  |
-| Documentação       | ✅ 100%  | Completa e atualizada    |
+| Componente         | Status  | Observação               |
+| ------------------ | ------- | ------------------------ |
+| Backend NestJS     | ✅ 100% | Compilando sem erros     |
+| Frontend React     | ✅ 100% | Compilando sem avisos    |
+| PostgreSQL Docker  | ✅ 100% | Rodando na porta 5434    |
+| TypeORM Connection | Issue   | Problema de autenticação |
+| Estrutura Base     | ✅ 100% | Limpa e pronta para uso  |
+| Documentação       | ✅ 100% | Completa e atualizada    |
 
 ---
 

@@ -27,8 +27,8 @@
 
 - **Local**: `frontend/components/auth/ProfileCompletionGuard.tsx`
 - **Função**: Redirecionamento automático baseado no status do usuário:
-  - ❌ **Não autenticado** → `/login`
-  - ❌ **Cadastro incompleto** → `/complete-profile`
+  - **Não autenticado** → `/login`
+  - **Cadastro incompleto** → `/complete-profile`
   - ✅ **Cadastro completo** → Permite acesso
 
 ### 3. **Páginas Protegidas com ProtectedRoute**
@@ -78,13 +78,13 @@ export class ProfileCompleteGuard implements CanActivate {
 ### 5. **Fluxo de Segurança Atual**
 
 ```
-┌─────────────────┐    ❌ Não Auth    ┌─────────────┐
+┌─────────────────┐     Não Auth    ┌─────────────┐
 │   Usuário       │ ─────────────────▶│   /login    │
 │   Acessa URL    │                   └─────────────┘
 └─────────────────┘
         │
         ▼ ✅ Autenticado
-┌─────────────────┐    ❌ Incomplete   ┌─────────────────┐
+┌─────────────────┐     Incomplete   ┌─────────────────┐
 │ProfileCompletion│ ─────────────────▶│/complete-profile│
 │     Guard       │                   └─────────────────┘
 └─────────────────┘

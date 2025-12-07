@@ -324,7 +324,7 @@ export default function UnidadeForm({
           }));
         }
       } catch (error) {
-        console.error("❌ [FORM] Erro ao buscar CEP:", error);
+        console.error(" [FORM] Erro ao buscar CEP:", error);
         // Silenciosamente falha - usuário pode preencher manualmente
       }
     }
@@ -336,9 +336,6 @@ export default function UnidadeForm({
   };
 
   const handleSubmitWithValidation = (e: React.FormEvent) => {
-    console.log("🚀 SUBMIT INICIADO - handleSubmitWithValidation chamado");
-    console.log("📋 Dados do formulário:", formData);
-
     e.preventDefault(); // Sempre prevenir o submit padrão
 
     // Limpar todos os erros anteriores
@@ -384,13 +381,8 @@ export default function UnidadeForm({
       toast.error(
         `Por favor, preencha os campos obrigatórios: ${missingFieldNames}`
       );
-      console.log("❌ Campos obrigatórios vazios:", emptyFields);
       return;
     }
-
-    console.log(
-      "✅ Campos obrigatórios preenchidos, fazendo validações adicionais..."
-    );
 
     // 2. Validar CNPJ antes de submeter (se preenchido)
     if (formData.cnpj) {
@@ -428,7 +420,6 @@ export default function UnidadeForm({
     }
 
     // Se passou na validação, submeter
-    console.log("🎯 Todas as validações passaram, submetendo formulário...");
     onSubmit(e);
   };
 
@@ -475,7 +466,6 @@ export default function UnidadeForm({
         {/* Form Content */}
         <form
           onSubmit={(e) => {
-            console.log("🔥 EVENTO FORM SUBMIT CAPTURADO!", e);
             handleSubmitWithValidation(e);
           }}
           className="flex-1 overflow-y-auto"

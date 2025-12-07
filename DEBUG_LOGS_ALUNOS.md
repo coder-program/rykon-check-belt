@@ -48,7 +48,7 @@ O backend vai mostrar LOGS COMPLETOS assim:
 
 ### 3️⃣ Possíveis Problemas e Soluções
 
-#### ❌ Problema 1: "USER RECEBIDO: NÃO"
+#### Problema 1: "USER RECEBIDO: NÃO"
 
 **Causa:** Token JWT não está sendo enviado
 
@@ -61,7 +61,7 @@ O backend vai mostrar LOGS COMPLETOS assim:
 # 3. Fazer logout e login novamente
 ```
 
-#### ❌ Problema 2: "isFranqueado RESULTADO: false"
+#### Problema 2: "isFranqueado RESULTADO: false"
 
 **Causa:** Usuário não tem perfil FRANQUEADO no banco
 
@@ -80,7 +80,7 @@ WHERE u.email = 'franqueado.rj@teamcruz.com.br';
 -- nome: FRANQUEADO
 ```
 
-#### ❌ Problema 3: "Franqueado ID: NÃO ENCONTRADO"
+#### Problema 3: "Franqueado ID: NÃO ENCONTRADO"
 
 **Causa:** Email do usuário não bate com email na tabela franqueados
 
@@ -102,7 +102,7 @@ VALUES (
 );
 ```
 
-#### ❌ Problema 4: "isMaster RESULTADO: true"
+#### Problema 4: "isMaster RESULTADO: true"
 
 **Causa:** Usuário tem perfil MASTER também (masters veem tudo)
 

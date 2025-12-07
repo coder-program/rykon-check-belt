@@ -1,6 +1,6 @@
 # 🚨 CORREÇÃO RÁPIDA - Erro 500 no Envio de Email
 
-## ❌ Erro Atual
+## Erro Atual
 
 ```
 Invalid login: 535-5.7.8 Username and Password not accepted

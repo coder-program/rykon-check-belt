@@ -410,12 +410,12 @@ curl -X GET http://localhost:4000/api/modalidades/{ID}/estatisticas \
 ### Frontend (A Implementar)
 
 ```
-❌ frontend/app/modalidades/page.tsx
-❌ frontend/components/modalidades/ModalidadeCard.tsx
-❌ frontend/components/modalidades/ModalidadeForm.tsx
-❌ frontend/lib/modalidadesApi.ts
-❌ Atualizar frontend/app/alunos/page.tsx (filtro)
-❌ Atualizar frontend/components/alunos/AlunoForm.tsx (campo)
+ frontend/app/modalidades/page.tsx
+ frontend/components/modalidades/ModalidadeCard.tsx
+ frontend/components/modalidades/ModalidadeForm.tsx
+ frontend/lib/modalidadesApi.ts
+ Atualizar frontend/app/alunos/page.tsx (filtro)
+ Atualizar frontend/components/alunos/AlunoForm.tsx (campo)
 ```
 
 ---

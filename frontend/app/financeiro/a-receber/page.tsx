@@ -228,13 +228,6 @@ export default function ContasAReceber() {
                 params.append("unidade_id", unidadeIdAtual);
               }
 
-              console.log("🔄 Gerando faturas...");
-              console.log("📍 Unidade:", unidadeIdAtual || "todas");
-              console.log(
-                "🔗 URL:",
-                `${process.env.NEXT_PUBLIC_API_URL}/faturas/gerar-faturas-assinaturas?${params}`
-              );
-
               const response = await fetch(
                 `${process.env.NEXT_PUBLIC_API_URL}/faturas/gerar-faturas-assinaturas?${params}`,
                 {
@@ -245,11 +238,8 @@ export default function ContasAReceber() {
                 }
               );
 
-              console.log("📡 Status da resposta:", response.status);
-
               if (response.ok) {
                 const result = await response.json();
-                console.log("✅ Resultado:", result);
 
                 if (result.geradas === 0) {
                   alert(
@@ -263,14 +253,14 @@ export default function ContasAReceber() {
                 carregarFaturas();
               } else {
                 const errorText = await response.text();
-                console.error("❌ Erro:", errorText);
+                console.error(" Erro:", errorText);
                 alert(
-                  `❌ Erro ao gerar faturas: ${response.status}\n${errorText}`
+                  ` Erro ao gerar faturas: ${response.status}\n${errorText}`
                 );
               }
             } catch (error) {
-              console.error("❌ Erro ao gerar faturas:", error);
-              alert(`❌ Erro ao gerar faturas: ${error.message}`);
+              console.error(" Erro ao gerar faturas:", error);
+              alert(` Erro ao gerar faturas: ${error.message}`);
             }
           }}
           variant="outline"

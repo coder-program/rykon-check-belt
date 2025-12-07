@@ -67,7 +67,7 @@ export class ProgressoController {
 
       if (!usuarioId) {
         console.error(
-          '❌ Usuario ID não encontrado no token. req.user:',
+          ' Usuario ID não encontrado no token. req.user:',
           req.user,
         );
         throw new Error('ID do usuário não encontrado no token');
@@ -75,7 +75,7 @@ export class ProgressoController {
 
       return await this.progressoService.getHistoricoCompleto(usuarioId);
     } catch (error) {
-      console.error('❌ Erro no controller progresso:', error);
+      console.error(' Erro no controller progresso:', error);
       throw error;
     }
   }

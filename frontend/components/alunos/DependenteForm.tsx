@@ -91,15 +91,13 @@ export default function DependenteForm({
   const { data: faixas, isLoading: loadingFaixas } = useQuery({
     queryKey: ["faixas-disponiveis-kids"],
     queryFn: async () => {
-      console.log("🎨 Buscando faixas infantis...");
       try {
         const data = await http("/graduacao/faixas?categoria=INFANTIL", {
           auth: true,
         });
-        console.log("🎨 Faixas recebidas:", data);
         return Array.isArray(data) ? data : [];
       } catch (error) {
-        console.error("❌ Erro ao buscar faixas:", error);
+        console.error(" Erro ao buscar faixas:", error);
         return [];
       }
     },
@@ -168,15 +166,7 @@ export default function DependenteForm({
   };
 
   const handleChange = (field: keyof DependenteFormData, value: string) => {
-    console.log(
-      `📝 [DEPENDENTE FORM] handleChange chamado - campo: ${field}, valor:`,
-      value
-    );
     setFormData({ ...formData, [field]: value });
-    console.log(`✅ [DEPENDENTE FORM] FormData atualizado para ${field}:`, {
-      ...formData,
-      [field]: value,
-    });
   };
 
   const formatCPF = (value: string) => {
@@ -344,18 +334,7 @@ export default function DependenteForm({
                         <div
                           key={unidade.id}
                           onClick={() => {
-                            console.log(
-                              "🏢 [DEPENDENTE FORM] Unidade clicada:",
-                              {
-                                id: unidade.id,
-                                nome: unidade.nome,
-                              }
-                            );
                             handleChange("unidade_id", unidade.id);
-                            console.log(
-                              "✅ [DEPENDENTE FORM] handleChange chamado com ID:",
-                              unidade.id
-                            );
                             setUnidadeSearchTerm(unidade.nome);
                             setShowUnidadeDropdown(false);
                           }}

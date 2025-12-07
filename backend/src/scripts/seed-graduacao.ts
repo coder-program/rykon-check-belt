@@ -116,7 +116,7 @@ async function bootstrap() {
 
     resultado.forEach((r: any) => {});
   } catch (error) {
-    console.error('❌ Erro ao popular dados:', error);
+    console.error(' Erro ao popular dados:', error);
   } finally {
     await app.close();
   }

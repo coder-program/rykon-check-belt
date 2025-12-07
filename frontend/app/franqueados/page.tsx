@@ -683,7 +683,7 @@ export default function FranqueadosPageSimplificada() {
         errorMessage.includes("já existe")
       ) {
         toast.error(
-          "❌ CPF já cadastrado! Este CPF já está em uso por outro franqueado.",
+          " CPF já cadastrado! Este CPF já está em uso por outro franqueado.",
           {
             duration: 5000,
           }

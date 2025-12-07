@@ -47,7 +47,6 @@ export default function MinhasFaturas() {
       }
 
       const user = JSON.parse(userData);
-      console.log("🔍 Usuário logado:", user);
 
       // Buscar o aluno_id do usuário logado
       const alunoResponse = await fetch(
@@ -59,8 +58,6 @@ export default function MinhasFaturas() {
         }
       );
 
-      console.log("📋 Status da busca de aluno:", alunoResponse.status);
-
       if (!alunoResponse.ok) {
         console.error("Erro ao buscar aluno:", alunoResponse.statusText);
         setLoading(false);
@@ -68,7 +65,6 @@ export default function MinhasFaturas() {
       }
 
       const alunoData = await alunoResponse.json();
-      console.log("👤 Dados do aluno:", alunoData);
 
       const aluno = alunoData.items?.[0];
 
@@ -77,8 +73,6 @@ export default function MinhasFaturas() {
         setLoading(false);
         return;
       }
-
-      console.log("✅ Aluno encontrado:", aluno.id);
 
       // Buscar faturas do aluno
       const faturasResponse = await fetch(
@@ -90,11 +84,8 @@ export default function MinhasFaturas() {
         }
       );
 
-      console.log("💰 Status da busca de faturas:", faturasResponse.status);
-
       if (faturasResponse.ok) {
         const faturasData = await faturasResponse.json();
-        console.log("💵 Faturas encontradas:", faturasData.length);
         setFaturas(faturasData);
       } else {
         console.error("Erro ao buscar faturas:", faturasResponse.statusText);
@@ -102,7 +93,7 @@ export default function MinhasFaturas() {
 
       setLoading(false);
     } catch (error) {
-      console.error("❌ Erro ao carregar faturas:", error);
+      console.error(" Erro ao carregar faturas:", error);
       setLoading(false);
     }
   };

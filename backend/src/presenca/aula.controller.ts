@@ -64,12 +64,9 @@ export class AulaController {
       (typeof p === 'string' ? p : p?.nome || p)?.toLowerCase(),
     );
 
-    console.log('🔍 [AULAS] Perfis:', perfisNormalizados);
-
     // FRANQUEADO - buscar todas as unidades dele
     if (perfisNormalizados.includes('franqueado')) {
       const unidades = await this.getUnidadesDoFranqueado(user.id);
-      console.log('🏢 [AULAS] Unidades do franqueado:', unidades);
       return unidades;
     }
 
@@ -78,37 +75,26 @@ export class AulaController {
       perfisNormalizados.includes('master') ||
       perfisNormalizados.includes('admin')
     ) {
-      console.log('👑 [AULAS] Master/Admin - sem restrição');
       return null;
     }
 
     // ALUNO
     if (user.aluno?.unidade_id) {
-      console.log('👤 [AULAS] Aluno - unidade:', user.aluno.unidade_id);
       return user.aluno.unidade_id;
     }
 
     // PROFESSOR
     if (user.professor?.unidade_id) {
-      console.log('👨‍🏫 [AULAS] Professor - unidade:', user.professor.unidade_id);
       return user.professor.unidade_id;
     }
 
     // GERENTE DE UNIDADE
     if (user.gerente_unidade?.unidade_id) {
-      console.log(
-        '👔 [AULAS] Gerente - unidade:',
-        user.gerente_unidade.unidade_id,
-      );
       return user.gerente_unidade.unidade_id;
     }
 
     // RECEPCIONISTA
     if (user.recepcionista_unidade?.unidade_id) {
-      console.log(
-        '🧑‍💼 [AULAS] Recepcionista - unidade:',
-        user.recepcionista_unidade.unidade_id,
-      );
       return user.recepcionista_unidade.unidade_id;
     }
 
@@ -132,11 +118,7 @@ export class AulaController {
     @Query('dia_semana') dia_semana?: string,
     @Request() req?: any,
   ) {
-    console.log('📋 [AULAS] Listando aulas...');
-
     const unidadesDoUsuario = await this.getUnidadeIdsFromUser(req);
-
-    console.log('📋 [AULAS] Unidades permitidas:', unidadesDoUsuario);
 
     // Se for array de unidades (franqueado), buscar aulas de todas
     if (Array.isArray(unidadesDoUsuario)) {
@@ -147,7 +129,6 @@ export class AulaController {
           dia_semana: dia_semana ? parseInt(dia_semana) : undefined,
         },
       );
-      console.log('📋 [AULAS] Total de aulas encontradas:', todasAulas.length);
       return todasAulas;
     }
 
@@ -174,8 +155,6 @@ export class AulaController {
     @Query('unidade_id') unidade_id?: string,
     @Request() req?: any,
   ) {
-    console.log('⏰ [AULAS HORARIOS] Listando horários...');
-
     const unidadesDoUsuario = await this.getUnidadeIdsFromUser(req);
 
     // Se for aluno, buscar a unidade dele automaticamente
@@ -187,9 +166,6 @@ export class AulaController {
       );
 
       if (aluno && aluno.length > 0 && aluno[0].unidade_id) {
-        console.log(
-          `✅ [AULAS HORARIOS] Aluno encontrado - usando unidade: ${aluno[0].unidade_id}`,
-        );
         return this.aulaService.findHorariosDisponiveis(aluno[0].unidade_id);
       }
     }
@@ -258,11 +234,7 @@ export class AulaController {
     @Query('unidade_id') unidade_id?: string,
     @Request() req?: any,
   ) {
-    console.log('📅 [AULAS HOJE] Buscando aulas de hoje...');
-
     const unidadesDoUsuario = await this.getUnidadeIdsFromUser(req);
-    console.log('📅 [AULAS HOJE] Unidades do usuário:', unidadesDoUsuario);
-    console.log('📅 [AULAS HOJE] Unidade solicitada via query:', unidade_id);
 
     // FRANQUEADO - pode ver todas as suas unidades ou filtrar por uma específica
     if (Array.isArray(unidadesDoUsuario)) {
@@ -273,33 +245,18 @@ export class AulaController {
             'Você não tem permissão para ver aulas desta unidade.',
           );
         }
-        console.log(
-          '📅 [AULAS HOJE] Franqueado filtrando por unidade:',
-          unidade_id,
-        );
         const aulas = await this.aulaService.findAulasHoje(unidade_id);
-        console.log('📅 [AULAS HOJE] Aulas encontradas:', aulas.length);
         return aulas;
       } else {
         // Retorna aulas de todas as unidades do franqueado
-        console.log(
-          '📅 [AULAS HOJE] Franqueado - todas unidades:',
-          unidadesDoUsuario,
-        );
         const aulas = await this.aulaService.findAulasHoje(unidadesDoUsuario);
-        console.log('📅 [AULAS HOJE] Aulas encontradas:', aulas.length);
         return aulas;
       }
     }
 
     // GERENTE/PROFESSOR/RECEPCIONISTA - apenas da sua unidade
     if (typeof unidadesDoUsuario === 'string') {
-      console.log(
-        '📅 [AULAS HOJE] Usuário com unidade única:',
-        unidadesDoUsuario,
-      );
       const aulas = await this.aulaService.findAulasHoje(unidadesDoUsuario);
-      console.log('📅 [AULAS HOJE] Aulas encontradas:', aulas.length);
       return aulas;
     }
 
@@ -308,9 +265,7 @@ export class AulaController {
       throw new UnauthorizedException('É necessário especificar uma unidade.');
     }
 
-    console.log('📅 [AULAS HOJE] Admin/Master - unidade:', unidade_id);
     const aulas = await this.aulaService.findAulasHoje(unidade_id);
-    console.log('📅 [AULAS HOJE] Aulas encontradas:', aulas.length);
     return aulas;
   }
 

@@ -162,11 +162,6 @@ export default function Assinaturas() {
 
       if (planosRes.ok) {
         const data = await planosRes.json();
-        console.log("📦 Planos carregados:", data);
-        console.log(
-          "✅ Planos ativos:",
-          data.filter((p: any) => p.ativo)
-        );
         setPlanos(data);
       }
 
@@ -183,7 +178,6 @@ export default function Assinaturas() {
 
         if (unidadesRes.ok) {
           const unidadesData = await unidadesRes.json();
-          console.log("🏢 Unidades carregadas:", unidadesData);
           // A API retorna { items: [...], page, pageSize, total }
           const unidadesArray = unidadesData.items || [];
           setUnidades(unidadesArray);
@@ -202,14 +196,8 @@ export default function Assinaturas() {
 
       if (alunosRes.ok) {
         const alunosData = await alunosRes.json();
-        console.log("👥 Alunos carregados (raw):", alunosData);
         // A API também retorna paginado
         const alunosArray = alunosData.items || alunosData.data || alunosData;
-        console.log("📋 Array de alunos:", alunosArray);
-        console.log(
-          "📊 Total de alunos:",
-          Array.isArray(alunosArray) ? alunosArray.length : 0
-        );
         setAlunos(Array.isArray(alunosArray) ? alunosArray : []);
       }
 
@@ -261,8 +249,6 @@ export default function Assinaturas() {
     try {
       const token = localStorage.getItem("token");
 
-      console.log("📤 Enviando assinatura:", formData);
-
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/financeiro/assinaturas`,
         {
@@ -285,7 +271,7 @@ export default function Assinaturas() {
         carregarDados();
       } else {
         const errorData = await response.json();
-        console.error("❌ Erro ao criar:", errorData);
+        console.error(" Erro ao criar:", errorData);
         alert(
           "Erro ao criar assinatura: " +
             (errorData.message || "Erro desconhecido")

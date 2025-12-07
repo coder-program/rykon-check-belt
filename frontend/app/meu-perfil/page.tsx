@@ -305,17 +305,6 @@ export default function MeuPerfilPage() {
   // Determinar tipo de usuário e preencher formulário
   useEffect(() => {
     if (user) {
-      console.log("[DEBUG] user:", user);
-      console.log("[DEBUG] user.perfis:", user.perfis);
-      console.log(
-        "[DEBUG] tem perfil FRANQUEADO?",
-        user?.perfis?.includes("FRANQUEADO")
-      );
-      console.log("[DEBUG] dadosAluno:", dadosAluno);
-      console.log("[DEBUG] dadosProfessor:", dadosProfessor);
-      console.log("[DEBUG] dadosFranqueado:", dadosFranqueado);
-      console.log("[DEBUG] enderecoFranqueado:", enderecoFranqueado);
-
       let dadosCompletos: ProfileData = {
         nome: user.nome || "",
         email: user.email || "",
@@ -745,7 +734,7 @@ export default function MeuPerfilPage() {
       setTimeout(() => setSuccessMessage(""), 3000);
     },
     onError: (error: Error) => {
-      console.error("❌ [DEBUG] Erro ao atualizar perfil:", error);
+      console.error(" [DEBUG] Erro ao atualizar perfil:", error);
       setErrors({ general: error.message });
       setSuccessMessage("");
     },
@@ -1054,10 +1043,6 @@ export default function MeuPerfilPage() {
       }
     });
 
-    console.log("📤 Enviando dados do perfil:", {
-      ...dataToSubmit,
-      foto: dataToSubmit.foto ? "base64..." : "vazio",
-    });
     updateProfileMutation.mutate(dataToSubmit);
   };
 
@@ -1119,7 +1104,7 @@ export default function MeuPerfilPage() {
           {errors.general && (
             <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-md">
               <p className="text-red-800 text-sm font-medium">
-                ❌ {errors.general}
+                {errors.general}
               </p>
             </div>
           )}
@@ -2221,7 +2206,7 @@ export default function MeuPerfilPage() {
                           ? "✅ Ativo"
                           : dadosFranqueado.situacao === "EM_HOMOLOGACAO"
                           ? "⏳ Em Homologação"
-                          : "❌ Inativo"}
+                          : " Inativo"}
                       </span>
                     ) : user?.perfis?.includes("GERENTE_UNIDADE") &&
                       dadosGerente ? (
@@ -2234,7 +2219,7 @@ export default function MeuPerfilPage() {
                       >
                         {dadosGerente.ativo && user?.ativo
                           ? "✅ Ativo"
-                          : "❌ Inativo"}
+                          : " Inativo"}
                       </span>
                     ) : (
                       <span
@@ -2244,7 +2229,7 @@ export default function MeuPerfilPage() {
                             : "bg-red-100 text-red-800"
                         }`}
                       >
-                        {user?.ativo ? "✅ Ativo" : "❌ Inativo"}
+                        {user?.ativo ? "✅ Ativo" : " Inativo"}
                       </span>
                     )}
                   </p>

@@ -15,7 +15,7 @@
 - Faturas (A Receber) - apenas visualização e envio de links
 - Enviar links de pagamento por WhatsApp/Email
 
-❌ **NÃO PODE ACESSAR:**
+  **NÃO PODE ACESSAR:**
 
 - Dashboard Financeiro completo
 - Despesas (A Pagar)

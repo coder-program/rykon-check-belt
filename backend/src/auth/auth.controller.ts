@@ -79,7 +79,7 @@ export class AuthController {
       },
     },
   })
-  @ApiResponse({ status: 401, description: '❌ Credenciais inválidas' })
+  @ApiResponse({ status: 401, description: ' Credenciais inválidas' })
   async login(
     @Request() req,
     @Body() loginDto: LoginDto,
@@ -87,7 +87,7 @@ export class AuthController {
   ): Promise<LoginResponse> {
     if (!req.user) {
       console.error(
-        '❌ AuthController.login - Nenhum usuário no request (LocalAuthGuard falhou)',
+        ' AuthController.login - Nenhum usuário no request (LocalAuthGuard falhou)',
       );
       throw new Error('Authentication failed');
     }
@@ -110,7 +110,7 @@ export class AuthController {
     description: 'Retorna dados completos do perfil do usuário logado',
   })
   @ApiResponse({ status: 200, description: '✅ Perfil retornado com sucesso' })
-  @ApiResponse({ status: 401, description: '❌ Token inválido ou expirado' })
+  @ApiResponse({ status: 401, description: ' Token inválido ou expirado' })
   async getProfile(@Request() req) {
     // Retornar getUserProfile para incluir perfis formatados corretamente
     return this.authService.getUserProfile(req.user.id);
@@ -125,7 +125,7 @@ export class AuthController {
       'Retorna informações detalhadas incluindo status do cadastro e permissões',
   })
   @ApiResponse({ status: 200, description: '✅ Dados do usuário retornados' })
-  @ApiResponse({ status: 401, description: '❌ Token inválido ou expirado' })
+  @ApiResponse({ status: 401, description: ' Token inválido ou expirado' })
   async getMe(@Request() req) {
     return this.authService.getUserProfile(req.user.id);
   }
@@ -145,8 +145,8 @@ export class AuthController {
       );
       return result;
     } catch (error) {
-      console.error('❌ [AuthController.completeProfile] ERRO:', error.message);
-      console.error('❌ [AuthController.completeProfile] Stack:', error.stack);
+      console.error(' [AuthController.completeProfile] ERRO:', error.message);
+      console.error(' [AuthController.completeProfile] Stack:', error.stack);
       throw error;
     }
   }
@@ -159,7 +159,7 @@ export class AuthController {
     description: 'Gera um novo access token usando o JWT atual ainda válido',
   })
   @ApiResponse({ status: 200, description: '✅ Token renovado com sucesso' })
-  @ApiResponse({ status: 401, description: '❌ Token inválido para renovação' })
+  @ApiResponse({ status: 401, description: ' Token inválido para renovação' })
   async refreshToken(@Request() req): Promise<LoginResponse> {
     return this.authService.refreshToken(req.user);
   }

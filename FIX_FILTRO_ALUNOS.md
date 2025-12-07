@@ -78,7 +78,7 @@ if (user && this.isFranqueado(user) && !this.isMaster(user)) {
 
 ## 🎯 Resultado
 
-### Antes (❌ Incorreto)
+### Antes ( Incorreto)
 
 ```
 Franqueado RJ faz login

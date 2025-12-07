@@ -151,7 +151,7 @@ Conforme definido em `backend/insert-permissoes-perfis.sql`:
 - ✅ **UNIDADES_READ**: Ver dados da unidade
 - ✅ **PROFESSORES_READ**: Ver professores da unidade
 
-❌ **Não tem**:
+  **Não tem**:
 
 - DELETE de qualquer módulo
 - WRITE em unidades, professores, financeiro
@@ -196,7 +196,7 @@ O sistema já possui endpoint de check-in no `PresencaService`:
 2. ✅ Verifica se já fez check-in hoje (evita duplicação)
 3. ✅ Registra horário exato do check-in
 4. ✅ Incrementa contador de presenças na graduação
-5. ❌ Não verifica se aluno está matriculado na aula (check-in livre)
+5. Não verifica se aluno está matriculado na aula (check-in livre)
 
 ### Frontend - Fluxo de Check-in
 

@@ -53,14 +53,6 @@ export class AlunosService {
   ) {}
 
   async list(params: ListAlunosParams, user?: any) {
-    console.log('🔥🔥🔥 [ALUNOS LIST] ===== INÍCIO ===== ');
-    console.log(
-      '🔥🔥🔥 [ALUNOS LIST] Params:',
-      JSON.stringify(params, null, 2),
-    );
-    console.log('🔥🔥🔥 [ALUNOS LIST] User perfis:', user?.perfis);
-    console.log('🔥🔥🔥 [ALUNOS LIST] User ID:', user?.id);
-
     const page = Math.max(1, Number(params.page) || 1);
     const pageSize = Math.min(5000, Math.max(1, Number(params.pageSize) || 20));
 
@@ -129,32 +121,18 @@ export class AlunosService {
     }
     // Se franqueado (não master), filtra apenas alunos das suas unidades
     else if (user && this.isFranqueado(user) && !this.isMaster(user)) {
-      console.log('🔥 [ALUNOS LIST] Usuário identificado como FRANQUEADO');
       const franqueadoId = await this.getFranqueadoIdByUser(user);
-      console.log('🔥 [ALUNOS LIST] Franqueado ID:', franqueadoId);
-
       if (franqueadoId) {
         // Buscar unidades do franqueado
         const unidadesDeFranqueado =
           await this.getUnidadesDeFranqueado(franqueadoId);
-        console.log(
-          '🔥 [ALUNOS LIST] Unidades do franqueado:',
-          unidadesDeFranqueado,
-        );
 
         if (unidadesDeFranqueado.length > 0) {
           query.andWhere('aluno.unidade_id IN (:...unidades)', {
             unidades: unidadesDeFranqueado,
           });
-          console.log(
-            '🔥 [ALUNOS LIST] Filtro aplicado - alunos das unidades:',
-            unidadesDeFranqueado,
-          );
         } else {
           query.andWhere('1 = 0'); // Retorna vazio se franqueado não tem unidades
-          console.log(
-            '🔥 [ALUNOS LIST] Franqueado sem unidades - retornando vazio',
-          );
         }
       }
     }
@@ -198,17 +176,6 @@ export class AlunosService {
       .skip((page - 1) * pageSize)
       .take(pageSize)
       .getManyAndCount();
-
-    console.log('🔥🔥🔥 [ALUNOS LIST] Total de alunos encontrados:', total);
-    console.log('🔥🔥🔥 [ALUNOS LIST] Alunos na página atual:', items.length);
-    console.log(
-      '🔥🔥🔥 [ALUNOS LIST] Alunos:',
-      items.map((a) => ({
-        nome: a.nome_completo,
-        unidade_id: a.unidade_id,
-        unidade_nome: a.unidade?.nome,
-      })),
-    );
 
     // Buscar status dos usuários vinculados aos alunos
     const usuarioIds = items
@@ -281,49 +248,11 @@ export class AlunosService {
   }
 
   async create(dto: CreateAlunoDto | any): Promise<Aluno> {
-    console.log('🔥🔥🔥 [ALUNO SERVICE CREATE] ===== INÍCIO ===== ');
-    console.log(
-      '🔥🔥🔥 [ALUNO SERVICE CREATE] DTO recebido:',
-      JSON.stringify(dto, null, 2),
-    );
-    console.log('🔥🔥🔥 [ALUNO SERVICE CREATE] CPF presente:', dto.cpf);
-    console.log(
-      '🔥🔥🔥 [ALUNO SERVICE CREATE] responsavel_id presente:',
-      dto.responsavel_id,
-    );
-
-    console.log('🔍 [ALUNO CREATE] Iniciando criação de aluno:', {
-      nome: dto.nome_completo,
-      cpf: dto.cpf,
-      usuario_id_fornecido: dto.usuario_id,
-      unidade_id: dto.unidade_id,
-      responsavel_id: dto.responsavel_id,
-    });
-
-    // Validar CPF obrigatório apenas se NÃO for dependente (não tem responsavel_id)
-    console.log('🔍 [ALUNO SERVICE] Verificando CPF obrigatório...');
-    console.log('🔍 [ALUNO SERVICE] dto.responsavel_id:', dto.responsavel_id);
-    console.log('🔍 [ALUNO SERVICE] dto.cpf:', dto.cpf);
-    console.log(
-      '🔍 [ALUNO SERVICE] is_dependente_cadastro:',
-      (dto as any).is_dependente_cadastro,
-    );
-
     const isDependenteCadastro = (dto as any).is_dependente_cadastro || false;
 
     // CPF é obrigatório APENAS se NÃO for cadastro de dependente
     if (!isDependenteCadastro && !dto.cpf) {
-      console.log(
-        '❌❌❌ [ALUNO SERVICE] CPF É OBRIGATÓRIO (não é dependente) - lançando erro',
-      );
       throw new BadRequestException('CPF é obrigatório');
-    } else {
-      console.log('✅ [ALUNO SERVICE] Validação de CPF passou!');
-      if (isDependenteCadastro) {
-        console.log('✅ [ALUNO SERVICE] CADASTRO DE DEPENDENTE - CPF opcional');
-      } else {
-        console.log('✅ [ALUNO SERVICE] Não é dependente mas tem CPF');
-      }
     }
 
     const queryRunner = this.dataSource.createQueryRunner();
@@ -336,16 +265,10 @@ export class AlunosService {
     try {
       // 1. Criar usuário APENAS se NÃO for cadastro de dependente E não foi fornecido usuario_id
       if (!usuario_id && !isDependenteCadastro) {
-        console.log(
-          '🔍 [ALUNO CREATE] Não é dependente, criando usuário automaticamente...',
-        );
-
         // Buscar ID do perfil ALUNO
         const perfilAluno = await queryRunner.manager.query(
           `SELECT id FROM teamcruz.perfis WHERE UPPER(nome) = 'ALUNO' LIMIT 1`,
         );
-
-        console.log('🔍 [ALUNO CREATE] Perfil ALUNO encontrado:', perfilAluno);
 
         if (!perfilAluno || perfilAluno.length === 0) {
           throw new BadRequestException(
@@ -359,8 +282,6 @@ export class AlunosService {
           .normalize('NFD')
           .replace(/[\u0300-\u036f]/g, '')
           .replace(/[^a-z0-9]/g, '');
-
-        console.log('🔍 [ALUNO CREATE] Base username gerado:', baseUsername);
 
         // Verificar se username já existe e adicionar número se necessário
         let username = baseUsername;
@@ -380,8 +301,6 @@ export class AlunosService {
           }
         }
 
-        console.log('🔍 [ALUNO CREATE] Username final:', username);
-
         // Criar usuário com ativo = false (aguardando aprovação)
         const usuarioData = {
           username,
@@ -395,13 +314,6 @@ export class AlunosService {
           ativo: false, // Aguardando aprovação
           cadastro_completo: false,
         };
-
-        console.log('🔍 [ALUNO CREATE] Dados do usuário a ser criado:', {
-          username: usuarioData.username,
-          email: usuarioData.email,
-          ativo: usuarioData.ativo,
-          cadastro_completo: usuarioData.cadastro_completo,
-        });
 
         const usuario = await queryRunner.manager.query(
           `INSERT INTO teamcruz.usuarios
@@ -422,28 +334,16 @@ export class AlunosService {
 
         usuario_id = usuario[0].id;
 
-        console.log('🔍 [ALUNO CREATE] Usuário criado com ID:', usuario_id);
-
         // Vincular perfil ALUNO ao usuário
         await queryRunner.manager.query(
           `INSERT INTO teamcruz.usuario_perfis (usuario_id, perfil_id, created_at, updated_at)
            VALUES ($1, $2, NOW(), NOW())`,
           [usuario_id, perfilAluno[0].id],
         );
-
-        console.log('🔍 [ALUNO CREATE] Perfil ALUNO vinculado ao usuário');
-      } else {
-        console.log(
-          '🔍 [ALUNO CREATE] Usando usuario_id fornecido:',
-          usuario_id,
-        );
       }
 
       // Se for dependente, não precisa de usuario_id
       if (dto.responsavel_id) {
-        console.log(
-          '🔍 [ALUNO CREATE] Cadastro de dependente - não criará usuário',
-        );
         usuario_id = undefined; // Garante que dependente não tenha usuario_id
       }
 
@@ -595,13 +495,6 @@ export class AlunosService {
             : false,
       };
 
-      console.log('🔍 [ALUNO CREATE] Dados do aluno preparados:', {
-        nome: alunoData.nome_completo,
-        usuario_id: alunoData.usuario_id,
-        unidade_id: alunoData.unidade_id,
-        status: alunoData.status,
-      });
-
       // Manter compatibilidade com sistema antigo (unidade_id único)
       if (dto.unidade_id) {
         alunoData.unidade_id = dto.unidade_id;
@@ -614,13 +507,6 @@ export class AlunosService {
 
       const aluno = queryRunner.manager.create(Aluno, alunoData);
       savedAluno = await queryRunner.manager.save(Aluno, aluno);
-
-      console.log('🔍 [ALUNO CREATE] Aluno salvo no banco:', {
-        id: savedAluno.id,
-        nome: savedAluno.nome_completo,
-        usuario_id: savedAluno.usuario_id,
-        unidade_id: savedAluno.unidade_id,
-      });
 
       // 5. Buscar a definição da faixa
       let faixaDef = await this.buscarFaixaDef(
@@ -658,10 +544,6 @@ export class AlunosService {
 
         // Se ainda não encontrou, criar uma entrada básica temporária
         if (!tempFaixaDef) {
-          console.log(
-            '⚠️ [ALUNO CREATE] Criando definição de faixa temporária:',
-            dto.faixa_atual || FaixaEnum.BRANCA,
-          );
           try {
             const novaFaixaDef = faixaDefRepository.create({
               codigo: dto.faixa_atual || FaixaEnum.BRANCA,
@@ -679,9 +561,6 @@ export class AlunosService {
             tempFaixaDef = await faixaDefRepository.save(novaFaixaDef);
           } catch (error) {
             // Se falhar por já existir, buscar novamente
-            console.log(
-              '⚠️ [ALUNO CREATE] Erro ao criar faixa, tentando buscar novamente...',
-            );
             tempFaixaDef = await faixaDefRepository.findOne({
               where: {
                 codigo: dto.faixa_atual || FaixaEnum.BRANCA,
@@ -773,16 +652,9 @@ export class AlunosService {
       }
 
       await queryRunner.commitTransaction();
-
-      console.log('🔍 [ALUNO CREATE] Transação commitada com sucesso!');
-      console.log('🔍 [ALUNO CREATE] Resumo final:', {
-        aluno_id: savedAluno.id,
-        usuario_id: savedAluno.usuario_id,
-        usuario_criado_automaticamente: !dto.usuario_id,
-      });
     } catch (error) {
       await queryRunner.rollbackTransaction();
-      console.error('❌ [ALUNO CREATE] Erro ao criar aluno:', error);
+      console.error(' [ALUNO CREATE] Erro ao criar aluno:', error);
       throw error;
     }
 
@@ -797,15 +669,8 @@ export class AlunosService {
   }
 
   async update(id: string, dto: UpdateAlunoDto, user?: any): Promise<Aluno> {
-    console.log(
-      '🔧 [UPDATE ALUNO] DTO recebido:',
-      JSON.stringify(dto, null, 2),
-    );
-    console.log('🏢 [UPDATE ALUNO] unidade_id no DTO:', dto.unidade_id);
-
     const aluno = await this.findById(id, user);
     const unidadeAnterior = aluno.unidade_id; // Salvar antes do assign
-    console.log('🏢 [UPDATE ALUNO] unidade_id ANTES:', unidadeAnterior);
 
     // Verificar CPF único (se estiver sendo alterado)
     if (dto.cpf && dto.cpf !== aluno.cpf) {
@@ -851,15 +716,8 @@ export class AlunosService {
         : aluno.data_ultima_graduacao,
     };
 
-    console.log(
-      '🔄 [UPDATE ALUNO] Atualizando direto no banco com:',
-      updateData,
-    );
-
     // Fazer UPDATE direto no banco (bypass da relação @ManyToOne)
     await this.alunoRepository.update(id, updateData);
-
-    console.log('✅ [UPDATE ALUNO] Salvo no banco');
 
     // Buscar novamente do banco para garantir dados atualizados
     const resultado = await this.alunoRepository.findOne({
@@ -872,11 +730,6 @@ export class AlunosService {
         `Aluno com ID ${id} não encontrado após atualização`,
       );
     }
-
-    console.log(
-      '🏢 [UPDATE ALUNO] unidade_id no retorno final:',
-      resultado.unidade_id,
-    );
 
     return resultado;
   }
@@ -1266,33 +1119,17 @@ export class AlunosService {
     // Buscar unidade do usuário (TABLET_CHECKIN deve estar vinculado a uma unidade)
     let unidadeId: string | null = null;
 
-    console.log('🔍 [listarAlunosParaCheckin] User perfis:', user?.perfis);
-    console.log('🔍 [listarAlunosParaCheckin] User id:', user?.id);
-
     // Para TABLET_CHECKIN, buscar via tablet_unidades
     const perfisNomes = (user?.perfis || []).map((p: any) =>
       typeof p === 'string' ? p.toUpperCase() : p.nome?.toUpperCase(),
     );
 
-    console.log(
-      '🔍 [listarAlunosParaCheckin] Perfis normalizados:',
-      perfisNomes,
-    );
-
     if (perfisNomes.includes('TABLET_CHECKIN')) {
-      console.log(
-        '✅ [listarAlunosParaCheckin] Usuário é TABLET_CHECKIN, buscando unidade...',
-      );
       const result = await this.dataSource.query(
         `SELECT unidade_id FROM teamcruz.tablet_unidades WHERE tablet_id = $1 AND ativo = true LIMIT 1`,
         [user.id],
       );
-      console.log('🔍 [listarAlunosParaCheckin] Resultado query:', result);
       unidadeId = result[0]?.unidade_id || null;
-      console.log(
-        '🔍 [listarAlunosParaCheckin] unidadeId encontrado:',
-        unidadeId,
-      );
     }
 
     if (!unidadeId) {
@@ -1346,11 +1183,6 @@ export class AlunosService {
       return [];
     }
 
-    console.log(
-      '🔍 [GET MEUS DEPENDENTES] Buscando dependentes do responsável:',
-      user.id,
-    );
-
     // Buscar responsável na tabela responsaveis
     const responsavelData = await this.dataSource.query(
       `SELECT id FROM teamcruz.responsaveis WHERE usuario_id = $1 LIMIT 1`,
@@ -1365,7 +1197,6 @@ export class AlunosService {
     }
 
     const responsavelId = responsavelData[0].id;
-    console.log('🔍 [GET MEUS DEPENDENTES] Responsável ID:', responsavelId);
 
     // Primeiro, buscar TODOS os alunos vinculados ao responsavel_id (sem filtro)
     const todosAlunos = await this.dataSource.query(
@@ -1374,14 +1205,6 @@ export class AlunosService {
        WHERE responsavel_id = $1
        ORDER BY nome_completo ASC`,
       [responsavelId],
-    );
-    console.log(
-      '📋 [GET MEUS DEPENDENTES] Todos os alunos do responsavel_id:',
-      todosAlunos,
-    );
-    console.log(
-      '🔑 [GET MEUS DEPENDENTES] Usuario_id do responsável:',
-      user.id,
     );
 
     // Buscar alunos vinculados ao responsável (exceto o próprio responsável)
@@ -1407,36 +1230,14 @@ export class AlunosService {
 
     const alunos = await query.getMany();
 
-    console.log(
-      '✅ [GET MEUS DEPENDENTES] Total de dependentes encontrados:',
-      alunos.length,
-    );
-
     // 🔍 DEBUG: Log detalhado de cada dependente
-    alunos.forEach((aluno, index) => {
-      console.log(`🧒 [DEPENDENTE ${index + 1}] ID: ${aluno.id}`);
-      console.log(`   Nome: ${aluno.nome_completo}`);
-      console.log(
-        `   faixas (relação): ${JSON.stringify(aluno.faixas?.map((f) => ({ id: f.id, ativa: f.ativa, faixaDef: f.faixaDef?.nome_exibicao })))}`,
-      );
-      console.log(`   unidade_id: ${aluno.unidade_id}`);
-      console.log(
-        `   unidade (relação): ${aluno.unidade ? `${aluno.unidade.id} - ${aluno.unidade.nome}` : 'null'}`,
-      );
-    });
+    alunos.forEach((aluno, index) => {});
 
     const resultado = alunos.map((aluno) => {
       // Buscar faixa ativa da relação aluno_faixas
       const faixaAtiva = aluno.faixas?.find((f) => f.ativa);
       const faixaFinal = faixaAtiva?.faixaDef?.nome_exibicao || 'Sem faixa';
       const grausFinal = faixaAtiva?.graus_atual || 0;
-
-      console.log(`📤 [RETORNO DEPENDENTE ${aluno.id}]:`);
-      console.log(`   faixa_atual retornada: ${faixaFinal}`);
-      console.log(`   graus retornados: ${grausFinal}`);
-      console.log(
-        `   unidade retornada: ${aluno.unidade ? aluno.unidade.nome : 'null'}`,
-      );
 
       return {
         id: aluno.id,
@@ -1455,10 +1256,6 @@ export class AlunosService {
       };
     });
 
-    console.log(
-      '🏁 [GET MEUS DEPENDENTES] Retornando:',
-      JSON.stringify(resultado, null, 2),
-    );
     return resultado;
   }
 
@@ -1466,11 +1263,6 @@ export class AlunosService {
     if (!user || !user.id) {
       throw new BadRequestException('Usuário não identificado');
     }
-
-    console.log(
-      '🔄 [RESPONSAVEL VIRA ALUNO] Iniciando conversão para:',
-      user.id,
-    );
 
     // Verificar se já é aluno
     const alunoExistente = await this.alunoRepository.findOne({
@@ -1513,11 +1305,6 @@ export class AlunosService {
     novoAluno.usuario_id = user.id;
 
     await this.alunoRepository.save(novoAluno);
-
-    console.log(
-      '✅ [RESPONSAVEL VIRA ALUNO] Aluno criado com sucesso:',
-      novoAluno.id,
-    );
 
     return {
       success: true,

@@ -140,7 +140,7 @@ export class AuthService {
       await this.usuariosService.updateUltimoLogin(user.id);
       return { user };
     } catch (error) {
-      console.error('❌ Erro ao validar usuário:', error);
+      console.error(' Erro ao validar usuário:', error);
       return {
         user: null,
         error: 'Erro interno do servidor. Tente novamente mais tarde.',
@@ -194,21 +194,14 @@ export class AuthService {
     }
 
     // Buscar unidade_id do gerente se existir
-    console.log(
-      `🔍 [LOGIN] Buscando unidade_id para usuário ${user.username} (${user.id})`,
-    );
-    console.log(`👤 [LOGIN] Perfis do usuário:`, perfis);
-
     try {
       const gerente_unidade =
         await this.gerenteUnidadesService.buscarPorUsuario(user.id);
-      console.log(`🏢 [LOGIN] Gerente encontrado:`, gerente_unidade);
       if (gerente_unidade && gerente_unidade.unidade_id) {
         unidade_id = gerente_unidade.unidade_id;
-        console.log(`✅ [LOGIN] unidade_id definido (gerente): ${unidade_id}`);
       }
     } catch (error) {
-      console.error(`❌ [LOGIN] Erro ao buscar gerente:`, error);
+      console.error(` [LOGIN] Erro ao buscar gerente:`, error);
     }
 
     // Buscar unidade_id do recepcionista se existir
@@ -218,21 +211,13 @@ export class AuthService {
           usuario_id: user.id,
           ativo: true,
         });
-        console.log(`📋 [LOGIN] Vínculos recepcionista:`, vinculos);
         if (vinculos && vinculos.length > 0) {
           unidade_id = vinculos[0].unidade_id;
-          console.log(
-            `✅ [LOGIN] unidade_id definido (recepcionista): ${unidade_id}`,
-          );
         }
       } catch (error) {
-        console.error(`❌ [LOGIN] Erro ao buscar recepcionista:`, error);
+        console.error(` [LOGIN] Erro ao buscar recepcionista:`, error);
       }
     }
-
-    console.log(
-      `🎯 [LOGIN] unidade_id final que será retornado: ${unidade_id}`,
-    );
 
     // Registrar LOGIN na auditoria
     /* try {
@@ -282,15 +267,13 @@ export class AuthService {
     const user = await this.usuariosService.findOne(payload.sub);
 
     if (!user) {
-      console.error('❌ [validateToken] Usuário não encontrado');
+      console.error(' [validateToken] Usuário não encontrado');
       return null;
     }
 
     // Se allowInactive = false (padrão), rejeita usuários inativos
     if (!allowInactive && !user.ativo) {
-      console.error(
-        '❌ [validateToken] Usuário inativo e allowInactive = false',
-      );
+      console.error(' [validateToken] Usuário inativo e allowInactive = false');
       return null;
     }
 
@@ -464,12 +447,12 @@ export class AuthService {
   async completeProfile(userId: string, profileData: any) {
     const user = await this.usuariosService.findOne(userId);
     if (!user) {
-      console.error('❌ [completeProfile] Usuário não encontrado');
+      console.error(' [completeProfile] Usuário não encontrado');
       throw new NotFoundException('Usuário não encontrado');
     }
 
     if (user.cadastro_completo) {
-      console.error('❌ [completeProfile] Cadastro já foi completado');
+      console.error(' [completeProfile] Cadastro já foi completado');
       throw new BadRequestException('Cadastro já foi completado');
     }
 
@@ -549,11 +532,8 @@ export class AuthService {
             alunoData as any,
           );
         } catch (alunoError) {
-          console.error(
-            '❌ [completeProfile] ERRO ao criar aluno:',
-            alunoError,
-          );
-          console.error('❌ [completeProfile] Stack trace:', alunoError.stack);
+          console.error(' [completeProfile] ERRO ao criar aluno:', alunoError);
+          console.error(' [completeProfile] Stack trace:', alunoError.stack);
           throw alunoError;
         }
       } else if (
@@ -759,10 +739,7 @@ export class AuthService {
             [user.id, payload.unidade_id],
           );
         } catch (error) {
-          console.error(
-            '❌ Erro ao vincular gerente à unidade:',
-            error.message,
-          );
+          console.error(' Erro ao vincular gerente à unidade:', error.message);
         }
       }
 
@@ -821,15 +798,14 @@ export class AuthService {
           const alunoCriado = await this.alunosService.create(alunoData as any);
         } catch (error) {
           console.error(
-            '❌ [CREATE ALUNO] Erro ao criar registro de aluno:',
+            ' [CREATE ALUNO] Erro ao criar registro de aluno:',
             error.message,
           );
-          console.error('❌ [CREATE ALUNO] Stack completo:', error.stack);
+          console.error(' [CREATE ALUNO] Stack completo:', error.stack);
           console.error(
-            '❌ [CREATE ALUNO] Detalhes do erro:',
+            ' [CREATE ALUNO] Detalhes do erro:',
             JSON.stringify(error, null, 2),
           );
-          // 🚨 LANÇAR ERRO para impedir cadastro incompleto
           throw new Error(`Falha ao criar registro de aluno: ${error.message}`);
         }
       }
@@ -855,10 +831,7 @@ export class AuthService {
           ativo: false, // Aguarda aprovação da unidade
         } as any);
       } catch (error) {
-        console.error(
-          '❌ Erro ao criar registro de responsável:',
-          error.message,
-        );
+        console.error(' Erro ao criar registro de responsável:', error.message);
       }
     }
 
@@ -881,7 +854,7 @@ export class AuthService {
           );
         }
       } catch (error) {
-        console.error('❌ Erro ao criar registro de professor:', error.message);
+        console.error(' Erro ao criar registro de professor:', error.message);
       }
     }
 
@@ -896,7 +869,7 @@ export class AuthService {
           );
         } catch (error) {
           console.error(
-            '❌ Erro ao criar registro de recepcionista:',
+            ' Erro ao criar registro de recepcionista:',
             error.message,
           );
         }

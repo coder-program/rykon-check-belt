@@ -28,7 +28,7 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
 
   handleRequest(err, user, info) {
     if (err || !user) {
-      console.error('❌ [JwtAuthGuard] REJEITADO - err:', err, 'info:', info);
+      console.error(' [JwtAuthGuard] REJEITADO - err:', err, 'info:', info);
       throw err || new UnauthorizedException(info?.message || 'Token inválido');
     }
     return user;

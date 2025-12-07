@@ -4,9 +4,9 @@
 
 Usuário com perfil FRANQUEADO estava vendo:
 
-- ❌ Todos os alunos de todas as unidades (não apenas das suas)
-- ❌ Todas as unidades de todas as franquias (não apenas as suas)
-- ❌ Todos os professores de todas as unidades (não apenas das suas)
+- Todos os alunos de todas as unidades (não apenas das suas)
+- Todas as unidades de todas as franquias (não apenas as suas)
+- Todos os professores de todas as unidades (não apenas das suas)
 
 **Causa Raiz**: Os endpoints do frontend não estavam enviando o token de autenticação (`auth: true`), então o backend não conseguia identificar o usuário e aplicar os filtros.
 
@@ -21,17 +21,17 @@ Usuário com perfil FRANQUEADO estava vendo:
 ```typescript
 export async function listAlunos(params: any): Promise<PageResp<any>> {
   const qs = new URLSearchParams(params).toString();
-  return http(`/alunos?${qs}`); // ❌ SEM autenticação
+  return http(`/alunos?${qs}`); //  SEM autenticação
 }
 
 export async function listUnidades(params: any): Promise<PageResp<any>> {
   const qs = new URLSearchParams(params).toString();
-  return http(`/unidades?${qs}`); // ❌ SEM autenticação
+  return http(`/unidades?${qs}`); //  SEM autenticação
 }
 
 export async function listProfessores(params: any): Promise<PageResp<any>> {
   const qs = new URLSearchParams(params).toString();
-  return http(`/professores?${qs}`); // ❌ SEM autenticação
+  return http(`/professores?${qs}`); //  SEM autenticação
 }
 ```
 
@@ -84,17 +84,17 @@ export async function listProfessores(params: any): Promise<PageResp<any>> {
 ```typescript
 @Get()
 list(@Query(ValidationPipe) query: any) {
-  return this.service.list(query); // ❌ Não passa usuário
+  return this.service.list(query); //  Não passa usuário
 }
 
 @Get(':id')
 get(@Param('id') id: string) {
-  return this.service.findById(id); // ❌ Não passa usuário
+  return this.service.findById(id); //  Não passa usuário
 }
 
 @Patch(':id')
 update(@Param('id') id: string, @Body(ValidationPipe) dto: UpdateProfessorDto) {
-  return this.service.update(id, dto); // ❌ Não passa usuário
+  return this.service.update(id, dto); //  Não passa usuário
 }
 ```
 
@@ -193,7 +193,7 @@ Backend: req.user = null (não autenticado)
     ↓
 Service: Como não tem user, não aplica filtro
     ↓
-Retorna: TODOS os alunos do sistema ❌
+Retorna: TODOS os alunos do sistema
 ```
 
 ### Depois (CORRETO):

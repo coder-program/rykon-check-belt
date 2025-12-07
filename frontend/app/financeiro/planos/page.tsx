@@ -116,11 +116,9 @@ export default function Planos() {
 
         if (unidadesRes.ok) {
           const unidadesData = await unidadesRes.json();
-          console.log("🏢 Unidades carregadas:", unidadesData);
           // A API retorna { items: [...], page, pageSize, total }
           const unidadesArray = unidadesData.items || [];
           setUnidades(unidadesArray);
-          console.log("✅ Array de unidades:", unidadesArray);
         }
       }
 

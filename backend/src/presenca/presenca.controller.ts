@@ -31,7 +31,7 @@ export class PresencaController {
       const result = await this.presencaService.getAulaAtiva(req.user);
       return result;
     } catch (error) {
-      console.error('❌ [Controller] Erro ao buscar aula ativa:', error);
+      console.error(' [Controller] Erro ao buscar aula ativa:', error);
       return null;
     }
   }

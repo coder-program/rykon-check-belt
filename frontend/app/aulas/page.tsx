@@ -173,7 +173,6 @@ export default function AulasPage() {
 
       if (aulasRes.ok) {
         const data = await aulasRes.json();
-        console.log("📋 Aulas carregadas:", data.length);
         setAulas(data);
       }
 

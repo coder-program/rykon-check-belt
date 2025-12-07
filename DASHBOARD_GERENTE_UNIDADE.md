@@ -159,7 +159,7 @@ Conforme definido em `backend/insert-permissoes-perfis.sql`:
 - ✅ **FINANCEIRO_READ**: Ver relatórios financeiros
 - ✅ **RELATORIOS_READ**: Acessar relatórios gerenciais
 
-❌ **Não tem**: UNIDADES*DELETE, FRANQUEADOS*_, USUARIOS*WRITE, PERMISSOES*_
+  **Não tem**: UNIDADES*DELETE, FRANQUEADOS*_, USUARIOS*WRITE, PERMISSOES*_
 
 ## 📊 Dashboard Features
 

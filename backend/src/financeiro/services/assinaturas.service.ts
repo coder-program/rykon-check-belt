@@ -87,12 +87,6 @@ export class AssinaturasService {
     status?: StatusAssinatura,
     user?: any,
   ): Promise<Assinatura[]> {
-    console.log(
-      '🔥🔥🔥 [ASSINATURAS SERVICE] unidade_id recebido:',
-      unidade_id,
-    );
-    console.log('🔥🔥🔥 [ASSINATURAS SERVICE] tipo:', typeof unidade_id);
-
     const query = this.assinaturaRepository
       .createQueryBuilder('assinatura')
       .leftJoinAndSelect('assinatura.aluno', 'aluno')
@@ -102,15 +96,8 @@ export class AssinaturasService {
 
     // Se unidade_id foi passada, filtrar diretamente por ela
     if (unidade_id) {
-      console.log(
-        '🔥🔥🔥 [ASSINATURAS SERVICE] Filtrando por unidade_id:',
-        unidade_id,
-      );
       query.andWhere('assinatura.unidade_id = :unidade_id', { unidade_id });
     } else if (user) {
-      console.log(
-        '🔥🔥🔥 [ASSINATURAS SERVICE] unidade_id vazio, verificando franqueado...',
-      );
       // Senão, se for franqueado, filtrar por todas suas unidades
       const isFranqueado = user.perfis?.some(
         (p: any) =>
@@ -119,9 +106,6 @@ export class AssinaturasService {
       );
 
       if (isFranqueado) {
-        console.log(
-          '🔥🔥🔥 [ASSINATURAS SERVICE] É franqueado, filtrando por suas unidades',
-        );
         // Buscar unidades do franqueado via join
         query
           .leftJoin('unidade.franqueado', 'franqueado')
@@ -135,15 +119,6 @@ export class AssinaturasService {
     }
 
     const result = await query.getMany();
-    console.log(
-      '🔥🔥🔥 [ASSINATURAS SERVICE] Total encontrado:',
-      result.length,
-    );
-    console.log(
-      '🔥🔥🔥 [ASSINATURAS SERVICE] Unidades:',
-      result.map((a) => a.unidade_id),
-    );
-
     return result;
   }
 

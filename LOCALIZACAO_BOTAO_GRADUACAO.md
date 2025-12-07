@@ -138,9 +138,9 @@ Os cards ficam empilhados verticalmente em dispositivos móveis, mantendo a mesm
 | Admin           | ✅ Sim      | ✅ Sim (todas unidades) |
 | Franqueado      | ✅ Sim      | ✅ Sim (suas unidades)  |
 | Gerente Unidade | ✅ Sim      | ✅ Sim (sua unidade)    |
-| Professor       | ❌ Não\*    | ✅ Sim (sua unidade)    |
-| Recepcionista   | ❌ Não      | ❌ Não                  |
-| Aluno           | ❌ Não      | ❌ Não                  |
+| Professor       | Não\*       | ✅ Sim (sua unidade)    |
+| Recepcionista   | Não         | Não                     |
+| Aluno           | Não         | Não                     |
 
 \*Professor pode ter acesso se adicionarmos o botão no dashboard dele
 

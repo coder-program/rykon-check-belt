@@ -57,13 +57,6 @@ export async function http(path: string, opts: HttpOptions = {}) {
       console.error("Erro ao parsear resposta JSON:", e);
     }
 
-    console.log("🔍 Debug API Error:", {
-      status: res.status,
-      data,
-      message,
-      url: res.url,
-    });
-
     // Tratamento especial para erro 401 (Não Autorizado)
     if (res.status === 401) {
       // Se o token expirou ou é inválido
@@ -103,7 +96,7 @@ export async function http(path: string, opts: HttpOptions = {}) {
       // Senha incorreta
       if (msgLower.includes("senha incorreta")) {
         throw new Error(
-          "❌ Senha incorreta. Verifique sua senha e tente novamente."
+          " Senha incorreta. Verifique sua senha e tente novamente."
         );
       }
 
@@ -114,12 +107,12 @@ export async function http(path: string, opts: HttpOptions = {}) {
         msgLower.includes("email não encontrado")
       ) {
         throw new Error(
-          "❌ Email/username ou senha incorretos. Verifique suas credenciais e tente novamente."
+          " Email/username ou senha incorretos. Verifique suas credenciais e tente novamente."
         );
       }
 
       // Mensagem genérica para outros casos de 401
-      throw new Error(message || "❌ Email/username ou senha incorretos.");
+      throw new Error(message || " Email/username ou senha incorretos.");
     }
 
     // Outros erros HTTP

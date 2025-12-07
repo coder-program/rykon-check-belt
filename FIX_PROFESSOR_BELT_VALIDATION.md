@@ -184,7 +184,7 @@ Authorization: Bearer <token>
 # Tentar com faixa inválida
 POST /api/auth/complete-profile
 {
-  "faixa_atual": "BRANCA"  # ❌ Não permitida para professores
+  "faixa_atual": "BRANCA"  #  Não permitida para professores
 }
 
 # Resultado esperado: 400 Bad Request

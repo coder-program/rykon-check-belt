@@ -68,37 +68,16 @@ export class GraduacaoService {
    * Obtém o status de graduação do aluno
    */
   async getStatusGraduacao(alunoId: string): Promise<StatusGraduacaoDto> {
-    console.log('🔍 [GET STATUS GRADUACAO] alunoId recebido:', alunoId);
-
     // Primeiro tenta buscar por usuario_id (para alunos com login)
     let aluno = await this.alunoRepository.findOne({
       where: { usuario_id: alunoId },
     });
-
-    console.log(
-      '🔍 [GET STATUS GRADUACAO] Aluno encontrado por usuario_id:',
-      aluno
-        ? {
-            id: aluno.id,
-            nome: aluno.nome_completo,
-          }
-        : 'não encontrado',
-    );
 
     // Se não encontrar, tenta buscar diretamente pelo ID do aluno (para dependentes sem login)
     if (!aluno) {
       aluno = await this.alunoRepository.findOne({
         where: { id: alunoId },
       });
-      console.log(
-        '🔍 [GET STATUS GRADUACAO] Aluno encontrado por id:',
-        aluno
-          ? {
-              id: aluno.id,
-              nome: aluno.nome_completo,
-            }
-          : 'não encontrado',
-      );
     }
 
     if (!aluno) {
@@ -319,15 +298,10 @@ export class GraduacaoService {
 
       // 2. SOMENTE se aprovado direto: trocar as faixas e atualizar Person
       if (aprovado) {
-        console.log(
-          '🔥 [GRADUAÇÃO MANUAL] Aprovação direta - finalizando faixa atual',
-        );
-
         // Finalizar faixa atual
         faixaAtiva.ativa = false;
         faixaAtiva.dt_fim = new Date();
         await manager.save(faixaAtiva);
-        console.log('✅ [GRADUAÇÃO MANUAL] Faixa antiga finalizada');
 
         // Criar nova faixa ativa
         const novaFaixa = manager.create(AlunoFaixa, {
@@ -340,21 +314,9 @@ export class GraduacaoService {
           presencas_total_fx: 0,
         });
         await manager.save(novaFaixa);
-        console.log(
-          '✅ [GRADUAÇÃO MANUAL] Nova faixa ativa criada:',
-          novaFaixa.id,
-        );
 
         // Atualizar campos na tabela Person (compatibilidade)
         // NOTA: faixa_atual removida - usar apenas aluno_faixas
-        console.log('✅ [GRADUAÇÃO MANUAL] Faixa atualizada:', {
-          alunoId,
-          novaFaixaNome: faixaDestino.nome_exibicao,
-        });
-      } else {
-        console.log(
-          '⏳ [GRADUAÇÃO MANUAL] Graduação pendente de aprovação - faixa não alterada',
-        );
       }
 
       return graduacaoSalva;
@@ -488,8 +450,6 @@ export class GraduacaoService {
    * Lista todas as faixas disponíveis
    */
   async listarFaixas(categoria?: string): Promise<FaixaDef[]> {
-    console.log('🔍 [BACKEND] listarFaixas chamado. Categoria:', categoria);
-
     const query = this.faixaDefRepository
       .createQueryBuilder('fd')
       .where('fd.ativo = :ativo', { ativo: true });
@@ -501,12 +461,6 @@ export class GraduacaoService {
     query.orderBy('fd.ordem', 'ASC');
 
     const result = await query.getMany();
-    console.log('✅ [BACKEND] Faixas encontradas:', result.length);
-    console.log(
-      '📋 [BACKEND] Faixas:',
-      result.map((f) => ({ codigo: f.codigo, nome: f.nome_exibicao })),
-    );
-
     return result;
   }
 
@@ -532,17 +486,9 @@ export class GraduacaoService {
     const faixaAtual = faixaAtiva.faixaDef;
     const grausAtuais = faixaAtiva.graus?.length || 0;
 
-    console.log('🔥 [BACKEND] Faixa atual:', {
-      nome: faixaAtual.nome_exibicao,
-      categoria: faixaAtual.categoria,
-      ordem: faixaAtual.ordem,
-      grausAtuais,
-    });
-
     // Se tem menos de 4 graus, não pode graduar para próxima faixa
     // Retorna array vazio
     if (grausAtuais < 4) {
-      console.log('🔥 [BACKEND] Aluno tem menos de 4 graus - retornando vazio');
       return [];
     }
 
@@ -553,15 +499,6 @@ export class GraduacaoService {
         ordem: faixaAtual.ordem + 1,
         ativo: true,
       },
-    });
-
-    console.log('🔥 [BACKEND] Busca próxima faixa:', {
-      categoria: faixaAtual.categoria,
-      ordemBuscada: faixaAtual.ordem + 1,
-      encontrou: !!proximaFaixa,
-      proximaFaixa: proximaFaixa
-        ? { nome: proximaFaixa.nome_exibicao, ordem: proximaFaixa.ordem }
-        : null,
     });
 
     return proximaFaixa ? [proximaFaixa] : [];
@@ -611,15 +548,6 @@ export class GraduacaoService {
     // Adulto (16+ anos): AZUL, ROXA, MARROM, PRETA, CORAL, VERMELHA
     const isKids = idade <= 15;
 
-    console.log('🔥 [BACKEND MANUAL] Aluno:', {
-      nome: aluno.nome_completo,
-      dataNascimento,
-      idade,
-      categoria: isKids ? 'KIDS' : 'ADULTO',
-      faixaAtual: faixaAtual.nome_exibicao,
-      ordemAtual: faixaAtual.ordem,
-    });
-
     // Buscar TODAS as faixas com ordem superior (não apenas a próxima)
     // Filtrar por categoria baseado na idade
     let faixasSuperiores: FaixaDef[];
@@ -655,14 +583,6 @@ export class GraduacaoService {
         (f) => f.ordem > faixaAtual.ordem,
       );
     }
-
-    console.log('🔥 [BACKEND MANUAL] Faixas superiores encontradas:', {
-      total: faixasSuperiores.length,
-      faixas: faixasSuperiores.map((f) => ({
-        nome: f.nome_exibicao,
-        ordem: f.ordem,
-      })),
-    });
 
     return faixasSuperiores;
   }
@@ -1149,23 +1069,9 @@ export class GraduacaoService {
     aprovadoPor: string,
     observacao?: string,
   ) {
-    console.log('🔥 [APROVAR GRADUAÇÃO] Iniciando aprovação:', {
-      graduacaoId,
-      aprovadoPor,
-      observacao,
-    });
-
     const graduacao = await this.alunoGraduacaoRepository.findOne({
       where: { id: graduacaoId },
       relations: ['aluno', 'faixaOrigem', 'faixaDestino'],
-    });
-
-    console.log('🔥 [APROVAR GRADUAÇÃO] Graduação encontrada:', {
-      id: graduacao?.id,
-      alunoId: graduacao?.aluno_id,
-      faixaOrigemId: graduacao?.faixa_origem_id,
-      faixaDestinoId: graduacao?.faixa_destino_id,
-      aprovado: graduacao?.aprovado,
     });
 
     if (!graduacao) {
@@ -1186,47 +1092,23 @@ export class GraduacaoService {
     }
 
     await this.alunoGraduacaoRepository.save(graduacao);
-    console.log('✅ [APROVAR GRADUAÇÃO] Graduação salva como aprovada');
-
     // ✅ Atualizar faixa_atual do aluno quando aprovar
     try {
-      console.log(
-        '🔥 [APROVAR GRADUAÇÃO] Buscando faixa destino:',
-        graduacao.faixa_destino_id,
-      );
-
       const faixaDestino = await this.faixaDefRepository.findOne({
         where: { id: graduacao.faixa_destino_id },
       });
 
-      console.log('🔥 [APROVAR GRADUAÇÃO] Faixa destino encontrada:', {
-        id: faixaDestino?.id,
-        codigo: faixaDestino?.codigo,
-        nome: faixaDestino?.nome_exibicao,
-      });
-
       if (faixaDestino) {
         // Finalizar faixa atual
-        console.log(
-          '🔥 [APROVAR GRADUAÇÃO] Buscando faixa ativa do aluno:',
-          graduacao.aluno_id,
-        );
 
         const faixaAtiva = await this.alunoFaixaRepository.findOne({
           where: { aluno_id: graduacao.aluno_id, ativa: true },
-        });
-
-        console.log('🔥 [APROVAR GRADUAÇÃO] Faixa ativa encontrada:', {
-          id: faixaAtiva?.id,
-          faixaDefId: faixaAtiva?.faixa_def_id,
-          ativa: faixaAtiva?.ativa,
         });
 
         if (faixaAtiva) {
           faixaAtiva.ativa = false;
           faixaAtiva.dt_fim = new Date();
           await this.alunoFaixaRepository.save(faixaAtiva);
-          console.log('✅ [APROVAR GRADUAÇÃO] Faixa antiga finalizada');
         }
 
         // Criar nova faixa ativa
@@ -1240,18 +1122,9 @@ export class GraduacaoService {
           presencas_total_fx: 0,
         });
         await this.alunoFaixaRepository.save(novaFaixa);
-        console.log(
-          '✅ [APROVAR GRADUAÇÃO] Nova faixa ativa criada:',
-          novaFaixa.id,
-        );
-
-        console.log('✅ [APROVAR GRADUAÇÃO] Faixa atualizada:', {
-          alunoId: graduacao.aluno_id,
-          novaFaixaNome: faixaDestino.nome_exibicao,
-        });
       }
     } catch (error) {
-      console.error('❌ [APROVAR GRADUAÇÃO] Erro ao atualizar faixa:', error);
+      console.error(' [APROVAR GRADUAÇÃO] Erro ao atualizar faixa:', error);
     }
 
     return {
@@ -1399,9 +1272,7 @@ export class GraduacaoService {
    * Lista graduações pendentes de aprovação
    */
   async listarGraduacoesPendentes(user?: any) {
-    console.log('⏳ [GRADUACOES PENDENTES] Iniciando busca...');
     const userId = user?.id;
-    console.log('⏳ [GRADUACOES PENDENTES] User ID:', userId);
 
     // Construir where condition baseado no perfil
     let whereCondition: any = { aprovado: false };
@@ -1411,27 +1282,14 @@ export class GraduacaoService {
       const perfisNormalizados = (user?.perfis || []).map((p: any) =>
         (typeof p === 'string' ? p : p?.nome || p)?.toLowerCase(),
       );
-      console.log(
-        '⏳ [GRADUACOES PENDENTES] Perfis normalizados:',
-        perfisNormalizados,
-      );
 
       const isFranqueado = perfisNormalizados.includes('franqueado');
       const isGerenteUnidade = perfisNormalizados.includes('gerente_unidade');
 
-      console.log('⏳ [GRADUACOES PENDENTES] É franqueado?', isFranqueado);
-      console.log('⏳ [GRADUACOES PENDENTES] É gerente?', isGerenteUnidade);
-
       if (isFranqueado) {
-        console.log('⏳ [GRADUACOES PENDENTES] Buscando franqueado...');
         const franqueado = await this.franqueadoRepository.findOne({
           where: { usuario_id: userId },
         });
-
-        console.log(
-          '⏳ [GRADUACOES PENDENTES] Franqueado encontrado:',
-          franqueado,
-        );
 
         if (franqueado) {
           const unidades = await this.unidadeRepository.find({
@@ -1439,14 +1297,6 @@ export class GraduacaoService {
           });
 
           const unidadeIds = unidades.map((u) => u.id);
-          console.log(
-            '⏳ [GRADUACOES PENDENTES] Unidades do franqueado:',
-            unidadeIds,
-          );
-          console.log(
-            '⏳ [GRADUACOES PENDENTES] Total de unidades:',
-            unidadeIds.length,
-          );
 
           if (unidadeIds.length > 0) {
             whereCondition = {
@@ -1455,25 +1305,15 @@ export class GraduacaoService {
                 unidade_id: In(unidadeIds),
               },
             };
-            console.log(
-              '⏳ [GRADUACOES PENDENTES] APLICANDO FILTRO DE UNIDADES:',
-              unidadeIds,
-            );
           } else {
-            console.log(
-              '⏳ [GRADUACOES PENDENTES] ⚠️ Franqueado sem unidades - retornando vazio',
-            );
             return [];
           }
         }
       } else if (isGerenteUnidade) {
-        console.log('⏳ [GRADUACOES PENDENTES] Buscando gerente de unidade...');
         const gerente = await this.gerenteRepository.findOne({
           where: { usuario_id: userId },
           relations: ['unidade'],
         });
-
-        console.log('⏳ [GRADUACOES PENDENTES] Gerente encontrado:', gerente);
 
         if (gerente?.unidade) {
           whereCondition = {
@@ -1482,33 +1322,15 @@ export class GraduacaoService {
               unidade_id: gerente.unidade.id,
             },
           };
-          console.log(
-            '⏳ [GRADUACOES PENDENTES] APLICANDO FILTRO DE UNIDADE DO GERENTE:',
-            gerente.unidade.id,
-          );
         }
-      } else {
-        console.log(
-          '⏳ [GRADUACOES PENDENTES] ⚠️ Perfil não reconhecido - SEM FILTRO',
-        );
       }
     }
-
-    console.log(
-      '⏳ [GRADUACOES PENDENTES] Where condition final:',
-      JSON.stringify(whereCondition, null, 2),
-    );
 
     const graduacoes = await this.alunoGraduacaoRepository.find({
       where: whereCondition,
       relations: ['aluno', 'faixaOrigem', 'faixaDestino'],
       order: { created_at: 'DESC' },
     });
-
-    console.log(
-      '⏳ [GRADUACOES PENDENTES] Total de graduações encontradas:',
-      graduacoes.length,
-    );
 
     return graduacoes;
   }
@@ -1517,10 +1339,7 @@ export class GraduacaoService {
    * Lista graduações aprovadas
    */
   async listarGraduacoesAprovadas(user?: any) {
-    console.log('🎓 [GRADUACOES APROVADAS] Iniciando busca...');
     const userId = user?.id;
-    console.log('🎓 [GRADUACOES APROVADAS] User ID:', userId);
-    console.log('🎓 [GRADUACOES APROVADAS] User perfis:', user?.perfis);
 
     // Construir where condition baseado no perfil
     let whereCondition: any = { aprovado: true };
@@ -1530,29 +1349,16 @@ export class GraduacaoService {
       const perfisNormalizados = (user?.perfis || []).map((p: any) =>
         (typeof p === 'string' ? p : p?.nome || p)?.toLowerCase(),
       );
-      console.log(
-        '🎓 [GRADUACOES APROVADAS] Perfis normalizados:',
-        perfisNormalizados,
-      );
 
       // Buscar unidades do usuário (se for franqueado ou gerente)
       const isFranqueado = perfisNormalizados.includes('franqueado');
       const isGerenteUnidade = perfisNormalizados.includes('gerente_unidade');
 
-      console.log('🎓 [GRADUACOES APROVADAS] É franqueado?', isFranqueado);
-      console.log('🎓 [GRADUACOES APROVADAS] É gerente?', isGerenteUnidade);
-
       if (isFranqueado) {
-        console.log('🎓 [GRADUACOES APROVADAS] Buscando franqueado...');
         // Buscar franqueado
         const franqueado = await this.franqueadoRepository.findOne({
           where: { usuario_id: userId },
         });
-
-        console.log(
-          '🎓 [GRADUACOES APROVADAS] Franqueado encontrado:',
-          franqueado,
-        );
 
         if (franqueado) {
           // Buscar unidades do franqueado
@@ -1561,14 +1367,6 @@ export class GraduacaoService {
           });
 
           const unidadeIds = unidades.map((u) => u.id);
-          console.log(
-            '🎓 [GRADUACOES APROVADAS] Unidades do franqueado:',
-            unidadeIds,
-          );
-          console.log(
-            '🎓 [GRADUACOES APROVADAS] Total de unidades:',
-            unidadeIds.length,
-          );
 
           if (unidadeIds.length > 0) {
             whereCondition = {
@@ -1577,29 +1375,17 @@ export class GraduacaoService {
                 unidade_id: In(unidadeIds),
               },
             };
-            console.log(
-              '🎓 [GRADUACOES APROVADAS] APLICANDO FILTRO DE UNIDADES:',
-              unidadeIds,
-            );
           } else {
             // Se não tem unidades, retornar vazio
-            console.log(
-              '🎓 [GRADUACOES APROVADAS] ⚠️ Franqueado sem unidades - retornando vazio',
-            );
             return [];
           }
-        } else {
-          console.log('🎓 [GRADUACOES APROVADAS] ⚠️ Franqueado não encontrado');
         }
       } else if (isGerenteUnidade) {
-        console.log('🎓 [GRADUACOES APROVADAS] Buscando gerente de unidade...');
         // Buscar unidade do gerente
         const gerente = await this.gerenteRepository.findOne({
           where: { usuario_id: userId },
           relations: ['unidade'],
         });
-
-        console.log('🎓 [GRADUACOES APROVADAS] Gerente encontrado:', gerente);
 
         if (gerente?.unidade) {
           whereCondition = {
@@ -1608,33 +1394,15 @@ export class GraduacaoService {
               unidade_id: gerente.unidade.id,
             },
           };
-          console.log(
-            '🎓 [GRADUACOES APROVADAS] APLICANDO FILTRO DE UNIDADE DO GERENTE:',
-            gerente.unidade.id,
-          );
         }
-      } else {
-        console.log(
-          '🎓 [GRADUACOES APROVADAS] ⚠️ Perfil não reconhecido - SEM FILTRO',
-        );
       }
     }
-
-    console.log(
-      '🎓 [GRADUACOES APROVADAS] Where condition final:',
-      JSON.stringify(whereCondition, null, 2),
-    );
 
     const graduacoes = await this.alunoGraduacaoRepository.find({
       where: whereCondition,
       relations: ['aluno', 'faixaOrigem', 'faixaDestino'],
       order: { dt_aprovacao: 'DESC' },
     });
-
-    console.log(
-      '🎓 [GRADUACOES APROVADAS] Total de graduações encontradas:',
-      graduacoes.length,
-    );
 
     return graduacoes;
   }
@@ -1698,11 +1466,6 @@ export class GraduacaoService {
           aprovado: true,
           dt_aprovacao: now,
           aprovado_por: aprovadorNome,
-        });
-
-        console.log('✅ [APROVAR EM MASSA] Faixa atualizada:', {
-          alunoId: graduacao.aluno_id,
-          novaFaixaNome: graduacao.faixaDestino.nome_exibicao,
         });
       }
 

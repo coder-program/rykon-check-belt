@@ -5,7 +5,7 @@ const nodemailer = require('nodemailer');
 
 nodemailer.createTestAccount((err, account) => {
   if (err) {
-    console.error('❌ Erro ao gerar credenciais:', err);
+    console.error(' Erro ao gerar credenciais:', err);
     process.exit(1);
   }
 });

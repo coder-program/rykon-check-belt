@@ -71,9 +71,9 @@ Headers: Authorization: Bearer {token_franqueado_ou_gerente}
 | FRANQUEADO      | ✅               | ✅             |
 | GERENTE_UNIDADE | ✅               | ✅             |
 | RECEPCIONISTA   | ✅               | ✅             |
-| PROFESSOR       | ❌               | ❌             |
-| INSTRUTOR       | ❌               | ❌             |
-| ALUNO           | ❌               | ❌             |
+| PROFESSOR       |                  |                |
+| INSTRUTOR       |                  |                |
+| ALUNO           |                  |                |
 
 ## 📝 Endpoints Protegidos
 
@@ -111,8 +111,8 @@ approve(@Param('id') id: string) { ... }
 1. **Login com Franqueado** → Listar pendentes → Aprovar usuário/aluno ✅
 2. **Login com Gerente** → Listar pendentes → Aprovar usuário/aluno ✅
 3. **Login com Recepcionista** → Listar pendentes → Aprovar usuário/aluno ✅
-4. **Login com Professor** → Tentar aprovar → Deve receber 403 ❌
-5. **Login com Aluno** → Tentar aprovar → Deve receber 403 ❌
+4. **Login com Professor** → Tentar aprovar → Deve receber 403
+5. **Login com Aluno** → Tentar aprovar → Deve receber 403
 
 ## 🎯 Frontend
 

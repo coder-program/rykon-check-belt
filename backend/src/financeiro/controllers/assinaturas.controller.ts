@@ -35,25 +35,10 @@ export class AssinaturasController {
     @Query('status') status?: any,
     @Request() req?,
   ) {
-    console.log(
-      '🔥🔥🔥 [ASSINATURAS CONTROLLER] unidade_id recebido:',
-      unidade_id,
-    );
-    console.log('🔥🔥🔥 [ASSINATURAS CONTROLLER] tipo:', typeof unidade_id);
-
     const assinaturas = await this.assinaturasService.findAll(
       unidade_id,
       status,
       req.user,
-    );
-
-    console.log(
-      '🔥🔥🔥 [ASSINATURAS CONTROLLER] Total encontrado:',
-      assinaturas.length,
-    );
-    console.log(
-      '🔥🔥🔥 [ASSINATURAS CONTROLLER] Unidades:',
-      assinaturas.map((a) => a.unidade_id),
     );
 
     // Mapear para incluir campos derivados

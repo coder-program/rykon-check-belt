@@ -82,7 +82,6 @@ function DashboardFinanceiro() {
     const userData = localStorage.getItem("user");
     if (userData) {
       const user = JSON.parse(userData);
-      console.log("🔍 Usuário:", user);
       setIsProfessor(user.tipo_usuario === "PROFESSOR");
 
       const isFranqueadoUser = user.perfis?.some(
@@ -94,7 +93,6 @@ function DashboardFinanceiro() {
 
       // Para franqueados, carregar lista de unidades
       if (isFranqueadoUser) {
-        console.log("👔 Franqueado detectado - carregando unidades");
         carregarUnidades();
       }
 
@@ -103,7 +101,6 @@ function DashboardFinanceiro() {
       const unidadeParam = isFranqueadoUser ? "" : user.unidade_id || "";
 
       if (user.unidade_id) {
-        console.log("🏢 Unidade específica:", user.unidade_id);
       } else if (!isFranqueadoUser) {
         console.warn("⚠️ Usuário sem unidade_id");
       }
@@ -111,7 +108,7 @@ function DashboardFinanceiro() {
       setUnidadeId(unidadeParam);
       carregarDados(unidadeParam, user.tipo_usuario);
     } else {
-      console.error("❌ Dados do usuário não encontrados");
+      console.error(" Dados do usuário não encontrados");
       setLoading(false);
     }
   }, []);
@@ -131,22 +128,19 @@ function DashboardFinanceiro() {
       if (response.ok) {
         const data = await response.json();
         const unidadesData = data.items || data;
-        console.log("🏢 Unidades carregadas:", unidadesData.length);
         setUnidades(unidadesData);
       }
     } catch (error) {
-      console.error("❌ Erro ao carregar unidades:", error);
+      console.error(" Erro ao carregar unidades:", error);
     }
   };
 
   const carregarDados = async (unidadeId: string, tipoUsuario: string) => {
     try {
       const token = localStorage.getItem("token");
-      console.log("💰 Carregando dados financeiros para unidade:", unidadeId);
 
       // Carregar resumo financeiro
       const resumoUrl = `${process.env.NEXT_PUBLIC_API_URL}/dashboard-financeiro?unidade_id=${unidadeId}`;
-      console.log("📊 Buscando resumo:", resumoUrl);
 
       const resumoRes = await fetch(resumoUrl, {
         headers: {
@@ -154,52 +148,30 @@ function DashboardFinanceiro() {
         },
       });
 
-      console.log("📊 Status resumo:", resumoRes.status);
-
       if (resumoRes.ok) {
         const resumoData = await resumoRes.json();
-        console.log("✅ Resumo carregado:", resumoData);
-        console.log("💰 Valores:", {
-          totalReceitasMes: resumoData.totalReceitasMes,
-          totalDespesasMes: resumoData.totalDespesasMes,
-          saldoMes: resumoData.saldoMes,
-          previsaoReceitaMesProximo: resumoData.previsaoReceitaMesProximo,
-          tipos: {
-            totalReceitasMes: typeof resumoData.totalReceitasMes,
-            totalDespesasMes: typeof resumoData.totalDespesasMes,
-            saldoMes: typeof resumoData.saldoMes,
-            previsaoReceitaMesProximo:
-              typeof resumoData.previsaoReceitaMesProximo,
-          },
-        });
         setResumo(resumoData);
       } else {
-        console.error("❌ Erro ao carregar resumo:", resumoRes.statusText);
+        console.error(" Erro ao carregar resumo:", resumoRes.statusText);
       }
 
       // Carregar evolução de receita
       const evolucaoUrl = `${process.env.NEXT_PUBLIC_API_URL}/dashboard-financeiro/evolucao-receita?unidade_id=${unidadeId}&meses=6`;
-      console.log("📈 Buscando evolução:", evolucaoUrl);
-
       const evolucaoRes = await fetch(evolucaoUrl, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
 
-      console.log("📈 Status evolução:", evolucaoRes.status);
-
       if (evolucaoRes.ok) {
         const evolucaoData = await evolucaoRes.json();
-        console.log("✅ Evolução carregada:", evolucaoData);
         setFluxoCaixa(evolucaoData);
       } else {
-        console.error("❌ Erro ao carregar evolução:", evolucaoRes.statusText);
+        console.error(" Erro ao carregar evolução:", evolucaoRes.statusText);
       }
 
       // Carregar inadimplência
       const inadimplenciaUrl = `${process.env.NEXT_PUBLIC_API_URL}/dashboard-financeiro/inadimplencia?unidade_id=${unidadeId}`;
-      console.log("📉 Buscando inadimplência:", inadimplenciaUrl);
 
       const inadimplenciaRes = await fetch(inadimplenciaUrl, {
         headers: {
@@ -209,14 +181,12 @@ function DashboardFinanceiro() {
 
       if (inadimplenciaRes.ok) {
         const inadimplenciaData = await inadimplenciaRes.json();
-        console.log("✅ Inadimplência carregada:", inadimplenciaData);
         setInadimplencia(inadimplenciaData);
       }
 
       // Carregar comparação de unidades (apenas para master/franqueado)
       if (tipoUsuario === "MASTER" || tipoUsuario === "FRANQUEADO") {
         const comparacaoUrl = `${process.env.NEXT_PUBLIC_API_URL}/dashboard-financeiro/comparacao-unidades`;
-        console.log("📊 Buscando comparação unidades:", comparacaoUrl);
 
         const comparacaoRes = await fetch(comparacaoUrl, {
           headers: {
@@ -226,14 +196,13 @@ function DashboardFinanceiro() {
 
         if (comparacaoRes.ok) {
           const comparacaoData = await comparacaoRes.json();
-          console.log("✅ Comparação unidades carregada:", comparacaoData);
           setComparacaoUnidades(comparacaoData);
         }
       }
 
       setLoading(false);
     } catch (error) {
-      console.error("❌ Erro ao carregar dados financeiros:", error);
+      console.error(" Erro ao carregar dados financeiros:", error);
       setLoading(false);
     }
   };
@@ -246,16 +215,10 @@ function DashboardFinanceiro() {
   };
 
   const handleCriarFatura = () => {
-    console.log(
-      "🔵 Botão 'Criar Fatura' clicado - Redirecionando para Vendas Online"
-    );
     router.push("/financeiro/vendas-online");
   };
 
   const handleRegistrarPagamento = () => {
-    console.log(
-      "🟢 Botão 'Registrar Pagamento' clicado - Abrindo modal de registro"
-    );
     // TODO: Abrir modal de registro de pagamento manual
     alert(
       "Modal de Registro de Pagamento será implementado aqui.\n\nPor enquanto, vá em 'A Receber' e clique em 'Marcar como Pago' na fatura desejada."
@@ -263,9 +226,6 @@ function DashboardFinanceiro() {
   };
 
   const handleGerarRelatorio = () => {
-    console.log(
-      "🟣 Botão 'Gerar Relatório' clicado - Iniciando geração de PDF"
-    );
     // TODO: Gerar PDF do relatório financeiro
     alert(
       "Geração de Relatório PDF será implementado aqui.\n\nPor enquanto, vá em 'Extrato' e use o botão 'Exportar CSV'."
@@ -273,9 +233,6 @@ function DashboardFinanceiro() {
   };
 
   const handleEnviarCobranca = () => {
-    console.log(
-      "🟠 Botão 'Enviar Cobrança' clicado - Abrindo seletor de faturas"
-    );
     // TODO: Abrir modal para selecionar faturas e enviar por WhatsApp
     alert(
       "Envio de Cobrança por WhatsApp será implementado aqui.\n\nPor enquanto, vá em 'A Receber' e clique em 'Enviar Cobrança' na fatura desejada."

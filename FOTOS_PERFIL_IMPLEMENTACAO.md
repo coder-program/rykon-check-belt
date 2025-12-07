@@ -411,9 +411,9 @@ Todos os perfis suportam foto:
 
 **Contras:**
 
-- ❌ Aumenta tamanho do banco (33% maior que binário)
-- ❌ Queries mais lentas com muitos usuários
-- ❌ Backup maior
+- Aumenta tamanho do banco (33% maior que binário)
+- Queries mais lentas com muitos usuários
+- Backup maior
 
 **Recomendação:** Para produção com muitos usuários (>1000), migrar para storage externo (S3, Cloudinary).
 

@@ -41,7 +41,7 @@ export async function GET(
 
     return NextResponse.json(data);
   } catch (error) {
-    console.error("❌ [API CEP] Erro ao buscar CEP:", error);
+    console.error(" [API CEP] Erro ao buscar CEP:", error);
 
     return NextResponse.json(
       { error: "Erro ao buscar CEP. Tente novamente." },

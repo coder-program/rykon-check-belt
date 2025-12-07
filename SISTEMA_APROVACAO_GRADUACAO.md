@@ -271,11 +271,11 @@ const useReprovar = () => useMutation(reprovarGraduacao);
 | ------------------- | ------------- | ------------ | --------------------- |
 | **master**          | Todas         | ✅ Sim       | ✅ Sim                |
 | **admin**           | Todas         | ✅ Sim       | ✅ Sim                |
-| **franqueado**      | Suas unidades | ✅ Sim       | ❌ Não                |
-| **gerente_unidade** | Sua unidade   | ✅ Sim       | ❌ Não                |
-| **recepcionista**   | Suas unidades | ❌ Não       | ❌ Não                |
-| **professor**       | Sua unidade   | ✅ Sim       | ❌ Não                |
-| **aluno**           | -             | ❌ Não       | ❌ Não                |
+| **franqueado**      | Suas unidades | ✅ Sim       | Não                   |
+| **gerente_unidade** | Sua unidade   | ✅ Sim       | Não                   |
+| **recepcionista**   | Suas unidades | Não          | Não                   |
+| **professor**       | Sua unidade   | ✅ Sim       | Não                   |
+| **aluno**           | -             | Não          | Não                   |
 
 ---
 

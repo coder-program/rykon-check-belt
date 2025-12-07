@@ -185,16 +185,6 @@ export class FaturasService {
     const faturaAtualizada = await this.faturaRepository.save(fatura);
 
     // Criar transação de entrada
-    console.log('🔍 Dados da fatura para criar transação:', {
-      fatura_id: fatura.id,
-      numero_fatura: fatura.numero_fatura,
-      aluno_id: fatura.aluno_id,
-      assinatura_id: fatura.assinatura?.id,
-      unidade_id: fatura.assinatura?.unidade_id,
-      valor: valorPago,
-      data: dataPagamento,
-    });
-
     const transacao = this.transacaoRepository.create({
       tipo: TipoTransacao.ENTRADA,
       origem: OrigemTransacao.FATURA,
@@ -210,9 +200,7 @@ export class FaturasService {
       criado_por: user.id,
     });
 
-    console.log('💾 Transação criada:', transacao);
     const transacaoSalva = await this.transacaoRepository.save(transacao);
-    console.log('✅ Transação salva no banco:', transacaoSalva);
 
     return faturaAtualizada;
   }
