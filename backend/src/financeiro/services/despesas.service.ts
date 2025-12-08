@@ -1,7 +1,11 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Despesa, StatusDespesa, CategoriaDespesa } from '../entities/despesa.entity';
+import {
+  Despesa,
+  StatusDespesa,
+  CategoriaDespesa,
+} from '../entities/despesa.entity';
 import {
   Transacao,
   TipoTransacao,

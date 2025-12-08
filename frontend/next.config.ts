@@ -108,23 +108,13 @@ const withPWA = require("next-pwa")({
 
 const nextConfig: NextConfig = {
   // output: "standalone", // Comentado temporariamente para evitar erros de build
-  // Otimizações para desenvolvimento
-  experimental: {
-    // Turbo mode para builds mais rápidas
-    turbo: {
-      loaders: {
-        ".svg": ["@svgr/webpack"],
-      },
-    },
-    // Disable image optimization for Docker
-    // You can enable it if you configure a CDN
-  },
+
   images: {
     unoptimized: true,
   },
   // Otimizações de performance
   reactStrictMode: true,
-  swcMinify: true,
+  // swcMinify removido - já é padrão no Next.js 15
   // Configurações de cache
   onDemandEntries: {
     // Tempo para manter páginas em cache (ms)
