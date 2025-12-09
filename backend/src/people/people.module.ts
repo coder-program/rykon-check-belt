@@ -6,6 +6,7 @@ import { FranqueadosController } from './controllers/franqueados.controller';
 import { UnidadesController } from './controllers/unidades.controller';
 import { RecepcionistaUnidadesController } from './controllers/recepcionista-unidades.controller';
 import { GerenteUnidadesController } from './controllers/gerente-unidades.controller';
+import { ConviteCadastroController } from './convite-cadastro.controller';
 import { AlunosService } from './services/alunos.service';
 import { ProfessoresService } from './services/professores.service';
 import { FranqueadosService } from './services/franqueados.service';
@@ -13,6 +14,7 @@ import { UnidadesService } from './services/unidades.service';
 import { RecepcionistaUnidadesService } from './services/recepcionista-unidades.service';
 import { ResponsaveisService } from './services/responsaveis.service';
 import { GerenteUnidadesService } from './services/gerente-unidades.service';
+import { ConviteCadastroService } from './convite-cadastro.service';
 import { UsuariosModule } from '../usuarios/usuarios.module';
 import { EnderecosModule } from '../enderecos/enderecos.module';
 import { Franqueado } from './entities/franqueado.entity';
@@ -29,9 +31,12 @@ import { RecepcionistaUnidade } from './entities/recepcionista-unidade.entity';
 import { GerenteUnidade } from './entities/gerente-unidade.entity';
 import { AlunoUnidade } from './entities/aluno-unidade.entity';
 import { AlunoModalidade } from './entities/aluno-modalidade.entity';
+import { ConviteCadastro } from './entities/convite-cadastro.entity';
 import { AlunoUnidadeService } from './services/aluno-unidade.service';
 import { AlunoModalidadeService } from './services/aluno-modalidade.service';
 import { Modalidade } from '../modalidades/entities/modalidade.entity';
+import { Endereco } from '../enderecos/endereco.entity';
+import { Usuario } from '../usuarios/entities/usuario.entity';
 
 @Module({
   imports: [
@@ -52,6 +57,9 @@ import { Modalidade } from '../modalidades/entities/modalidade.entity';
       AlunoUnidade,
       AlunoModalidade,
       Modalidade,
+      ConviteCadastro,
+      Endereco,
+      Usuario,
     ]),
     EnderecosModule,
   ],
@@ -62,6 +70,7 @@ import { Modalidade } from '../modalidades/entities/modalidade.entity';
     UnidadesController,
     RecepcionistaUnidadesController,
     GerenteUnidadesController,
+    ConviteCadastroController,
   ],
   providers: [
     AlunosService,
@@ -73,6 +82,7 @@ import { Modalidade } from '../modalidades/entities/modalidade.entity';
     ResponsaveisService,
     AlunoUnidadeService,
     AlunoModalidadeService,
+    ConviteCadastroService,
   ],
   exports: [
     AlunosService,
@@ -83,6 +93,7 @@ import { Modalidade } from '../modalidades/entities/modalidade.entity';
     GerenteUnidadesService,
     ResponsaveisService,
     AlunoModalidadeService,
+    ConviteCadastroService,
   ],
 })
 export class PeopleModule {}

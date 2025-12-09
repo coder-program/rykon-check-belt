@@ -33,7 +33,9 @@ import {
   ChevronDown,
   ChevronRight,
   DollarSign,
+  Mail,
 } from "lucide-react";
+import ConviteModal from "@/components/convites/ConviteModal";
 
 export default function FranqueadoDashboard() {
   const { user } = useAuth();
@@ -41,6 +43,7 @@ export default function FranqueadoDashboard() {
   const [expandedUnidadeId, setExpandedUnidadeId] = useState<string | null>(
     null
   );
+  const [conviteModalOpen, setConviteModalOpen] = useState(false);
 
   // Função para mapear status da unidade para texto legível
   const getStatusText = (status: string) => {
@@ -281,6 +284,13 @@ export default function FranqueadoDashboard() {
   }
 
   const quickActions = [
+    {
+      title: "Enviar Convite",
+      description: "Link de cadastro para aluno",
+      icon: Mail,
+      action: () => setConviteModalOpen(true),
+      color: "bg-blue-500",
+    },
     {
       title: "TeamCruz Dashboard",
       description: "Ver estatísticas e visão geral",
@@ -664,6 +674,12 @@ export default function FranqueadoDashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Modal de Convite */}
+      <ConviteModal
+        isOpen={conviteModalOpen}
+        onClose={() => setConviteModalOpen(false)}
+      />
     </div>
   );
 }

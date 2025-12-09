@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { useAuth } from "@/app/auth/AuthContext";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
@@ -25,11 +25,14 @@ import {
   UserCheck,
   Clock,
   DollarSign,
+  Mail,
 } from "lucide-react";
+import ConviteModal from "@/components/convites/ConviteModal";
 
 export default function GerenteDashboard() {
   const { user } = useAuth();
   const router = useRouter();
+  const [conviteModalOpen, setConviteModalOpen] = useState(false);
 
   // Buscar a unidade do gerente
   const { data: unidadesData, isLoading: loadingUnidade } = useQuery({
@@ -142,6 +145,13 @@ export default function GerenteDashboard() {
   }
 
   const quickActions = [
+    {
+      title: "Enviar Convite",
+      description: "Link de cadastro para aluno",
+      icon: Mail,
+      action: () => setConviteModalOpen(true),
+      color: "bg-blue-500",
+    },
     {
       title: "TeamCruz Dashboard",
       description: "Ver estatísticas e visão geral",
@@ -538,6 +548,13 @@ export default function GerenteDashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Modal de Convite */}
+      <ConviteModal
+        isOpen={conviteModalOpen}
+        onClose={() => setConviteModalOpen(false)}
+        unidadeId={unidade?.id}
+      />
     </div>
   );
 }

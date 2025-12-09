@@ -32,6 +32,9 @@ export function ProfileCompletionGuard({
     // Se está numa página que permite acesso público, não redireciona
     if (ALLOWED_INCOMPLETE_PAGES.includes(pathname)) return;
 
+    // Se a rota começa com /cadastro/ (páginas de convite público), permite
+    if (pathname?.startsWith("/cadastro/")) return;
+
     // Se não está autenticado e não está numa página pública, vai para login
     if (!isAuthenticated || !user) {
       router.push("/login");

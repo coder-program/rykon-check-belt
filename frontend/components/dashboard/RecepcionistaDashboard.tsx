@@ -28,8 +28,10 @@ import {
   X,
   Check,
   DollarSign,
+  Mail,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
+import ConviteModal from "@/components/convites/ConviteModal";
 
 interface CheckInModalData {
   isOpen: boolean;
@@ -49,6 +51,7 @@ export default function RecepcionistaDashboard() {
   const [checkInModal, setCheckInModal] = useState<CheckInModalData>({
     isOpen: false,
   });
+  const [conviteModalOpen, setConviteModalOpen] = useState(false);
 
   // Buscar a unidade do recepcionista
   const { data: unidadesData, isLoading: loadingUnidade } = useQuery({
@@ -175,6 +178,13 @@ export default function RecepcionistaDashboard() {
   }
 
   const quickActions = [
+    {
+      title: "Enviar Convite",
+      description: "Link de cadastro para aluno",
+      icon: Mail,
+      action: () => setConviteModalOpen(true),
+      color: "bg-blue-500",
+    },
     {
       title: "Aprovar Check-ins",
       description: "Aprovar check-ins do tablet",
@@ -494,6 +504,13 @@ export default function RecepcionistaDashboard() {
           </div>
         </div>
       )}
+
+      {/* Modal de Convite */}
+      <ConviteModal
+        isOpen={conviteModalOpen}
+        onClose={() => setConviteModalOpen(false)}
+        unidadeId={unidade?.id}
+      />
     </div>
   );
 }

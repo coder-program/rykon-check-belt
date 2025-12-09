@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { useAuth } from "@/app/auth/AuthContext";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
@@ -25,7 +25,9 @@ import {
   Building2,
   CheckCircle,
   Award,
+  Mail,
 } from "lucide-react";
+import ConviteModal from "@/components/convites/ConviteModal";
 
 interface InstrutorStats {
   meusAlunos: number;
@@ -59,6 +61,7 @@ interface AlunoDestaque {
 export default function InstrutorDashboard() {
   const { user, token } = useAuth();
   const router = useRouter();
+  const [conviteModalOpen, setConviteModalOpen] = useState(false);
 
   // Buscar unidade do professor
   const { data: unidadeData, isLoading: loadingUnidade } = useQuery({
@@ -144,6 +147,13 @@ export default function InstrutorDashboard() {
   const stats = instrutorStats || defaultStats;
 
   const quickActions = [
+    {
+      title: "Enviar Convite",
+      description: "Link de cadastro para aluno",
+      icon: Mail,
+      action: () => setConviteModalOpen(true),
+      color: "bg-blue-500",
+    },
     {
       title: "Aprovar Check-ins",
       description: "Aprovar check-ins do tablet",
@@ -494,6 +504,12 @@ export default function InstrutorDashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Modal de Convite */}
+      <ConviteModal
+        isOpen={conviteModalOpen}
+        onClose={() => setConviteModalOpen(false)}
+      />
     </div>
   );
 }

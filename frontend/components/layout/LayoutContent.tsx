@@ -20,7 +20,11 @@ export default function LayoutContent({
     "/cadastro-concluido",
   ];
 
-  const shouldShowHeaderFooter = !pagesWithoutHeaderFooter.includes(pathname);
+  // Verificar se a rota começa com /cadastro/ (rotas de convite)
+  const isCadastroRoute = pathname?.startsWith("/cadastro/");
+
+  const shouldShowHeaderFooter =
+    !pagesWithoutHeaderFooter.includes(pathname) && !isCadastroRoute;
 
   if (shouldShowHeaderFooter) {
     return (

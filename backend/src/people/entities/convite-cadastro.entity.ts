@@ -24,37 +24,37 @@ export class ConviteCadastro {
   unidade_id: string;
 
   @Column({ type: 'varchar', length: 255, nullable: true })
-  email: string;
+  email: string | null;
 
   @Column({ type: 'varchar', length: 20, nullable: true })
-  telefone: string;
+  telefone: string | null;
 
   @Column({ type: 'varchar', length: 255, nullable: true })
-  nome_pre_cadastro: string;
+  nome_pre_cadastro: string | null;
 
   @Column({ type: 'varchar', length: 14, nullable: true })
-  cpf: string;
+  cpf: string | null;
 
   @Column({ type: 'boolean', default: false })
   usado: boolean;
 
   @Column({ type: 'uuid', nullable: true })
-  usuario_criado_id: string;
+  usuario_criado_id: string | null;
 
   @Column({ type: 'timestamp' })
   data_expiracao: Date;
 
   @Column({ type: 'uuid', nullable: true })
-  criado_por: string;
+  criado_por: string | null;
 
   @CreateDateColumn()
   criado_em: Date;
 
   @Column({ type: 'timestamp', nullable: true })
-  usado_em: Date;
+  usado_em: Date | null;
 
   @Column({ type: 'text', nullable: true })
-  observacoes: string;
+  observacoes: string | null;
 
   @ManyToOne(() => Unidade)
   @JoinColumn({ name: 'unidade_id' })
