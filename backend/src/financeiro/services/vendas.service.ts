@@ -205,32 +205,69 @@ export class VendasService {
   }
 
   async estatisticas(unidadeId?: string): Promise<any> {
-    const query = this.vendasRepository.createQueryBuilder('venda');
+    const baseQuery = this.vendasRepository.createQueryBuilder('venda');
 
     if (unidadeId) {
-      query.where('venda.unidade_id = :unidadeId', { unidadeId });
+      baseQuery.where('venda.unidade_id = :unidadeId', { unidadeId });
     }
 
-    const totalVendas = await query.getCount();
-    const vendasPagas = await query
+    const totalVendas = await baseQuery.getCount();
+
+    // Query para vendas pagas
+    const queryPagas = this.vendasRepository.createQueryBuilder('venda');
+    if (unidadeId) {
+      queryPagas.where('venda.unidade_id = :unidadeId', { unidadeId });
+    }
+    const vendasPagas = await queryPagas
       .andWhere('venda.status = :status', { status: StatusVenda.PAGO })
       .getCount();
-    const vendasPendentes = await this.vendasRepository.count({
-      where: { status: StatusVenda.PENDENTE },
-    });
-    const vendasFalhas = await this.vendasRepository.count({
-      where: { status: StatusVenda.FALHOU },
-    });
 
-    const valorTotal = await query
+    // Query para vendas pendentes
+    const queryPendentes = this.vendasRepository.createQueryBuilder('venda');
+    if (unidadeId) {
+      queryPendentes.where('venda.unidade_id = :unidadeId', { unidadeId });
+    }
+    const vendasPendentes = await queryPendentes
+      .andWhere('venda.status = :status', { status: StatusVenda.PENDENTE })
+      .getCount();
+
+    // Query para vendas falhas
+    const queryFalhas = this.vendasRepository.createQueryBuilder('venda');
+    if (unidadeId) {
+      queryFalhas.where('venda.unidade_id = :unidadeId', { unidadeId });
+    }
+    const vendasFalhas = await queryFalhas
+      .andWhere('venda.status = :status', { status: StatusVenda.FALHOU })
+      .getCount();
+
+    // Valor total
+    const queryValorTotal = this.vendasRepository.createQueryBuilder('venda');
+    if (unidadeId) {
+      queryValorTotal.where('venda.unidade_id = :unidadeId', { unidadeId });
+    }
+    const valorTotal = await queryValorTotal
       .select('SUM(venda.valor)', 'total')
       .getRawOne();
 
-    const valorPago = await this.vendasRepository
-      .createQueryBuilder('venda')
+    // Valor pago
+    const queryValorPago = this.vendasRepository.createQueryBuilder('venda');
+    if (unidadeId) {
+      queryValorPago.where('venda.unidade_id = :unidadeId', { unidadeId });
+    }
+    const valorPago = await queryValorPago
       .select('SUM(venda.valor)', 'total')
-      .where('venda.status = :status', { status: StatusVenda.PAGO })
+      .andWhere('venda.status = :status', { status: StatusVenda.PAGO })
       .getRawOne();
+
+    console.log('📊 [VENDAS ESTATISTICAS SERVICE]', {
+      unidadeId,
+      totalVendas,
+      vendasPagas,
+      vendasPendentes,
+      vendasFalhas,
+      valorTotal: valorTotal?.total,
+      valorPago: valorPago?.total,
+    });
 
     return {
       totalVendas,

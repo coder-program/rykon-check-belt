@@ -176,13 +176,6 @@ export default function RecepcionistaDashboard() {
 
   const quickActions = [
     {
-      title: "Check-in",
-      description: "Fazer check-in de aluno",
-      icon: CheckCircle,
-      action: () => router.push("/presenca"),
-      color: "bg-green-500",
-    },
-    {
       title: "Aprovar Check-ins",
       description: "Aprovar check-ins do tablet",
       icon: UserCheck,
@@ -331,23 +324,14 @@ export default function RecepcionistaDashboard() {
         {/* Lista de Alunos para Check-in */}
         <Card id="lista-alunos">
           <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="flex items-center gap-2">
-                  <UserCheck className="h-5 w-5" />
-                  Check-in de Alunos
-                </CardTitle>
-                <CardDescription>
-                  Registre a presença dos alunos manualmente
-                </CardDescription>
-              </div>
-              <Button
-                variant="outline"
-                onClick={() => router.push("/presenca")}
-              >
-                <QrCode className="h-4 w-4 mr-2" />
-                QR Code
-              </Button>
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <UserCheck className="h-5 w-5" />
+                Check-in de Alunos
+              </CardTitle>
+              <CardDescription>
+                Registre a presença dos alunos manualmente
+              </CardDescription>
             </div>
           </CardHeader>
           <CardContent>

@@ -209,7 +209,7 @@ export default function AprovacaoCheckinPage() {
 
   return (
     <ProtectedRoute
-      requiredPerfis={["RECEPCIONISTA", "PROFESSOR", "GERENTE_UNIDADE"]}
+      requiredPerfis={["RECEPCIONISTA", "PROFESSOR", "INSTRUTOR", "GERENTE_UNIDADE"]}
     >
       <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-100 p-2 sm:p-4 md:p-6">
         <div className="max-w-7xl mx-auto">

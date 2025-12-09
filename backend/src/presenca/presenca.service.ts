@@ -926,26 +926,53 @@ export class PresencaService {
     // Se não forneceu unidadeId, detectar automaticamente baseado no usuário
     let unidadeFiltro = unidadeId;
 
-    if (!unidadeFiltro && user) {
-      // Se for franqueado (não master), buscar unidades do franqueado
-      const perfis =
-        user.perfis?.map((p: any) =>
-          (typeof p === 'string' ? p : p.nome)?.toUpperCase(),
-        ) || [];
-      const isFranqueado = perfis.includes('FRANQUEADO');
-      const isMaster = perfis.includes('MASTER') || perfis.includes('ADMIN');
-      const isGerente = perfis.includes('GERENTE_UNIDADE');
+    const perfis =
+      user?.perfis?.map((p: any) =>
+        (typeof p === 'string' ? p : p.nome)?.toUpperCase(),
+      ) || [];
+    const isFranqueado = perfis.includes('FRANQUEADO');
+    const isMaster = perfis.includes('MASTER') || perfis.includes('ADMIN');
+    const isGerente = perfis.includes('GERENTE_UNIDADE');
 
+    console.log('🔍 [ALUNOS AUSENTES] Requisição recebida:', {
+      usuario_id: user?.id,
+      perfis,
+      isFranqueado,
+      isMaster,
+      isGerente,
+      unidadeId,
+      dias,
+    });
+
+    if (!unidadeFiltro && user) {
       if (!isMaster) {
         if (isFranqueado) {
-          // Franqueado: buscar primeira unidade do franqueado
+          // Franqueado: buscar unidades do franqueado
           const unidadesResult = await this.presencaRepository.manager.query(
             `SELECT id FROM teamcruz.unidades WHERE franqueado_id =
-             (SELECT id FROM teamcruz.franqueados WHERE usuario_id = $1) LIMIT 1`,
+             (SELECT id FROM teamcruz.franqueados WHERE usuario_id = $1)`,
             [user.id],
           );
-          if (unidadesResult.length > 0) {
-            unidadeFiltro = unidadesResult[0].id;
+
+          console.log(
+            '📋 [ALUNOS AUSENTES] Unidades do franqueado:',
+            unidadesResult,
+          );
+
+          // Franqueado sem unidades - retornar vazio
+          if (unidadesResult.length === 0) {
+            console.log(
+              '⚠️ [ALUNOS AUSENTES] Franqueado sem unidades - retornando vazio',
+            );
+            return [];
+          }
+
+          // Se não especificou unidade, não retornar dados agregados
+          if (!unidadeId) {
+            console.log(
+              '⚠️ [ALUNOS AUSENTES] Franqueado deve especificar unidade - retornando vazio',
+            );
+            return [];
           }
         } else if (isGerente) {
           // Gerente: buscar unidade que ele gerencia
@@ -991,6 +1018,11 @@ export class PresencaService {
       LIMIT 20
     `;
 
+    console.log(
+      '🔍 [ALUNOS AUSENTES] Executando query com unidadeFiltro:',
+      unidadeFiltro,
+    );
+
     const resultado = await this.presencaRepository.manager.query(
       query,
       params,
@@ -1021,26 +1053,52 @@ export class PresencaService {
     // Se não forneceu unidadeId, detectar automaticamente baseado no usuário
     let unidadeFiltro = unidadeId;
 
-    if (!unidadeFiltro && user) {
-      // Se for franqueado (não master), buscar unidades do franqueado
-      const perfis =
-        user.perfis?.map((p: any) =>
-          (typeof p === 'string' ? p : p.nome)?.toUpperCase(),
-        ) || [];
-      const isFranqueado = perfis.includes('FRANQUEADO');
-      const isMaster = perfis.includes('MASTER') || perfis.includes('ADMIN');
-      const isGerente = perfis.includes('GERENTE_UNIDADE');
+    const perfis =
+      user?.perfis?.map((p: any) =>
+        (typeof p === 'string' ? p : p.nome)?.toUpperCase(),
+      ) || [];
+    const isFranqueado = perfis.includes('FRANQUEADO');
+    const isMaster = perfis.includes('MASTER') || perfis.includes('ADMIN');
+    const isGerente = perfis.includes('GERENTE_UNIDADE');
 
+    console.log('🔍 [RANKING PROFESSORES PRESENCA] Requisição recebida:', {
+      usuario_id: user?.id,
+      perfis,
+      isFranqueado,
+      isMaster,
+      isGerente,
+      unidadeId,
+    });
+
+    if (!unidadeFiltro && user) {
       if (!isMaster) {
         if (isFranqueado) {
-          // Franqueado: buscar primeira unidade do franqueado
+          // Franqueado: buscar unidades do franqueado
           const unidadesResult = await this.presencaRepository.manager.query(
             `SELECT id FROM teamcruz.unidades WHERE franqueado_id =
-             (SELECT id FROM teamcruz.franqueados WHERE usuario_id = $1) LIMIT 1`,
+             (SELECT id FROM teamcruz.franqueados WHERE usuario_id = $1)`,
             [user.id],
           );
-          if (unidadesResult.length > 0) {
-            unidadeFiltro = unidadesResult[0].id;
+
+          console.log(
+            '📋 [RANKING PROFESSORES PRESENCA] Unidades do franqueado:',
+            unidadesResult,
+          );
+
+          // Franqueado sem unidades - retornar vazio
+          if (unidadesResult.length === 0) {
+            console.log(
+              '⚠️ [RANKING PROFESSORES PRESENCA] Franqueado sem unidades - retornando vazio',
+            );
+            return [];
+          }
+
+          // Se não especificou unidade, não retornar dados agregados
+          if (!unidadeId) {
+            console.log(
+              '⚠️ [RANKING PROFESSORES PRESENCA] Franqueado deve especificar unidade - retornando vazio',
+            );
+            return [];
           }
         } else if (isGerente) {
           // Gerente: buscar unidade que ele gerencia

@@ -93,6 +93,7 @@ export default function AprovacaoGraduacaoPage() {
     hasPerfil("master") ||
     hasPerfil("admin") ||
     hasPerfil("professor") ||
+    hasPerfil("instrutor") ||
     hasPerfil("gerente_unidade") ||
     hasPerfil("franqueado");
 

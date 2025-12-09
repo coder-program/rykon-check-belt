@@ -101,16 +101,26 @@ export default function GraduacaoPage() {
   const { data: faixasDefinicao } = useQuery({
     queryKey: ["faixas-definicao"],
     queryFn: async () => {
-      const response = await http("/graduacao/faixas-definicao");
-      return response.data;
+      try {
+        const response = await http("/graduacao/faixas-definicao");
+        return response?.data || [];
+      } catch (error) {
+        console.error("Erro ao carregar faixas:", error);
+        return [];
+      }
     },
   });
 
   const { data: estatisticasGraduacao } = useQuery({
     queryKey: ["estatisticas-graduacao"],
     queryFn: async () => {
-      const response = await http("/graduacao/estatisticas");
-      return response.data;
+      try {
+        const response = await http("/graduacao/estatisticas");
+        return response?.data || {};
+      } catch (error) {
+        console.error("Erro ao carregar estatísticas:", error);
+        return {};
+      }
     },
   });
 
@@ -171,6 +181,7 @@ export default function GraduacaoPage() {
   };
 
   const getCorFaixa = (faixa: string) => {
+    if (!faixa) return "#808080";
     const cores: { [key: string]: string } = {
       BRANCA: "#FFFFFF",
       AZUL: "#0066CC",
@@ -197,10 +208,6 @@ export default function GraduacaoPage() {
             Controle e acompanhe o progresso de graduação dos alunos
           </p>
         </div>
-        <Button>
-          <Plus className="w-4 h-4 mr-2" />
-          Nova Graduação
-        </Button>
       </div>
 
       {/* Cards de Estatísticas */}
@@ -208,7 +215,7 @@ export default function GraduacaoPage() {
         <Card className="border-l-4 border-l-yellow-500">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              Pendentes Aprova\u00e7\u00e3o
+              Pendentes Aprovação
             </CardTitle>
             <Award className="h-4 w-4 text-yellow-500" />
           </CardHeader>
@@ -217,7 +224,7 @@ export default function GraduacaoPage() {
               {pendentesAprovacao?.total || 0}
             </div>
             <p className="text-xs text-muted-foreground">
-              aguardando aprova\u00e7\u00e3o
+              aguardando aprovação
             </p>
           </CardContent>
         </Card>

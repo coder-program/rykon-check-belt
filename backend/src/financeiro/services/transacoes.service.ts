@@ -76,7 +76,11 @@ export class TransacoesService {
   }
 
   async getExtrato(filtro: FiltroTransacoesDto): Promise<any> {
+    console.log('📋 [EXTRATO] getExtrato chamado com filtro:', filtro);
+
     const transacoes = await this.findAll(filtro);
+
+    console.log(`📋 [EXTRATO] Encontradas ${transacoes.length} transações`);
 
     let saldoAnterior = 0;
     let totalEntradas = 0;

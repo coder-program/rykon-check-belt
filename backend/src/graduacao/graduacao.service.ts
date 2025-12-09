@@ -1154,17 +1154,34 @@ export class GraduacaoService {
       .where('ag.aprovado = :aprovado', { aprovado: false });
 
     if (params.unidadeId) {
-      query.andWhere('a.unidade_id = :unidadeId', {
+      query.andWhere('a.unidade_id::text = :unidadeId', {
         unidadeId: params.unidadeId,
       });
     }
 
     query.orderBy('ag.dt_graduacao', 'DESC');
 
-    const [items, total] = await query
+    const [rawItems, total] = await query
       .skip((page - 1) * pageSize)
       .take(pageSize)
       .getManyAndCount();
+
+    // Transformar dados para formato amigável
+    const items = rawItems.map((grad) => ({
+      id: grad.id,
+      aluno_id: grad.aluno?.id,
+      aluno_nome: grad.aluno?.nome_completo,
+      faixa: grad.faixaDestino?.nome_exibicao,
+      faixa_origem: grad.faixaOrigem?.nome_exibicao,
+      faixa_destino: grad.faixaDestino?.nome_exibicao,
+      cor_faixa: grad.faixaDestino?.cor_hex,
+      grau: 1, // Graduação de faixa sempre inicia no grau 1
+      data_graduacao: grad.dt_graduacao,
+      categoria: grad.faixaDestino?.categoria,
+      observacao: grad.observacao,
+      concedido_por: grad.concedidoPor?.nome,
+      solicitado_em: grad.solicitado_em,
+    }));
 
     return {
       items,

@@ -8,6 +8,7 @@ import { Repository } from 'typeorm';
 import { Assinatura, StatusAssinatura } from '../entities/assinatura.entity';
 import { Plano } from '../entities/plano.entity';
 import { Aluno } from '../../people/entities/aluno.entity';
+import { Unidade } from '../../people/entities/unidade.entity';
 import {
   CreateAssinaturaDto,
   UpdateAssinaturaDto,
@@ -24,6 +25,8 @@ export class AssinaturasService {
     private planoRepository: Repository<Plano>,
     @InjectRepository(Aluno)
     private alunoRepository: Repository<Aluno>,
+    @InjectRepository(Unidade)
+    private unidadeRepository: Repository<Unidade>,
   ) {}
 
   async create(
@@ -87,6 +90,14 @@ export class AssinaturasService {
     status?: StatusAssinatura,
     user?: any,
   ): Promise<Assinatura[]> {
+    console.log('🔧 [ASSINATURAS-SERVICE] findAll chamado:', {
+      unidade_id,
+      status,
+      user_id: user?.id,
+      tipo_usuario: user?.tipo_usuario,
+      perfis: user?.perfis?.map((p: any) => p.nome || p),
+    });
+
     const query = this.assinaturaRepository
       .createQueryBuilder('assinatura')
       .leftJoinAndSelect('assinatura.aluno', 'aluno')
@@ -96,21 +107,55 @@ export class AssinaturasService {
 
     // Se unidade_id foi passada, filtrar diretamente por ela
     if (unidade_id) {
+      console.log(
+        '✅ [ASSINATURAS-SERVICE] Filtrando por unidade_id:',
+        unidade_id,
+      );
       query.andWhere('assinatura.unidade_id = :unidade_id', { unidade_id });
     } else if (user) {
-      // Senão, se for franqueado, filtrar por todas suas unidades
-      const isFranqueado = user.perfis?.some(
-        (p: any) =>
-          (typeof p === 'string' && p.toLowerCase() === 'franqueado') ||
-          (typeof p === 'object' && p?.nome?.toLowerCase() === 'franqueado'),
-      );
+      // Verificar se é franqueado
+      const isFranqueado =
+        user.tipo_usuario === 'FRANQUEADO' ||
+        user.perfis?.some(
+          (p: any) =>
+            (typeof p === 'string' ? p : p.nome)?.toUpperCase() ===
+            'FRANQUEADO',
+        );
+
+      console.log('🔧 [ASSINATURAS-SERVICE] isFranqueado:', isFranqueado);
 
       if (isFranqueado) {
-        // Buscar unidades do franqueado via join
-        query
-          .leftJoin('unidade.franqueado', 'franqueado')
-          .leftJoin('franqueado.usuario', 'usuario')
-          .andWhere('usuario.id = :userId', { userId: user.id });
+        console.log(
+          '🔍 [ASSINATURAS-SERVICE] Buscando assinaturas de todas unidades do franqueado',
+        );
+        // Buscar unidades do franqueado diretamente
+        const unidades = await this.unidadeRepository.find({
+          where: { franqueado_id: user.id },
+          select: ['id'],
+        });
+        const unidadeIds = unidades.map((u) => u.id);
+        console.log(
+          `✅ [ASSINATURAS-SERVICE] Encontradas ${unidadeIds.length} unidades:`,
+          unidadeIds,
+        );
+
+        if (unidadeIds.length > 0) {
+          query.andWhere('assinatura.unidade_id IN (:...unidadeIds)', {
+            unidadeIds,
+          });
+        } else {
+          console.warn('⚠️ [ASSINATURAS-SERVICE] Franqueado sem unidades');
+          // Retornar vazio se não tem unidades
+          query.andWhere('1=0');
+        }
+      } else if (user.unidade_id) {
+        console.log(
+          '✅ [ASSINATURAS-SERVICE] Filtrando por unidade do usuário:',
+          user.unidade_id,
+        );
+        query.andWhere('assinatura.unidade_id = :unidade_id', {
+          unidade_id: user.unidade_id,
+        });
       }
     }
 
@@ -119,6 +164,9 @@ export class AssinaturasService {
     }
 
     const result = await query.getMany();
+    console.log(
+      `✅ [ASSINATURAS-SERVICE] Retornando ${result.length} assinaturas`,
+    );
     return result;
   }
 

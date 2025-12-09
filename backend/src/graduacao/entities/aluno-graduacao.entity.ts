@@ -27,7 +27,7 @@ export class AlunoGraduacao {
   @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   dt_graduacao: Date;
 
-  @Column({ type: 'varchar', nullable: true })
+  @Column({ type: 'uuid', nullable: true })
   concedido_por: string | null;
 
   @Column({ type: 'text', nullable: true })
@@ -36,7 +36,7 @@ export class AlunoGraduacao {
   @Column({ type: 'boolean', default: false })
   aprovado: boolean;
 
-  @Column({ type: 'varchar', nullable: true })
+  @Column({ type: 'uuid', nullable: true })
   aprovado_por: string | null;
 
   @Column({ type: 'timestamp', nullable: true })

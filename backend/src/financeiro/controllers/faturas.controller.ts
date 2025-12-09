@@ -10,7 +10,9 @@ import {
   Query,
   UseGuards,
   Request,
+  Inject,
 } from '@nestjs/common';
+import { DataSource } from 'typeorm';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { FaturasService } from '../services/faturas.service';
 import { NotificacoesService } from '../services/notificacoes.service';
@@ -26,7 +28,32 @@ export class FaturasController {
   constructor(
     private readonly faturasService: FaturasService,
     private readonly notificacoesService: NotificacoesService,
+    @Inject(DataSource) private dataSource: DataSource,
   ) {}
+
+  private async getUnidadeIdFromUser(user: any): Promise<string | null> {
+    if (!user) return null;
+    if (user.unidade_id) return user.unidade_id;
+    const perfis =
+      user?.perfis?.map((p: any) =>
+        (typeof p === 'string' ? p : p.nome)?.toUpperCase(),
+      ) || [];
+    if (perfis.includes('GERENTE_UNIDADE')) {
+      const result = await this.dataSource.query(
+        `SELECT unidade_id FROM teamcruz.gerente_unidades WHERE usuario_id = $1 AND ativo = true LIMIT 1`,
+        [user.id],
+      );
+      if (result && result.length > 0) return result[0].unidade_id;
+    }
+    if (perfis.includes('RECEPCIONISTA')) {
+      const result = await this.dataSource.query(
+        `SELECT unidade_id FROM teamcruz.recepcionista_unidades WHERE usuario_id = $1 AND ativo = true LIMIT 1`,
+        [user.id],
+      );
+      if (result && result.length > 0) return result[0].unidade_id;
+    }
+    return null;
+  }
 
   @Post()
   create(@Body() createFaturaDto: CreateFaturaDto, @Request() req) {
@@ -38,7 +65,50 @@ export class FaturasController {
     @Query('unidade_id') unidade_id?: string,
     @Query('status') status?: any,
     @Query('mes') mes?: string,
+    @Request() req?: any,
   ) {
+    const user = req?.user;
+    const isFranqueado =
+      user?.tipo_usuario === 'FRANQUEADO' ||
+      user?.perfis?.some(
+        (p: any) =>
+          (typeof p === 'string' ? p : p.nome)?.toUpperCase() === 'FRANQUEADO',
+      );
+    const userUnidadeId = await this.getUnidadeIdFromUser(user);
+
+    console.log('🔍 [FATURAS] Requisição recebida:', {
+      usuario_id: user?.id,
+      tipo_usuario: user?.tipo_usuario,
+      unidade_id_usuario: userUnidadeId,
+      filtro_unidade_id: unidade_id,
+      status,
+      mes,
+      isFranqueado,
+    });
+
+    if (!unidade_id) {
+      if (isFranqueado) {
+        console.log(
+          '⚠️ [FATURAS] Franqueado sem unidade_id - retornando vazio',
+        );
+        return [];
+      }
+      if (userUnidadeId) {
+        console.log(
+          '✅ [FATURAS] Aplicando unidade do usuário:',
+          userUnidadeId,
+        );
+        unidade_id = userUnidadeId;
+      }
+    } else {
+      if (user && !isFranqueado && user.tipo_usuario !== 'MASTER') {
+        if (userUnidadeId && unidade_id !== userUnidadeId) {
+          console.log('🚫 [FATURAS] ACESSO NEGADO');
+          return [];
+        }
+      }
+    }
+
     const faturas = await this.faturasService.findAll(unidade_id, status, mes);
 
     // Mapear para incluir aluno_nome

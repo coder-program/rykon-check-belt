@@ -25,15 +25,40 @@ export class DashboardFinanceiroService {
     mes?: string,
   ): Promise<any> {
     try {
+      console.log('🔧 [DASHBOARD-SERVICE] getDashboard chamado:', {
+        user_id: user.id,
+        tipo_usuario: user.tipo_usuario,
+        perfis: user.perfis?.map((p: any) => p.nome || p),
+        unidade_id_param: unidade_id,
+      });
+
+      // Verificar se é franqueado (pode estar em perfis ou tipo_usuario)
+      const isFranqueado =
+        user.tipo_usuario === 'FRANQUEADO' ||
+        user.perfis?.some(
+          (p: any) =>
+            (typeof p === 'string' ? p : p.nome)?.toUpperCase() ===
+            'FRANQUEADO',
+        );
+
+      console.log('🔧 [DASHBOARD-SERVICE] isFranqueado:', isFranqueado);
+
       // Se for franqueado e não tem unidade_id, buscar todas as unidades do franqueado
       let unidadeFiltro = unidade_id;
       let unidadesIds: string[] = [];
 
-      if (!unidade_id && user.tipo_usuario === 'FRANQUEADO') {
+      if (!unidade_id && isFranqueado) {
+        console.log(
+          '🔍 [DASHBOARD-SERVICE] Buscando unidades do franqueado...',
+        );
         const unidades = await this.unidadeRepository.find({
           where: { franqueado_id: user.id },
           select: ['id'],
         });
+        console.log(
+          `✅ [DASHBOARD-SERVICE] Encontradas ${unidades.length} unidades`,
+        );
+
         if (unidades.length === 0) {
           console.warn('⚠️ Franqueado sem unidades');
           return this.getEmptyDashboard();
@@ -159,14 +184,43 @@ export class DashboardFinanceiroService {
     unidade_id?: string,
     meses = 6,
   ): Promise<any> {
+    console.log('📈 [EVOLUCAO-RECEITA] Iniciando:', {
+      user_id: user.id,
+      unidade_id_param: unidade_id,
+      meses,
+    });
+
+    // Verificar se é franqueado (pode estar em perfis ou tipo_usuario)
+    const isFranqueado =
+      user.tipo_usuario === 'FRANQUEADO' ||
+      user.perfis?.some(
+        (p: any) =>
+          (typeof p === 'string' ? p : p.nome)?.toUpperCase() === 'FRANQUEADO',
+      );
+
+    console.log('📈 [EVOLUCAO-RECEITA] isFranqueado:', isFranqueado);
+
     // Verificar se é franqueado e buscar suas unidades
     let unidadesIds: string[] = [];
-    if (!unidade_id && user.tipo_usuario === 'FRANQUEADO') {
+    if (!unidade_id && isFranqueado) {
       const unidades = await this.unidadeRepository.find({
         where: { franqueado_id: user.id },
         select: ['id'],
       });
       unidadesIds = unidades.map((u) => u.id);
+      console.log(
+        `📈 [EVOLUCAO-RECEITA] Encontradas ${unidadesIds.length} unidades do franqueado:`,
+        unidadesIds,
+      );
+    }
+
+    // Se não tem unidade_id E não é franqueado E usuário tem unidade, usar unidade do usuário
+    if (!unidade_id && !isFranqueado && user.unidade_id) {
+      unidade_id = user.unidade_id;
+      console.log(
+        '📈 [EVOLUCAO-RECEITA] Usando unidade do usuário:',
+        unidade_id,
+      );
     }
 
     const dados: Array<{
@@ -187,26 +241,42 @@ export class DashboardFinanceiroService {
         let faturasMes: any[] = [];
         if (unidadesIds.length > 0) {
           // Franqueado: agregar faturas de todas as unidades
+          console.log(
+            `📈 [EVOLUCAO-RECEITA] Buscando faturas do mês ${mesString} para ${unidadesIds.length} unidades`,
+          );
           for (const uid of unidadesIds) {
             const faturas = await this.faturasService.findAll(
               uid,
               undefined,
               mesString,
             );
+            console.log(`  - Unidade ${uid}: ${faturas.length} faturas`);
             faturasMes.push(...faturas);
           }
-        } else {
+        } else if (unidade_id) {
           // Gerente ou outro: uma unidade apenas
+          console.log(
+            `📈 [EVOLUCAO-RECEITA] Buscando faturas do mês ${mesString} para unidade ${unidade_id}`,
+          );
           faturasMes = await this.faturasService.findAll(
             unidade_id,
             undefined,
             mesString,
+          );
+          console.log(`  - Encontradas ${faturasMes.length} faturas`);
+        } else {
+          console.warn(
+            `⚠️ [EVOLUCAO-RECEITA] Sem unidade_id para buscar faturas do mês ${mesString}`,
           );
         }
 
         const receita = faturasMes
           .filter((f) => f.status === 'PAGA')
           .reduce((sum, f) => sum + Number(f.valor_pago || 0), 0);
+
+        console.log(
+          `📈 [EVOLUCAO-RECEITA] Mês ${mesString}: ${faturasMes.length} faturas, receita: R$ ${receita}`,
+        );
 
         dados.push({
           mes: mesString,
@@ -231,9 +301,18 @@ export class DashboardFinanceiroService {
 
   async getInadimplencia(user: any, unidade_id?: string): Promise<any> {
     try {
+      // Verificar se é franqueado (pode estar em perfis ou tipo_usuario)
+      const isFranqueado =
+        user.tipo_usuario === 'FRANQUEADO' ||
+        user.perfis?.some(
+          (p: any) =>
+            (typeof p === 'string' ? p : p.nome)?.toUpperCase() ===
+            'FRANQUEADO',
+        );
+
       // Verificar se é franqueado e buscar suas unidades
       let faturasMes: any[] = [];
-      if (!unidade_id && user.tipo_usuario === 'FRANQUEADO') {
+      if (!unidade_id && isFranqueado) {
         const unidades = await this.unidadeRepository.find({
           where: { franqueado_id: user.id },
           select: ['id'],
@@ -277,9 +356,18 @@ export class DashboardFinanceiroService {
 
   async getComparacaoUnidades(user: any): Promise<any> {
     try {
+      // Verificar se é franqueado (pode estar em perfis ou tipo_usuario)
+      const isFranqueado =
+        user.tipo_usuario === 'FRANQUEADO' ||
+        user.perfis?.some(
+          (p: any) =>
+            (typeof p === 'string' ? p : p.nome)?.toUpperCase() ===
+            'FRANQUEADO',
+        );
+
       // Verificar se é franqueado e buscar suas unidades
       let unidadesIds: string[] = [];
-      if (user.tipo_usuario === 'FRANQUEADO') {
+      if (isFranqueado) {
         const unidades = await this.unidadeRepository.find({
           where: { franqueado_id: user.id },
           select: ['id', 'nome'],

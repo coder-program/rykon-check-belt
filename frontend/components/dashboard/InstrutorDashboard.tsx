@@ -24,6 +24,7 @@ import {
   Target,
   Building2,
   CheckCircle,
+  Award,
 } from "lucide-react";
 
 interface InstrutorStats {
@@ -144,14 +145,6 @@ export default function InstrutorDashboard() {
 
   const quickActions = [
     {
-      title: "Registrar Presença",
-      description: "Fazer chamada da próxima aula",
-      icon: UserCheck,
-      action: () => router.push("/presenca"),
-      color: "bg-green-500",
-      urgent: true,
-    },
-    {
       title: "Aprovar Check-ins",
       description: "Aprovar check-ins do tablet",
       icon: CheckCircle,
@@ -166,11 +159,19 @@ export default function InstrutorDashboard() {
       color: "bg-blue-500",
     },
     {
-      title: "Graduações",
-      description: "5 avaliações pendentes",
-      icon: GraduationCap,
-      action: () => router.push("/graduacao"),
+      title: "Aprovar Graduações",
+      description: "Pendentes de aprovação",
+      icon: Award,
+      action: () => router.push("/admin/aprovacao-graduacao"),
       color: "bg-yellow-500",
+      urgent: true,
+    },
+    {
+      title: "Sistema Graduação",
+      description: "Controle de faixas e graus",
+      icon: GraduationCap,
+      action: () => router.push("/admin/sistema-graduacao"),
+      color: "bg-green-500",
       urgent: true,
     },
     {
@@ -471,8 +472,12 @@ export default function InstrutorDashboard() {
                   <span className="text-sm font-medium">Graduações</span>
                   <Trophy className="h-4 w-4 text-yellow-600" />
                 </div>
-                <div className="text-2xl font-bold text-yellow-600 mt-2">7</div>
-                <div className="text-xs text-gray-600">Aprovadas este mes</div>
+                <div className="text-2xl font-bold text-yellow-600 mt-2">
+                  {stats.graduacoesPendentes}
+                </div>
+                <div className="text-xs text-gray-600">
+                  Avaliações pendentes
+                </div>
               </div>
 
               <div className="p-4 bg-purple-50 rounded-lg">

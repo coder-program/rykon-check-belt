@@ -9,7 +9,9 @@ import {
   UseGuards,
   ParseUUIDPipe,
   Request,
+  Inject,
 } from '@nestjs/common';
+import { DataSource } from 'typeorm';
 import {
   ApiTags,
   ApiOperation,
@@ -33,7 +35,91 @@ import { Public } from '../auth/decorators/public.decorator';
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class GraduacaoController {
-  constructor(private readonly graduacaoService: GraduacaoService) {}
+  constructor(
+    private readonly graduacaoService: GraduacaoService,
+    @Inject(DataSource) private dataSource: DataSource,
+  ) {}
+
+  /**
+   * Helper para buscar unidade_id do usuário (incluindo GERENTE_UNIDADE e RECEPCIONISTA)
+   */
+  private async getUnidadeIdFromUser(user: any): Promise<string | null> {
+    if (!user) return null;
+
+    console.log('🔍 [getUnidadeIdFromUser] Verificando usuário:', {
+      id: user.id,
+      nome: user.nome,
+      unidade_id: user.unidade_id,
+      perfis: user?.perfis?.map((p: any) =>
+        typeof p === 'string' ? p : p.nome,
+      ),
+    });
+
+    // Tentar pegar direto do user.unidade_id
+    if (user.unidade_id) {
+      console.log(
+        '✅ [getUnidadeIdFromUser] Encontrado user.unidade_id:',
+        user.unidade_id,
+      );
+      return user.unidade_id;
+    }
+
+    const perfis =
+      user?.perfis?.map((p: any) =>
+        (typeof p === 'string' ? p : p.nome)?.toUpperCase(),
+      ) || [];
+
+    // GERENTE_UNIDADE: buscar na tabela gerente_unidades
+    if (perfis.includes('GERENTE_UNIDADE')) {
+      const result = await this.dataSource.query(
+        `SELECT unidade_id FROM teamcruz.gerente_unidades WHERE usuario_id = $1 AND ativo = true LIMIT 1`,
+        [user.id],
+      );
+      if (result && result.length > 0) {
+        console.log(
+          '✅ [getUnidadeIdFromUser] GERENTE_UNIDADE encontrado:',
+          result[0].unidade_id,
+        );
+        return result[0].unidade_id;
+      }
+    }
+
+    // RECEPCIONISTA: buscar na tabela recepcionista_unidades
+    if (perfis.includes('RECEPCIONISTA')) {
+      const result = await this.dataSource.query(
+        `SELECT unidade_id FROM teamcruz.recepcionista_unidades WHERE usuario_id = $1 AND ativo = true LIMIT 1`,
+        [user.id],
+      );
+      if (result && result.length > 0) {
+        console.log(
+          '✅ [getUnidadeIdFromUser] RECEPCIONISTA encontrado:',
+          result[0].unidade_id,
+        );
+        return result[0].unidade_id;
+      }
+    }
+
+    // PROFESSOR/INSTRUTOR: buscar na tabela professores
+    if (perfis.includes('PROFESSOR') || perfis.includes('INSTRUTOR')) {
+      const result = await this.dataSource.query(
+        `SELECT unidade_id FROM teamcruz.professores WHERE usuario_id = $1 AND status = 'ATIVO' LIMIT 1`,
+        [user.id],
+      );
+      if (result && result.length > 0) {
+        console.log(
+          '✅ [getUnidadeIdFromUser] PROFESSOR/INSTRUTOR encontrado:',
+          result[0].unidade_id,
+        );
+        return result[0].unidade_id;
+      }
+      console.log(
+        '⚠️ [getUnidadeIdFromUser] PROFESSOR/INSTRUTOR não encontrado na tabela professores',
+      );
+    }
+
+    console.log('❌ [getUnidadeIdFromUser] Nenhuma unidade encontrada');
+    return null;
+  }
 
   @Public()
   @Get('faixas')
@@ -141,7 +227,65 @@ export class GraduacaoController {
     @Query('pageSize') pageSize?: number,
     @Query('unidadeId') unidadeId?: string,
     @Query('categoria') categoria?: 'adulto' | 'kids' | 'todos',
+    @Request() req?: any,
   ): Promise<ListaProximosGraduarDto> {
+    // VALIDAÇÃO DE SEGURANÇA
+    const user = req?.user;
+
+    // Verificar se é franqueado
+    const isFranqueado =
+      user?.tipo_usuario === 'FRANQUEADO' ||
+      user?.perfis?.some(
+        (p: any) =>
+          (typeof p === 'string' ? p : p.nome)?.toUpperCase() === 'FRANQUEADO',
+      );
+
+    const userUnidadeId = await this.getUnidadeIdFromUser(user);
+
+    console.log('🎓 [PROXIMOS-GRADUAR] Requisição recebida:', {
+      usuario_id: user?.id,
+      tipo_usuario: user?.tipo_usuario,
+      unidade_id_usuario: userUnidadeId,
+      filtro_unidade_id: unidadeId,
+      isFranqueado,
+    });
+
+    // Se não passou unidade_id, aplicar regras de permissão
+    if (!unidadeId) {
+      if (isFranqueado) {
+        console.log(
+          '⚠️ [PROXIMOS-GRADUAR] Franqueado sem unidade_id - retornando vazio',
+        );
+        return {
+          items: [],
+          total: 0,
+          page: 1,
+          pageSize: 20,
+          hasNextPage: false,
+        };
+      } else if (userUnidadeId) {
+        console.log(
+          '✅ [PROXIMOS-GRADUAR] Aplicando unidade do usuário:',
+          userUnidadeId,
+        );
+        unidadeId = userUnidadeId;
+      }
+    } else {
+      // Se passou unidade_id, validar se o usuário tem acesso
+      if (!isFranqueado && user?.tipo_usuario !== 'MASTER') {
+        if (userUnidadeId && unidadeId !== userUnidadeId) {
+          console.log('🚫 [PROXIMOS-GRADUAR] ACESSO NEGADO');
+          return {
+            items: [],
+            total: 0,
+            page: 1,
+            pageSize: 20,
+            hasNextPage: false,
+          };
+        }
+      }
+    }
+
     return await this.graduacaoService.getProximosGraduar({
       page,
       pageSize,
@@ -210,7 +354,67 @@ export class GraduacaoController {
     @Query('unidadeId') unidadeId?: string,
     @Query('alunoId') alunoId?: string,
     @Query('categoria') categoria?: 'adulto' | 'kids' | 'todos',
+    @Request() req?: any,
   ) {
+    // VALIDAÇÃO DE SEGURANÇA
+    const user = req?.user;
+
+    // Verificar se é franqueado
+    const isFranqueado =
+      user?.tipo_usuario === 'FRANQUEADO' ||
+      user?.perfis?.some(
+        (p: any) =>
+          (typeof p === 'string' ? p : p.nome)?.toUpperCase() === 'FRANQUEADO',
+      );
+
+    const userUnidadeId = await this.getUnidadeIdFromUser(user);
+
+    console.log('🎓 [GRADUACAO-HISTORICO] Requisição recebida:', {
+      usuario_id: user?.id,
+      tipo_usuario: user?.tipo_usuario,
+      unidade_id_usuario: userUnidadeId,
+      filtro_unidade_id: unidadeId,
+      isFranqueado,
+      perfis: user?.perfis?.map((p: any) => p.nome || p),
+    });
+
+    // Se não passou unidade_id, aplicar regras de permissão
+    if (!unidadeId) {
+      if (isFranqueado) {
+        console.log(
+          '⚠️ [GRADUACAO-HISTORICO] Franqueado sem unidade_id - retornando vazio (deve selecionar unidade no frontend)',
+        );
+        // Franqueado DEVE selecionar uma unidade específica
+        return {
+          items: [],
+          total: 0,
+          page: 1,
+          pageSize: 20,
+          hasNextPage: false,
+        };
+      } else if (userUnidadeId) {
+        console.log(
+          '✅ [GRADUACAO-HISTORICO] Aplicando unidade do usuário:',
+          userUnidadeId,
+        );
+        unidadeId = userUnidadeId;
+      }
+    } else {
+      // Se passou unidade_id, validar se o usuário tem acesso
+      if (!isFranqueado && user?.tipo_usuario !== 'MASTER') {
+        if (userUnidadeId && unidadeId !== userUnidadeId) {
+          console.log('🚫 [GRADUACAO-HISTORICO] ACESSO NEGADO');
+          return {
+            items: [],
+            total: 0,
+            page: 1,
+            pageSize: 20,
+            hasNextPage: false,
+          };
+        }
+      }
+    }
+
     return await this.graduacaoService.getHistoricoGraduacoes({
       page: page || 1,
       pageSize: pageSize || 20,
@@ -336,8 +540,16 @@ export class GraduacaoController {
   async getPendentesAprovacao(
     @Query('page') page?: number,
     @Query('pageSize') pageSize?: number,
-    @Query('unidadeId') unidadeId?: string,
+    @Query('unidadeId') unidadeIdParam?: string,
+    @Request() req?: any,
   ) {
+    const user = req?.user;
+    const unidadeIdFromUser = await this.getUnidadeIdFromUser(user);
+
+    // Se o usuário tem unidade específica (PROFESSOR, GERENTE_UNIDADE, RECEPCIONISTA), usar ela
+    // Caso contrário, usar o parâmetro passado (para FRANQUEADO ou MASTER)
+    const unidadeId = unidadeIdFromUser || unidadeIdParam;
+
     return await this.graduacaoService.getPendentesAprovacao({
       page,
       pageSize,
