@@ -73,6 +73,59 @@ export default function RegisterPage() {
     responsavel_cpf: "", // CPF do responsável (se menor de 18)
     responsavel_telefone: "", // Telefone do responsável (se menor de 18)
   });
+
+  // Mapeamento de cores para cada código de faixa (texto das letras)
+  const faixaColors: Record<string, { text: string }> = {
+    BRANCA: { text: "#FFFFFF" },
+    AZUL: { text: "#1D4ED8" },
+    ROXA: { text: "#5B21B6" },
+    MARROM: { text: "#5C1A00" },
+    PRETA: { text: "#000000" },
+    CINZA: { text: "#6B7280" },
+    AMARELA: { text: "#F59E0B" },
+    LARANJA: { text: "#F97316" },
+    VERDE: { text: "#16A34A" },
+    CORAL: { text: "#DC2626" },
+
+    // Variantes/combinadas comuns (mapeadas para a cor mais representativa)
+    CINZA_BRANCA: { text: "#6B7280" },
+    CINZA_PRETA: { text: "#6B7280" },
+    CINZA_E_BRANCA: { text: "#6B7280" },
+    CINZA_E_PRETA: { text: "#6B7280" },
+    AMARELA_BRANCA: { text: "#F59E0B" },
+    AMARELA_E_BRANCA: { text: "#F59E0B" },
+    LARANJA_BRANCA: { text: "#F97316" },
+    VERDE_BRANCA: { text: "#16A34A" },
+    AZUL_BRANCA: { text: "#1D4ED8" },
+    ROXA_BRANCA: { text: "#5B21B6" },
+    MARROM_BRANCA: { text: "#5C1A00" },
+  };
+
+  const getFaixaColor = (codigo?: string) => {
+    if (!codigo) return { text: "#FFFFFF" };
+
+    // direct match
+    if (faixaColors[codigo]) return faixaColors[codigo];
+
+    // normalize and try tokens
+    const normalized = codigo.toString().toUpperCase().replace(/[^A-Z0-9]+/g, " ").trim();
+    const parts = normalized.split(/\s+/);
+    for (const part of parts) {
+      if (faixaColors[part]) return faixaColors[part];
+    }
+
+    // try underscore variants
+    const underscored = normalized.replace(/\s+/g, "_");
+    if (faixaColors[underscored]) return faixaColors[underscored];
+
+    // fallback: check for known keywords
+    const keys = Object.keys(faixaColors);
+    for (const k of keys) {
+      if (normalized.includes(k)) return faixaColors[k];
+    }
+
+    return { text: "#FFFFFF" };
+  };
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [perfis, setPerfis] = useState<Perfil[]>([]);
