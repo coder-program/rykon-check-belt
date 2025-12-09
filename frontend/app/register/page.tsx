@@ -75,30 +75,43 @@ export default function RegisterPage() {
   });
 
   // Mapeamento de cores para cada código de faixa (texto das letras)
+  // Faixas infantis: gradação crescente (clara -> padrão -> escura)
   const faixaColors: Record<string, { text: string }> = {
+    // Faixas Infantis - Cinza
+    CINZA_BRANCA: { text: "#8d939dff" }, // Cinza claro
+    CINZA_E_BRANCA: { text: "#8d939dff" },
+    CINZA: { text: "#5b616aff" }, // Cinza padrão
+    CINZA_PRETA: { text: "#4b4e51ff"}, // Cinza escuro
+    CINZA_E_PRETA: { text: "#4b4e51ff " },
+    
+    // Faixas Infantis - Amarela
+    AMARELA_BRANCA: { text: "#FDE68A" }, // Amarelo claro
+    AMARELA_E_BRANCA: { text: "#ddb92aff" },
+    AMARELA: { text: "#f4fd00ff" }, // Amarelo padrão
+    AMARELA_PRETA: { text: "#f0bc00ff" }, // Amarelo escuro
+    AMARELA_E_PRETA: { text: "#f0bc00ff" },
+    
+    // Faixas Infantis - Laranja
+    LARANJA_BRANCA: { text: "#e17f0eff" }, // Laranja claro
+    LARANJA_E_BRANCA: { text: "#e17f0eff" },
+    LARANJA: { text: "#dc6b0eff" }, // Laranja padrão
+    LARANJA_PRETA: { text: "#EA580C" }, // Laranja escuro
+    LARANJA_E_PRETA: { text: "#ff6105ff" },
+    
+    // Faixas Infantis - Verde
+    VERDE_BRANCA: { text: "#86EFAC" }, // Verde claro
+    VERDE_E_BRANCA: { text: "#86EFAC" },
+    VERDE: { text: "#22C55E" }, // Verde padrão
+    VERDE_PRETA: { text: "#15803D" }, // Verde escuro
+    VERDE_E_PRETA: { text: "#15803D" },
+    
+    // Faixas Adultas
     BRANCA: { text: "#FFFFFF" },
-    AZUL: { text: "#1D4ED8" },
-    ROXA: { text: "#5B21B6" },
-    MARROM: { text: "#5C1A00" },
-    PRETA: { text: "#000000" },
-    CINZA: { text: "#6B7280" },
-    AMARELA: { text: "#F59E0B" },
-    LARANJA: { text: "#F97316" },
-    VERDE: { text: "#16A34A" },
-    CORAL: { text: "#DC2626" },
-
-    // Variantes/combinadas comuns (mapeadas para a cor mais representativa)
-    CINZA_BRANCA: { text: "#6B7280" },
-    CINZA_PRETA: { text: "#6B7280" },
-    CINZA_E_BRANCA: { text: "#6B7280" },
-    CINZA_E_PRETA: { text: "#6B7280" },
-    AMARELA_BRANCA: { text: "#F59E0B" },
-    AMARELA_E_BRANCA: { text: "#F59E0B" },
-    LARANJA_BRANCA: { text: "#F97316" },
-    VERDE_BRANCA: { text: "#16A34A" },
-    AZUL_BRANCA: { text: "#1D4ED8" },
-    ROXA_BRANCA: { text: "#5B21B6" },
-    MARROM_BRANCA: { text: "#5C1A00" },
+    AZUL: { text: "#3B82F6" },
+    ROXA: { text: "#6858c0ff" },
+    MARROM: { text: "#8B4513" },
+    PRETA: { text: "#000000ff" },
+    CORAL: { text: "#F87171" },
   };
 
   const getFaixaColor = (codigo?: string) => {
