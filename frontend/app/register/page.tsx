@@ -1037,10 +1037,15 @@ export default function RegisterPage() {
                             <SelectItem
                               key={faixa.codigo}
                               value={faixa.codigo}
-                              className="text-white hover:bg-gray-700 focus:bg-gray-700"
+                              className="hover:bg-gray-700 focus:bg-gray-700"
                             >
                               <div className="flex flex-col">
-                                <span className="font-medium">
+                                <span 
+                                  className="font-medium"
+                                  style={{ 
+                                    color: faixaColors[faixa.codigo]?.text || "#FFFFFF"
+                                  }}
+                                >
                                   {faixa.nome_exibicao}
                                 </span>
                                 <span className="text-xs text-gray-400">
