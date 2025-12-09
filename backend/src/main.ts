@@ -23,11 +23,27 @@ async function bootstrap() {
 
   app.use(cookieParser());
 
-  // Configuração CORS para produção
+  // Configuração CORS para produção - Vercel + Domínio customizado
+  const allowedOrigins = [
+    'https://rykon-check-belt.vercel.app',
+    'https://teamcruz.rykonfit.com.br',
+    'http://teamcruz.rykonfit.com.br',
+    'http://localhost:3000', // Desenvolvimento local
+    process.env.CORS_ORIGIN,
+  ].filter(Boolean);
+
   app.enableCors({
-    origin:
-      process.env.CORS_ORIGIN ||
-      'https://teamcruz-frontend-m2olfa5bfa-rj.a.run.app',
+    origin: (origin, callback) => {
+      // Permite requisições sem origin (mobile apps, Postman, etc)
+      if (!origin) return callback(null, true);
+      
+      // Verifica se a origin está na lista permitida ou é do Vercel
+      if (allowedOrigins.includes(origin) || origin.endsWith('.vercel.app')) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
