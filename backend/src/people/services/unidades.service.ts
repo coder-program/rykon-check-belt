@@ -168,11 +168,21 @@ export class UnidadesService {
     // Se franqueado (não master), filtra por sua franquia
     else if (user && this.isFranqueado(user) && !this.isMaster(user)) {
       const franqueadoId = await this.getFranqueadoIdByUser(user);
+      console.log('🔍 [UNIDADES] Franqueado detectado:', {
+        user_id: user?.id,
+        franqueado_id: franqueadoId,
+      });
       if (franqueadoId) {
         whereConditions.push(`u.franqueado_id = $${paramIndex}`);
         queryParams.push(franqueadoId);
         paramIndex++;
+        console.log(
+          '✅ [UNIDADES] Aplicando filtro de franqueado:',
+          franqueadoId,
+        );
         // Franqueado vendo suas próprias unidades: mostrar TODAS (incluindo inativas)
+      } else {
+        console.warn('⚠️ [UNIDADES] Franqueado sem franqueado_id!');
       }
     }
     // Se não foi especificado franqueado_id e não tem filtro de status,
@@ -489,7 +499,13 @@ export class UnidadesService {
       `SELECT id FROM teamcruz.franqueados WHERE usuario_id = $1 LIMIT 1`,
       [user.id],
     );
-    return res[0]?.id || null;
+    const franqueadoId = res[0]?.id || null;
+    console.log('🔍 [getFranqueadoIdByUser]', {
+      user_id: user.id,
+      franqueado_id: franqueadoId,
+      result_count: res.length,
+    });
+    return franqueadoId;
   }
 
   async findUnidadesByFranqueado(userId: string): Promise<Unidade[]> {

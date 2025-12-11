@@ -76,12 +76,22 @@ export class VendasController {
       isFranqueado,
     });
 
+    // Buscar franqueado_id se for franqueado
+    let franqueadoId: string | null = null;
+    if (isFranqueado && user?.id) {
+      const franqueadoResult = await this.dataSource.query(
+        `SELECT id FROM teamcruz.franqueados WHERE usuario_id = $1 LIMIT 1`,
+        [user.id],
+      );
+      franqueadoId = franqueadoResult[0]?.id || null;
+      console.log('🔍 [VENDAS] Franqueado ID:', franqueadoId);
+    }
+
     if (!filtro.unidadeId) {
       if (isFranqueado) {
-        console.log('⚠️ [VENDAS] Franqueado sem unidade_id - retornando vazio');
-        return [];
-      }
-      if (userUnidadeId) {
+        console.log('✅ [VENDAS] Franqueado buscando vendas de suas unidades');
+        // Será filtrado no service pelo franqueado_id
+      } else if (userUnidadeId) {
         console.log('✅ [VENDAS] Aplicando unidade do usuário:', userUnidadeId);
         filtro.unidadeId = userUnidadeId;
       }
@@ -97,7 +107,7 @@ export class VendasController {
       }
     }
 
-    const vendas = await this.vendasService.findAll(filtro);
+    const vendas = await this.vendasService.findAll(filtro, franqueadoId);
     return vendas.map((venda) => ({
       ...venda,
       aluno_nome: venda.aluno?.nome_completo,

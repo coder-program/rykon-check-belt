@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Plus, Edit, XCircle, DollarSign } from "lucide-react";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 
 interface Plano {
   id: string;
@@ -58,6 +59,18 @@ export default function Planos() {
   const [loading, setLoading] = useState(true);
   const [showDialog, setShowDialog] = useState(false);
   const [editingPlano, setEditingPlano] = useState<Plano | null>(null);
+  const [successDialog, setSuccessDialog] = useState<{
+    isOpen: boolean;
+    message: string;
+  }>({ isOpen: false, message: "" });
+  const [errorDialog, setErrorDialog] = useState<{
+    isOpen: boolean;
+    message: string;
+  }>({ isOpen: false, message: "" });
+  const [confirmDelete, setConfirmDelete] = useState<{
+    isOpen: boolean;
+    planoId: string | null;
+  }>({ isOpen: false, planoId: null });
 
   const [formData, setFormData] = useState({
     nome: "",
@@ -90,12 +103,16 @@ export default function Planos() {
       const userData = localStorage.getItem("user");
       const user = JSON.parse(userData || "{}");
 
+      console.log("=== CARREGANDO PLANOS ===");
+      console.log("User:", user);
+
       // Detectar franqueado
       const franqueadoDetected = user.perfis?.some(
         (p: any) =>
           (typeof p === "string" && p.toLowerCase() === "franqueado") ||
           (typeof p === "object" && p?.nome?.toLowerCase() === "franqueado")
       );
+      console.log("É franqueado?", franqueadoDetected);
       setIsFranqueado(franqueadoDetected);
 
       // Se não é franqueado, setar unidade_id no formData
@@ -118,25 +135,54 @@ export default function Planos() {
           const unidadesData = await unidadesRes.json();
           // A API retorna { items: [...], page, pageSize, total }
           const unidadesArray = unidadesData.items || [];
+          console.log("Unidades carregadas:", unidadesArray);
           setUnidades(unidadesArray);
+
+          // Se o franqueado tem apenas 1 unidade, seleciona automaticamente
+          if (unidadesArray.length === 1) {
+            console.log(
+              "✅ Franqueado com 1 unidade - aplicando filtro automático:",
+              unidadesArray[0].id
+            );
+            setUnidadeFiltro(unidadesArray[0].id);
+          }
         }
       }
 
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/financeiro/planos?unidadeId=${user.unidade_id}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      // Carregar planos
+      // Para franqueado: buscar todos os planos (sem filtro de unidade)
+      // Para outros perfis: filtrar por unidade_id do usuário
+      const planosUrl = franqueadoDetected
+        ? `${process.env.NEXT_PUBLIC_API_URL}/financeiro/planos`
+        : `${process.env.NEXT_PUBLIC_API_URL}/financeiro/planos?unidadeId=${user.unidade_id}`;
+
+      console.log("URL para buscar planos:", planosUrl);
+
+      const response = await fetch(planosUrl, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      console.log("Response status:", response.status);
 
       if (response.ok) {
         const data = await response.json();
+        console.log("Planos carregados (raw):", data);
+        console.log("Tipo de data:", typeof data, Array.isArray(data));
         setPlanos(data);
+      } else {
+        const errorText = await response.text();
+        console.error(
+          "Erro ao carregar planos:",
+          response.status,
+          response.statusText,
+          errorText
+        );
       }
       setLoading(false);
     } catch (error) {
+      console.error("=== ERRO AO CARREGAR PLANOS ===");
       console.error("Erro ao carregar planos:", error);
       setLoading(false);
     }
@@ -148,11 +194,28 @@ export default function Planos() {
     const userData = localStorage.getItem("user");
     const user = JSON.parse(userData || "{}");
 
+    console.log("=== SUBMITTING PLANO ===");
+    console.log("User data:", user);
+    console.log("Form data:", formData);
+    console.log("Editing plano:", editingPlano);
+
     try {
       const token = localStorage.getItem("token");
       const url = editingPlano
         ? `${process.env.NEXT_PUBLIC_API_URL}/financeiro/planos/${editingPlano.id}`
         : `${process.env.NEXT_PUBLIC_API_URL}/financeiro/planos`;
+
+      const payload = {
+        ...formData,
+        valor: parseFloat(formData.valor),
+        duracao_dias: parseInt(formData.duracao_dias),
+        max_alunos: formData.max_alunos ? parseInt(formData.max_alunos) : null,
+        unidade_id: formData.unidade_id,
+      };
+
+      console.log("URL:", url);
+      console.log("Method:", editingPlano ? "PATCH" : "POST");
+      console.log("Payload:", payload);
 
       const response = await fetch(url, {
         method: editingPlano ? "PATCH" : "POST",
@@ -160,28 +223,39 @@ export default function Planos() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          ...formData,
-          valor: parseFloat(formData.valor),
-          duracao_dias: parseInt(formData.duracao_dias),
-          max_alunos: formData.max_alunos
-            ? parseInt(formData.max_alunos)
-            : null,
-          unidade_id: formData.unidade_id,
-        }),
+        body: JSON.stringify(payload),
       });
 
+      console.log("Response status:", response.status);
+      console.log("Response ok:", response.ok);
+
       if (response.ok) {
-        alert(editingPlano ? "Plano atualizado!" : "Plano criado!");
+        const responseData = await response.json();
+        console.log("Response data:", responseData);
+        setSuccessDialog({
+          isOpen: true,
+          message: editingPlano
+            ? "Plano atualizado com sucesso!"
+            : "Plano criado com sucesso!",
+        });
         setShowDialog(false);
         resetForm();
         carregarPlanos();
       } else {
-        alert("Erro ao salvar plano");
+        const errorData = await response.text();
+        console.error("Error response:", errorData);
+        setErrorDialog({
+          isOpen: true,
+          message: "Erro ao salvar plano",
+        });
       }
     } catch (error) {
+      console.error("=== ERRO AO SALVAR PLANO ===");
       console.error("Erro ao salvar plano:", error);
-      alert("Erro ao salvar plano");
+      setErrorDialog({
+        isOpen: true,
+        message: "Erro ao salvar plano",
+      });
     }
   };
 
@@ -201,18 +275,17 @@ export default function Planos() {
     setShowDialog(true);
   };
 
-  const handleDelete = async (id: string) => {
-    if (
-      !confirm(
-        "Deseja inativar este plano? Ele não poderá mais ser atribuído a novos alunos."
-      )
-    )
-      return;
+  const handleDelete = (id: string) => {
+    setConfirmDelete({ isOpen: true, planoId: id });
+  };
+
+  const confirmDeletePlano = async () => {
+    if (!confirmDelete.planoId) return;
 
     try {
       const token = localStorage.getItem("token");
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/financeiro/planos/${id}`,
+        `${process.env.NEXT_PUBLIC_API_URL}/financeiro/planos/${confirmDelete.planoId}`,
         {
           method: "DELETE",
           headers: {
@@ -222,11 +295,23 @@ export default function Planos() {
       );
 
       if (response.ok) {
-        alert("Plano inativado com sucesso!");
+        setSuccessDialog({
+          isOpen: true,
+          message: "Plano inativado com sucesso!",
+        });
         carregarPlanos();
+      } else {
+        setErrorDialog({
+          isOpen: true,
+          message: "Erro ao inativar plano",
+        });
       }
     } catch (error) {
       console.error("Erro ao inativar plano:", error);
+      setErrorDialog({
+        isOpen: true,
+        message: "Erro ao inativar plano",
+      });
     }
   };
 
@@ -477,17 +562,18 @@ export default function Planos() {
 
       {/* Dialog de Plano */}
       <Dialog open={showDialog} onOpenChange={setShowDialog}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>
-              {editingPlano ? "Editar Plano" : "Novo Plano"}
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-gradient-to-br from-white to-gray-50">
+          <DialogHeader className="border-b pb-4">
+            <DialogTitle className="text-2xl font-bold text-gray-900">
+              {editingPlano ? "✏️ Editar Plano" : "➕ Novo Plano"}
             </DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4 pt-4">
+            \n{" "}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-sm font-medium text-gray-700">
-                  Nome do Plano
+                <label className="text-sm font-semibold text-gray-700 block mb-1">
+                  📝 Nome do Plano
                 </label>
                 <Input
                   value={formData.nome}
@@ -496,11 +582,12 @@ export default function Planos() {
                   }
                   placeholder="Ex: Plano Mensal Premium"
                   required
+                  className="border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
                 />
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-700">
-                  Tipo
+                <label className="text-sm font-semibold text-gray-700 block mb-1">
+                  🏷️ Tipo
                 </label>
                 <Select value={formData.tipo} onValueChange={handleTipoChange}>
                   <SelectTrigger>
@@ -516,12 +603,11 @@ export default function Planos() {
                 </Select>
               </div>
             </div>
-
             {/* Campo de Unidade - Select para Franqueado, Readonly para outros */}
             {isFranqueado ? (
-              <div>
-                <label className="text-sm font-medium text-gray-700">
-                  Unidade *
+              <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                <label className="text-sm font-semibold text-gray-700 block mb-1">
+                  🏢 Unidade *
                 </label>
                 <Select
                   value={formData.unidade_id}
@@ -529,7 +615,7 @@ export default function Planos() {
                     setFormData({ ...formData, unidade_id: value })
                   }
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="bg-white">
                     <SelectValue placeholder="Selecione a unidade" />
                   </SelectTrigger>
                   <SelectContent>
@@ -549,8 +635,8 @@ export default function Planos() {
               </div>
             ) : (
               <div>
-                <label className="text-sm font-medium text-gray-700">
-                  Unidade
+                <label className="text-sm font-semibold text-gray-700 block mb-1">
+                  🏢 Unidade
                 </label>
                 <Input
                   value={formData.unidade_id}
@@ -560,10 +646,9 @@ export default function Planos() {
                 />
               </div>
             )}
-
             <div>
-              <label className="text-sm font-medium text-gray-700">
-                Descrição
+              <label className="text-sm font-semibold text-gray-700 block mb-1">
+                📄 Descrição
               </label>
               <Textarea
                 value={formData.descricao}
@@ -572,13 +657,13 @@ export default function Planos() {
                 }
                 placeholder="Descreva o plano"
                 rows={2}
+                className="border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
               />
             </div>
-
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-sm font-medium text-gray-700">
-                  Valor (R$)
+                <label className="text-sm font-semibold text-gray-700 block mb-1">
+                  💰 Valor (R$)
                 </label>
                 <Input
                   type="number"
@@ -589,11 +674,12 @@ export default function Planos() {
                   }
                   placeholder="0.00"
                   required
+                  className="border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
                 />
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-700">
-                  Duração (dias)
+                <label className="text-sm font-semibold text-gray-700 block mb-1">
+                  ⏱️ Duração (dias)
                 </label>
                 <Input
                   type="number"
@@ -602,13 +688,13 @@ export default function Planos() {
                     setFormData({ ...formData, duracao_dias: e.target.value })
                   }
                   required
+                  className="border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
                 />
               </div>
             </div>
-
             <div>
-              <label className="text-sm font-medium text-gray-700">
-                Benefícios (um por linha)
+              <label className="text-sm font-semibold text-gray-700 block mb-1">
+                ✨ Benefícios (um por linha)
               </label>
               <Textarea
                 value={formData.beneficios}
@@ -617,12 +703,12 @@ export default function Planos() {
                 }
                 placeholder="Acesso ilimitado&#10;2 aulas por semana&#10;Suporte prioritário"
                 rows={4}
+                className="border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
               />
             </div>
-
             <div>
-              <label className="text-sm font-medium text-gray-700">
-                Máximo de Alunos (opcional)
+              <label className="text-sm font-semibold text-gray-700 block mb-1">
+                👥 Máximo de Alunos (opcional)
               </label>
               <Input
                 type="number"
@@ -631,10 +717,10 @@ export default function Planos() {
                   setFormData({ ...formData, max_alunos: e.target.value })
                 }
                 placeholder="Deixe em branco para ilimitado"
+                className="border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
               />
             </div>
-
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 bg-green-50 p-3 rounded-lg border border-green-200">
               <input
                 type="checkbox"
                 id="ativo"
@@ -642,31 +728,73 @@ export default function Planos() {
                 onChange={(e) =>
                   setFormData({ ...formData, ativo: e.target.checked })
                 }
-                className="h-4 w-4 rounded border-gray-300"
+                className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500"
               />
               <label
                 htmlFor="ativo"
-                className="text-sm font-medium text-gray-700"
+                className="text-sm font-semibold text-gray-700 cursor-pointer"
               >
-                Plano ativo (disponível para assinaturas)
+                ✅ Plano ativo (disponível para assinaturas)
               </label>
             </div>
-
-            <DialogFooter>
+            <DialogFooter className="border-t pt-4 mt-4">
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => setShowDialog(false)}
+                className="hover:bg-gray-100"
               >
                 Cancelar
               </Button>
-              <Button type="submit">
-                {editingPlano ? "Atualizar" : "Criar"} Plano
+              <Button
+                type="submit"
+                className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700"
+              >
+                {editingPlano ? "💾 Atualizar" : "➕ Criar"} Plano
               </Button>
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Success Dialog */}
+      <ConfirmDialog
+        isOpen={successDialog.isOpen}
+        onClose={() => setSuccessDialog({ isOpen: false, message: "" })}
+        onConfirm={() => setSuccessDialog({ isOpen: false, message: "" })}
+        title="Sucesso!"
+        message={successDialog.message}
+        confirmText="OK"
+        cancelText=""
+        type="info"
+        icon="warning"
+      />
+
+      {/* Error Dialog */}
+      <ConfirmDialog
+        isOpen={errorDialog.isOpen}
+        onClose={() => setErrorDialog({ isOpen: false, message: "" })}
+        onConfirm={() => setErrorDialog({ isOpen: false, message: "" })}
+        title="Erro"
+        message={errorDialog.message}
+        confirmText="OK"
+        cancelText=""
+        type="danger"
+        icon="warning"
+      />
+
+      {/* Confirm Delete Dialog */}
+      <ConfirmDialog
+        isOpen={confirmDelete.isOpen}
+        onClose={() => setConfirmDelete({ isOpen: false, planoId: null })}
+        onConfirm={confirmDeletePlano}
+        title="Inativar Plano"
+        message="Deseja inativar este plano? Ele não poderá mais ser atribuído a novos alunos."
+        confirmText="Inativar"
+        cancelText="Cancelar"
+        type="warning"
+        icon="warning"
+      />
     </div>
   );
 }

@@ -98,12 +98,22 @@ export class PlanosController {
       perfis: user?.perfis?.map((p: any) => p.nome || p),
     });
 
+    // Buscar franqueado_id se for franqueado
+    let franqueadoId: string | null = null;
+    if (isFranqueado && user?.id) {
+      const franqueadoResult = await this.dataSource.query(
+        `SELECT id FROM teamcruz.franqueados WHERE usuario_id = $1 LIMIT 1`,
+        [user.id],
+      );
+      franqueadoId = franqueadoResult[0]?.id || null;
+      console.log('🔍 [PLANOS] Franqueado ID:', franqueadoId);
+    }
+
     if (!unidade_id) {
       if (isFranqueado) {
-        console.log('⚠️ [PLANOS] Franqueado sem unidade_id - retornando vazio');
-        return [];
-      }
-      if (userUnidadeId) {
+        console.log('✅ [PLANOS] Franqueado buscando planos das suas unidades');
+        // Franqueados veem planos de todas as suas unidades
+      } else if (userUnidadeId) {
         console.log('✅ [PLANOS] Aplicando unidade do usuário:', userUnidadeId);
         unidade_id = userUnidadeId;
       }
@@ -119,7 +129,7 @@ export class PlanosController {
       }
     }
 
-    const planos = await this.planosService.findAll(unidade_id);
+    const planos = await this.planosService.findAll(unidade_id, franqueadoId);
 
     // Mapear para incluir unidade_nome
     return planos.map((plano: any) => ({

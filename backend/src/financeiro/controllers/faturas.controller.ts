@@ -86,14 +86,24 @@ export class FaturasController {
       isFranqueado,
     });
 
+    // Buscar franqueado_id se for franqueado
+    let franqueadoId: string | null = null;
+    if (isFranqueado && user?.id) {
+      const franqueadoResult = await this.dataSource.query(
+        `SELECT id FROM teamcruz.franqueados WHERE usuario_id = $1 LIMIT 1`,
+        [user.id],
+      );
+      franqueadoId = franqueadoResult[0]?.id || null;
+      console.log('🔍 [FATURAS] Franqueado ID:', franqueadoId);
+    }
+
     if (!unidade_id) {
       if (isFranqueado) {
         console.log(
-          '⚠️ [FATURAS] Franqueado sem unidade_id - retornando vazio',
+          '✅ [FATURAS] Franqueado buscando faturas de suas unidades',
         );
-        return [];
-      }
-      if (userUnidadeId) {
+        // Será filtrado no service pelo franqueado_id
+      } else if (userUnidadeId) {
         console.log(
           '✅ [FATURAS] Aplicando unidade do usuário:',
           userUnidadeId,
@@ -109,7 +119,12 @@ export class FaturasController {
       }
     }
 
-    const faturas = await this.faturasService.findAll(unidade_id, status, mes);
+    const faturas = await this.faturasService.findAll(
+      unidade_id,
+      status,
+      mes,
+      franqueadoId,
+    );
 
     // Mapear para incluir aluno_nome
     return faturas.map((fatura) => ({

@@ -1,6 +1,6 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Inject } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between } from 'typeorm';
+import { Repository, Between, DataSource } from 'typeorm';
 import { Venda, StatusVenda } from '../entities/venda.entity';
 import {
   Transacao,
@@ -22,6 +22,7 @@ export class VendasService {
     private vendasRepository: Repository<Venda>,
     @InjectRepository(Transacao)
     private transacaoRepository: Repository<Transacao>,
+    @Inject(DataSource) private dataSource: DataSource,
   ) {}
 
   async create(createVendaDto: CreateVendaDto, user: any): Promise<Venda> {
@@ -42,14 +43,26 @@ export class VendasService {
     return this.findOne(vendaSalva.id);
   }
 
-  async findAll(filtro: FiltroVendasDto): Promise<Venda[]> {
+  async findAll(
+    filtro: FiltroVendasDto,
+    franqueado_id?: string | null,
+  ): Promise<Venda[]> {
     const query = this.vendasRepository
       .createQueryBuilder('venda')
       .leftJoinAndSelect('venda.aluno', 'aluno')
       .leftJoinAndSelect('venda.unidade', 'unidade')
       .leftJoinAndSelect('venda.fatura', 'fatura');
 
-    if (filtro.unidadeId) {
+    // Se foi passado franqueado_id, filtrar pelas unidades desse franqueado
+    if (franqueado_id) {
+      console.log(
+        '🔍 [VENDAS SERVICE] Filtrando por franqueado_id:',
+        franqueado_id,
+      );
+      query.andWhere('unidade.franqueado_id = :franqueado_id', {
+        franqueado_id,
+      });
+    } else if (filtro.unidadeId) {
       query.andWhere('venda.unidade_id = :unidadeId', {
         unidadeId: filtro.unidadeId,
       });

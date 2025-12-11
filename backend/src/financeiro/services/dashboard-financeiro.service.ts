@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In } from 'typeorm';
+import { Repository, In, DataSource } from 'typeorm';
 import { FaturasService } from './faturas.service';
 import { DespesasService } from './despesas.service';
 import { TransacoesService } from './transacoes.service';
@@ -17,6 +17,7 @@ export class DashboardFinanceiroService {
     private despesasService: DespesasService,
     private transacoesService: TransacoesService,
     private assinaturasService: AssinaturasService,
+    private readonly dataSource: DataSource,
   ) {}
 
   async getDashboard(
@@ -49,10 +50,33 @@ export class DashboardFinanceiroService {
 
       if (!unidade_id && isFranqueado) {
         console.log(
-          '🔍 [DASHBOARD-SERVICE] Buscando unidades do franqueado...',
+          '🔍 [DASHBOARD-SERVICE] Buscando franqueado_id para usuario_id:',
+          user.id,
         );
+
+        // Buscar franqueado_id na tabela franqueados
+        const franqueadoResult = await this.dataSource.query(
+          'SELECT id FROM teamcruz.franqueados WHERE usuario_id = $1 LIMIT 1',
+          [user.id],
+        );
+
+        if (franqueadoResult.length === 0) {
+          console.error(
+            '❌ [DASHBOARD-SERVICE] Franqueado não encontrado para usuario_id:',
+            user.id,
+          );
+          return this.getEmptyDashboard();
+        }
+
+        const franqueado_id = franqueadoResult[0].id;
+        console.log(
+          '✅ [DASHBOARD-SERVICE] franqueado_id encontrado:',
+          franqueado_id,
+        );
+
+        // Buscar unidades do franqueado
         const unidades = await this.unidadeRepository.find({
-          where: { franqueado_id: user.id },
+          where: { franqueado_id: franqueado_id },
           select: ['id'],
         });
         console.log(
@@ -203,15 +227,26 @@ export class DashboardFinanceiroService {
     // Verificar se é franqueado e buscar suas unidades
     let unidadesIds: string[] = [];
     if (!unidade_id && isFranqueado) {
-      const unidades = await this.unidadeRepository.find({
-        where: { franqueado_id: user.id },
-        select: ['id'],
-      });
-      unidadesIds = unidades.map((u) => u.id);
-      console.log(
-        `📈 [EVOLUCAO-RECEITA] Encontradas ${unidadesIds.length} unidades do franqueado:`,
-        unidadesIds,
+      // Buscar franqueado_id na tabela franqueados
+      const franqueadoResult = await this.dataSource.query(
+        'SELECT id FROM teamcruz.franqueados WHERE usuario_id = $1 LIMIT 1',
+        [user.id],
       );
+
+      if (franqueadoResult.length > 0) {
+        const franqueado_id = franqueadoResult[0].id;
+        console.log('📈 [EVOLUCAO-RECEITA] franqueado_id:', franqueado_id);
+
+        const unidades = await this.unidadeRepository.find({
+          where: { franqueado_id: franqueado_id },
+          select: ['id'],
+        });
+        unidadesIds = unidades.map((u) => u.id);
+        console.log(
+          `📈 [EVOLUCAO-RECEITA] Encontradas ${unidadesIds.length} unidades do franqueado:`,
+          unidadesIds,
+        );
+      }
     }
 
     // Se não tem unidade_id E não é franqueado E usuário tem unidade, usar unidade do usuário
@@ -313,15 +348,25 @@ export class DashboardFinanceiroService {
       // Verificar se é franqueado e buscar suas unidades
       let faturasMes: any[] = [];
       if (!unidade_id && isFranqueado) {
-        const unidades = await this.unidadeRepository.find({
-          where: { franqueado_id: user.id },
-          select: ['id'],
-        });
-        const unidadesIds = unidades.map((u) => u.id);
+        // Buscar franqueado_id na tabela franqueados
+        const franqueadoResult = await this.dataSource.query(
+          'SELECT id FROM teamcruz.franqueados WHERE usuario_id = $1 LIMIT 1',
+          [user.id],
+        );
 
-        for (const uid of unidadesIds) {
-          const faturas = await this.faturasService.findAll(uid);
-          faturasMes.push(...faturas);
+        if (franqueadoResult.length > 0) {
+          const franqueado_id = franqueadoResult[0].id;
+
+          const unidades = await this.unidadeRepository.find({
+            where: { franqueado_id: franqueado_id },
+            select: ['id'],
+          });
+          const unidadesIds = unidades.map((u) => u.id);
+
+          for (const uid of unidadesIds) {
+            const faturas = await this.faturasService.findAll(uid);
+            faturasMes.push(...faturas);
+          }
         }
       } else {
         faturasMes = await this.faturasService.findAll(unidade_id);
@@ -368,8 +413,20 @@ export class DashboardFinanceiroService {
       // Verificar se é franqueado e buscar suas unidades
       let unidadesIds: string[] = [];
       if (isFranqueado) {
+        // Buscar franqueado_id na tabela franqueados
+        const franqueadoResult = await this.dataSource.query(
+          'SELECT id FROM teamcruz.franqueados WHERE usuario_id = $1 LIMIT 1',
+          [user.id],
+        );
+
+        if (franqueadoResult.length === 0) {
+          return [];
+        }
+
+        const franqueado_id = franqueadoResult[0].id;
+
         const unidades = await this.unidadeRepository.find({
-          where: { franqueado_id: user.id },
+          where: { franqueado_id: franqueado_id },
           select: ['id', 'nome'],
         });
         unidadesIds = unidades.map((u) => u.id);

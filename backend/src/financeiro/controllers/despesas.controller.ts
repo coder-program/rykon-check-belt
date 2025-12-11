@@ -87,14 +87,24 @@ export class DespesasController {
       isFranqueado,
     });
 
+    // Buscar franqueado_id se for franqueado
+    let franqueadoId: string | null = null;
+    if (isFranqueado && user?.id) {
+      const franqueadoResult = await this.dataSource.query(
+        `SELECT id FROM teamcruz.franqueados WHERE usuario_id = $1 LIMIT 1`,
+        [user.id],
+      );
+      franqueadoId = franqueadoResult[0]?.id || null;
+      console.log('🔍 [DESPESAS] Franqueado ID:', franqueadoId);
+    }
+
     if (!unidade_id) {
       if (isFranqueado) {
         console.log(
-          '⚠️ [DESPESAS] Franqueado sem unidade_id - retornando vazio',
+          '✅ [DESPESAS] Franqueado buscando despesas de suas unidades',
         );
-        return [];
-      }
-      if (userUnidadeId) {
+        // Será filtrado no service pelo franqueado_id
+      } else if (userUnidadeId) {
         console.log(
           '✅ [DESPESAS] Aplicando unidade do usuário:',
           userUnidadeId,
@@ -110,7 +120,7 @@ export class DespesasController {
       }
     }
 
-    return this.despesasService.findAll(unidade_id, status);
+    return this.despesasService.findAll(unidade_id, status, franqueadoId);
   }
 
   @Get(':id')

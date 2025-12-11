@@ -78,6 +78,7 @@ export class FaturasService {
     unidade_id?: string,
     status?: StatusFatura,
     mes?: string,
+    franqueado_id?: string | null,
   ): Promise<Fatura[]> {
     const query = this.faturaRepository
       .createQueryBuilder('fatura')
@@ -87,7 +88,16 @@ export class FaturasService {
       .leftJoinAndSelect('assinatura.unidade', 'unidade')
       .orderBy('fatura.data_vencimento', 'DESC');
 
-    if (unidade_id) {
+    // Se foi passado franqueado_id, filtrar pelas unidades desse franqueado
+    if (franqueado_id) {
+      console.log(
+        '🔍 [FATURAS SERVICE] Filtrando por franqueado_id:',
+        franqueado_id,
+      );
+      query.andWhere('unidade.franqueado_id = :franqueado_id', {
+        franqueado_id,
+      });
+    } else if (unidade_id) {
       query.andWhere('unidade.id = :unidade_id', { unidade_id });
     }
 

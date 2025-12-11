@@ -70,14 +70,24 @@ export class TransacoesController {
       isFranqueado,
     });
 
+    // Buscar franqueado_id se for franqueado
+    let franqueadoId: string | null = null;
+    if (isFranqueado && user?.id) {
+      const franqueadoResult = await this.dataSource.query(
+        `SELECT id FROM teamcruz.franqueados WHERE usuario_id = $1 LIMIT 1`,
+        [user.id],
+      );
+      franqueadoId = franqueadoResult[0]?.id || null;
+      console.log('🔍 [TRANSACOES] Franqueado ID:', franqueadoId);
+    }
+
     if (!filtro.unidade_id) {
       if (isFranqueado) {
         console.log(
-          '⚠️ [TRANSACOES] Franqueado sem unidade_id - retornando vazio',
+          '✅ [TRANSACOES] Franqueado buscando transações de suas unidades',
         );
-        return [];
-      }
-      if (userUnidadeId) {
+        // Será filtrado no service pelo franqueado_id
+      } else if (userUnidadeId) {
         console.log(
           '✅ [TRANSACOES] Aplicando unidade do usuário:',
           userUnidadeId,
@@ -96,7 +106,10 @@ export class TransacoesController {
       }
     }
 
-    const transacoes = await this.transacoesService.findAll(filtro);
+    const transacoes = await this.transacoesService.findAll(
+      filtro,
+      franqueadoId,
+    );
     return transacoes.map((transacao) => ({
       ...transacao,
       aluno_nome: transacao.aluno?.nome_completo,
@@ -122,12 +135,24 @@ export class TransacoesController {
       filtro_unidade_id: filtro.unidade_id,
     });
 
+    // Buscar franqueado_id se for franqueado
+    let franqueadoId: string | null = null;
+    if (isFranqueado && user?.id) {
+      const franqueadoResult = await this.dataSource.query(
+        `SELECT id FROM teamcruz.franqueados WHERE usuario_id = $1 LIMIT 1`,
+        [user.id],
+      );
+      franqueadoId = franqueadoResult[0]?.id || null;
+      console.log('📋 [EXTRATO] Franqueado ID:', franqueadoId);
+    }
+
     if (!filtro.unidade_id) {
       if (isFranqueado) {
-        console.log('⚠️ [EXTRATO] Franqueado sem unidade_id');
-        return { transacoes: [], resumo: { entradas: 0, saidas: 0, saldo: 0 } };
-      }
-      if (userUnidadeId) {
+        console.log(
+          '✅ [EXTRATO] Franqueado buscando extrato de suas unidades',
+        );
+        // Será filtrado no service pelo franqueado_id
+      } else if (userUnidadeId) {
         console.log(
           '✅ [EXTRATO] Aplicando unidade do usuário:',
           userUnidadeId,
@@ -146,6 +171,6 @@ export class TransacoesController {
       }
     }
 
-    return this.transacoesService.getExtrato(filtro);
+    return this.transacoesService.getExtrato(filtro, franqueadoId);
   }
 }

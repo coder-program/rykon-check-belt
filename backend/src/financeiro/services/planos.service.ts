@@ -16,14 +16,29 @@ export class PlanosService {
     return await this.planoRepository.save(plano);
   }
 
-  async findAll(unidade_id?: string): Promise<Plano[]> {
+  async findAll(
+    unidade_id?: string,
+    franqueado_id?: string | null,
+  ): Promise<Plano[]> {
     const query = this.planoRepository
       .createQueryBuilder('plano')
       .leftJoinAndSelect('plano.unidade', 'unidade')
       .orderBy('plano.ativo', 'DESC')
       .addOrderBy('plano.valor', 'ASC');
 
-    if (unidade_id) {
+    // Se foi passado franqueado_id, filtrar pelas unidades desse franqueado
+    if (franqueado_id) {
+      console.log(
+        '🔍 [PLANOS SERVICE] Filtrando por franqueado_id:',
+        franqueado_id,
+      );
+      query.andWhere(
+        '(unidade.franqueado_id = :franqueado_id OR plano.unidade_id IS NULL)',
+        {
+          franqueado_id,
+        },
+      );
+    } else if (unidade_id) {
       query.andWhere(
         '(plano.unidade_id = :unidade_id OR plano.unidade_id IS NULL)',
         {
@@ -32,7 +47,9 @@ export class PlanosService {
       );
     }
 
-    return await query.getMany();
+    const result = await query.getMany();
+    console.log('📊 [PLANOS SERVICE] Planos encontrados:', result.length);
+    return result;
   }
 
   async findOne(id: string): Promise<Plano> {

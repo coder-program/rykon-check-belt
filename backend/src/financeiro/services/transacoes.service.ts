@@ -25,7 +25,10 @@ export class TransacoesService {
     return await this.transacaoRepository.save(transacao);
   }
 
-  async findAll(filtro: FiltroTransacoesDto): Promise<Transacao[]> {
+  async findAll(
+    filtro: FiltroTransacoesDto,
+    franqueado_id?: string | null,
+  ): Promise<Transacao[]> {
     const query = this.transacaoRepository
       .createQueryBuilder('transacao')
       .leftJoinAndSelect('transacao.aluno', 'aluno')
@@ -33,6 +36,21 @@ export class TransacoesService {
       .leftJoinAndSelect('transacao.fatura', 'fatura')
       .leftJoinAndSelect('transacao.despesa', 'despesa')
       .orderBy('transacao.data', 'DESC');
+
+    // Se foi passado franqueado_id, filtrar pelas unidades desse franqueado
+    if (franqueado_id) {
+      console.log(
+        '🔍 [TRANSACOES SERVICE] Filtrando por franqueado_id:',
+        franqueado_id,
+      );
+      query.andWhere('unidade.franqueado_id = :franqueado_id', {
+        franqueado_id,
+      });
+    } else if (filtro.unidade_id) {
+      query.andWhere('transacao.unidade_id = :unidade_id', {
+        unidade_id: filtro.unidade_id,
+      });
+    }
 
     if (filtro.data_inicio) {
       query.andWhere('transacao.data >= :data_inicio', {
@@ -60,25 +78,27 @@ export class TransacoesService {
       });
     }
 
-    if (filtro.unidade_id) {
-      query.andWhere('transacao.unidade_id = :unidade_id', {
-        unidade_id: filtro.unidade_id,
-      });
-    }
-
     if (filtro.aluno_id) {
       query.andWhere('transacao.aluno_id = :aluno_id', {
         aluno_id: filtro.aluno_id,
       });
     }
 
-    return await query.getMany();
+    const result = await query.getMany();
+    console.log(
+      `🔍 [TRANSACOES SERVICE] Encontradas ${result.length} transações`,
+    );
+
+    return result;
   }
 
-  async getExtrato(filtro: FiltroTransacoesDto): Promise<any> {
+  async getExtrato(
+    filtro: FiltroTransacoesDto,
+    franqueado_id?: string | null,
+  ): Promise<any> {
     console.log('📋 [EXTRATO] getExtrato chamado com filtro:', filtro);
 
-    const transacoes = await this.findAll(filtro);
+    const transacoes = await this.findAll(filtro, franqueado_id);
 
     console.log(`📋 [EXTRATO] Encontradas ${transacoes.length} transações`);
 

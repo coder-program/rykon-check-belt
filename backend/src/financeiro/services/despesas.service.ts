@@ -71,13 +71,23 @@ export class DespesasService {
   async findAll(
     unidade_id?: string,
     status?: StatusDespesa,
+    franqueado_id?: string | null,
   ): Promise<Despesa[]> {
     const query = this.despesaRepository
       .createQueryBuilder('despesa')
       .leftJoinAndSelect('despesa.unidade', 'unidade')
       .orderBy('despesa.data_vencimento', 'ASC');
 
-    if (unidade_id) {
+    // Se foi passado franqueado_id, filtrar pelas unidades desse franqueado
+    if (franqueado_id) {
+      console.log(
+        '🔍 [DESPESAS SERVICE] Filtrando por franqueado_id:',
+        franqueado_id,
+      );
+      query.andWhere('unidade.franqueado_id = :franqueado_id', {
+        franqueado_id,
+      });
+    } else if (unidade_id) {
       query.andWhere('despesa.unidade_id = :unidade_id', { unidade_id });
     }
 
@@ -132,6 +142,12 @@ export class DespesasService {
     const despesaAtualizada = await this.despesaRepository.save(despesa);
 
     // Criar transação de saída
+    console.log('💰 [DESPESAS] Criando transação de saída para despesa:', {
+      despesa_id: despesa.id,
+      unidade_id: despesa.unidade_id,
+      valor: despesa.valor,
+    });
+
     const transacao = this.transacaoRepository.create({
       tipo: TipoTransacao.SAIDA,
       origem: OrigemTransacao.DESPESA,
@@ -145,7 +161,12 @@ export class DespesasService {
       criado_por: user?.id || null,
     });
 
-    await this.transacaoRepository.save(transacao);
+    const transacaoSalva = await this.transacaoRepository.save(transacao);
+    console.log('✅ [DESPESAS] Transação de saída criada:', {
+      transacao_id: transacaoSalva.id,
+      tipo: transacaoSalva.tipo,
+      unidade_id: transacaoSalva.unidade_id,
+    });
 
     return despesaAtualizada;
   }

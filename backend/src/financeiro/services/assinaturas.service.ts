@@ -2,9 +2,10 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  Inject,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, DataSource } from 'typeorm';
 import { Assinatura, StatusAssinatura } from '../entities/assinatura.entity';
 import { Plano } from '../entities/plano.entity';
 import { Aluno } from '../../people/entities/aluno.entity';
@@ -27,6 +28,7 @@ export class AssinaturasService {
     private alunoRepository: Repository<Aluno>,
     @InjectRepository(Unidade)
     private unidadeRepository: Repository<Unidade>,
+    @Inject(DataSource) private dataSource: DataSource,
   ) {}
 
   async create(
@@ -128,24 +130,37 @@ export class AssinaturasService {
         console.log(
           '🔍 [ASSINATURAS-SERVICE] Buscando assinaturas de todas unidades do franqueado',
         );
-        // Buscar unidades do franqueado diretamente
-        const unidades = await this.unidadeRepository.find({
-          where: { franqueado_id: user.id },
-          select: ['id'],
-        });
-        const unidadeIds = unidades.map((u) => u.id);
-        console.log(
-          `✅ [ASSINATURAS-SERVICE] Encontradas ${unidadeIds.length} unidades:`,
-          unidadeIds,
+        // Buscar franqueado_id correto
+        const franqueadoResult = await this.dataSource.query(
+          `SELECT id FROM teamcruz.franqueados WHERE usuario_id = $1 LIMIT 1`,
+          [user.id],
         );
+        const franqueadoId = franqueadoResult[0]?.id || null;
+        console.log('🔍 [ASSINATURAS-SERVICE] Franqueado ID:', franqueadoId);
 
-        if (unidadeIds.length > 0) {
-          query.andWhere('assinatura.unidade_id IN (:...unidadeIds)', {
-            unidadeIds,
+        if (franqueadoId) {
+          // Buscar unidades do franqueado
+          const unidades = await this.unidadeRepository.find({
+            where: { franqueado_id: franqueadoId },
+            select: ['id'],
           });
+          const unidadeIds = unidades.map((u) => u.id);
+          console.log(
+            `✅ [ASSINATURAS-SERVICE] Encontradas ${unidadeIds.length} unidades:`,
+            unidadeIds,
+          );
+
+          if (unidadeIds.length > 0) {
+            query.andWhere('assinatura.unidade_id IN (:...unidadeIds)', {
+              unidadeIds,
+            });
+          } else {
+            console.warn('⚠️ [ASSINATURAS-SERVICE] Franqueado sem unidades');
+            // Retornar vazio se não tem unidades
+            query.andWhere('1=0');
+          }
         } else {
-          console.warn('⚠️ [ASSINATURAS-SERVICE] Franqueado sem unidades');
-          // Retornar vazio se não tem unidades
+          console.warn('⚠️ [ASSINATURAS-SERVICE] Franqueado_id não encontrado');
           query.andWhere('1=0');
         }
       } else if (user.unidade_id) {
