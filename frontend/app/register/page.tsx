@@ -638,13 +638,20 @@ export default function RegisterPage() {
       setError("Seleção da unidade é obrigatória");
       return false;
     }
-    if (!formData.faixa_atual) {
-      setError("Seleção da faixa atual é obrigatória");
-      return false;
-    }
-    if (formData.graus === "" || formData.graus === undefined) {
-      setError("Seleção dos graus é obrigatória");
-      return false;
+
+    // Validação de faixa e graus SOMENTE para perfil ALUNO
+    const perfilSelecionado = perfis.find((p) => p.id === formData.perfil_id);
+    const isPerfilAluno = perfilSelecionado?.nome === "ALUNO";
+
+    if (isPerfilAluno) {
+      if (!formData.faixa_atual) {
+        setError("Seleção da faixa atual é obrigatória para alunos");
+        return false;
+      }
+      if (formData.graus === "" || formData.graus === undefined) {
+        setError("Seleção dos graus é obrigatória para alunos");
+        return false;
+      }
     }
 
     // Validar idade mínima de 10 anos
