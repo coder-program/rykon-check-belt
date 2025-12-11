@@ -29,20 +29,34 @@ async function bootstrap() {
     'https://teamcruz.rykonfit.com.br',
     'http://teamcruz.rykonfit.com.br',
     'https://api.rykonfit.com.br',
-    'http://localhost:3000', // Desenvolvimento local
+    'http://localhost:3000', // Desenvolvimento local frontend
+    'http://localhost:3001', // Desenvolvimento local frontend alternativo
+    'http://localhost:4000', // Desenvolvimento local backend
+    'http://127.0.0.1:3000', // Desenvolvimento local frontend
+    'http://127.0.0.1:4000', // Desenvolvimento local backend
     process.env.CORS_ORIGIN,
   ].filter(Boolean);
 
   app.enableCors({
     origin: (origin, callback) => {
       // Permite requisições sem origin (mobile apps, Postman, etc)
-      if (!origin) return callback(null, true);
+      if (!origin) {
+        return callback(null, true);
+      }
 
       // Verifica se a origin está na lista permitida ou é do Vercel
       if (allowedOrigins.includes(origin) || origin.endsWith('.vercel.app')) {
         callback(null, true);
       } else {
-        callback(new Error('Not allowed by CORS'));
+        console.error('CORS bloqueado:', origin);
+        console.error('   Origens permitidas:', allowedOrigins);
+        // Em desenvolvimento, permite mesmo assim com warning
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('MODO DESENVOLVIMENTO: Permitindo origin não listada');
+          callback(null, true);
+        } else {
+          callback(new Error('Not allowed by CORS'));
+        }
       }
     },
     credentials: true,

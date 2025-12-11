@@ -81,30 +81,30 @@ export default function RegisterPage() {
     CINZA_BRANCA: { text: "#8d939dff" }, // Cinza claro
     CINZA_E_BRANCA: { text: "#8d939dff" },
     CINZA: { text: "#5b616aff" }, // Cinza padrão
-    CINZA_PRETA: { text: "#4b4e51ff"}, // Cinza escuro
+    CINZA_PRETA: { text: "#4b4e51ff" }, // Cinza escuro
     CINZA_E_PRETA: { text: "#4b4e51ff " },
-    
+
     // Faixas Infantis - Amarela
     AMARELA_BRANCA: { text: "#FDE68A" }, // Amarelo claro
     AMARELA_E_BRANCA: { text: "#ddb92aff" },
     AMARELA: { text: "#f4fd00ff" }, // Amarelo padrão
     AMARELA_PRETA: { text: "#f0bc00ff" }, // Amarelo escuro
     AMARELA_E_PRETA: { text: "#f0bc00ff" },
-    
+
     // Faixas Infantis - Laranja
     LARANJA_BRANCA: { text: "#e17f0eff" }, // Laranja claro
     LARANJA_E_BRANCA: { text: "#e17f0eff" },
     LARANJA: { text: "#dc6b0eff" }, // Laranja padrão
     LARANJA_PRETA: { text: "#EA580C" }, // Laranja escuro
     LARANJA_E_PRETA: { text: "#ff6105ff" },
-    
+
     // Faixas Infantis - Verde
     VERDE_BRANCA: { text: "#86EFAC" }, // Verde claro
     VERDE_E_BRANCA: { text: "#86EFAC" },
     VERDE: { text: "#22C55E" }, // Verde padrão
     VERDE_PRETA: { text: "#15803D" }, // Verde escuro
     VERDE_E_PRETA: { text: "#15803D" },
-    
+
     // Faixas Adultas
     BRANCA: { text: "#FFFFFF" },
     AZUL: { text: "#3B82F6" },
@@ -121,7 +121,11 @@ export default function RegisterPage() {
     if (faixaColors[codigo]) return faixaColors[codigo];
 
     // normalize and try tokens
-    const normalized = codigo.toString().toUpperCase().replace(/[^A-Z0-9]+/g, " ").trim();
+    const normalized = codigo
+      .toString()
+      .toUpperCase()
+      .replace(/[^A-Z0-9]+/g, " ")
+      .trim();
     const parts = normalized.split(/\s+/);
     for (const part of parts) {
       if (faixaColors[part]) return faixaColors[part];
@@ -234,9 +238,21 @@ export default function RegisterPage() {
         setUnidades(data);
       } catch (error) {
         console.error("Erro ao carregar unidades:", error);
-        toast.error("Não foi possível carregar as unidades disponíveis", {
-          duration: 5000,
-        });
+
+        // Criar unidade fallback para permitir o cadastro
+        const unidadePadrao = {
+          id: "padrao-unidade",
+          nome: "Unidade Principal (selecione manualmente após cadastro)",
+          cnpj: "",
+          status: "ATIVA" as const,
+        };
+
+        setUnidades([unidadePadrao]);
+
+        toast.error(
+          "Não foi possível carregar as unidades. Entre em contato com a administração.",
+          { duration: 7000 }
+        );
       } finally {
         setLoadingUnidades(false);
       }
@@ -282,9 +298,30 @@ export default function RegisterPage() {
         }
       } catch (error) {
         console.error("Erro ao carregar faixas:", error);
-        toast.error("Não foi possível carregar as faixas disponíveis", {
-          duration: 5000,
-        });
+
+        // Criar faixas básicas como fallback
+        const faixasPadrao = [
+          {
+            codigo: "BRANCA",
+            nome_exibicao: "Branca",
+            categoria: "INFANTIL",
+            ordem: 1,
+          },
+          {
+            codigo: "AZUL",
+            nome_exibicao: "Azul",
+            categoria: "ADULTO",
+            ordem: 10,
+          },
+        ];
+
+        setFaixas(faixasPadrao);
+        setFormData((prev) => ({ ...prev, faixa_atual: "BRANCA" }));
+
+        toast.error(
+          "Não foi possível carregar todas as faixas. Faixas básicas carregadas.",
+          { duration: 5000 }
+        );
       } finally {
         setLoadingFaixas(false);
       }
@@ -355,18 +392,19 @@ export default function RegisterPage() {
         }
       } catch (error) {
         console.error("Erro ao carregar perfis:", error);
-        // Se falhar, não envia perfil_id (backend usará "aluno" como padrão)
-        setPerfis([
-          {
-            id: "", // Deixa vazio para usar padrão do backend
-            nome: "Aluno",
-            descricao: "Perfil padrão (auto-selecionado)",
-            ativo: true,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          },
-        ]);
-        setFormData((prev) => ({ ...prev, perfil_id: "" }));
+        // Se falhar, cria perfil padrão com ID válido
+        const perfilPadrao = {
+          id: "aluno-padrao",
+          nome: "ALUNO",
+          descricao: "Praticante de Jiu-Jitsu (perfil padrão)",
+          ativo: true,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+
+        setPerfis([perfilPadrao]);
+        setFormData((prev) => ({ ...prev, perfil_id: perfilPadrao.id }));
+
         toast.error(
           "Não foi possível carregar os perfis. Você será cadastrado como Aluno.",
           { duration: 5000 }
@@ -376,7 +414,7 @@ export default function RegisterPage() {
       }
     };
     loadPerfis();
-  }, [isMenorDeIdade]); // Recarregar quando isMenorDeIdade mudar
+  }, [isMenorDeIdade]);
 
   // useEffect para formatar telefone automaticamente quando dados vierem do banco
   useEffect(() => {
@@ -856,6 +894,78 @@ export default function RegisterPage() {
                   </div>
                 </div>
 
+                {/* PERFIL - MOVIDO PARA O TOPO E EM DESTAQUE */}
+                <div className="space-y-2 bg-red-900/20 border-2 border-red-500/50 rounded-lg p-4">
+                  <Label
+                    htmlFor="perfil"
+                    className="flex items-center gap-2 text-gray-200 text-lg font-semibold"
+                  >
+                    <User2 className="h-5 w-5 text-red-400" />
+                    Perfil * (Escolha primeiro!)
+                  </Label>
+                  <Select
+                    value={formData.perfil_id}
+                    onValueChange={(value) => {
+                      setFormData({ ...formData, perfil_id: value });
+                      // Limpar campos de faixa se não for aluno
+                      const perfilSelecionado = perfis.find(
+                        (p) => p.id === value
+                      );
+                      if (perfilSelecionado?.nome !== "ALUNO") {
+                        setFormData((prev) => ({
+                          ...prev,
+                          faixa_atual: "",
+                          graus: "0",
+                          data_ultima_graduacao: "",
+                        }));
+                      }
+                    }}
+                    disabled={loadingPerfis}
+                  >
+                    <SelectTrigger className="h-12 bg-gray-800/50 border-gray-600 text-white focus:border-red-500 focus:ring-red-500">
+                      <SelectValue placeholder="👤 Selecione seu perfil" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-gray-800 border-gray-600">
+                      {perfis.map((perfil) => (
+                        <SelectItem
+                          key={perfil.id}
+                          value={perfil.id}
+                          className="text-white hover:bg-gray-700 focus:bg-gray-700 py-3"
+                        >
+                          <div className="flex flex-col">
+                            <span className="font-bold text-base">
+                              {perfil.nome}
+                            </span>
+                            {perfil.descricao && (
+                              <span className="text-xs text-gray-400 mt-1">
+                                {perfil.descricao}
+                              </span>
+                            )}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-gray-300 font-medium">
+                    ℹ️ Selecione o perfil que melhor descreve você no sistema.
+                    Os campos a seguir serão ajustados conforme sua escolha.
+                  </p>
+                  {formData.perfil_id &&
+                    perfis.find((p) => p.id === formData.perfil_id)?.nome ===
+                      "RESPONSAVEL" && (
+                      <div className="mt-3 bg-yellow-900/30 border border-yellow-600/50 rounded-lg p-3">
+                        <div className="flex items-start gap-2">
+                          <AlertCircle className="h-4 w-4 text-yellow-400 flex-shrink-0 mt-0.5" />
+                          <p className="text-xs text-yellow-200">
+                            <strong>Atenção:</strong> Cadastros com perfil de
+                            RESPONSAVEL requerem aprovação do administrador. Sua
+                            conta ficará inativa até a aprovação.
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label
@@ -1012,142 +1122,156 @@ export default function RegisterPage() {
                   </Select>
                 </div>
 
-                {/* Campos de Graduação (Faixa e Graus) */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label
-                      htmlFor="faixa_atual"
-                      className="flex items-center gap-2 text-gray-200"
-                    >
-                      <User2 className="h-4 w-4 text-red-400" />
-                      Faixa Atual *
-                    </Label>
-                    <Select
-                      value={formData.faixa_atual}
-                      onValueChange={(value) =>
-                        setFormData({ ...formData, faixa_atual: value })
-                      }
-                      disabled={loadingFaixas}
-                    >
-                      <SelectTrigger className="h-11 bg-gray-800/50 border-gray-600 text-white focus:border-red-500 focus:ring-red-500">
-                        <SelectValue
-                          placeholder={
-                            loadingFaixas
-                              ? "Carregando faixas..."
-                              : "Selecione sua faixa atual"
-                          }
+                {/* Campos de Graduação - SÓ APARECEM SE FOR ALUNO */}
+                {formData.perfil_id &&
+                  perfis.find((p) => p.id === formData.perfil_id)?.nome ===
+                    "ALUNO" && (
+                    <>
+                      <div className="border-t border-gray-700 pt-4">
+                        <h3 className="text-lg font-semibold text-red-400 mb-4 flex items-center gap-2">
+                          🥋 Informações de Graduação (Somente para Alunos)
+                        </h3>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label
+                            htmlFor="faixa_atual"
+                            className="flex items-center gap-2 text-gray-200"
+                          >
+                            <User2 className="h-4 w-4 text-red-400" />
+                            Faixa Atual *
+                          </Label>
+                          <Select
+                            value={formData.faixa_atual}
+                            onValueChange={(value) =>
+                              setFormData({ ...formData, faixa_atual: value })
+                            }
+                            disabled={loadingFaixas}
+                          >
+                            <SelectTrigger className="h-11 bg-gray-800/50 border-gray-600 text-white focus:border-red-500 focus:ring-red-500">
+                              <SelectValue
+                                placeholder={
+                                  loadingFaixas
+                                    ? "Carregando faixas..."
+                                    : "Selecione sua faixa atual"
+                                }
+                              />
+                            </SelectTrigger>
+                            <SelectContent className="bg-gray-800 border-gray-600 max-h-80">
+                              {faixasFiltradas.length === 0 ? (
+                                <div className="px-4 py-3 text-sm text-gray-400">
+                                  {!formData.data_nascimento
+                                    ? "Selecione a data de nascimento primeiro"
+                                    : "Nenhuma faixa disponível para esta idade"}
+                                </div>
+                              ) : (
+                                faixasFiltradas.map((faixa) => (
+                                  <SelectItem
+                                    key={faixa.codigo}
+                                    value={faixa.codigo}
+                                    className="hover:bg-gray-700 focus:bg-gray-700"
+                                  >
+                                    <div className="flex flex-col">
+                                      <span
+                                        className="font-medium"
+                                        style={{
+                                          color:
+                                            faixaColors[faixa.codigo]?.text ||
+                                            "#FFFFFF",
+                                        }}
+                                      >
+                                        {faixa.nome_exibicao}
+                                      </span>
+                                      <span className="text-xs text-gray-400">
+                                        {faixa.categoria}
+                                      </span>
+                                    </div>
+                                  </SelectItem>
+                                ))
+                              )}
+                            </SelectContent>
+                          </Select>
+                          {formData.data_nascimento && (
+                            <p className="text-xs text-gray-400">
+                              {calcularIdade(formData.data_nascimento) >= 16
+                                ? "Apenas faixas adultas (Azul, Roxa, Marrom, Preta) disponíveis para maiores de 16 anos"
+                                : "Apenas faixas infantis disponíveis para menores de 16 anos"}
+                            </p>
+                          )}
+                          {!formData.data_nascimento && (
+                            <p className="text-xs text-gray-400">
+                              Selecione a data de nascimento para ver faixas
+                              disponíveis
+                            </p>
+                          )}
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label
+                            htmlFor="graus"
+                            className="flex items-center gap-2 text-gray-200"
+                          >
+                            <User2 className="h-4 w-4 text-red-400" />
+                            Graus na Faixa Atual *
+                          </Label>
+                          <Select
+                            value={formData.graus}
+                            onValueChange={(value) =>
+                              setFormData({ ...formData, graus: value })
+                            }
+                          >
+                            <SelectTrigger className="h-11 bg-gray-800/50 border-gray-600 text-white focus:border-red-500 focus:ring-red-500">
+                              <SelectValue placeholder="Selecione os graus" />
+                            </SelectTrigger>
+                            <SelectContent className="bg-gray-800 border-gray-600">
+                              <SelectItem value="0" className="text-white">
+                                0 graus (sem grau)
+                              </SelectItem>
+                              <SelectItem value="1" className="text-white">
+                                1 grau
+                              </SelectItem>
+                              <SelectItem value="2" className="text-white">
+                                2 graus
+                              </SelectItem>
+                              <SelectItem value="3" className="text-white">
+                                3 graus
+                              </SelectItem>
+                              <SelectItem value="4" className="text-white">
+                                4 graus
+                              </SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <p className="text-xs text-gray-400">
+                            Quantos graus você possui na sua faixa atual
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Data da Última Graduação */}
+                      <div className="space-y-2">
+                        <Label
+                          htmlFor="data_ultima_graduacao"
+                          className="flex items-center gap-2 text-gray-200"
+                        >
+                          <Calendar className="h-4 w-4 text-red-400" />
+                          Data que Recebeu a Faixa Atual
+                        </Label>
+                        <Input
+                          id="data_ultima_graduacao"
+                          name="data_ultima_graduacao"
+                          type="date"
+                          value={formData.data_ultima_graduacao}
+                          onChange={handleChange}
+                          max={new Date().toISOString().split("T")[0]}
+                          className="h-11 bg-gray-800/50 border-gray-600 text-white placeholder-gray-400 focus:border-red-500 focus:ring-red-500"
                         />
-                      </SelectTrigger>
-                      <SelectContent className="bg-gray-800 border-gray-600 max-h-80">
-                        {faixasFiltradas.length === 0 ? (
-                          <div className="px-4 py-3 text-sm text-gray-400">
-                            {!formData.data_nascimento
-                              ? "Selecione a data de nascimento primeiro"
-                              : "Nenhuma faixa disponível para esta idade"}
-                          </div>
-                        ) : (
-                          faixasFiltradas.map((faixa) => (
-                            <SelectItem
-                              key={faixa.codigo}
-                              value={faixa.codigo}
-                              className="hover:bg-gray-700 focus:bg-gray-700"
-                            >
-                              <div className="flex flex-col">
-                                <span 
-                                  className="font-medium"
-                                  style={{ 
-                                    color: faixaColors[faixa.codigo]?.text || "#FFFFFF"
-                                  }}
-                                >
-                                  {faixa.nome_exibicao}
-                                </span>
-                                <span className="text-xs text-gray-400">
-                                  {faixa.categoria}
-                                </span>
-                              </div>
-                            </SelectItem>
-                          ))
-                        )}
-                      </SelectContent>
-                    </Select>
-                    {formData.data_nascimento && (
-                      <p className="text-xs text-gray-400">
-                        {calcularIdade(formData.data_nascimento) >= 16
-                          ? "Apenas faixas adultas (Azul, Roxa, Marrom, Preta) disponíveis para maiores de 16 anos"
-                          : "Apenas faixas infantis disponíveis para menores de 16 anos"}
-                      </p>
-                    )}
-                    {!formData.data_nascimento && (
-                      <p className="text-xs text-gray-400">
-                        Selecione a data de nascimento para ver faixas
-                        disponíveis
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label
-                      htmlFor="graus"
-                      className="flex items-center gap-2 text-gray-200"
-                    >
-                      <User2 className="h-4 w-4 text-red-400" />
-                      Graus na Faixa Atual *
-                    </Label>
-                    <Select
-                      value={formData.graus}
-                      onValueChange={(value) =>
-                        setFormData({ ...formData, graus: value })
-                      }
-                    >
-                      <SelectTrigger className="h-11 bg-gray-800/50 border-gray-600 text-white focus:border-red-500 focus:ring-red-500">
-                        <SelectValue placeholder="Selecione os graus" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-gray-800 border-gray-600">
-                        <SelectItem value="0" className="text-white">
-                          0 graus (sem grau)
-                        </SelectItem>
-                        <SelectItem value="1" className="text-white">
-                          1 grau
-                        </SelectItem>
-                        <SelectItem value="2" className="text-white">
-                          2 graus
-                        </SelectItem>
-                        <SelectItem value="3" className="text-white">
-                          3 graus
-                        </SelectItem>
-                        <SelectItem value="4" className="text-white">
-                          4 graus
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <p className="text-xs text-gray-400">
-                      Quantos graus você possui na sua faixa atual
-                    </p>
-                  </div>
-                </div>
-
-                {/* Data da Última Graduação */}
-                <div className="space-y-2">
-                  <Label
-                    htmlFor="data_ultima_graduacao"
-                    className="flex items-center gap-2 text-gray-200"
-                  >
-                    <Calendar className="h-4 w-4 text-red-400" />
-                    Data que Recebeu a Faixa Atual
-                  </Label>
-                  <Input
-                    id="data_ultima_graduacao"
-                    name="data_ultima_graduacao"
-                    type="date"
-                    value={formData.data_ultima_graduacao}
-                    onChange={handleChange}
-                    max={new Date().toISOString().split("T")[0]}
-                    className="h-11 bg-gray-800/50 border-gray-600 text-white placeholder-gray-400 focus:border-red-500 focus:ring-red-500"
-                  />
-                  <p className="text-xs text-gray-400">
-                    Quando você recebeu sua faixa atual (opcional)
-                  </p>
-                </div>
+                        <p className="text-xs text-gray-400">
+                          Quando você recebeu sua faixa atual (opcional)
+                        </p>
+                      </div>
+                    </>
+                  )}
 
                 {/* Campos do Responsável (apenas se menor de 18) */}
                 {isMenorDeIdade && (
@@ -1356,69 +1480,7 @@ export default function RegisterPage() {
                   )}
                 </div>
 
-                <div className="space-y-2">
-                  <Label
-                    htmlFor="perfil"
-                    className="flex items-center gap-2 text-gray-200"
-                  >
-                    <User2 className="h-4 w-4 text-red-400" />
-                    Perfil *
-                  </Label>
-                  <Select
-                    value={formData.perfil_id}
-                    onValueChange={(value) =>
-                      setFormData({ ...formData, perfil_id: value })
-                    }
-                    disabled={loadingPerfis}
-                  >
-                    <SelectTrigger className="h-11 bg-gray-800/50 border-gray-600 text-white focus:border-red-500 focus:ring-red-500">
-                      <SelectValue placeholder="Selecione seu perfil" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-gray-800 border-gray-600">
-                      {perfis.map((perfil) => (
-                        <SelectItem
-                          key={perfil.id}
-                          value={perfil.id}
-                          className="text-white hover:bg-gray-700 focus:bg-gray-700"
-                        >
-                          <div className="flex flex-col">
-                            <span className="font-medium">{perfil.nome}</span>
-                            {perfil.descricao && (
-                              <span className="text-xs text-gray-400">
-                                {perfil.descricao}
-                              </span>
-                            )}
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <p className="text-xs text-gray-400">
-                    Selecione o perfil que melhor descreve você no sistema
-                  </p>
-                  {formData.perfil_id &&
-                    perfis
-                      .find((p) => p.id === formData.perfil_id)
-                      ?.nome.toLowerCase() !== "aluno" && (
-                      <div className="bg-yellow-900/30 border border-yellow-600/50 rounded-lg p-3 mt-2">
-                        <div className="flex items-start gap-2">
-                          <AlertCircle className="h-4 w-4 text-yellow-400 mt-0.5 flex-shrink-0" />
-                          <p className="text-xs text-yellow-200">
-                            <strong>Atenção:</strong> Cadastros com perfil de{" "}
-                            <strong className="text-yellow-100">
-                              {
-                                perfis.find((p) => p.id === formData.perfil_id)
-                                  ?.nome
-                              }
-                            </strong>{" "}
-                            requerem aprovação do administrador. Sua conta
-                            ficará inativa até a aprovação.
-                          </p>
-                        </div>
-                      </div>
-                    )}
-                </div>
-
+                {/* Campos de Senha */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label

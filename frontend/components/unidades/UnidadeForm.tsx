@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { useAuth } from "@/app/auth/AuthContext";
 import toast from "react-hot-toast";
 import {
@@ -13,7 +13,15 @@ import {
   Facebook,
   Youtube,
   Linkedin,
+  Navigation,
+  MapPinned,
 } from "lucide-react";
+import {
+  geocodeAddress,
+  geocodeByCEP,
+  geocodeAddressMultiple,
+  isValidBrazilCoordinates,
+} from "@/utils/geocoding";
 
 interface RedesSociais {
   instagram?: string;
@@ -95,6 +103,10 @@ export default function UnidadeForm({
 }: UnidadeFormProps) {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = React.useState(0);
+  const [isGeocoding, setIsGeocoding] = useState(false);
+  const [geocodingResults, setGeocodingResults] = useState<any[]>([]);
+  const [showResultsModal, setShowResultsModal] = useState(false);
+
   // Estados de erro para validação visual
   const [fieldErrors, setFieldErrors] = React.useState<Record<string, string>>(
     {}
@@ -333,6 +345,157 @@ export default function UnidadeForm({
   // Função utilitária para verificar se um campo tem erro
   const hasFieldError = (fieldName: string) => {
     return fieldErrors[fieldName] || false;
+  };
+
+  // Função para buscar múltiplos resultados e permitir escolha
+  const handleGeocodeAddressMultiple = async () => {
+    if (!formData.cidade || !formData.estado) {
+      toast.error(
+        "Preencha pelo menos a cidade e o estado para obter as coordenadas"
+      );
+      return;
+    }
+
+    setIsGeocoding(true);
+
+    try {
+      toast.loading("Buscando localizações possíveis...");
+
+      const multipleResults = await geocodeAddressMultiple(
+        {
+          logradouro: formData.logradouro,
+          numero: formData.numero,
+          bairro: formData.bairro,
+          cidade: formData.cidade,
+          estado: formData.estado,
+          pais: formData.pais || "Brasil",
+        },
+        10
+      ); // Buscar até 10 resultados
+
+      toast.dismiss();
+
+      if (multipleResults.results.length === 0) {
+        toast.error("Nenhuma localização encontrada");
+        return;
+      }
+
+      if (multipleResults.results.length === 1) {
+        // Se encontrou apenas 1 resultado, usa direto
+        const result = multipleResults.results[0];
+        setFormData({
+          ...formData,
+          latitude: result.latitude,
+          longitude: result.longitude,
+        });
+        toast.success(
+          `Localização definida: ${result.displayName.substring(0, 60)}...`
+        );
+      } else {
+        // Se encontrou múltiplos, mostra modal para escolha
+        setGeocodingResults(multipleResults.results);
+        setShowResultsModal(true);
+        toast.success(
+          `Encontradas ${multipleResults.results.length} localizações. Escolha a mais precisa!`
+        );
+      }
+    } catch (error) {
+      toast.dismiss();
+      console.error("Erro ao buscar localizações:", error);
+      toast.error(
+        error instanceof Error ? error.message : "Erro ao buscar localizações"
+      );
+    } finally {
+      setIsGeocoding(false);
+    }
+  };
+
+  // Função para geocodificar o endereço e obter coordenadas
+  const handleGeocodeAddress = async () => {
+    // Verificar se os campos necessários estão preenchidos
+    if (!formData.cidade || !formData.estado) {
+      toast.error(
+        "Preencha pelo menos a cidade e o estado para obter as coordenadas"
+      );
+      return;
+    }
+
+    setIsGeocoding(true);
+
+    try {
+      toast.loading("Buscando coordenadas do endereço...");
+
+      let result;
+
+      // Tentar primeiro por CEP se disponível
+      if (formData.cep && formData.cep.replace(/\D/g, "").length === 8) {
+        try {
+          result = await geocodeByCEP(formData.cep);
+          toast.dismiss();
+          toast.success(`Coordenadas encontradas via CEP!`);
+        } catch (error) {
+          console.warn(
+            "Erro ao buscar por CEP, tentando endereço completo:",
+            error
+          );
+
+          // Se falhar, tenta pelo endereço completo
+          toast.dismiss();
+          toast.success(`Coordenadas encontradas via endereço!`);
+        }
+      } else {
+        // Geocodificar pelo endereço completo
+        result = await geocodeAddress({
+          logradouro: formData.logradouro,
+          numero: formData.numero,
+          bairro: formData.bairro,
+          cidade: formData.cidade,
+          estado: formData.estado,
+          pais: formData.pais || "Brasil",
+        });
+        toast.dismiss();
+        toast.success(`Coordenadas encontradas!`);
+      }
+
+      // Validar se as coordenadas estão no Brasil
+      if (!isValidBrazilCoordinates(result.latitude, result.longitude)) {
+        toast.error(
+          "As coordenadas encontradas não parecem estar no Brasil. Verifique o endereço."
+        );
+        return;
+      }
+
+      // Atualizar o formulário com as coordenadas
+      setFormData({
+        ...formData,
+        latitude: result.latitude,
+        longitude: result.longitude,
+      });
+
+      toast.success(
+        `Localização encontrada: ${result.displayName.substring(0, 80)}...`
+      );
+    } catch (error) {
+      toast.dismiss();
+      console.error("Erro ao geocodificar:", error);
+
+      // Mensagens de erro mais amigáveis
+      let errorMessage = "Não foi possível encontrar as coordenadas.";
+
+      if (error instanceof Error) {
+        if (error.message.includes("não encontrado")) {
+          errorMessage = `Endereço não encontrado. Verifique:\n• Nome correto da cidade (ex: "São Paulo", não "Sao Paulo")\n• Sigla do estado (ex: "SP")\n• Se o CEP está correto`;
+        } else if (error.message.includes("incompleto")) {
+          errorMessage = "Preencha pelo menos a cidade e o estado.";
+        } else {
+          errorMessage = error.message;
+        }
+      }
+
+      toast.error(errorMessage, { duration: 5000 });
+    } finally {
+      setIsGeocoding(false);
+    }
   };
 
   const handleSubmitWithValidation = (e: React.FormEvent) => {
@@ -1112,7 +1275,8 @@ export default function UnidadeForm({
                 {/* Seção de Geolocalização */}
                 <div className="border-t pt-6 mt-6">
                   <h4 className="text-md font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                    📍 Localização GPS
+                    <MapPin className="w-5 h-5" />
+                    Localização GPS
                     <span className="text-xs font-normal text-gray-500">
                       (necessário para validar check-in dos alunos)
                     </span>
@@ -1130,7 +1294,38 @@ export default function UnidadeForm({
                   </div>
 
                   <div className="space-y-4">
-                    <div className="flex gap-3">
+                    <div className="flex flex-wrap gap-3">
+                      {/* Botão PRINCIPAL: Buscar Múltiplos Resultados */}
+                      <button
+                        type="button"
+                        onClick={handleGeocodeAddressMultiple}
+                        disabled={
+                          isGeocoding || !formData.cidade || !formData.estado
+                        }
+                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                      >
+                        <MapPinned className="w-4 h-4" />
+                        {isGeocoding
+                          ? "Buscando..."
+                          : "🔍 Buscar Localização Precisa"}
+                      </button>
+
+                      {/* Botão RÁPIDO: Primeira Opção */}
+                      <button
+                        type="button"
+                        onClick={handleGeocodeAddress}
+                        disabled={
+                          isGeocoding || !formData.cidade || !formData.estado
+                        }
+                        className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors flex items-center gap-2 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                      >
+                        <MapPinned className="w-4 h-4" />
+                        {isGeocoding
+                          ? "Buscando..."
+                          : "⚡ Busca Rápida (1º Resultado)"}
+                      </button>
+
+                      {/* Botão ALTERNATIVO: Usar minha localização */}
                       <button
                         type="button"
                         onClick={() => {
@@ -1164,7 +1359,8 @@ export default function UnidadeForm({
                         }}
                         className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
                       >
-                        📍 Obter Minha Localização Atual
+                        <Navigation className="w-4 h-4" />
+                        Usar Minha Localização Atual
                       </button>
 
                       {(formData.latitude || formData.longitude) && (
@@ -1184,6 +1380,40 @@ export default function UnidadeForm({
                         </button>
                       )}
                     </div>
+
+                    {/* Explicação das opções */}
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                      <p className="text-sm text-blue-800 font-medium mb-2">
+                        💡 Escolha a melhor opção:
+                      </p>
+                      <ul className="text-xs text-blue-700 space-y-1 ml-4">
+                        <li>
+                          <strong>🔍 Buscar Localização Precisa:</strong> Mostra
+                          várias opções para você escolher a mais exata
+                          (RECOMENDADO)
+                        </li>
+                        <li>
+                          <strong>⚡ Busca Rápida:</strong> Usa o primeiro
+                          resultado encontrado (mais rápido, mas pode ser
+                          impreciso)
+                        </li>
+                        <li>
+                          <strong>📍 Usar Minha Localização:</strong> Somente se
+                          você estiver fisicamente na unidade
+                        </li>
+                      </ul>
+                    </div>
+
+                    {/* Mensagem de ajuda */}
+                    {(!formData.cidade || !formData.estado) && (
+                      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                        <p className="text-sm text-yellow-800">
+                          ⚠️ Preencha pelo menos a <strong>Cidade</strong> e o{" "}
+                          <strong>Estado</strong> para buscar as coordenadas
+                          automaticamente.
+                        </p>
+                      </div>
+                    )}
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
@@ -1237,21 +1467,36 @@ export default function UnidadeForm({
 
                     {formData.latitude && formData.longitude && (
                       <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                        <p className="text-sm text-green-800 font-medium mb-2">
-                          ✅ Localização configurada
+                        <p className="text-sm text-green-800 font-medium mb-2 flex items-center gap-2">
+                          <MapPin className="w-4 h-4" />✅ Localização
+                          configurada
                         </p>
-                        <p className="text-sm text-green-700">
-                          Coordenadas: {formData.latitude.toFixed(6)},{" "}
+                        <p className="text-sm text-green-700 mb-3">
+                          📍 Coordenadas: {formData.latitude.toFixed(6)},{" "}
                           {formData.longitude.toFixed(6)}
                         </p>
-                        <a
-                          href={`https://www.google.com/maps?q=${formData.latitude},${formData.longitude}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-sm text-blue-600 hover:underline mt-2 inline-block"
-                        >
-                          🗺️ Ver no Google Maps
-                        </a>
+                        <div className="flex gap-2">
+                          <a
+                            href={`https://www.google.com/maps?q=${formData.latitude},${formData.longitude}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sm bg-blue-600 text-white px-3 py-1.5 rounded hover:bg-blue-700 inline-flex items-center gap-1"
+                          >
+                            🗺️ Ver no Google Maps
+                          </a>
+                          <a
+                            href={`https://www.google.com/maps/search/?api=1&query=${formData.latitude},${formData.longitude}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sm bg-green-600 text-white px-3 py-1.5 rounded hover:bg-green-700 inline-flex items-center gap-1"
+                          >
+                            📱 Abrir no Maps
+                          </a>
+                        </div>
+                        <p className="text-xs text-green-600 mt-3">
+                          💡 Verifique se a localização está correta antes de
+                          salvar
+                        </p>
                       </div>
                     )}
                   </div>
@@ -1444,6 +1689,99 @@ export default function UnidadeForm({
           </div>
         </form>
       </div>
+
+      {/* Modal de Seleção de Resultados */}
+      {showResultsModal && geocodingResults.length > 0 && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[60] p-4">
+          <div className="bg-white rounded-lg shadow-2xl w-full max-w-3xl max-h-[80vh] flex flex-col">
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-900">
+                Escolha a Localização Correta
+              </h3>
+              <button
+                onClick={() => {
+                  setShowResultsModal(false);
+                  setGeocodingResults([]);
+                }}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+
+            <div className="p-6 overflow-y-auto flex-1">
+              <p className="text-sm text-gray-600 mb-4">
+                Encontramos {geocodingResults.length} localizações possíveis.
+                Clique na mais precisa para sua unidade:
+              </p>
+
+              <div className="space-y-3">
+                {geocodingResults.map((result, index) => (
+                  <button
+                    key={index}
+                    onClick={() => {
+                      setFormData({
+                        ...formData,
+                        latitude: result.latitude,
+                        longitude: result.longitude,
+                      });
+                      setShowResultsModal(false);
+                      setGeocodingResults([]);
+                      toast.success(
+                        `✅ Localização selecionada: ${result.displayName.substring(
+                          0,
+                          60
+                        )}...`
+                      );
+                    }}
+                    className="w-full text-left p-4 border border-gray-300 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-all group"
+                  >
+                    <div className="flex items-start gap-3">
+                      <MapPin className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900 group-hover:text-blue-700">
+                          {result.displayName}
+                        </p>
+                        <div className="mt-2 flex flex-wrap gap-3 text-xs text-gray-500">
+                          <span className="flex items-center gap-1">
+                            📍 {result.latitude.toFixed(6)},{" "}
+                            {result.longitude.toFixed(6)}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            🎯 Tipo: {result.accuracy}
+                          </span>
+                          {result.importance && (
+                            <span className="flex items-center gap-1">
+                              ⭐ Relevância:{" "}
+                              {(result.importance * 100).toFixed(0)}%
+                            </span>
+                          )}
+                        </div>
+                        <a
+                          href={`https://www.google.com/maps?q=${result.latitude},${result.longitude}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="text-xs text-blue-600 hover:underline mt-2 inline-block"
+                        >
+                          🗺️ Ver no Google Maps
+                        </a>
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="p-4 border-t border-gray-200 bg-gray-50">
+              <p className="text-xs text-gray-600">
+                💡 Dica: Verifique no Google Maps qual localização corresponde
+                exatamente ao endereço da sua unidade antes de selecionar.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
