@@ -1193,10 +1193,25 @@ export default function CompeticoesPage() {
                             </span>
                           </div>
                           {part.total_lutas > 0 && (
-                            <div className="mt-2 text-sm text-gray-600">
-                              <span className="flex items-center gap-1">
-                                <TrendingUp className="h-4 w-4" />
-                                {part.vitorias}V / {part.derrotas}D -{" "}
+                            <div className="mt-2 text-sm flex items-center gap-1">
+                              <TrendingUp className="h-4 w-4 text-gray-500" />
+                              <span className="font-semibold text-green-600">
+                                {part.vitorias}V
+                              </span>
+                              <span className="text-gray-400">/</span>
+                              <span className="font-semibold text-red-600">
+                                {part.derrotas}D
+                              </span>
+                              <span className="text-gray-400">-</span>
+                              <span
+                                className={`font-semibold ${
+                                  part.aproveitamento >= 70
+                                    ? "text-green-600"
+                                    : part.aproveitamento >= 50
+                                    ? "text-yellow-600"
+                                    : "text-red-600"
+                                }`}
+                              >
                                 {part.aproveitamento}% de aproveitamento
                               </span>
                             </div>
