@@ -1181,11 +1181,11 @@ export default function CompeticoesPage() {
                             <span
                               className={`px-2 py-1 rounded text-xs font-semibold ${
                                 part.posicao === "OURO"
-                                  ? "bg-yellow-100 text-yellow-800"
+                                  ? "bg-yellow-400 text-yellow-900 border border-yellow-600"
                                   : part.posicao === "PRATA"
-                                  ? "bg-gray-200 text-gray-700"
+                                  ? "bg-gray-300 text-gray-800 border border-gray-400"
                                   : part.posicao === "BRONZE"
-                                  ? "bg-amber-100 text-amber-800"
+                                  ? "bg-amber-700 text-amber-50 border border-amber-800"
                                   : "bg-gray-100 text-gray-600"
                               }`}
                             >
