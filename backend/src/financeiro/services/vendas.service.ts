@@ -128,6 +128,28 @@ export class VendasService {
   ): Promise<Venda> {
     const venda = await this.findOne(id);
 
+    // Verificar se já existe transação para esta venda (evita duplicação)
+    const transacaoExistente = await this.transacaoRepository.findOne({
+      where: {
+        venda_id: id,
+        origem: OrigemTransacao.VENDA,
+      },
+    });
+
+    if (transacaoExistente) {
+      console.log('⚠️ [VENDAS] Transação já existe para venda:', id);
+      // Se já existe transação, apenas atualizar o status da venda
+      venda.status = StatusVenda.PAGO;
+      venda.data_pagamento = new Date();
+
+      if (dados.metodo_pagamento) {
+        venda.metodo_pagamento = dados.metodo_pagamento as any;
+      }
+
+      await this.vendasRepository.save(venda);
+      return this.findOne(id);
+    }
+
     venda.status = StatusVenda.PAGO;
     venda.data_pagamento = new Date();
 
@@ -137,6 +159,7 @@ export class VendasService {
 
     await this.vendasRepository.save(venda);
 
+    console.log('✅ [VENDAS] Criando transação para venda:', id);
     // Criar transação de entrada
     const transacao = this.transacaoRepository.create({
       tipo: TipoTransacao.ENTRADA,
@@ -145,6 +168,7 @@ export class VendasService {
       descricao: `Pagamento da venda ${venda.numero_venda} - ${venda.descricao}`,
       aluno_id: venda.aluno_id,
       unidade_id: venda.unidade_id,
+      venda_id: id,
       valor: Number(venda.valor),
       data: new Date(),
       status: StatusTransacao.CONFIRMADA,

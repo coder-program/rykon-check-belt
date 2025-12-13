@@ -80,7 +80,7 @@ export default function MeusAlunosPage() {
         <h1 className="text-xl font-bold">Meus Alunos</h1>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-2 border rounded p-3">
-            <h2 className="font-semibold">Adicionar Filho</h2>
+            <h2 className="font-semibold">Adicionar Dependente</h2>
             <input
               className="input input-bordered w-full"
               placeholder="Nome"

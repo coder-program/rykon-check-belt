@@ -420,7 +420,7 @@ export default function ResponsavelDashboard() {
           </Card>
         </div>
 
-        {/* Meus Filhos */}
+        {/* Meus Dependentes */}
         <Card>
           <CardHeader>
             <div className="flex justify-between items-center">
@@ -537,18 +537,17 @@ export default function ResponsavelDashboard() {
               <div className="text-center py-12">
                 <Users className="h-16 w-16 text-gray-300 mx-auto mb-4" />
                 <h3 className="text-lg font-medium text-gray-900 mb-2">
-                  Nenhum filho cadastrado
+                  Nenhum dependente cadastrado
                 </h3>
                 <p className="text-gray-500 mb-6">
-                  Adicione seus filhos menores de idade para gerenciar os
-                  treinos deles
+                  Adicione seus dependentes para gerenciar os treinos deles
                 </p>
                 <Button
                   onClick={handleAddAluno}
                   className="bg-blue-600 hover:bg-blue-700"
                 >
                   <UserPlus className="h-4 w-4 mr-2" />
-                  Adicionar Primeiro Filho
+                  Adicionar Dependentes
                 </Button>
               </div>
             )}
@@ -566,9 +565,9 @@ export default function ResponsavelDashboard() {
           <CardContent>
             <div className="space-y-4">
               <p className="text-sm text-gray-700">
-                Você trouxe seus filhos para treinar e agora quer participar
-                também? Ótimo! Clique no botão abaixo para se cadastrar como
-                aluno e começar a treinar conosco.
+                Você trouxe seus dependentes para treinar e agora quer
+                participar também? Ótimo! Clique no botão abaixo para se
+                cadastrar como aluno e começar a treinar conosco.
               </p>
               <ul className="space-y-2 text-sm text-gray-700">
                 <li className="flex items-start">

@@ -43,8 +43,15 @@ export class ConviteCadastroService {
 
     await this.conviteRepository.save(convite);
 
-    // Retornar com link completo
-    const link = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/cadastro/${token}`;
+    // Buscar perfil_id de 'aluno'
+    const perfilAluno = await this.usuarioRepository.query(
+      `SELECT id FROM teamcruz.perfis WHERE UPPER(nome) = 'ALUNO' LIMIT 1`,
+    );
+    const perfilId = perfilAluno[0]?.id;
+
+    // Gerar link para /register com unidade e perfil pré-preenchidos
+    const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const link = `${baseUrl}/register?unidade=${dto.unidade_id}&perfil=${perfilId}`;
 
     return {
       ...convite,
@@ -70,9 +77,17 @@ export class ConviteCadastroService {
 
     const convites = await query.getMany();
 
+    // Buscar perfil_id de 'aluno'
+    const perfilAluno = await this.usuarioRepository.query(
+      `SELECT id FROM teamcruz.perfis WHERE UPPER(nome) = 'ALUNO' LIMIT 1`,
+    );
+    const perfilId = perfilAluno[0]?.id;
+
+    const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+
     return convites.map((c) => ({
       ...c,
-      link: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/cadastro/${c.token}`,
+      link: `${baseUrl}/register?unidade=${c.unidade_id}&perfil=${perfilId}`,
     }));
   }
 

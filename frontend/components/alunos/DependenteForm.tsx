@@ -30,7 +30,6 @@ interface DependenteFormData {
 
   // Matrícula
   unidade_id: string;
-  numero_matricula?: string;
   data_matricula?: string;
   faixa_atual?: string;
   graus?: string;
@@ -426,18 +425,6 @@ export default function DependenteForm({
             </h3>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="numero_matricula">Número de Matrícula</Label>
-                <Input
-                  id="numero_matricula"
-                  value={formData.numero_matricula || ""}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                    handleChange("numero_matricula", e.target.value)
-                  }
-                  placeholder="Ex: 2024001"
-                />
-              </div>
-
               <div>
                 <Label htmlFor="data_matricula">Data de Matrícula</Label>
                 <Input

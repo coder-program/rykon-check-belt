@@ -705,10 +705,14 @@ export default function VendasOnline() {
                                 <div>
                                   <p className="text-sm text-gray-500">Aluno</p>
                                   <p className="font-semibold">
-                                    {vendaSelecionada.aluno?.usuario?.nome}
+                                    {vendaSelecionada.aluno?.nome_completo ||
+                                      "-"}
                                   </p>
                                   <p className="text-sm">
-                                    {vendaSelecionada.aluno?.usuario?.email}
+                                    {vendaSelecionada.aluno?.email || "-"}
+                                  </p>
+                                  <p className="text-sm">
+                                    {vendaSelecionada.aluno?.telefone || "-"}
                                   </p>
                                 </div>
                                 <div>

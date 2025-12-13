@@ -199,7 +199,9 @@ export default function PageUnidades() {
       await qc.refetchQueries({ queryKey: ["unidades-gestao"] });
       setShowModal(false);
       resetForm();
-      toast.success("Unidade cadastrada com sucesso!");
+      toast.success("Unidade cadastrada com sucesso!", {
+        duration: 3000,
+      });
     },
     onError: (error: any) => {
       toast.error(error.message || "Erro ao cadastrar unidade");
@@ -233,7 +235,9 @@ export default function PageUnidades() {
       setEditingUnidade(null);
       setShowModal(false);
       resetForm();
-      toast.success("Unidade atualizada com sucesso!");
+      toast.success("Unidade atualizada com sucesso!", {
+        duration: 3000,
+      });
     },
     onError: (error: any) => {
       toast.error(error?.message || "Erro ao atualizar unidade");
@@ -256,7 +260,9 @@ export default function PageUnidades() {
         refetchType: "all",
       });
       await qc.refetchQueries({ queryKey: ["unidades-gestao"] });
-      toast.success("Unidade removida com sucesso!");
+      toast.success("Unidade removida com sucesso!", {
+        duration: 3000,
+      });
     },
     onError: (error: any) => {
       toast.error(error?.message || "Erro ao remover unidade");
@@ -541,6 +547,17 @@ export default function PageUnidades() {
             <option value="HOMOLOGACAO">Em Homologação</option>
             <option value="INATIVA">Inativas</option>
           </select>
+          <button
+            className="btn btn-outline"
+            onClick={() => {
+              setSearch("");
+              setDebounced("");
+              setStatus("todos");
+              toast.success("Filtros limpos", { duration: 3000 });
+            }}
+          >
+            Limpar Filtros
+          </button>
         </div>
 
         {/* Lista */}

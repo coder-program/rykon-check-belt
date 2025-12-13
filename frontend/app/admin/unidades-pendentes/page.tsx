@@ -49,7 +49,9 @@ export default function UnidadesPendentesPage() {
       updateUnidade(unidadeId, { status: "ATIVA" }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["unidades-pendentes"] });
-      toast.success("Unidade aprovada com sucesso!");
+      toast.success("Unidade aprovada com sucesso!", {
+        duration: 3000,
+      });
       setSelectedUnidade(null);
     },
     onError: () => {
@@ -62,7 +64,9 @@ export default function UnidadesPendentesPage() {
       updateUnidade(unidadeId, { status: "INATIVA" }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["unidades-pendentes"] });
-      toast.success("Unidade rejeitada");
+      toast.success("Unidade rejeitada", {
+        duration: 3000,
+      });
       setSelectedUnidade(null);
     },
     onError: () => {

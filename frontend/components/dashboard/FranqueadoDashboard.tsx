@@ -314,7 +314,7 @@ export default function FranqueadoDashboard() {
     },
     {
       title: "Gerenciar Professor",
-      description: "Adicionar novo professor/instrutor",
+      description: "Ver e editar dados dos professores",
       icon: GraduationCap,
       action: () => router.push("/professores"),
       color: "bg-teal-500",

@@ -278,7 +278,9 @@ function AlunosContent() {
       qc.invalidateQueries({ queryKey: ["alunos"] });
       setShowModal(false);
       resetForm();
-      toast.success("Aluno cadastrado com sucesso!");
+      toast.success("Aluno cadastrado com sucesso!", {
+        duration: 3000,
+      });
     },
     onError: (error: any) => {
       toast.error(error.message || "Erro ao cadastrar aluno");
@@ -293,7 +295,9 @@ function AlunosContent() {
       setEditingAluno(null);
       setShowModal(false);
       resetForm();
-      toast.success("Aluno atualizado com sucesso!");
+      toast.success("Aluno atualizado com sucesso!", {
+        duration: 3000,
+      });
     },
     onError: (error: any) => {
       toast.error(error?.message || "Erro ao atualizar aluno");
@@ -304,7 +308,9 @@ function AlunosContent() {
     mutationFn: deleteAluno,
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["alunos"] });
-      toast.success("Aluno removido com sucesso!");
+      toast.success("Aluno removido com sucesso!", {
+        duration: 3000,
+      });
     },
   });
 
@@ -631,6 +637,25 @@ function AlunosContent() {
                     <option value="PRETA">Preta</option>
                   </select>
                 </div>
+
+                <div className="flex items-end min-w-32">
+                  <button
+                    className="btn btn-outline w-full"
+                    onClick={() => {
+                      setSearch("");
+                      setDebounced("");
+                      setStatus("todos");
+                      setCategoria("todos");
+                      setFaixa("todas");
+                      if (!isGerenteUnidade) {
+                        setUnidadeId("");
+                      }
+                      toast.success("Filtros limpos", { duration: 3000 });
+                    }}
+                  >
+                    Limpar Filtros
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -681,6 +706,12 @@ function AlunosContent() {
                               <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                                 <GraduationCap className="h-3 w-3" />
                                 {aluno.faixa_atual}
+                              </span>
+                            )}
+                            {aluno.responsavel_id && (
+                              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                                <Users className="h-3 w-3" />
+                                Dependente
                               </span>
                             )}
                           </div>

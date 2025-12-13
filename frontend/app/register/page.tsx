@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
   Card,
@@ -163,6 +163,11 @@ export default function RegisterPage() {
   const [showUnidadeDropdown, setShowUnidadeDropdown] = useState(false);
 
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // Ler parâmetros da URL (vindo de convite)
+  const unidadeFromUrl = searchParams?.get("unidade");
+  const perfilFromUrl = searchParams?.get("perfil");
 
   // Função para calcular idade que vai completar no ano atual
   const calcularIdade = (dataNascimento: string): number => {
@@ -259,6 +264,27 @@ export default function RegisterPage() {
     };
     loadUnidades();
   }, []);
+
+  // Preencher unidade e perfil automaticamente se vierem da URL (convite)
+  useEffect(() => {
+    if (unidadeFromUrl && perfilFromUrl) {
+      setFormData((prev) => ({
+        ...prev,
+        unidade_id: unidadeFromUrl,
+        perfil_id: perfilFromUrl,
+      }));
+
+      // Preencher o campo de busca com o nome da unidade
+      const unidade = unidades.find((u) => u.id === unidadeFromUrl);
+      if (unidade) {
+        setUnidadeSearchTerm(unidade.nome);
+      }
+
+      toast.success("Dados do convite carregados! Complete seu cadastro.", {
+        duration: 4000,
+      });
+    }
+  }, [unidadeFromUrl, perfilFromUrl, unidades]);
 
   // Carregar faixas disponíveis da API
   useEffect(() => {
@@ -512,7 +538,13 @@ export default function RegisterPage() {
     // Aceita telefones com 10 dígitos (fixo) ou 11 dígitos (celular)
     if (cleaned.length < 10 || cleaned.length > 11) return false;
 
-    // Se tem 10 ou 11 dígitos, considera válido (flexível para dados vindos do banco)
+    // Rejeitar números com todos os dígitos iguais (00000000000, 11111111111, etc)
+    if (/^(\d)\1+$/.test(cleaned)) return false;
+
+    // Validar DDD (primeiros 2 dígitos) - deve estar entre 11 e 99
+    const ddd = parseInt(cleaned.substring(0, 2));
+    if (ddd < 11 || ddd > 99) return false;
+
     return true;
   };
 
@@ -828,6 +860,18 @@ export default function RegisterPage() {
 
             <form onSubmit={handleSubmit}>
               <CardContent className="px-6 space-y-4">
+                {/* Aviso sobre campos obrigatórios */}
+                <div className="bg-blue-900/30 border border-blue-500/30 rounded-lg p-3 flex items-start gap-2">
+                  <span className="text-blue-400 text-sm font-medium mt-0.5">
+                    ℹ️
+                  </span>
+                  <p className="text-sm text-blue-200">
+                    Campos marcados com{" "}
+                    <span className="text-red-400 font-bold">*</span> são
+                    obrigatórios
+                  </p>
+                </div>
+
                 {error && (
                   <div className="bg-red-900/50 border border-red-600/50 rounded-lg p-4 flex items-center gap-3">
                     <AlertCircle className="h-5 w-5 text-red-400 flex-shrink-0" />
@@ -842,7 +886,7 @@ export default function RegisterPage() {
                       className="flex items-center gap-2 text-gray-200"
                     >
                       <User className="h-4 w-4 text-red-400" />
-                      Nome Completo
+                      Nome Completo <span className="text-red-400">*</span>
                     </Label>
                     <NameInput
                       id="nome"
@@ -861,7 +905,7 @@ export default function RegisterPage() {
                       className="flex items-center gap-2 text-gray-200"
                     >
                       <User className="h-4 w-4 text-red-400" />
-                      Username
+                      Username <span className="text-red-400">*</span>
                     </Label>
                     <Input
                       id="username"
@@ -886,7 +930,7 @@ export default function RegisterPage() {
                       className="flex items-center gap-2 text-gray-200"
                     >
                       <Mail className="h-4 w-4 text-red-400" />
-                      Email
+                      Email <span className="text-red-400">*</span>
                     </Label>
                     <Input
                       id="email"
@@ -927,7 +971,7 @@ export default function RegisterPage() {
                         }));
                       }
                     }}
-                    disabled={loadingPerfis}
+                    disabled={loadingPerfis || !!perfilFromUrl}
                   >
                     <SelectTrigger className="h-12 bg-gray-800/50 border-gray-600 text-white focus:border-red-500 focus:ring-red-500">
                       <SelectValue placeholder="👤 Selecione seu perfil" />
@@ -953,10 +997,17 @@ export default function RegisterPage() {
                       ))}
                     </SelectContent>
                   </Select>
-                  <p className="text-xs text-gray-300 font-medium">
-                    ℹ️ Selecione o perfil que melhor descreve você no sistema.
-                    Os campos a seguir serão ajustados conforme sua escolha.
-                  </p>
+                  {perfilFromUrl ? (
+                    <p className="text-xs text-green-400 font-medium flex items-center gap-1">
+                      <CheckCircle className="h-4 w-4" />
+                      Perfil pré-definido pelo convite
+                    </p>
+                  ) : (
+                    <p className="text-xs text-gray-300 font-medium">
+                      ℹ️ Selecione o perfil que melhor descreve você no sistema.
+                      Os campos a seguir serão ajustados conforme sua escolha.
+                    </p>
+                  )}
                   {formData.perfil_id &&
                     perfis.find((p) => p.id === formData.perfil_id)?.nome ===
                       "RESPONSAVEL" && (
@@ -980,7 +1031,7 @@ export default function RegisterPage() {
                       className="flex items-center gap-2 text-gray-200"
                     >
                       <User2 className="h-4 w-4 text-red-400" />
-                      CPF
+                      CPF <span className="text-red-400">*</span>
                     </Label>
                     <Input
                       id="cpf"
@@ -1023,7 +1074,7 @@ export default function RegisterPage() {
                       className="flex items-center gap-2 text-gray-200"
                     >
                       <Phone className="h-4 w-4 text-red-400" />
-                      Telefone
+                      Telefone <span className="text-red-400">*</span>
                     </Label>
                     <Input
                       id="telefone"
@@ -1075,7 +1126,7 @@ export default function RegisterPage() {
                     className="flex items-center gap-2 text-gray-200"
                   >
                     <Calendar className="h-4 w-4 text-red-400" />
-                    Data de Nascimento
+                    Data de Nascimento <span className="text-red-400">*</span>
                   </Label>
                   <Input
                     id="data_nascimento"
@@ -1433,7 +1484,7 @@ export default function RegisterPage() {
                         setShowUnidadeDropdown(true);
                       }}
                       onFocus={() => setShowUnidadeDropdown(true)}
-                      disabled={loadingUnidades}
+                      disabled={loadingUnidades || !!unidadeFromUrl}
                       className="h-11 bg-gray-800/50 border-gray-600 text-white placeholder-gray-400 focus:border-red-500 focus:ring-red-500"
                     />
                     {showUnidadeDropdown && unidadesFiltradas.length > 0 && (
@@ -1470,9 +1521,16 @@ export default function RegisterPage() {
                       </div>
                     )}
                   </div>
-                  <p className="text-xs text-gray-400">
-                    Selecione a unidade onde deseja se cadastrar
-                  </p>
+                  {unidadeFromUrl ? (
+                    <p className="text-xs text-green-400 font-medium flex items-center gap-1">
+                      <CheckCircle className="h-4 w-4" />
+                      Unidade pré-definida pelo convite
+                    </p>
+                  ) : (
+                    <p className="text-xs text-gray-400">
+                      Selecione a unidade onde deseja se cadastrar
+                    </p>
+                  )}
                   {formData.unidade_id && (
                     <div className="bg-blue-900/30 border border-blue-600/50 rounded-lg p-3 mt-2">
                       <div className="flex items-start gap-2">
@@ -1495,7 +1553,7 @@ export default function RegisterPage() {
                       className="flex items-center gap-2 text-gray-200"
                     >
                       <Lock className="h-4 w-4 text-red-400" />
-                      Senha
+                      Senha <span className="text-red-400">*</span>
                     </Label>
                     <div className="relative">
                       <Input
@@ -1528,7 +1586,7 @@ export default function RegisterPage() {
                       className="flex items-center gap-2 text-gray-200"
                     >
                       <Lock className="h-4 w-4 text-red-400" />
-                      Confirmar Senha
+                      Confirmar Senha <span className="text-red-400">*</span>
                     </Label>
                     <div className="relative">
                       <Input

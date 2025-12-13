@@ -172,7 +172,9 @@ export default function GestaoUnidadesPage() {
       });
       await queryClient.refetchQueries({ queryKey: ["unidades-gestao"] });
       await queryClient.refetchQueries({ queryKey: ["professores-todos"] });
-      toast.success("Professores vinculados com sucesso!");
+      toast.success("Professores vinculados com sucesso!", {
+        duration: 3000,
+      });
       setShowProfessoresModal(false);
       setSelectedUnidade(null);
     },
@@ -199,7 +201,9 @@ export default function GestaoUnidadesPage() {
         refetchType: "all",
       });
       await queryClient.refetchQueries({ queryKey: ["unidades-gestao"] });
-      toast.success("Unidade aprovada com sucesso!");
+      toast.success("Unidade aprovada com sucesso!", {
+        duration: 3000,
+      });
     },
     onError: (error: any) => {
       toast.error(error?.message || "Erro ao aprovar unidade");
@@ -224,7 +228,9 @@ export default function GestaoUnidadesPage() {
         refetchType: "all",
       });
       await queryClient.refetchQueries({ queryKey: ["unidades-gestao"] });
-      toast.success("Unidade reprovada");
+      toast.success("Unidade reprovada", {
+        duration: 3000,
+      });
     },
     onError: (error: any) => {
       toast.error(error?.message || "Erro ao reprovar unidade");

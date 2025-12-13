@@ -847,11 +847,22 @@ export default function DashboardNew() {
         };
       });
 
+      // Aplicar filtro de kids/adulto client-side
+      const filteredItems = adaptedItems.filter((aluno) => {
+        if (filterFaixa === "kids") {
+          return parseKidsPattern(aluno.faixa).isKids;
+        }
+        if (filterFaixa === "adulto") {
+          return !parseKidsPattern(aluno.faixa).isKids;
+        }
+        return true; // "todos"
+      });
+
       return {
-        items: adaptedItems,
+        items: filteredItems,
         page: response.page,
         pageSize: response.pageSize,
-        total: response.total,
+        total: filteredItems.length,
         hasNextPage: response.hasNextPage,
         nextPage: response.hasNextPage ? response.page + 1 : null,
       };
@@ -886,10 +897,22 @@ export default function DashboardNew() {
         unidade_id: unidadeDoGerente?.id, // Filtrar pela unidade do gerente/franqueado
       });
 
+      // Aplicar filtro de kids/adulto client-side (caso professores tenham faixas infantis)
+      const filteredItems = response.items.filter((professor: any) => {
+        const faixaProf = professor.faixa_ministrante || professor.faixa || "";
+        if (filterFaixa === "kids") {
+          return parseKidsPattern(faixaProf).isKids;
+        }
+        if (filterFaixa === "adulto") {
+          return !parseKidsPattern(faixaProf).isKids;
+        }
+        return true; // "todos"
+      });
+
       return {
-        items: response.items,
+        items: filteredItems,
         page: response.page,
-        total: response.total,
+        total: filteredItems.length,
         hasNextPage: response.hasNextPage,
         nextPage: response.hasNextPage ? response.page + 1 : null,
       };
@@ -944,11 +967,22 @@ export default function DashboardNew() {
         };
       });
 
+      // Aplicar filtro de kids/adulto client-side
+      const filteredItems = adaptedItems.filter((aluno) => {
+        if (filterFaixa === "kids") {
+          return parseKidsPattern(aluno.faixa).isKids;
+        }
+        if (filterFaixa === "adulto") {
+          return !parseKidsPattern(aluno.faixa).isKids;
+        }
+        return true; // "todos"
+      });
+
       return {
-        items: adaptedItems,
+        items: filteredItems,
         page: response.page,
         pageSize: response.pageSize,
-        total: response.total,
+        total: filteredItems.length,
         hasNextPage: response.hasNextPage,
         nextPage: response.hasNextPage ? response.page + 1 : null,
       };

@@ -453,7 +453,9 @@ export default function PresencaPage() {
       const result = await response.json();
 
       if (response.ok) {
-        toast.success("Check-in manual realizado com sucesso!");
+        toast.success("Check-in manual realizado com sucesso!", {
+          duration: 3000,
+        });
         setMessage({
           type: "success",
           text: "Check-in manual realizado com sucesso!",
@@ -500,7 +502,9 @@ export default function PresencaPage() {
       const result = await response.json();
 
       if (response.ok) {
-        toast.success("Check-in por CPF realizado com sucesso!");
+        toast.success("Check-in por CPF realizado com sucesso!", {
+          duration: 3000,
+        });
         setCpfInput("");
         loadHistoricoPresenca();
         loadEstatisticas();
@@ -666,7 +670,9 @@ export default function PresencaPage() {
       const result = await response.json();
 
       if (response.ok) {
-        toast.success("Check-in realizado com sucesso!");
+        toast.success("Check-in realizado com sucesso!", {
+          duration: 3000,
+        });
         setAlunosEncontrados([]);
         setNomeInput("");
         loadHistoricoPresenca();
@@ -743,7 +749,9 @@ export default function PresencaPage() {
       const result = await response.json();
 
       if (response.ok) {
-        toast.success("Check-in facial realizado com sucesso!");
+        toast.success("Check-in facial realizado com sucesso!", {
+          duration: 3000,
+        });
         stopFacialRecognition();
         loadHistoricoPresenca();
         loadEstatisticas();
@@ -1222,7 +1230,7 @@ export default function PresencaPage() {
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <Users className="h-5 w-5" />
-                      Check-in dos seus filhos
+                      Check-in dos seus dependentes
                     </CardTitle>
                   </CardHeader>
                   <CardContent>

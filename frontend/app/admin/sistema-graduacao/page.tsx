@@ -137,7 +137,9 @@ export default function SistemaGraduacaoPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["proximos-graduar"] });
       queryClient.invalidateQueries({ queryKey: ["historico-graduacoes"] });
-      toast.success("Grau concedido com sucesso!");
+      toast.success("Grau concedido com sucesso!", {
+        duration: 3000,
+      });
       setShowGraduacaoModal(false);
       setSelectedAluno(null);
     },
@@ -159,7 +161,9 @@ export default function SistemaGraduacaoPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["proximos-graduar"] });
       queryClient.invalidateQueries({ queryKey: ["historico-graduacoes"] });
-      toast.success("Graduação de faixa realizada com sucesso!");
+      toast.success("Graduação de faixa realizada com sucesso!", {
+        duration: 3000,
+      });
       setShowGraduacaoModal(false);
       setSelectedAluno(null);
     },

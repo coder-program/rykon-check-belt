@@ -163,10 +163,14 @@ export default function MinhaFranquiaPage() {
       const result = await response.json();
 
       if (franquiaExistente) {
-        toast.success("Dados atualizados com sucesso!");
+        toast.success("Dados atualizados com sucesso!", {
+          duration: 3000,
+        });
         setFranquiaExistente(result);
       } else {
-        toast.success("Franquia cadastrada com sucesso! Aguarde a aprovação.");
+        toast.success("Franquia cadastrada com sucesso! Aguarde a aprovação.", {
+          duration: 3000,
+        });
         setFranquiaExistente(result);
         setFormData((prev) => ({ ...prev, id: result.id }));
       }

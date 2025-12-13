@@ -113,7 +113,9 @@ export default function AprovacaoCheckinPage() {
       return response.json();
     },
     onSuccess: () => {
-      toast.success("Presença aprovada com sucesso!");
+      toast.success("Presença aprovada com sucesso!", {
+        duration: 3000,
+      });
       queryClient.invalidateQueries({ queryKey: ["presencas-pendentes"] });
       setDialogAberto(false);
       setPresencaSelecionada(null);
@@ -153,7 +155,9 @@ export default function AprovacaoCheckinPage() {
       return response.json();
     },
     onSuccess: () => {
-      toast.success("Presença rejeitada com sucesso!");
+      toast.success("Presença rejeitada com sucesso!", {
+        duration: 3000,
+      });
       queryClient.invalidateQueries({ queryKey: ["presencas-pendentes"] });
       setDialogAberto(false);
       setPresencaSelecionada(null);

@@ -485,7 +485,7 @@ export default function MeuPerfilPage() {
           throw new Error("Informe a nova senha");
         }
         if (data.nova_senha !== data.confirmar_senha) {
-          throw new Error("As senhas não conferem");
+          throw new Error("(As senhas não conferem)");
         }
         if (data.nova_senha.length < 6) {
           throw new Error("A nova senha deve ter no mínimo 6 caracteres");

@@ -171,7 +171,9 @@ function AprovacaoAlunosPage() {
       return response.json();
     },
     onSuccess: () => {
-      toast.success("Aluno aprovado com sucesso!");
+      toast.success("Aluno aprovado com sucesso!", {
+        duration: 3000,
+      });
       queryClient.invalidateQueries({ queryKey: ["alunos-pendentes"] });
       queryClient.invalidateQueries({ queryKey: ["todos-alunos-stats"] });
     },
@@ -199,7 +201,9 @@ function AprovacaoAlunosPage() {
       return response.json();
     },
     onSuccess: () => {
-      toast.success("Aluno rejeitado");
+      toast.success("Aluno rejeitado", {
+        duration: 3000,
+      });
       queryClient.invalidateQueries({ queryKey: ["alunos-pendentes"] });
       queryClient.invalidateQueries({ queryKey: ["todos-alunos-stats"] });
     },

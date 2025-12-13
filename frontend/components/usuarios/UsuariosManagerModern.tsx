@@ -64,7 +64,16 @@ const isValidCPF = (cpf: string): boolean => {
 // Função para validar telefone
 const isValidPhone = (phone: string): boolean => {
   const cleaned = phone.replace(/\D/g, "");
-  return cleaned.length >= 10 && cleaned.length <= 11;
+  if (cleaned.length < 10 || cleaned.length > 11) return false;
+
+  // Rejeitar números com todos os dígitos iguais
+  if (/^(\d)\1+$/.test(cleaned)) return false;
+
+  // Validar DDD (primeiros 2 dígitos) - deve estar entre 11 e 99
+  const ddd = parseInt(cleaned.substring(0, 2));
+  if (ddd < 11 || ddd > 99) return false;
+
+  return true;
 };
 
 // Função para formatar CPF

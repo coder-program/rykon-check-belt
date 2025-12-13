@@ -10,6 +10,7 @@ import {
 import { Aluno } from '../../people/entities/aluno.entity';
 import { Fatura } from './fatura.entity';
 import { Despesa } from './despesa.entity';
+import { Venda } from './venda.entity';
 import { Unidade } from '../../people/entities/unidade.entity';
 import { MetodoPagamento } from './assinatura.entity';
 
@@ -103,6 +104,13 @@ export class Transacao {
   @ManyToOne(() => Despesa, (despesa) => despesa.transacoes, { nullable: true })
   @JoinColumn({ name: 'despesa_id' })
   despesa: Despesa;
+
+  @Column({ type: 'uuid', nullable: true })
+  venda_id: string;
+
+  @ManyToOne(() => Venda, { nullable: true })
+  @JoinColumn({ name: 'venda_id' })
+  venda: Venda;
 
   @Column({ type: 'decimal', precision: 10, scale: 2 })
   valor: number;

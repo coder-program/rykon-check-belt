@@ -173,7 +173,9 @@ export default function MeuProgressoPage() {
       return response.json();
     },
     onSuccess: () => {
-      toast.success("Grau adicionado com sucesso!");
+      toast.success("Grau adicionado com sucesso!", {
+        duration: 3000,
+      });
       setIsGrauModalOpen(false);
       setGrauForm({
         faixaId: "",
@@ -209,7 +211,9 @@ export default function MeuProgressoPage() {
       return response.json();
     },
     onSuccess: () => {
-      toast.success("Faixa adicionada com sucesso!");
+      toast.success("Faixa adicionada com sucesso!", {
+        duration: 3000,
+      });
       setIsFaixaModalOpen(false);
       setFaixaForm({
         faixaOrigemId: "",
@@ -250,7 +254,9 @@ export default function MeuProgressoPage() {
       return response.json();
     },
     onSuccess: () => {
-      toast.success("Datas atualizadas com sucesso!");
+      toast.success("Datas atualizadas com sucesso!", {
+        duration: 3000,
+      });
       setEditingFaixa(null);
       setEditDates({ dt_inicio: "", dt_fim: "" });
       queryClient.invalidateQueries({ queryKey: ["meu-historico"] });

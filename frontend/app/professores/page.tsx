@@ -170,7 +170,9 @@ export default function PageProfessores() {
     mutationFn: deleteProfessor,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["professores"] });
-      toast.success("Professor excluído com sucesso!");
+      toast.success("Professor excluído com sucesso!", {
+        duration: 3000,
+      });
     },
     onError: (error: any) => {
       toast.error(error?.message || "Erro ao excluir professor");
@@ -183,7 +185,9 @@ export default function PageProfessores() {
       updateProfessorStatus(id, status),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["professores"] });
-      toast.success("Status do professor alterado com sucesso!");
+      toast.success("Status do professor alterado com sucesso!", {
+        duration: 3000,
+      });
     },
     onError: (error: any) => {
       toast.error(error?.message || "Erro ao alterar status do professor");
@@ -503,6 +507,25 @@ export default function PageProfessores() {
                   </select>
                 </div>
                 */}
+
+                <div className="flex items-end">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setSearch("");
+                      setDebounced("");
+                      setStatus("todos");
+                      setFaixa("todos");
+                      if (!isGerenteUnidade) {
+                        setUnidadeId("");
+                      }
+                      toast.success("Filtros limpos", { duration: 3000 });
+                    }}
+                    className="w-full"
+                  >
+                    Limpar Filtros
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>

@@ -1441,8 +1441,8 @@ export default function AlunoDashboard({
             <CardContent>
               <div className="space-y-4">
                 <p className="text-sm text-gray-700">
-                  Você pode cadastrar seus filhos ou dependentes menores de
-                  idade para que eles também possam treinar!
+                  Você pode cadastrar seus dependentes menores de idade para que
+                  eles também possam treinar!
                 </p>
                 <ul className="space-y-2 text-sm text-gray-700">
                   <li className="flex items-start">

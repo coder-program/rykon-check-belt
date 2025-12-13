@@ -98,7 +98,9 @@ function ResetPasswordContent() {
       }
 
       setSuccess(true);
-      toast.success("Senha alterada com sucesso!");
+      toast.success("Senha alterada com sucesso!", {
+        duration: 3000,
+      });
 
       // Redirecionar para login após 3 segundos
       setTimeout(() => {

@@ -54,7 +54,16 @@ const validateEmail = (email: string): boolean => {
 
 const validatePhone = (phone: string): boolean => {
   const numbers = phone.replace(/\D/g, "");
-  return numbers.length >= 10 && numbers.length <= 11;
+  if (numbers.length < 10 || numbers.length > 11) return false;
+
+  // Rejeitar números com todos os dígitos iguais
+  if (/^(\d)\1+$/.test(numbers)) return false;
+
+  // Validar DDD (primeiros 2 dígitos) - deve estar entre 11 e 99
+  const ddd = parseInt(numbers.substring(0, 2));
+  if (ddd < 11 || ddd > 99) return false;
+
+  return true;
 };
 
 const validateCEP = (cep: string): boolean => {
@@ -504,7 +513,9 @@ export default function MinhaFranquiaPage() {
             router.push("/dashboard");
           }, 1500);
         } else {
-          toast.success("Franquia atualizada com sucesso!");
+          toast.success("Franquia atualizada com sucesso!", {
+            duration: 3000,
+          });
         }
 
         // Se foi atualização, recarregar os dados

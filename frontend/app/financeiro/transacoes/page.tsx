@@ -173,6 +173,7 @@ export default function TransacoesPage() {
   const exportarCSV = () => {
     const headers = [
       "Data",
+      "Hora",
       "Tipo",
       "Origem",
       "Categoria",
@@ -184,7 +185,8 @@ export default function TransacoesPage() {
     ];
 
     const rows = transacoesFiltradas.map((t) => [
-      new Date(t.data).toLocaleDateString("pt-BR"),
+      new Date(t.created_at).toLocaleDateString("pt-BR"),
+      new Date(t.created_at).toLocaleTimeString("pt-BR"),
       t.tipo,
       t.origem,
       t.categoria,
@@ -537,7 +539,16 @@ export default function TransacoesPage() {
                     {transacoesFiltradas.map((transacao) => (
                       <tr key={transacao.id} className="hover:bg-gray-50">
                         <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {new Date(transacao.data).toLocaleDateString("pt-BR")}
+                          <div>
+                            {new Date(transacao.created_at).toLocaleDateString(
+                              "pt-BR"
+                            )}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {new Date(transacao.created_at).toLocaleTimeString(
+                              "pt-BR"
+                            )}
+                          </div>
                         </td>
                         <td className="px-4 py-4 whitespace-nowrap">
                           {transacao.tipo === "ENTRADA" ? (

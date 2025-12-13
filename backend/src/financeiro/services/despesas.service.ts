@@ -127,6 +127,31 @@ export class DespesasService {
   ): Promise<Despesa> {
     const despesa = await this.findOne(id);
 
+    // Verificar se já existe transação para esta despesa (evita duplicação)
+    const transacaoExistente = await this.transacaoRepository.findOne({
+      where: {
+        despesa_id: id,
+        origem: OrigemTransacao.DESPESA,
+      },
+    });
+
+    if (transacaoExistente) {
+      console.log('⚠️ [DESPESAS] Transação já existe para despesa:', id);
+      // Se já existe transação, apenas atualizar status se necessário
+      if (despesa.status !== StatusDespesa.PAGA) {
+        despesa.status = StatusDespesa.PAGA;
+        despesa.data_pagamento = baixarDto.data_pagamento
+          ? new Date(baixarDto.data_pagamento)
+          : new Date();
+        despesa.pago_por = user?.id || null;
+        if (baixarDto.observacoes) {
+          despesa.observacoes = baixarDto.observacoes;
+        }
+        await this.despesaRepository.save(despesa);
+      }
+      return despesa;
+    }
+
     const dataPagamento = baixarDto.data_pagamento
       ? new Date(baixarDto.data_pagamento)
       : new Date();

@@ -182,7 +182,9 @@ export default function AprovacaoGraduacaoPage() {
     }) => aprovarGraduacao(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["alunos-aptos"] });
-      toast.success("Graduação aprovada com sucesso!");
+      toast.success("Graduação aprovada com sucesso!", {
+        duration: 3000,
+      });
       setShowAprovarModal(false);
       setSelectedAluno(null);
       setObservacao("");

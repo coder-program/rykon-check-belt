@@ -214,7 +214,9 @@ function AprovacaoUsuariosPage() {
       return response.json();
     },
     onSuccess: () => {
-      toast.success("Usuário aprovado com sucesso!");
+      toast.success("Usuário aprovado com sucesso!", {
+        duration: 3000,
+      });
       queryClient.invalidateQueries({ queryKey: ["usuarios-pendentes"] });
     },
     onError: () => {
@@ -241,7 +243,9 @@ function AprovacaoUsuariosPage() {
       return response.json();
     },
     onSuccess: () => {
-      toast.success("Usuário rejeitado");
+      toast.success("Usuário rejeitado", {
+        duration: 3000,
+      });
       queryClient.invalidateQueries({ queryKey: ["usuarios-pendentes"] });
     },
     onError: () => {

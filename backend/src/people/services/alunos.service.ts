@@ -143,22 +143,33 @@ export class AlunosService {
     }
 
     // Filtro por faixa (apenas valores válidos do enum)
-    // Ignorar valores de categoria como 'kids', 'adulto', 'todos'
+    // Ignorar valores de categoria como 'kids', 'adulto', 'todos', 'todas'
     const faixasValidas = [
       'branca',
       'cinza',
+      'cinza_branca',
+      'cinza_preta',
       'amarela',
+      'amarela_branca',
+      'amarela_preta',
       'laranja',
+      'laranja_branca',
+      'laranja_preta',
       'verde',
+      'verde_branca',
+      'verde_preta',
       'azul',
       'roxa',
       'marrom',
       'preta',
+      'coral',
     ];
+    const faixaLower = params.faixa?.toLowerCase();
     if (
       params.faixa &&
-      params.faixa !== 'todos' &&
-      faixasValidas.includes(params.faixa.toLowerCase())
+      faixaLower !== 'todos' &&
+      faixaLower !== 'todas' &&
+      faixasValidas.includes(faixaLower)
     ) {
       query
         .leftJoin('aluno.faixas', 'faixa_filtro', 'faixa_filtro.ativa = true')
@@ -253,6 +264,19 @@ export class AlunosService {
     // CPF é obrigatório APENAS se NÃO for cadastro de dependente
     if (!isDependenteCadastro && !dto.cpf) {
       throw new BadRequestException('CPF é obrigatório');
+    }
+
+    // VALIDAÇÃO: Verificar se número de matrícula já existe ANTES de iniciar transação
+    if (dto.numero_matricula && dto.numero_matricula.trim() !== '') {
+      const matriculaExistente = await this.alunoRepository.findOne({
+        where: { numero_matricula: dto.numero_matricula },
+      });
+
+      if (matriculaExistente) {
+        throw new BadRequestException(
+          `Número de matrícula ${dto.numero_matricula} já está em uso`,
+        );
+      }
     }
 
     const queryRunner = this.dataSource.createQueryRunner();

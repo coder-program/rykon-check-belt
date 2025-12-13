@@ -55,17 +55,18 @@ interface Despesa {
 const CATEGORIAS_DESPESA = [
   "SISTEMA",
   "ALUGUEL",
-  "ENERGIA",
+  "LUZ",
   "AGUA",
   "INTERNET",
-  "SALARIOS",
-  "ENCARGOS",
-  "MATERIAL",
-  "MARKETING",
+  "TELEFONE",
+  "SALARIO",
+  "FORNECEDOR",
   "MANUTENCAO",
+  "MATERIAL",
   "LIMPEZA",
-  "SEGURANCA",
-  "OUTROS",
+  "MARKETING",
+  "TAXA",
+  "OUTRO",
 ];
 
 const RECORRENCIAS = [
@@ -96,6 +97,9 @@ export default function ContasAPagar() {
   const [despesaBaixa, setDespesaBaixa] = useState<Despesa | null>(null);
   const [dataPagamento, setDataPagamento] = useState("");
   const [observacoesBaixa, setObservacoesBaixa] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isBaixando, setIsBaixando] = useState(false);
+  const [isDeleting, setIsDeleting] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
     unidade_id: "",
@@ -170,9 +174,15 @@ export default function ContasAPagar() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (isSubmitting) {
+      console.log("⚠️ Já está processando uma requisição...");
+      return;
+    }
+
     const userData = localStorage.getItem("user");
     const user = JSON.parse(userData || "{}");
 
+    setIsSubmitting(true);
     try {
       const token = localStorage.getItem("token");
       const url = editingDespesa
@@ -203,6 +213,8 @@ export default function ContasAPagar() {
     } catch (error) {
       console.error("Erro ao salvar despesa:", error);
       alert("Erro ao salvar despesa");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -223,6 +235,12 @@ export default function ContasAPagar() {
   const handleDelete = async (id: string) => {
     if (!confirm("Deseja realmente excluir esta despesa?")) return;
 
+    if (isDeleting) {
+      console.log("⚠️ Já está processando uma exclusão...");
+      return;
+    }
+
+    setIsDeleting(id);
     try {
       const token = localStorage.getItem("token");
       const response = await fetch(
@@ -241,12 +259,20 @@ export default function ContasAPagar() {
       }
     } catch (error) {
       console.error("Erro ao excluir despesa:", error);
+    } finally {
+      setIsDeleting(null);
     }
   };
 
   const handleBaixa = async () => {
     if (!despesaBaixa) return;
 
+    if (isBaixando) {
+      console.log("⚠️ Já está processando o pagamento...");
+      return;
+    }
+
+    setIsBaixando(true);
     try {
       const token = localStorage.getItem("token");
       const response = await fetch(
@@ -273,11 +299,22 @@ export default function ContasAPagar() {
         setObservacoesBaixa("");
         carregarDespesas();
       } else {
-        alert("Erro ao dar baixa na despesa");
+        const errorData = await response.json().catch(() => null);
+        const errorMessage =
+          errorData?.message ||
+          errorData?.error ||
+          `Erro ao dar baixa na despesa (Status: ${response.status})`;
+        console.error("Erro ao dar baixa:", errorData);
+        alert(errorMessage);
       }
     } catch (error) {
       console.error("Erro ao dar baixa:", error);
-      alert("Erro ao dar baixa na despesa");
+      alert(
+        "Erro ao dar baixa na despesa: " +
+          (error instanceof Error ? error.message : "Erro desconhecido")
+      );
+    } finally {
+      setIsBaixando(false);
     }
   };
 
@@ -732,11 +769,14 @@ export default function ContasAPagar() {
                 type="button"
                 variant="outline"
                 onClick={() => setShowDialog(false)}
+                disabled={isSubmitting}
               >
                 Cancelar
               </Button>
-              <Button type="submit">
-                {editingDespesa ? "Atualizar" : "Criar"} Despesa
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting
+                  ? "Processando..."
+                  : (editingDespesa ? "Atualizar" : "Criar") + " Despesa"}
               </Button>
             </DialogFooter>
           </form>
@@ -791,15 +831,26 @@ export default function ContasAPagar() {
               type="button"
               variant="outline"
               onClick={() => setShowBaixaDialog(false)}
+              disabled={isBaixando}
             >
               Cancelar
             </Button>
             <Button
               onClick={handleBaixa}
               className="bg-green-600 hover:bg-green-700"
+              disabled={isBaixando}
             >
-              <CheckCircle className="mr-2 h-4 w-4" />
-              Confirmar Pagamento
+              {isBaixando ? (
+                <>
+                  <Clock className="mr-2 h-4 w-4 animate-spin" />
+                  Processando...
+                </>
+              ) : (
+                <>
+                  <CheckCircle className="mr-2 h-4 w-4" />
+                  Confirmar Pagamento
+                </>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

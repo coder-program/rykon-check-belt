@@ -418,7 +418,9 @@ export default function FranqueadosPageSimplificada() {
     mutationFn: createFranqueado,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["franqueados"] });
-      toast.success("Franqueado criado com sucesso!");
+      toast.success("Franqueado criado com sucesso!", {
+        duration: 3000,
+      });
       handleCloseModal();
     },
     onError: (error: any) => {
@@ -431,7 +433,9 @@ export default function FranqueadosPageSimplificada() {
       updateFranqueado(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["franqueados"] });
-      toast.success("Franqueado atualizado com sucesso!");
+      toast.success("Franqueado atualizado com sucesso!", {
+        duration: 3000,
+      });
       handleCloseModal();
     },
     onError: (error: any) => {
@@ -443,7 +447,9 @@ export default function FranqueadosPageSimplificada() {
     mutationFn: deleteFranqueado,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["franqueados"] });
-      toast.success("Franqueado excluído com sucesso!");
+      toast.success("Franqueado excluído com sucesso!", {
+        duration: 3000,
+      });
     },
     onError: (error: any) => {
       toast.error(error?.message || "Erro ao excluir franqueado");

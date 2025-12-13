@@ -150,10 +150,10 @@ export default function UnidadeForm({
     { id: 3, label: "Administração", icon: FileText },
   ];
 
-  // Validação para nomes - apenas letras, espaços e acentos
+  // Validação para nomes - permite letras, números, espaços, acentos e hífen
   const validateName = (value: string): string => {
-    // Remove caracteres especiais, mantendo apenas letras, espaços, acentos e hífen
-    return value.replace(/[^a-zA-ZÀ-ÿ\s\-]/g, "");
+    // Remove caracteres especiais, mantendo letras, números, espaços, acentos e hífen
+    return value.replace(/[^a-zA-ZÀ-ÿ0-9\s\-]/g, "");
   };
 
   // Validação para endereços - permite letras, números, espaços, acentos e alguns caracteres comuns

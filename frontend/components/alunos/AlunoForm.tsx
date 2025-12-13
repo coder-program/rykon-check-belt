@@ -12,6 +12,7 @@ import {
   Calendar,
 } from "lucide-react";
 import MultiUnidadeSelector from "./MultiUnidadeSelector";
+import { RequiredLabel } from "../ui/required-label";
 
 type Genero = "MASCULINO" | "FEMININO" | "OUTRO";
 type StatusAluno = "ATIVO" | "INATIVO" | "SUSPENSO" | "CANCELADO";
@@ -240,6 +241,18 @@ export default function AlunoForm({
         {/* Form Content */}
         <form onSubmit={onSubmit} className="flex-1 overflow-y-auto">
           <div className="p-6 space-y-6">
+            {/* Aviso sobre campos obrigatórios */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-start gap-2">
+              <span className="text-blue-600 text-sm font-medium mt-0.5">
+                ℹ️
+              </span>
+              <p className="text-sm text-blue-800">
+                Campos marcados com{" "}
+                <span className="text-red-500 font-bold">*</span> são
+                obrigatórios
+              </p>
+            </div>
+
             {/* Tab 0: Dados Pessoais */}
             {activeTab === 0 && (
               <div className="space-y-4">
@@ -248,9 +261,7 @@ export default function AlunoForm({
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Nome Completo *
-                    </label>
+                    <RequiredLabel required>Nome Completo</RequiredLabel>
                     <input
                       type="text"
                       required
@@ -267,9 +278,7 @@ export default function AlunoForm({
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      CPF *
-                    </label>
+                    <RequiredLabel required>CPF</RequiredLabel>
                     <input
                       type="text"
                       required
@@ -286,9 +295,7 @@ export default function AlunoForm({
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Data de Nascimento *
-                    </label>
+                    <RequiredLabel required>Data de Nascimento</RequiredLabel>
                     <input
                       type="date"
                       required
@@ -309,9 +316,7 @@ export default function AlunoForm({
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Gênero *
-                    </label>
+                    <RequiredLabel required>Gênero</RequiredLabel>
                     <select
                       required
                       value={formData.genero}
