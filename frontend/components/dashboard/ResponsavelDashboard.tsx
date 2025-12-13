@@ -69,9 +69,10 @@ interface Aluno {
 }
 
 export default function ResponsavelDashboard() {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const router = useRouter();
   const [loadingCheckin, setLoadingCheckin] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [editingDependenteId, setEditingDependenteId] = useState<string | null>(
@@ -157,6 +158,11 @@ export default function ResponsavelDashboard() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Prevenir múltiplas submissões
+    if (isLoading) return;
+
+    setIsLoading(true);
     try {
       if (isEditMode && editingDependenteId) {
         // Editar dependente existente
@@ -207,6 +213,8 @@ export default function ResponsavelDashboard() {
           ? error.message
           : `Erro ao ${isEditMode ? "atualizar" : "cadastrar"} dependente`;
       toast.error(errorMessage);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -345,13 +353,6 @@ export default function ResponsavelDashboard() {
                 Gerencie os treinos dos seus dependentes
               </p>
             </div>
-            <Button
-              onClick={logout}
-              variant="outline"
-              className="border-red-300 text-red-600 hover:bg-red-50"
-            >
-              Sair
-            </Button>
           </div>
         </div>
       </div>

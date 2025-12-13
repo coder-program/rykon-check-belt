@@ -139,14 +139,76 @@ export class PresencaService {
     const diaHoje = agora.getDay();
     const horaAgora = agora.toTimeString().slice(0, 5); // HH:MM
 
+    // Detectar unidade(s) do usuário baseado no perfil
+    let unidadesPermitidas: string[] = [];
+
+    const perfis =
+      user?.perfis?.map((p: any) =>
+        (typeof p === 'string' ? p : p.nome)?.toUpperCase(),
+      ) || [];
+
+    const isResponsavel = perfis.includes('RESPONSAVEL');
+    const isAluno = perfis.includes('ALUNO');
+    const isGerente = perfis.includes('GERENTE_UNIDADE');
+    const isMaster = perfis.includes('MASTER') || perfis.includes('ADMIN');
+
+    // Se for responsável, buscar unidades dos dependentes
+    if (isResponsavel) {
+      const dependentes = await this.alunoRepository
+        .createQueryBuilder('aluno')
+        .innerJoin('aluno.responsaveis', 'resp')
+        .where('resp.usuario_id = :userId', { userId: user.id })
+        .andWhere('aluno.status = :status', { status: 'ATIVO' })
+        .select(['aluno.unidade_id'])
+        .getMany();
+
+      unidadesPermitidas = [
+        ...new Set(dependentes.map((d) => d.unidade_id).filter(Boolean)),
+      ];
+    }
+    // Se for aluno, buscar sua própria unidade
+    else if (isAluno) {
+      const aluno = await this.alunoRepository.findOne({
+        where: { usuario_id: user.id },
+      });
+      if (aluno?.unidade_id) {
+        unidadesPermitidas = [aluno.unidade_id];
+      }
+    }
+    // Se for gerente, buscar unidade que gerencia
+    else if (isGerente) {
+      const unidadeResult = await this.presencaRepository.manager.query(
+        `SELECT unidade_id FROM teamcruz.gerente_unidades WHERE usuario_id = $1 AND ativo = true LIMIT 1`,
+        [user.id],
+      );
+      if (unidadeResult.length > 0) {
+        unidadesPermitidas = [unidadeResult[0].unidade_id];
+      }
+    }
+    // Master pode ver todas as aulas
+    else if (isMaster) {
+      unidadesPermitidas = []; // Vazio = todas
+    }
+
     // Buscar aulas ativas no banco
-    const aulas = await this.aulaRepository.find({
-      where: {
-        dia_semana: diaHoje,
-        ativo: true,
-      },
-      relations: ['unidade', 'professor'],
-    });
+    const queryBuilder = this.aulaRepository
+      .createQueryBuilder('aula')
+      .leftJoinAndSelect('aula.unidade', 'unidade')
+      .leftJoinAndSelect('aula.professor', 'professor')
+      .where('aula.dia_semana = :dia', { dia: diaHoje })
+      .andWhere('aula.ativo = :ativo', { ativo: true });
+
+    // Filtrar por unidades permitidas (exceto master)
+    if (unidadesPermitidas.length > 0) {
+      queryBuilder.andWhere('aula.unidade_id IN (:...unidades)', {
+        unidades: unidadesPermitidas,
+      });
+    } else if (!isMaster) {
+      // Se não tem unidades permitidas e não é master, não retornar nada
+      return null;
+    }
+
+    const aulas = await queryBuilder.getMany();
 
     // Filtrar aulas que estão acontecendo agora
     for (const aula of aulas) {
@@ -988,20 +1050,33 @@ export class PresencaService {
     }
 
     // Query para buscar alunos e suas últimas presenças
+    // CORREÇÃO: Considerar data de matrícula para não marcar alunos recém-cadastrados como ausentes
     let query = `
       SELECT
         a.id,
         a.usuario_id,
         u.nome as nome_completo,
         u.cpf,
+        u.created_at as data_matricula,
         MAX(pr.hora_checkin) as ultima_presenca,
         COUNT(DISTINCT DATE(pr.hora_checkin)) as total_presencas,
-        $1 - COUNT(DISTINCT DATE(pr.hora_checkin)) as ausencias
+        -- Calcular dias desde matrícula (não contar dias antes de se matricular)
+        CASE
+          WHEN u.created_at > $2 THEN
+            -- Se matriculou recentemente, contar apenas dias desde a matrícula
+            GREATEST(0, DATE_PART('day', NOW() - u.created_at)::int - COUNT(DISTINCT DATE(pr.hora_checkin)))
+          ELSE
+            -- Se já está há mais de 30 dias, usar período completo
+            $1 - COUNT(DISTINCT DATE(pr.hora_checkin))
+        END as ausencias,
+        DATE_PART('day', NOW() - u.created_at)::int as dias_desde_matricula
       FROM teamcruz.alunos a
       INNER JOIN teamcruz.usuarios u ON u.id = a.usuario_id
       LEFT JOIN teamcruz.presencas pr ON pr.aluno_id = a.id
         AND pr.hora_checkin >= $2
+        AND pr.hora_checkin >= u.created_at  -- Só contar presenças após matrícula
       WHERE a.status = 'ATIVO'
+        AND u.created_at <= NOW()  -- Garantir que está matriculado
     `;
 
     const params: any[] = [dias, dataLimite];
@@ -1012,8 +1087,18 @@ export class PresencaService {
     }
 
     query += `
-      GROUP BY a.id, a.usuario_id, u.nome, u.cpf
-      HAVING COUNT(DISTINCT DATE(pr.hora_checkin)) < $1
+      GROUP BY a.id, a.usuario_id, u.nome, u.cpf, u.created_at
+      HAVING
+        -- Só mostrar alunos com ausências significativas
+        -- Se matriculou há menos de 7 dias, não aparecer no ranking
+        DATE_PART('day', NOW() - u.created_at)::int >= 7
+        AND
+        CASE
+          WHEN u.created_at > $2 THEN
+            GREATEST(0, DATE_PART('day', NOW() - u.created_at)::int - COUNT(DISTINCT DATE(pr.hora_checkin))) > 0
+          ELSE
+            ($1 - COUNT(DISTINCT DATE(pr.hora_checkin))) > 0
+        END
       ORDER BY ausencias DESC, ultima_presenca ASC NULLS FIRST
       LIMIT 20
     `;
@@ -1028,22 +1113,32 @@ export class PresencaService {
       params,
     );
 
-    return resultado.map((r: any) => ({
-      id: r.id,
-      nome: r.nome_completo || r.nome,
-      cpf: r.cpf,
-      ultimaPresenca: r.ultima_presenca
-        ? new Date(r.ultima_presenca).toISOString()
-        : null,
-      totalPresencas: parseInt(r.total_presencas) || 0,
-      ausencias: parseInt(r.ausencias) || dias,
-      diasSemTreino: r.ultima_presenca
-        ? Math.floor(
-            (Date.now() - new Date(r.ultima_presenca).getTime()) /
-              (1000 * 60 * 60 * 24),
-          )
-        : dias,
-    }));
+    return resultado.map((r: any) => {
+      const diasDesdeMatricula = parseInt(r.dias_desde_matricula) || 0;
+      const totalPresencas = parseInt(r.total_presencas) || 0;
+      const ausencias = parseInt(r.ausencias) || 0;
+
+      return {
+        id: r.id,
+        nome: r.nome_completo || r.nome,
+        cpf: r.cpf,
+        dataMatricula: r.data_matricula
+          ? new Date(r.data_matricula).toISOString()
+          : null,
+        ultimaPresenca: r.ultima_presenca
+          ? new Date(r.ultima_presenca).toISOString()
+          : null,
+        totalPresencas,
+        ausencias,
+        diasDesdeMatricula,
+        diasSemTreino: r.ultima_presenca
+          ? Math.floor(
+              (Date.now() - new Date(r.ultima_presenca).getTime()) /
+                (1000 * 60 * 60 * 24),
+            )
+          : diasDesdeMatricula,
+      };
+    });
   }
 
   async getRankingProfessoresPresenca(user: any, unidadeId?: string) {
@@ -1210,11 +1305,13 @@ export class PresencaService {
     }
 
     // Query para buscar alunos com melhor frequência
+    // CORREÇÃO: Incluir também alunos sem presenças (ex: menores recém-cadastrados)
     let query = `
       SELECT
         a.id,
         a.usuario_id,
         u.nome as nome_completo,
+        u.data_nascimento,
         COUNT(DISTINCT pr.id) as total_presencas,
         COUNT(DISTINCT DATE(pr.hora_checkin)) as dias_presentes,
         ROUND(
@@ -1237,9 +1334,8 @@ export class PresencaService {
     }
 
     query += `
-      GROUP BY a.id, a.usuario_id, u.nome
-      HAVING COUNT(DISTINCT pr.id) > 0
-      ORDER BY dias_presentes DESC, total_presencas DESC
+      GROUP BY a.id, a.usuario_id, u.nome, u.data_nascimento
+      ORDER BY dias_presentes DESC, total_presencas DESC, u.nome ASC
       LIMIT $${params.length + 1}
     `;
 

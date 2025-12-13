@@ -96,25 +96,51 @@ export default function DependenteForm({
         });
         return Array.isArray(data) ? data : [];
       } catch (error) {
-        console.error(" Erro ao buscar faixas:", error);
-        return [];
+        console.error("❌ Erro ao buscar faixas:", error);
+        // Retornar faixas padrão infantis em caso de erro
+        return [
+          { codigo: "CINZA", nome_exibicao: "Cinza", ordem: 1 },
+          { codigo: "AMARELA", nome_exibicao: "Amarela", ordem: 2 },
+          { codigo: "LARANJA", nome_exibicao: "Laranja", ordem: 3 },
+          { codigo: "VERDE", nome_exibicao: "Verde", ordem: 4 },
+        ];
       }
     },
     staleTime: 5 * 60 * 1000, // Cache por 5 minutos
     retry: 1,
   });
 
-  // ✅ Validar idade - permitir apenas quem completa 15 anos ou menos no ano atual
+  // ✅ Validar idade - permitir apenas entre 3 e 16 anos
   useEffect(() => {
     if (formData.data_nascimento) {
       const dataNasc = new Date(formData.data_nascimento);
-      const anoAtual = new Date().getFullYear();
-      const anoNascimento = dataNasc.getFullYear();
-      const idadeNoAnoAtual = anoAtual - anoNascimento;
+      const hoje = new Date();
+      const anoAtual = hoje.getFullYear();
+      const mesAtual = hoje.getMonth();
+      const diaAtual = hoje.getDate();
 
-      if (idadeNoAnoAtual > 15) {
+      const anoNascimento = dataNasc.getFullYear();
+      const mesNascimento = dataNasc.getMonth();
+      const diaNascimento = dataNasc.getDate();
+
+      // Calcular idade exata
+      let idade = anoAtual - anoNascimento;
+      if (
+        mesAtual < mesNascimento ||
+        (mesAtual === mesNascimento && diaAtual < diaNascimento)
+      ) {
+        idade--;
+      }
+
+      if (idade < 3) {
         setErroIdade(
-          `Apenas dependentes que fazem até 15 anos em ${anoAtual} podem ser cadastrados. Esta pessoa faz ${idadeNoAnoAtual} anos em ${anoAtual}.`
+          `Dependentes devem ter no mínimo 3 anos de idade. Idade atual: ${idade} ${
+            idade === 1 ? "ano" : "anos"
+          }.`
+        );
+      } else if (idade > 16) {
+        setErroIdade(
+          `Dependentes devem ter no máximo 16 anos de idade. Idade atual: ${idade} anos.`
         );
       } else {
         setErroIdade("");
@@ -444,7 +470,7 @@ export default function DependenteForm({
                 <Select
                   value={formData.faixa_atual || "CINZA"}
                   onValueChange={(value) => handleChange("faixa_atual", value)}
-                  disabled={loadingFaixas}
+                  disabled={loadingFaixas && !faixas}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione a faixa" />

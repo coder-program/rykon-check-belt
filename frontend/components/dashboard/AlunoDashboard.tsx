@@ -251,6 +251,7 @@ export default function AlunoDashboard({
   const [dependentes, setDependentes] = useState<Dependente[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [editingDependenteId, setEditingDependenteId] = useState<string | null>(
     null
   );
@@ -559,6 +560,10 @@ export default function AlunoDashboard({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Prevenir múltiplas submissões
+    if (isLoading) return;
+
+    setIsLoading(true);
     try {
       if (isEditMode && editingDependenteId) {
         // Editar dependente existente - remover campos vazios e limpar máscaras
@@ -648,6 +653,8 @@ export default function AlunoDashboard({
           ? error.message
           : `Erro ao ${isEditMode ? "atualizar" : "cadastrar"} dependente`;
       toast.error(errorMessage);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -1515,7 +1522,7 @@ export default function AlunoDashboard({
               observacoes: "",
             });
           }}
-          isLoading={false}
+          isLoading={isLoading}
           unidades={unidades || []}
           isEditMode={isEditMode}
         />

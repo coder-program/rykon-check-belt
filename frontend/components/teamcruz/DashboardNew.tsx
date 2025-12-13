@@ -2731,15 +2731,16 @@ export default function DashboardNew() {
                               <div className="w-8 h-8 rounded-full bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center text-white font-bold text-sm">
                                 #{index + 1}
                               </div>
-                              <div>
-                                <p className="font-semibold text-gray-900">
+                              <div className="flex-1 min-w-0">
+                                <p className="font-semibold text-gray-900 truncate">
                                   {aluno.nome}
                                 </p>
-                                <div className="flex items-center gap-2 text-xs text-gray-600">
+                                <div className="flex items-center gap-2 text-xs text-gray-600 flex-wrap">
                                   <span
                                     className={`badge ${getBeltClass(
                                       aluno.faixa
-                                    )} badge-xs`}
+                                    )} badge-xs whitespace-normal`}
+                                    style={{ maxWidth: "none" }}
                                   >
                                     {aluno.faixa}
                                   </span>

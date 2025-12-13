@@ -432,9 +432,10 @@ export class AlunosService {
         cpf: dto.cpf && dto.cpf.trim() !== '' ? dto.cpf : null, // Converter string vazia para null
         usuario_id, // Incluir o usuario_id criado automaticamente
         status: dto.status || StatusAluno.ATIVO,
+        // Garantir que data_matricula seja sempre a data local atual (sem problemas de timezone)
         data_matricula: dto.data_matricula
-          ? new Date(dto.data_matricula)
-          : new Date(),
+          ? new Date(dto.data_matricula + 'T12:00:00') // Adicionar horário meio-dia para evitar problemas de timezone
+          : new Date(new Date().toISOString().split('T')[0] + 'T12:00:00'),
         data_nascimento: new Date(dto.data_nascimento),
         data_ultima_graduacao: dto.data_ultima_graduacao
           ? new Date(dto.data_ultima_graduacao)

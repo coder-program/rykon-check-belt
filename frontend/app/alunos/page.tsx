@@ -130,6 +130,8 @@ function AlunosContent() {
     unidade_id: "",
     graus: 0,
     desconto_percentual: 0,
+    // Preencher data de matrícula automaticamente com a data atual (formato YYYY-MM-DD)
+    data_matricula: new Date().toISOString().split("T")[0],
   });
 
   // Abrir modal automaticamente se veio da URL
@@ -327,6 +329,10 @@ function AlunosContent() {
       unidade_id: "",
       graus: 0,
       desconto_percentual: 0,
+      // Preencher data de matrícula com a data atual ao criar novo aluno
+      data_matricula: new Date().toISOString().split('T')[0],
+    });
+      desconto_percentual: 0,
     });
   };
 
@@ -349,6 +355,11 @@ function AlunosContent() {
       responsavel_nome: formData.responsavel_nome?.trim() || undefined,
       responsavel_parentesco:
         formData.responsavel_parentesco?.trim() || undefined,
+      // Se não está editando e data_matricula está vazia, usar data atual
+      data_matricula:
+        !editingAluno?.id && !formData.data_matricula
+          ? new Date().toISOString().split("T")[0]
+          : formData.data_matricula,
     };
 
     // Remover campos undefined para não enviar ao backend
