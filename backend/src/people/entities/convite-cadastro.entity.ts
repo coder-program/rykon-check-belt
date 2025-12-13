@@ -32,7 +32,7 @@ export class ConviteCadastro {
   @Column({ type: 'varchar', length: 255, nullable: true })
   nome_pre_cadastro: string | null;
 
-  @Column({ type: 'varchar', length: 14, nullable: true })
+  @Column({ type: 'varchar', length: 50, nullable: true })
   cpf: string | null;
 
   @Column({ type: 'boolean', default: false })
