@@ -111,6 +111,7 @@ export default function CompeticoesPage() {
 
   // Form state
   const [formData, setFormData] = useState({
+    competicaoId: "",
     nomeCompeticao: "",
     tipo: "LOCAL",
     modalidade: "GI",
@@ -239,21 +240,13 @@ export default function CompeticoesPage() {
     e.preventDefault();
 
     try {
-      // Primeiro, criar ou buscar a competição
+      // Primeiro, criar ou atualizar a competição
       let competicaoId: string;
 
-      // Verificar se já existe uma competição com esse nome
-      const competicoesResponse = await http(
-        `/competicoes?nome=${encodeURIComponent(formData.nomeCompeticao)}`,
-        { auth: true }
-      );
-
-      if (competicoesResponse && competicoesResponse.length > 0) {
-        competicaoId = competicoesResponse[0].id;
-      } else {
-        // Criar nova competição
-        const novaCompeticao = await http("/competicoes", {
-          method: "POST",
+      if (editando && formData.competicaoId) {
+        // Se está editando, atualizar a competição existente
+        await http(`/competicoes/${formData.competicaoId}`, {
+          method: "PUT",
           auth: true,
           body: JSON.stringify({
             nome: formData.nomeCompeticao,
@@ -266,7 +259,34 @@ export default function CompeticoesPage() {
             status: "FINALIZADA",
           }),
         });
-        competicaoId = novaCompeticao.id;
+        competicaoId = formData.competicaoId;
+      } else {
+        // Verificar se já existe uma competição com esse nome
+        const competicoesResponse = await http(
+          `/competicoes?nome=${encodeURIComponent(formData.nomeCompeticao)}`,
+          { auth: true }
+        );
+
+        if (competicoesResponse && competicoesResponse.length > 0) {
+          competicaoId = competicoesResponse[0].id;
+        } else {
+          // Criar nova competição
+          const novaCompeticao = await http("/competicoes", {
+            method: "POST",
+            auth: true,
+            body: JSON.stringify({
+              nome: formData.nomeCompeticao,
+              tipo: formData.tipo,
+              modalidade: formData.modalidade,
+              data_inicio: formData.data,
+              local: formData.local,
+              cidade: formData.cidade,
+              estado: formData.estado,
+              status: "FINALIZADA",
+            }),
+          });
+          competicaoId = novaCompeticao.id;
+        }
       }
 
       // Agora criar a participação
@@ -314,6 +334,7 @@ export default function CompeticoesPage() {
 
   const resetForm = () => {
     setFormData({
+      competicaoId: "",
       nomeCompeticao: "",
       tipo: "LOCAL",
       modalidade: "GI",
@@ -335,6 +356,7 @@ export default function CompeticoesPage() {
 
   const handleEditar = (participacao: MinhaParticipacao) => {
     setFormData({
+      competicaoId: participacao.competicao.id,
       nomeCompeticao: participacao.competicao.nome,
       tipo: participacao.competicao.tipo,
       modalidade: participacao.competicao.modalidade,
