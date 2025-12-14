@@ -1299,31 +1299,30 @@ export class AlunosService {
       throw new BadRequestException('Você já é um aluno cadastrado');
     }
 
-    // Buscar dados do usuário na tabela person
-    const pessoa = await this.personRepository.findOne({
-      where: { id: user.id },
-    });
-
-    if (!pessoa) {
-      throw new NotFoundException('Dados do usuário não encontrados');
-    }
-
-    // Buscar responsável para pegar a unidade
-    const responsavel = await this.dataSource.query(
-      `SELECT unidade_id FROM teamcruz.responsaveis WHERE usuario_id = $1 LIMIT 1`,
+    // Buscar dados do responsável
+    const responsavelData = await this.dataSource.query(
+      `SELECT r.*, u.nome, u.email, u.cpf, u.telefone 
+       FROM teamcruz.responsaveis r
+       INNER JOIN teamcruz.usuarios u ON u.id = r.usuario_id
+       WHERE r.usuario_id = $1 LIMIT 1`,
       [user.id],
     );
 
-    const unidadeId = responsavel?.[0]?.unidade_id || null;
+    if (!responsavelData || responsavelData.length === 0) {
+      throw new NotFoundException('Dados do usuário não encontrados');
+    }
 
-    // Criar registro de aluno
+    const responsavel = responsavelData[0];
+
+    // Criar registro de aluno com os dados do responsável
     const novoAluno = this.alunoRepository.create({
-      nome_completo: pessoa.nome_completo,
-      email: pessoa.email,
-      cpf: pessoa.cpf,
-      data_nascimento: pessoa.data_nascimento,
-      telefone: pessoa.telefone_whatsapp || '',
-      unidade_id: unidadeId,
+      nome_completo: responsavel.nome_completo || responsavel.nome,
+      email: responsavel.email,
+      cpf: responsavel.cpf,
+      genero: responsavel.genero,
+      data_nascimento: responsavel.data_nascimento,
+      telefone: responsavel.telefone || responsavel.telefone_whatsapp || '',
+      unidade_id: responsavel.unidade_id,
       status: StatusAluno.ATIVO,
     });
 
@@ -1331,6 +1330,28 @@ export class AlunosService {
     novoAluno.usuario_id = user.id;
 
     await this.alunoRepository.save(novoAluno);
+
+    // Adicionar perfil ALUNO ao usuário (mantém o perfil RESPONSAVEL também)
+    const perfilAluno = await this.dataSource.query(
+      `SELECT id FROM teamcruz.perfis WHERE nome = 'ALUNO' LIMIT 1`,
+    );
+
+    if (perfilAluno && perfilAluno.length > 0) {
+      // Verificar se já não tem o perfil
+      const perfilExistente = await this.dataSource.query(
+        `SELECT id FROM teamcruz.usuario_perfis 
+         WHERE usuario_id = $1 AND perfil_id = $2`,
+        [user.id, perfilAluno[0].id],
+      );
+
+      if (!perfilExistente || perfilExistente.length === 0) {
+        await this.dataSource.query(
+          `INSERT INTO teamcruz.usuario_perfis (usuario_id, perfil_id, created_at)
+           VALUES ($1, $2, NOW())`,
+          [user.id, perfilAluno[0].id],
+        );
+      }
+    }
 
     return {
       success: true,
