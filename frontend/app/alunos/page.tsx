@@ -330,9 +330,7 @@ function AlunosContent() {
       graus: 0,
       desconto_percentual: 0,
       // Preencher data de matrícula com a data atual ao criar novo aluno
-      data_matricula: new Date().toISOString().split('T')[0],
-    });
-      desconto_percentual: 0,
+      data_matricula: new Date().toISOString().split("T")[0],
     });
   };
 

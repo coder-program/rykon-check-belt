@@ -167,6 +167,7 @@ export class AlunosService {
     const faixaLower = params.faixa?.toLowerCase();
     if (
       params.faixa &&
+      faixaLower &&
       faixaLower !== 'todos' &&
       faixaLower !== 'todas' &&
       faixasValidas.includes(faixaLower)
