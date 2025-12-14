@@ -29,13 +29,13 @@ export default function ConviteModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Validar se unidade_id está presente
     if (!formData.unidade_id) {
       alert("É necessário selecionar uma unidade antes de criar o convite");
       return;
     }
-    
+
     setLoading(true);
 
     try {
