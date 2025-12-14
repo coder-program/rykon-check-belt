@@ -26,6 +26,7 @@ import {
   Clock,
   DollarSign,
   Mail,
+  Settings,
 } from "lucide-react";
 import ConviteModal from "@/components/convites/ConviteModal";
 
@@ -231,6 +232,13 @@ export default function GerenteDashboard() {
       icon: Trophy,
       action: () => router.push("/admin/sistema-graduacao"),
       color: "bg-amber-500",
+    },
+    {
+      title: "Configurar Graduação",
+      description: "Regras de graduação da unidade",
+      icon: Settings,
+      action: () => router.push("/admin/configuracao-graduacao"),
+      color: "bg-indigo-500",
     },
     {
       title: "Gestão Financeira",

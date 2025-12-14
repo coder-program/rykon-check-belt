@@ -404,39 +404,51 @@ export default function MeuProgressoPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-      <div className="container mx-auto px-4 py-8">
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" onClick={() => router.push("/dashboard")}>
+      <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-8">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0 mb-4 sm:mb-8">
+          <div className="flex items-center gap-2 sm:gap-4">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => router.push("/dashboard")}
+              className="p-2"
+            >
               <ArrowLeft className="h-4 w-4" />
             </Button>
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900">
                 Meu Progresso
               </h1>
-              <p className="text-gray-600">
-                Sistema para gerenciar seu histórico de graduações
+              <p className="text-xs sm:text-sm md:text-base text-gray-600">
+                Histórico de graduações
               </p>
             </div>
           </div>
 
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={handleAdicionarFaixa}>
-              <Plus className="mr-2 h-4 w-4" />
-              Adicionar Faixa Antiga
+          <div className="flex gap-2 w-full sm:w-auto">
+            <Button
+              variant="outline"
+              onClick={handleAdicionarFaixa}
+              className="w-full sm:w-auto text-xs sm:text-sm"
+            >
+              <Plus className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Adicionar Faixa Antiga</span>
+              <span className="sm:hidden">Nova Faixa</span>
             </Button>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
           {/* Histórico de Faixas */}
           <Card>
-            <CardHeader>
-              <CardTitle>Histórico de Faixas</CardTitle>
+            <CardHeader className="pb-3 sm:pb-6">
+              <CardTitle className="text-base sm:text-lg">
+                Histórico de Faixas
+              </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-0">
               {historico?.historicoFaixas?.length > 0 ? (
-                <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2">
+                <div className="space-y-3 sm:space-y-4 max-h-[400px] sm:max-h-[600px] overflow-y-auto pr-1 sm:pr-2">
                   {historico.historicoFaixas
                     .sort((a: HistoricoFaixa, b: HistoricoFaixa) => {
                       // Faixas atuais (sem dt_fim) primeiro
@@ -451,13 +463,13 @@ export default function MeuProgressoPage() {
                     .map((faixa: HistoricoFaixa) => (
                       <div
                         key={faixa.id}
-                        className={`border-l-4 ${
+                        className={`border-l-2 sm:border-l-4 ${
                           isFaixaAtual(faixa.dt_fim)
                             ? "border-green-500 bg-green-50"
                             : `${getFaixaBorderColor(
                                 faixa.faixaDestino
                               )} bg-white`
-                        } pl-4 py-2 rounded-r-lg`}
+                        } pl-2 sm:pl-4 py-2 rounded-r-lg`}
                       >
                         {editingFaixa === faixa.id ? (
                           // Modo de edição
@@ -473,7 +485,7 @@ export default function MeuProgressoPage() {
                                   {faixa.faixaDestino}
                                 </span>
                               </p>
-                              <div className="grid grid-cols-2 gap-3">
+                              <div className="grid grid-cols-1 xs:grid-cols-2 gap-2 sm:gap-3">
                                 <div>
                                   <label className="block text-xs text-gray-600 mb-1">
                                     Data Início
@@ -509,13 +521,14 @@ export default function MeuProgressoPage() {
                                   />
                                 </div>
                               </div>
-                              <div className="flex gap-2 mt-3">
+                              <div className="flex gap-2 mt-2 sm:mt-3">
                                 <Button
                                   size="sm"
                                   onClick={() =>
                                     handleSalvarEdicaoFaixa(faixa.id)
                                   }
                                   disabled={atualizarFaixaMutation.isPending}
+                                  className="text-xs sm:text-sm px-2 sm:px-3"
                                 >
                                   <Check className="w-3 h-3 mr-1" />
                                   Salvar
@@ -524,6 +537,7 @@ export default function MeuProgressoPage() {
                                   size="sm"
                                   variant="outline"
                                   onClick={handleCancelarEdicao}
+                                  className="text-xs sm:text-sm px-2 sm:px-3"
                                 >
                                   <X className="w-3 h-3 mr-1" />
                                   Cancelar
@@ -549,12 +563,12 @@ export default function MeuProgressoPage() {
                                   </span>
                                 </p>
                                 {isFaixaAtual(faixa.dt_fim) && (
-                                  <span className="bg-green-100 text-green-700 text-xs px-2 py-1 rounded-full font-medium">
+                                  <span className="bg-green-100 text-green-700 text-xs px-2 py-0.5 sm:py-1 rounded-full font-medium flex-shrink-0">
                                     Atual
                                   </span>
                                 )}
                               </div>
-                              <div className="text-sm text-gray-500 space-y-1">
+                              <div className="text-xs sm:text-sm text-gray-500 space-y-1">
                                 <p>
                                   <strong>Início:</strong>{" "}
                                   {formatarData(faixa.dt_inicio)}
@@ -594,7 +608,7 @@ export default function MeuProgressoPage() {
                               variant="ghost"
                               onClick={() => handleEditarFaixa(faixa)}
                             >
-                              <Edit className="w-4 h-4" />
+                              <Edit className="w-3 h-3 sm:w-4 sm:h-4" />
                             </Button>
                           </div>
                         )}
@@ -611,12 +625,14 @@ export default function MeuProgressoPage() {
 
           {/* Histórico de Graus */}
           <Card>
-            <CardHeader>
-              <CardTitle>Histórico de Graus</CardTitle>
+            <CardHeader className="pb-3 sm:pb-6">
+              <CardTitle className="text-base sm:text-lg">
+                Histórico de Graus
+              </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-0">
               {historico?.historicoGraus?.length > 0 ? (
-                <div className="space-y-6 max-h-[600px] overflow-y-auto pr-2">
+                <div className="space-y-4 sm:space-y-6 max-h-[400px] sm:max-h-[600px] overflow-y-auto pr-1 sm:pr-2">
                   {/* Agrupar graus por faixa */}
                   {Object.entries(
                     historico.historicoGraus.reduce(
@@ -644,25 +660,25 @@ export default function MeuProgressoPage() {
                           style={{ borderColor: faixaCor }}
                         >
                           <div
-                            className="w-8 h-8 rounded-full flex items-center justify-center text-white font-bold"
+                            className="w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-white text-xs sm:text-base font-bold"
                             style={{ backgroundColor: faixaCor }}
                           >
                             {faixaNome.charAt(0)}
                           </div>
                           <h3
-                            className="font-semibold text-lg"
+                            className="font-semibold text-sm sm:text-base md:text-lg"
                             style={{ color: faixaCor }}
                           >
                             Faixa {faixaNome}
                           </h3>
-                          <span className="text-sm text-gray-500">
+                          <span className="text-xs sm:text-sm text-gray-500">
                             ({grausDaFaixa.length}{" "}
                             {grausDaFaixa.length === 1 ? "grau" : "graus"})
                           </span>
                         </div>
 
                         {/* Graus da Faixa */}
-                        <div className="ml-10 space-y-2">
+                        <div className="ml-4 sm:ml-10 space-y-2">
                           {grausDaFaixa
                             .sort((a: HistoricoGrau, b: HistoricoGrau) => {
                               const aNum = a.grauNumero || a.grau || 0;
@@ -674,27 +690,27 @@ export default function MeuProgressoPage() {
                               return (
                                 <div
                                   key={grau.id}
-                                  className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                                  className="flex items-start gap-2 sm:gap-3 p-2 sm:p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
                                 >
                                   {/* Indicador do Grau */}
                                   <div
-                                    className="flex items-center justify-center w-10 h-10 rounded-lg text-white font-bold shadow-sm"
+                                    className="flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-lg text-white text-xs sm:text-base font-bold shadow-sm flex-shrink-0"
                                     style={{ backgroundColor: faixaCor }}
                                   >
                                     {grauNum}º
                                   </div>
 
                                   {/* Informações do Grau */}
-                                  <div className="flex-1">
-                                    <div className="flex justify-between items-start">
-                                      <div>
-                                        <p className="font-medium text-gray-800">
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex justify-between items-start gap-2">
+                                      <div className="flex-1 min-w-0">
+                                        <p className="font-medium text-sm sm:text-base text-gray-800">
                                           Grau {grauNum}
                                         </p>
-                                        <p className="text-sm text-gray-500">
+                                        <p className="text-xs sm:text-sm text-gray-500">
                                           <span className="inline-flex items-center gap-1">
                                             <svg
-                                              className="w-3 h-3"
+                                              className="w-2.5 h-2.5 sm:w-3 sm:h-3"
                                               fill="none"
                                               viewBox="0 0 24 24"
                                               stroke="currentColor"
@@ -718,7 +734,7 @@ export default function MeuProgressoPage() {
                                         )}
                                       </div>
                                       {grau.origemGrau && (
-                                        <span className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded-full">
+                                        <span className="text-xs px-2 py-0.5 sm:py-1 bg-blue-100 text-blue-700 rounded-full flex-shrink-0">
                                           {grau.origemGrau === "manual"
                                             ? "Manual"
                                             : grau.origemGrau}

@@ -137,6 +137,26 @@ export class GraduacaoController {
     }
   }
 
+  @Post('cadastrar-faixa-inicial')
+  @ApiOperation({ summary: 'Cadastrar faixa inicial do aluno logado' })
+  @ApiResponse({
+    status: 201,
+    description: 'Faixa inicial cadastrada com sucesso',
+  })
+  @ApiResponse({ status: 400, description: 'Aluno já possui faixa ativa' })
+  async cadastrarFaixaInicial(
+    @Request() req,
+    @Body()
+    body: { faixa_codigo: string; graus: number; data_graduacao: string },
+  ) {
+    return this.graduacaoService.cadastrarFaixaInicial(
+      req.user,
+      body.faixa_codigo,
+      body.graus,
+      body.data_graduacao,
+    );
+  }
+
   @Get('alunos/:alunoId/proxima-faixa')
   @ApiOperation({
     summary: 'Lista a próxima faixa válida para o aluno graduar',
@@ -571,5 +591,44 @@ export class GraduacaoController {
       req.user,
       unidadeId,
     );
+  }
+
+  // ==================== CONFIGURAÇÃO DE GRADUAÇÃO POR UNIDADE ====================
+
+  @Get('configuracao/:unidadeId')
+  @ApiOperation({ summary: 'Obter configuração de graduação de uma unidade' })
+  @ApiResponse({
+    status: 200,
+    description: 'Configuração de graduação da unidade',
+  })
+  async getConfiguracaoUnidade(
+    @Param('unidadeId', ParseUUIDPipe) unidadeId: string,
+  ) {
+    return await this.graduacaoService.getConfiguracaoGraduacao(unidadeId);
+  }
+
+  @Post('configuracao')
+  @ApiOperation({
+    summary: 'Criar ou atualizar configuração de graduação de uma unidade',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Configuração salva com sucesso',
+  })
+  async salvarConfiguracaoUnidade(@Body() data: any, @Request() req: any) {
+    return await this.graduacaoService.salvarConfiguracaoGraduacao(
+      data,
+      req.user,
+    );
+  }
+
+  @Get('configuracoes')
+  @ApiOperation({ summary: 'Listar todas configurações de graduação' })
+  @ApiResponse({
+    status: 200,
+    description: 'Lista de configurações de graduação',
+  })
+  async listarConfiguracoes(@Request() req: any) {
+    return await this.graduacaoService.listarConfiguracoes(req.user);
   }
 }

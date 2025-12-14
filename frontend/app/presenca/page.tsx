@@ -806,13 +806,13 @@ export default function PresencaPage() {
               <ArrowLeft className="h-4 w-4" />
             </Button>
             <div>
-              <div className="flex items-center gap-3 mb-2">
-                <Clock className="h-8 w-8 text-green-600" />
-                <h1 className="text-3xl font-bold text-gray-900">
+              <div className="flex items-center gap-2 sm:gap-3 mb-2">
+                <Clock className="h-6 w-6 sm:h-8 sm:w-8 text-green-600" />
+                <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900">
                   Marcar Presença
                 </h1>
               </div>
-              <p className="text-gray-600">
+              <p className="text-sm sm:text-base text-gray-600">
                 Faça seu check-in nas aulas usando QR Code ou manualmente
               </p>
             </div>
@@ -839,7 +839,7 @@ export default function PresencaPage() {
           )}
 
           {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8">
             <Card className="border-0 shadow-md bg-gradient-to-br from-green-50 to-green-100">
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between mb-4">
@@ -931,26 +931,29 @@ export default function PresencaPage() {
             </Card>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 md:gap-8">
             {/* Check-in Section */}
-            <div className="space-y-6">
+            <div className="space-y-4 sm:space-y-6">
               {/* Seletor de Método de Check-in */}
               {aulaAtiva && (
                 <Card className="border-2">
-                  <CardHeader>
-                    <CardTitle>Métodos de Check-in</CardTitle>
+                  <CardHeader className="p-4 sm:p-6">
+                    <CardTitle className="text-base sm:text-lg">
+                      Métodos de Check-in
+                    </CardTitle>
                   </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                  <CardContent className="p-4 sm:p-6">
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
                       <Button
                         variant={
                           metodoCheckin === "QR_CODE" ? "default" : "outline"
                         }
                         onClick={() => setMetodoCheckin("QR_CODE")}
-                        className="flex items-center gap-2"
+                        className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 py-3 sm:py-2 text-xs sm:text-sm"
                       >
                         <QrCode className="h-4 w-4" />
-                        QR Code
+                        <span className="hidden sm:inline">QR Code</span>
+                        <span className="sm:hidden">QR</span>
                       </Button>
                       {!user?.perfis?.some(
                         (p: string) => p.toLowerCase() === "aluno"
@@ -961,7 +964,7 @@ export default function PresencaPage() {
                               metodoCheckin === "CPF" ? "default" : "outline"
                             }
                             onClick={() => setMetodoCheckin("CPF")}
-                            className="flex items-center gap-2"
+                            className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 py-3 sm:py-2 text-xs sm:text-sm"
                           >
                             <CreditCard className="h-4 w-4" />
                             CPF
@@ -971,17 +974,18 @@ export default function PresencaPage() {
                               metodoCheckin === "FACIAL" ? "default" : "outline"
                             }
                             onClick={() => setMetodoCheckin("FACIAL")}
-                            className="flex items-center gap-2"
+                            className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 py-3 sm:py-2 text-xs sm:text-sm"
                           >
                             <Camera className="h-4 w-4" />
-                            Facial
+                            <span className="hidden sm:inline">Facial</span>
+                            <span className="sm:hidden">Face</span>
                           </Button>
                           <Button
                             variant={
                               metodoCheckin === "NOME" ? "default" : "outline"
                             }
                             onClick={() => setMetodoCheckin("NOME")}
-                            className="flex items-center gap-2"
+                            className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 py-3 sm:py-2 text-xs sm:text-sm"
                           >
                             <Search className="h-4 w-4" />
                             Nome
@@ -996,13 +1000,14 @@ export default function PresencaPage() {
               {/* Check-in por QR Code */}
               {aulaAtiva && metodoCheckin === "QR_CODE" && (
                 <Card className="border-2">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
+                  <CardHeader className="p-4 sm:p-6">
+                    <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
                       <QrCode className="h-5 w-5" />
-                      Scanner QR Code
+                      <span className="hidden sm:inline">Scanner QR Code</span>
+                      <span className="sm:hidden">Scanner QR</span>
                     </CardTitle>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="p-4 sm:p-6">
                     {!scannerActive ? (
                       <div className="space-y-4">
                         <p className="text-gray-600">
@@ -1033,13 +1038,14 @@ export default function PresencaPage() {
               {/* Check-in por CPF */}
               {aulaAtiva && metodoCheckin === "CPF" && (
                 <Card className="border-2">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
+                  <CardHeader className="p-4 sm:p-6">
+                    <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
                       <CreditCard className="h-5 w-5" />
-                      Check-in por CPF
+                      <span className="hidden sm:inline">Check-in por CPF</span>
+                      <span className="sm:hidden">CPF</span>
                     </CardTitle>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="p-4 sm:p-6">
                     <div className="space-y-4">
                       <div>
                         <Label htmlFor="cpf">Digite seu CPF</Label>
@@ -1070,13 +1076,16 @@ export default function PresencaPage() {
               {/* Check-in Facial */}
               {aulaAtiva && metodoCheckin === "FACIAL" && (
                 <Card className="border-2">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
+                  <CardHeader className="p-4 sm:p-6">
+                    <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
                       <Camera className="h-5 w-5" />
-                      Reconhecimento Facial
+                      <span className="hidden sm:inline">
+                        Reconhecimento Facial
+                      </span>
+                      <span className="sm:hidden">Facial</span>
                     </CardTitle>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="p-4 sm:p-6">
                     <div className="space-y-4">
                       {facialActive ? (
                         <div className="space-y-4">
@@ -1343,24 +1352,27 @@ export default function PresencaPage() {
 
             {/* Histórico */}
             <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
+              <CardHeader className="p-4 sm:p-6">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
                   <div>
-                    <CardTitle className="flex items-center gap-2">
+                    <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
                       <History className="h-5 w-5" />
                       Histórico Recente
                     </CardTitle>
-                    <CardDescription>
+                    <CardDescription className="text-sm">
                       Suas últimas presenças registradas
                     </CardDescription>
                   </div>
                   <Button
                     variant="outline"
                     onClick={() => router.push("/historico-presenca")}
-                    className="flex items-center gap-2"
+                    className="flex items-center gap-2 w-full sm:w-auto text-xs sm:text-sm"
                   >
                     <History className="h-4 w-4" />
-                    Ver Histórico Completo
+                    <span className="hidden sm:inline">
+                      Ver Histórico Completo
+                    </span>
+                    <span className="sm:hidden">Ver Completo</span>
                   </Button>
                 </div>
               </CardHeader>
@@ -1429,30 +1441,32 @@ export default function PresencaPage() {
                       .map((presenca) => (
                         <div
                           key={presenca.id}
-                          className="flex items-center justify-between p-3 bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg border border-gray-200 hover:shadow-md transition-shadow"
+                          className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 sm:p-4 bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg border border-gray-200 hover:shadow-md transition-shadow gap-2 sm:gap-0"
                         >
-                          <div className="flex items-center gap-3">
-                            <div className="p-2 bg-green-100 rounded-lg">
+                          <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
+                            <div className="p-2 bg-green-100 rounded-lg flex-shrink-0">
                               <CheckCircle className="h-4 w-4 text-green-600" />
                             </div>
-                            <div>
-                              <div className="font-medium text-sm">
+                            <div className="flex-1 min-w-0">
+                              <div className="font-medium text-sm truncate">
                                 {presenca.aula.nome}
                               </div>
-                              <div className="text-xs text-gray-600">
+                              <div className="text-xs text-gray-600 truncate">
                                 Prof. {presenca.aula.professor}
                               </div>
-                              <div className="text-xs text-gray-500">
+                              <div className="text-xs text-gray-500 truncate">
                                 {presenca.aula.unidade}
                               </div>
                             </div>
                           </div>
-                          <div className="text-right">
-                            <div className="text-sm font-medium">
-                              {formatDate(presenca.data).split(" ")[0]}
-                            </div>
-                            <div className="text-xs text-gray-600">
-                              {presenca.horario}
+                          <div className="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto sm:text-right">
+                            <div>
+                              <div className="text-sm font-medium">
+                                {formatDate(presenca.data).split(" ")[0]}
+                              </div>
+                              <div className="text-xs text-gray-600">
+                                {presenca.horario}
+                              </div>
                             </div>
                             <Badge
                               variant={
@@ -1460,7 +1474,7 @@ export default function PresencaPage() {
                                   ? "default"
                                   : "secondary"
                               }
-                              className="text-xs mt-1"
+                              className="text-xs"
                             >
                               {presenca.tipo === "entrada"
                                 ? "Entrada"

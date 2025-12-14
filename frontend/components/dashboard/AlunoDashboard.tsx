@@ -250,6 +250,12 @@ export default function AlunoDashboard({
   const [canAccess, setCanAccess] = useState(false);
   const [dependentes, setDependentes] = useState<Dependente[]>([]);
   const [showModal, setShowModal] = useState(false);
+  const [showFaixaModal, setShowFaixaModal] = useState(false);
+  const [faixaInicial, setFaixaInicial] = useState({
+    faixa: "BRANCA",
+    graus: 0,
+    data_graduacao: new Date().toISOString().split("T")[0],
+  });
   const [isEditMode, setIsEditMode] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [editingDependenteId, setEditingDependenteId] = useState<string | null>(
@@ -402,6 +408,10 @@ export default function AlunoDashboard({
           " Erro ao carregar status de graduação:",
           graduacaoData.reason
         );
+        // Se não tem faixa ativa, abrir modal para cadastrar
+        if (graduacaoData.reason?.message?.includes("não possui faixa ativa")) {
+          setShowFaixaModal(true);
+        }
       }
 
       if (presencaData.status === "fulfilled") {
@@ -658,6 +668,46 @@ export default function AlunoDashboard({
     }
   };
 
+  const handleSalvarFaixaInicial = async () => {
+    try {
+      setIsLoading(true);
+      const token = localStorage.getItem("token");
+      const API_URL =
+        process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api";
+
+      const response = await fetch(
+        `${API_URL}/graduacao/cadastrar-faixa-inicial`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            faixa_codigo: faixaInicial.faixa,
+            graus: faixaInicial.graus,
+            data_graduacao: faixaInicial.data_graduacao,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Erro ao cadastrar faixa");
+      }
+
+      toast.success("Faixa cadastrada com sucesso!");
+      setShowFaixaModal(false);
+      await loadDashboardData();
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Erro ao cadastrar faixa";
+      toast.error(errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Dados calculados baseados nos dados reais
   const graduacaoAtual = statusGraduacao?.faixaAtual || "Carregando...";
   const proximaGraduacao = statusGraduacao?.proximaFaixa || "A definir";
@@ -749,16 +799,17 @@ export default function AlunoDashboard({
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-gray-50 p-3 sm:p-6">
       <div className="max-w-7xl mx-auto">
         {/* Botão Voltar para Meus Dados (se estiver visualizando dependente) */}
         {alunoId && alunoId !== user?.id && (
           <button
             onClick={() => router.push("/dashboard")}
-            className="mb-4 flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-md"
+            className="mb-3 sm:mb-4 flex items-center gap-2 px-3 py-2 sm:px-4 text-sm sm:text-base bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-md"
           >
             <span>←</span>
-            Voltar para Meus Dados
+            <span className="hidden sm:inline">Voltar para Meus Dados</span>
+            <span className="sm:hidden">Voltar</span>
           </button>
         )}
 
@@ -774,48 +825,52 @@ export default function AlunoDashboard({
         )}
 
         {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-4">
+        <div className="mb-4 sm:mb-8">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 sm:mb-4">
+            <div className="flex items-center gap-2 sm:gap-4">
               {/* Foto de Perfil */}
               {user?.foto ? (
                 <img
                   src={user.foto}
                   alt={alunoNome || user?.nome || "Aluno"}
-                  className="h-16 w-16 rounded-full object-cover border-4 border-blue-500 shadow-lg"
+                  className="h-12 w-12 sm:h-16 sm:w-16 rounded-full object-cover border-2 sm:border-4 border-blue-500 shadow-lg"
                 />
               ) : (
-                <div className="h-16 w-16 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center border-4 border-blue-400 shadow-lg">
-                  <span className="text-2xl font-bold text-white">
+                <div className="h-12 w-12 sm:h-16 sm:w-16 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center border-2 sm:border-4 border-blue-400 shadow-lg">
+                  <span className="text-lg sm:text-2xl font-bold text-white">
                     {(alunoNome || user?.nome || "A").charAt(0).toUpperCase()}
                   </span>
                 </div>
               )}
 
-              <GraduationCap className="h-8 w-8 text-blue-600" />
+              <GraduationCap className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600" />
               <div>
-                <h1 className="text-3xl font-bold text-gray-900">
+                <h1 className="text-xl sm:text-3xl font-bold text-gray-900">
                   Meu Dashboard
                 </h1>
-                <p className="text-gray-600">
+                <p className="text-sm sm:text-base text-gray-600">
                   Bem-vindo,{" "}
                   <span className="font-semibold">
                     {alunoNome || user?.nome}
                   </span>
-                  ! Acompanhe sua jornada no Jiu-Jitsu.
+                  <span className="hidden sm:inline">
+                    ! Acompanhe sua jornada no Jiu-Jitsu.
+                  </span>
                 </p>
               </div>
             </div>
 
             {/* Badge da Unidade - Destacado */}
             {unidadeAluno && (
-              <div className="flex items-center gap-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white px-6 py-3 rounded-lg shadow-lg">
-                <Building2 className="h-5 w-5" />
+              <div className="flex items-center gap-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white px-3 py-2 sm:px-6 sm:py-3 rounded-lg shadow-lg w-full sm:w-auto">
+                <Building2 className="h-4 w-4 sm:h-5 sm:w-5" />
                 <div className="text-left">
                   <p className="text-xs font-medium opacity-90">
                     Minha Unidade
                   </p>
-                  <p className="text-lg font-bold">{unidadeAluno.nome}</p>
+                  <p className="text-sm sm:text-lg font-bold truncate">
+                    {unidadeAluno.nome}
+                  </p>
                 </div>
               </div>
             )}
@@ -850,24 +905,24 @@ export default function AlunoDashboard({
 
         {/* Graduação Atual */}
         {!loading && !error && (
-          <Card className="mb-8 bg-gradient-to-r from-blue-500 to-blue-600 text-white">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Trophy className="h-6 w-6" />
+          <Card className="mb-4 sm:mb-8 bg-gradient-to-r from-blue-500 to-blue-600 text-white">
+            <CardHeader className="pb-3 sm:pb-6">
+              <CardTitle className="flex items-center gap-2 text-base sm:text-xl">
+                <Trophy className="h-5 w-5 sm:h-6 sm:w-6" />
                 Graduação Atual
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <CardContent className="pt-0">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
                 <div>
                   <h3
-                    className={`text-2xl font-bold ${
+                    className={`text-xl sm:text-2xl font-bold ${
                       getFaixaColors(graduacaoAtual).text
                     }`}
                   >
                     {graduacaoAtual}
                   </h3>
-                  <p className="text-blue-100">
+                  <p className="text-sm sm:text-base text-blue-100">
                     {statusGraduacao?.grausAtual || 0} /{" "}
                     {statusGraduacao?.grausMax || 4} graus
                   </p>
@@ -960,16 +1015,16 @@ export default function AlunoDashboard({
 
         {/* Stats Cards */}
         {!loading && !error && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 mb-4 sm:mb-8">
             <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 sm:pb-2">
+                <CardTitle className="text-xs sm:text-sm font-medium">
                   Aulas Este Mês
                 </CardTitle>
-                <Calendar className="h-4 w-4 text-muted-foreground" />
+                <Calendar className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
               </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{aulasMes}</div>
+              <CardContent className="pt-1">
+                <div className="text-xl sm:text-2xl font-bold">{aulasMes}</div>
                 <p className="text-xs text-muted-foreground">
                   {aulasMes > 0 ? "Mantendo frequência" : "Nenhuma aula ainda"}
                 </p>
@@ -977,14 +1032,16 @@ export default function AlunoDashboard({
             </Card>
 
             <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 sm:pb-2">
+                <CardTitle className="text-xs sm:text-sm font-medium">
                   Presença Mensal
                 </CardTitle>
-                <Clock className="h-4 w-4 text-muted-foreground" />
+                <Clock className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
               </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{presencaMensal}%</div>
+              <CardContent className="pt-1">
+                <div className="text-xl sm:text-2xl font-bold">
+                  {presencaMensal}%
+                </div>
                 <p className="text-xs text-muted-foreground">
                   {presencaMensal >= 80
                     ? "Excelente frequência"
@@ -996,13 +1053,13 @@ export default function AlunoDashboard({
             </Card>
 
             <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 sm:pb-2">
+                <CardTitle className="text-xs sm:text-sm font-medium">
                   Ranking Turma
                 </CardTitle>
-                <Trophy className="h-4 w-4 text-yellow-600" />
+                <Trophy className="h-3 w-3 sm:h-4 sm:w-4 text-yellow-600" />
               </CardHeader>
-              <CardContent>
+              <CardContent className="pt-1">
                 {ranking ? (
                   <>
                     <div className="text-2xl font-bold text-yellow-600">
@@ -1035,14 +1092,14 @@ export default function AlunoDashboard({
             </Card>
 
             <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 sm:pb-2">
+                <CardTitle className="text-xs sm:text-sm font-medium">
                   Pontos Graduação
                 </CardTitle>
-                <Star className="h-4 w-4 text-blue-600" />
+                <Star className="h-3 w-3 sm:h-4 sm:w-4 text-blue-600" />
               </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-blue-600">
+              <CardContent className="pt-1">
+                <div className="text-xl sm:text-2xl font-bold text-blue-600">
                   {pontosGraduacao}
                 </div>
                 <p className="text-xs text-muted-foreground">
@@ -1085,26 +1142,28 @@ export default function AlunoDashboard({
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-8">
           {/* Próximas Aulas */}
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Calendar className="h-5 w-5" />
+            <CardHeader className="pb-3 sm:pb-6">
+              <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                <Calendar className="h-4 w-4 sm:h-5 sm:w-5" />
                 Próximas Aulas
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
+            <CardContent className="pt-0">
+              <div className="space-y-3 sm:space-y-4">
                 {proximasAulasFormatadas.length > 0 ? (
                   proximasAulasFormatadas.map((aula, index) => (
                     <div
                       key={index}
-                      className="flex items-center justify-between p-4 bg-gray-50 rounded-lg"
+                      className="flex items-center justify-between p-3 sm:p-4 bg-gray-50 rounded-lg"
                     >
                       <div>
-                        <div className="font-semibold">{aula.tipo}</div>
-                        <div className="text-sm text-gray-600">
+                        <div className="font-semibold text-sm sm:text-base">
+                          {aula.tipo}
+                        </div>
+                        <div className="text-xs sm:text-sm text-gray-600">
                           {aula.professor}
                         </div>
                         <div className="text-xs text-gray-500">
@@ -1112,20 +1171,22 @@ export default function AlunoDashboard({
                         </div>
                       </div>
                       <div className="text-right">
-                        <div className="font-semibold text-blue-600">
+                        <div className="font-semibold text-blue-600 text-xs sm:text-sm">
                           {aula.data}
                         </div>
-                        <div className="text-sm text-gray-600">
+                        <div className="text-xs text-gray-600">
                           {aula.horario}
                         </div>
                       </div>
                     </div>
                   ))
                 ) : (
-                  <div className="text-center py-6 text-gray-500">
-                    <Calendar className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                    <p>Nenhuma aula disponível no momento</p>
-                    <p className="text-sm">
+                  <div className="text-center py-4 sm:py-6 text-gray-500">
+                    <Calendar className="h-6 w-6 sm:h-8 sm:w-8 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm sm:text-base">
+                      Nenhuma aula disponível no momento
+                    </p>
+                    <p className="text-xs sm:text-sm">
                       Verifique a programação na seção Horários
                     </p>
                   </div>
@@ -1136,32 +1197,34 @@ export default function AlunoDashboard({
 
           {/* Histórico de Competições */}
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Trophy className="h-5 w-5" />
+            <CardHeader className="pb-3 sm:pb-6">
+              <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                <Trophy className="h-4 w-4 sm:h-5 sm:w-5" />
                 Histórico de Competições
               </CardTitle>
-              <CardDescription>
+              <CardDescription className="text-xs sm:text-sm">
                 {estatisticasCompeticoes &&
                 estatisticasCompeticoes.totalCompeticoes > 0
                   ? `${estatisticasCompeticoes.totalOuros} 🥇 | ${estatisticasCompeticoes.totalPratas} 🥈 | ${estatisticasCompeticoes.totalBronzes} 🥉 - ${estatisticasCompeticoes.aproveitamento}% de aproveitamento`
                   : "Suas participações em campeonatos"}
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-0">
               <div className="space-y-3">
                 {historicoCompeticoes.length > 0 ? (
                   historicoCompeticoes.slice(0, 5).map((comp) => (
                     <div
                       key={comp.id}
-                      className="flex items-start gap-4 p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-all"
+                      className="flex items-start gap-2 sm:gap-4 p-3 sm:p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-all"
                     >
-                      <div className="text-4xl">{comp.medalha_emoji}</div>
-                      <div className="flex-1">
-                        <div className="font-semibold">
+                      <div className="text-2xl sm:text-4xl">
+                        {comp.medalha_emoji}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-semibold text-sm sm:text-base truncate">
                           {comp.competicao.nome}
                         </div>
-                        <div className="text-sm text-gray-600">
+                        <div className="text-xs sm:text-sm text-gray-600">
                           {comp.competicao.tipo} - {comp.categoria_peso} (
                           {comp.categoria_faixa})
                         </div>
@@ -1178,9 +1241,9 @@ export default function AlunoDashboard({
                           </div>
                         )}
                       </div>
-                      <div className="text-right">
+                      <div className="text-right flex-shrink-0">
                         <div
-                          className={`text-lg font-bold ${
+                          className={`text-sm sm:text-lg font-bold ${
                             comp.posicao === "OURO"
                               ? "text-yellow-600"
                               : comp.posicao === "PRATA"
@@ -1308,45 +1371,45 @@ export default function AlunoDashboard({
         {/* Seção de Dependentes */}
         {dependentes.length > 0 && (
           <Card>
-            <CardHeader>
-              <div className="flex justify-between items-center">
+            <CardHeader className="pb-3 sm:pb-6">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                 <div>
-                  <CardTitle className="text-2xl flex items-center gap-2">
-                    <Users className="h-6 w-6 text-blue-600" />
+                  <CardTitle className="text-lg sm:text-2xl flex items-center gap-2">
+                    <Users className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600" />
                     Meus Dependentes
                   </CardTitle>
-                  <CardDescription>
+                  <CardDescription className="text-xs sm:text-sm">
                     Gerencie e acompanhe os treinos dos seus dependentes
                   </CardDescription>
                 </div>
                 <Button
                   onClick={() => setShowModal(true)}
-                  className="bg-blue-600 hover:bg-blue-700"
+                  className="bg-blue-600 hover:bg-blue-700 w-full sm:w-auto text-sm"
                 >
                   <UserPlus className="h-4 w-4 mr-2" />
                   Adicionar Dependente
                 </Button>
               </div>
             </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <CardContent className="pt-0">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 {dependentes.map((dependente) => (
                   <Card
                     key={dependente.id}
                     className="border-2 hover:border-blue-300 transition-colors"
                   >
-                    <CardContent className="pt-6">
-                      <div className="flex justify-between items-start mb-4">
+                    <CardContent className="pt-4 sm:pt-6">
+                      <div className="flex flex-col sm:flex-row justify-between items-start gap-3 sm:gap-0 mb-3 sm:mb-4">
                         <div
-                          className="flex-1 cursor-pointer"
+                          className="flex-1 cursor-pointer w-full"
                           onClick={() =>
                             router.push(`/alunos/${dependente.id}`)
                           }
                         >
-                          <h3 className="font-semibold text-lg">
+                          <h3 className="font-semibold text-base sm:text-lg">
                             {dependente.nome_completo}
                           </h3>
-                          <p className="text-sm text-gray-500">
+                          <p className="text-xs sm:text-sm text-gray-500">
                             {new Date().getFullYear() -
                               new Date(
                                 dependente.data_nascimento
@@ -1359,9 +1422,9 @@ export default function AlunoDashboard({
                             </p>
                           )}
                         </div>
-                        <div className="flex flex-col gap-2">
+                        <div className="flex flex-row sm:flex-col gap-2 w-full sm:w-auto">
                           <span
-                            className={`px-3 py-1 rounded-full text-xs font-medium ${
+                            className={`px-2 sm:px-3 py-1 rounded-full text-xs font-medium ${
                               dependente.status === "ATIVO"
                                 ? "bg-green-100 text-green-800"
                                 : "bg-gray-100 text-gray-800"
@@ -1376,7 +1439,7 @@ export default function AlunoDashboard({
                               e.stopPropagation();
                               handleEditDependente(dependente);
                             }}
-                            className="h-8 px-2"
+                            className="h-7 sm:h-8 px-2 text-xs"
                           >
                             Editar
                           </Button>
@@ -1526,6 +1589,99 @@ export default function AlunoDashboard({
           unidades={unidades || []}
           isEditMode={isEditMode}
         />
+      )}
+
+      {/* Modal de Cadastro de Faixa Inicial */}
+      {showFaixaModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <h2 className="text-xl font-bold mb-4">Cadastrar Faixa Inicial</h2>
+            <p className="text-gray-600 mb-4">
+              Você ainda não possui uma faixa cadastrada. Por favor, informe sua
+              faixa atual:
+            </p>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Faixa <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={faixaInicial.faixa}
+                  onChange={(e) =>
+                    setFaixaInicial({ ...faixaInicial, faixa: e.target.value })
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="BRANCA">Branca</option>
+                  <option value="CINZA">Cinza</option>
+                  <option value="AMARELA">Amarela</option>
+                  <option value="LARANJA">Laranja</option>
+                  <option value="VERDE">Verde</option>
+                  <option value="AZUL">Azul</option>
+                  <option value="ROXA">Roxa</option>
+                  <option value="MARROM">Marrom</option>
+                  <option value="PRETA">Preta</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Graus <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  max="4"
+                  value={faixaInicial.graus}
+                  onChange={(e) =>
+                    setFaixaInicial({
+                      ...faixaInicial,
+                      graus: parseInt(e.target.value) || 0,
+                    })
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Data em que recebeu esta faixa{" "}
+                  <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="date"
+                  value={faixaInicial.data_graduacao}
+                  onChange={(e) =>
+                    setFaixaInicial({
+                      ...faixaInicial,
+                      data_graduacao: e.target.value,
+                    })
+                  }
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <Button
+                onClick={() => setShowFaixaModal(false)}
+                variant="outline"
+                className="flex-1"
+                disabled={isLoading}
+              >
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleSalvarFaixaInicial}
+                className="flex-1 bg-blue-600 hover:bg-blue-700"
+                disabled={isLoading}
+              >
+                {isLoading ? "Salvando..." : "Confirmar"}
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

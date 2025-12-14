@@ -343,13 +343,13 @@ export default function ResponsavelDashboard() {
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
       {/* Header */}
       <div className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6">
           <div className="flex justify-between items-center">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900">
                 Bem-vindo(a), {user?.nome || "Responsável"}!
               </h1>
-              <p className="text-gray-600 mt-1">
+              <p className="text-sm sm:text-base text-gray-600 mt-1">
                 Gerencie os treinos dos seus dependentes
               </p>
             </div>
@@ -358,29 +358,33 @@ export default function ResponsavelDashboard() {
       </div>
 
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-8">
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-6 mb-4 sm:mb-8">
           <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">
+            <CardHeader className="flex flex-row items-center justify-between pb-1 sm:pb-2">
+              <CardTitle className="text-xs sm:text-sm font-medium">
                 Total de Dependentes
               </CardTitle>
-              <Users className="h-5 w-5 opacity-80" />
+              <Users className="h-4 w-4 sm:h-5 sm:w-5 opacity-80" />
             </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">{alunos?.length || 0}</div>
+            <CardContent className="pt-1">
+              <div className="text-2xl sm:text-3xl font-bold">
+                {alunos?.length || 0}
+              </div>
               <p className="text-xs opacity-80 mt-1">Alunos cadastrados</p>
             </CardContent>
           </Card>
 
           <Card className="bg-gradient-to-br from-green-500 to-green-600 text-white">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Ativos</CardTitle>
-              <CheckCircle2 className="h-5 w-5 opacity-80" />
+            <CardHeader className="flex flex-row items-center justify-between pb-1 sm:pb-2">
+              <CardTitle className="text-xs sm:text-sm font-medium">
+                Ativos
+              </CardTitle>
+              <CheckCircle2 className="h-4 w-4 sm:h-5 sm:w-5 opacity-80" />
             </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">
+            <CardContent className="pt-1">
+              <div className="text-2xl sm:text-3xl font-bold">
                 {alunos?.filter((a) => a.status === "ATIVO").length || 0}
               </div>
               <p className="text-xs opacity-80 mt-1">Treinando regularmente</p>
@@ -388,12 +392,14 @@ export default function ResponsavelDashboard() {
           </Card>
 
           <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Graduações</CardTitle>
-              <Award className="h-5 w-5 opacity-80" />
+            <CardHeader className="flex flex-row items-center justify-between pb-1 sm:pb-2">
+              <CardTitle className="text-xs sm:text-sm font-medium">
+                Graduações
+              </CardTitle>
+              <Award className="h-4 w-4 sm:h-5 sm:w-5 opacity-80" />
             </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">
+            <CardContent className="pt-1">
+              <div className="text-2xl sm:text-3xl font-bold">
                 {alunos?.reduce(
                   (total, aluno) => total + (aluno.graus || 0),
                   0
@@ -406,14 +412,14 @@ export default function ResponsavelDashboard() {
           </Card>
 
           <Card className="bg-gradient-to-br from-orange-500 to-orange-600 text-white">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">
+            <CardHeader className="flex flex-row items-center justify-between pb-1 sm:pb-2">
+              <CardTitle className="text-xs sm:text-sm font-medium">
                 Próxima Graduação
               </CardTitle>
-              <TrendingUp className="h-5 w-5 opacity-80" />
+              <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 opacity-80" />
             </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold">
+            <CardContent className="pt-1">
+              <div className="text-2xl sm:text-3xl font-bold">
                 {alunos?.filter((a) => (a.graus || 0) >= 3).length || 0}
               </div>
               <p className="text-xs opacity-80 mt-1">Elegíveis para avançar</p>
@@ -424,16 +430,18 @@ export default function ResponsavelDashboard() {
         {/* Meus Dependentes */}
         <Card>
           <CardHeader>
-            <div className="flex justify-between items-center">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
               <div>
-                <CardTitle className="text-2xl">Meus Dependentes</CardTitle>
-                <p className="text-sm text-gray-500 mt-1">
+                <CardTitle className="text-xl sm:text-2xl">
+                  Meus Dependentes
+                </CardTitle>
+                <p className="text-xs sm:text-sm text-gray-500 mt-1">
                   Gerencie os alunos sob sua responsabilidade
                 </p>
               </div>
               <Button
                 onClick={handleAddAluno}
-                className="bg-blue-600 hover:bg-blue-700"
+                className="bg-blue-600 hover:bg-blue-700 w-full sm:w-auto text-sm"
               >
                 <UserPlus className="h-4 w-4 mr-2" />
                 Adicionar Dependente
@@ -447,19 +455,19 @@ export default function ResponsavelDashboard() {
                 <p className="text-gray-500 mt-4">Carregando alunos...</p>
               </div>
             ) : alunos && alunos.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 {alunos.map((aluno) => (
                   <Card
                     key={aluno.id}
                     className="border-2 hover:border-blue-300 transition-colors"
                   >
-                    <CardContent className="pt-6">
-                      <div className="flex justify-between items-start mb-4">
+                    <CardContent className="pt-4 sm:pt-6">
+                      <div className="flex flex-col sm:flex-row justify-between items-start gap-3 sm:gap-0 mb-3 sm:mb-4">
                         <div>
-                          <h3 className="font-semibold text-lg">
+                          <h3 className="font-semibold text-base sm:text-lg">
                             {aluno.nome_completo}
                           </h3>
-                          <p className="text-sm text-gray-500">
+                          <p className="text-xs sm:text-sm text-gray-500">
                             {calcularIdade(aluno.data_nascimento)} anos
                           </p>
                           {aluno.unidade && (
@@ -468,7 +476,7 @@ export default function ResponsavelDashboard() {
                             </p>
                           )}
                         </div>
-                        <div className="flex flex-col items-end gap-2">
+                        <div className="flex flex-row sm:flex-col items-center sm:items-end gap-2 w-full sm:w-auto">
                           <span
                             className={`px-3 py-1 rounded-full text-xs font-medium ${
                               aluno.status === "ATIVO"
@@ -501,10 +509,10 @@ export default function ResponsavelDashboard() {
                         </div>
                       </div>
 
-                      <div className="flex gap-2">
+                      <div className="flex flex-col sm:flex-row gap-2">
                         <Button
                           onClick={() => handleCheckin(aluno.id)}
-                          className="flex-1 bg-green-600 hover:bg-green-700"
+                          className="flex-1 bg-green-600 hover:bg-green-700 text-xs sm:text-sm"
                           disabled={
                             aluno.status !== "ATIVO" ||
                             loadingCheckin === aluno.id
@@ -512,12 +520,15 @@ export default function ResponsavelDashboard() {
                         >
                           {loadingCheckin === aluno.id ? (
                             <>
-                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-                              Processando...
+                              <div className="animate-spin rounded-full h-3 w-3 sm:h-4 sm:w-4 border-b-2 border-white mr-2" />
+                              <span className="hidden sm:inline">
+                                Processando...
+                              </span>
+                              <span className="sm:hidden">...</span>
                             </>
                           ) : (
                             <>
-                              <CheckCircle2 className="h-4 w-4 mr-2" />
+                              <CheckCircle2 className="h-3 w-3 sm:h-4 sm:w-4 mr-2" />
                               Check-in
                             </>
                           )}
@@ -525,7 +536,7 @@ export default function ResponsavelDashboard() {
                         <Button
                           onClick={() => router.push(`/alunos/${aluno.id}`)}
                           variant="outline"
-                          className="flex-1"
+                          className="flex-1 text-xs sm:text-sm"
                         >
                           Ver Detalhes
                         </Button>
@@ -535,17 +546,17 @@ export default function ResponsavelDashboard() {
                 ))}
               </div>
             ) : (
-              <div className="text-center py-12">
-                <Users className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">
+              <div className="text-center py-8 sm:py-12">
+                <Users className="h-12 w-12 sm:h-16 sm:w-16 text-gray-300 mx-auto mb-3 sm:mb-4" />
+                <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-2">
                   Nenhum dependente cadastrado
                 </h3>
-                <p className="text-gray-500 mb-6">
+                <p className="text-sm sm:text-base text-gray-500 mb-4 sm:mb-6 px-4">
                   Adicione seus dependentes para gerenciar os treinos deles
                 </p>
                 <Button
                   onClick={handleAddAluno}
-                  className="bg-blue-600 hover:bg-blue-700"
+                  className="bg-blue-600 hover:bg-blue-700 text-sm"
                 >
                   <UserPlus className="h-4 w-4 mr-2" />
                   Adicionar Dependentes
@@ -556,21 +567,21 @@ export default function ResponsavelDashboard() {
         </Card>
 
         {/* Card para Responsável se tornar Aluno */}
-        <Card className="mt-6 bg-gradient-to-br from-green-50 to-green-100 border-green-200">
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center text-green-800">
-              <Trophy className="h-5 w-5 mr-2" />
+        <Card className="mt-4 sm:mt-6 bg-gradient-to-br from-green-50 to-green-100 border-green-200">
+          <CardHeader className="pb-3 sm:pb-6">
+            <CardTitle className="text-base sm:text-lg flex items-center text-green-800">
+              <Trophy className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
               Quero Treinar Também!
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              <p className="text-sm text-gray-700">
+            <div className="space-y-3 sm:space-y-4">
+              <p className="text-xs sm:text-sm text-gray-700">
                 Você trouxe seus dependentes para treinar e agora quer
                 participar também? Ótimo! Clique no botão abaixo para se
                 cadastrar como aluno e começar a treinar conosco.
               </p>
-              <ul className="space-y-2 text-sm text-gray-700">
+              <ul className="space-y-2 text-xs sm:text-sm text-gray-700">
                 <li className="flex items-start">
                   <CheckCircle2 className="h-4 w-4 mr-2 text-green-600 mt-0.5 flex-shrink-0" />
                   <span>Mantenha o acesso aos seus dependentes</span>

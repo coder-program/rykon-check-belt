@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource, EntityManager, In } from 'typeorm';
@@ -9,6 +10,7 @@ import { FaixaDef, CategoriaFaixa } from './entities/faixa-def.entity';
 import { AlunoFaixa } from './entities/aluno-faixa.entity';
 import { AlunoFaixaGrau, OrigemGrau } from './entities/aluno-faixa-grau.entity';
 import { AlunoGraduacao } from './entities/aluno-graduacao.entity';
+import { ConfiguracaoGraduacao } from './entities/configuracao-graduacao.entity';
 import { Person, TipoCadastro } from '../people/entities/person.entity';
 import { Aluno } from '../people/entities/aluno.entity';
 import { Franqueado } from '../people/entities/franqueado.entity';
@@ -36,6 +38,8 @@ export class GraduacaoService {
     private alunoFaixaGrauRepository: Repository<AlunoFaixaGrau>,
     @InjectRepository(AlunoGraduacao)
     private alunoGraduacaoRepository: Repository<AlunoGraduacao>,
+    @InjectRepository(ConfiguracaoGraduacao)
+    private configuracaoGraduacaoRepository: Repository<ConfiguracaoGraduacao>,
     @InjectRepository(Person)
     private personRepository: Repository<Person>,
     @InjectRepository(Aluno)
@@ -122,22 +126,13 @@ export class GraduacaoService {
     const tempoNaFaixa = agora.getTime() - dataInicio.getTime();
     const diasNaFaixa = Math.floor(tempoNaFaixa / (1000 * 60 * 60 * 24));
 
-    // Tempo mínimo por faixa:
-    // Branca: 1 ano (365 dias)
-    // Azul: 2 anos (730 dias)
-    // Roxa: 2 anos (730 dias)
-    // Marrom: 1.5 anos (548 dias)
-    let tempoMinimo = 730; // Default: 2 anos
-    let tempoMinimoAnos = 2;
+    // Buscar tempo mínimo baseado na configuração da unidade do aluno
+    const tempoMinimo = await this.getTempoMinimoDiasPorFaixa(
+      faixaAtiva.faixaDef.codigo,
+      aluno.unidade_id,
+    );
 
-    if (faixaAtiva.faixaDef.codigo === 'BRANCA') {
-      tempoMinimo = 365;
-      tempoMinimoAnos = 1;
-    } else if (faixaAtiva.faixaDef.codigo === 'MARROM') {
-      tempoMinimo = 548;
-      tempoMinimoAnos = 1.5;
-    }
-
+    const tempoMinimoAnos = Number((tempoMinimo / 365.25).toFixed(1));
     const diasRestantes = Math.max(0, tempoMinimo - diasNaFaixa);
 
     return {
@@ -1521,5 +1516,380 @@ export class GraduacaoService {
       success: true,
       message: 'Graduação cancelada com sucesso',
     };
+  }
+
+  /**
+   * Cadastra faixa inicial do aluno logado
+   */
+  async cadastrarFaixaInicial(
+    user: any,
+    faixa_codigo: string,
+    graus: number,
+    data_graduacao: string,
+  ) {
+    if (!user || !user.id) {
+      throw new BadRequestException('Usuário não identificado');
+    }
+
+    // Buscar aluno
+    const aluno = await this.alunoRepository.findOne({
+      where: { usuario_id: user.id },
+    });
+
+    if (!aluno) {
+      throw new NotFoundException('Aluno não encontrado');
+    }
+
+    // Verificar se já tem faixa ativa
+    const faixaAtiva = await this.alunoFaixaRepository.findOne({
+      where: { aluno_id: aluno.id, ativa: true },
+    });
+
+    if (faixaAtiva) {
+      throw new BadRequestException('Aluno já possui faixa ativa');
+    }
+
+    // Buscar faixa
+    const faixa = await this.faixaDefRepository.findOne({
+      where: { codigo: faixa_codigo },
+    });
+
+    if (!faixa) {
+      throw new NotFoundException('Faixa não encontrada');
+    }
+
+    // Criar registro de faixa usando SQL direto
+    await this.dataSource.query(
+      `INSERT INTO teamcruz.aluno_faixa (aluno_id, faixa_def_id, dt_inicio, ativa)
+       VALUES ($1, $2, $3, $4)`,
+      [aluno.id, faixa.id, new Date(data_graduacao), true],
+    );
+
+    // Criar registro de graus
+    for (let i = 0; i < graus; i++) {
+      await this.dataSource.query(
+        `INSERT INTO teamcruz.aluno_faixa_grau (aluno_id, faixa_def_id, dt_grau, grau_numero)
+         VALUES ($1, $2, $3, $4)`,
+        [aluno.id, faixa.id, new Date(data_graduacao), i + 1],
+      );
+    }
+
+    return {
+      success: true,
+      message: 'Faixa inicial cadastrada com sucesso!',
+      faixa: {
+        codigo: faixa.codigo,
+        graus: graus,
+      },
+    };
+  }
+
+  // ==================== CONFIGURAÇÃO DE GRADUAÇÃO POR UNIDADE ====================
+
+  /**
+   * Busca configuração de graduação da unidade
+   * Se não existir, retorna configuração padrão
+   */
+  async getConfiguracaoGraduacao(
+    unidadeId: string,
+  ): Promise<ConfiguracaoGraduacao> {
+    const config = await this.configuracaoGraduacaoRepository.findOne({
+      where: { unidade_id: unidadeId },
+      relations: ['unidade'],
+    });
+
+    if (!config) {
+      // Retorna configuração padrão com todas as faixas
+      return {
+        id: null,
+        unidade_id: unidadeId,
+        unidade: null,
+        config_faixas: {
+          BRANCA_INF: {
+            tempo_minimo_meses: 6,
+            aulas_por_grau: 30,
+            graus_maximos: 4,
+          },
+          CINZA_BRANCA_INF: {
+            tempo_minimo_meses: 6,
+            aulas_por_grau: 30,
+            graus_maximos: 4,
+          },
+          CINZA_INF: {
+            tempo_minimo_meses: 6,
+            aulas_por_grau: 30,
+            graus_maximos: 4,
+          },
+          CINZA_PRETA_INF: {
+            tempo_minimo_meses: 6,
+            aulas_por_grau: 30,
+            graus_maximos: 4,
+          },
+          AMAR_BRANCA_INF: {
+            tempo_minimo_meses: 6,
+            aulas_por_grau: 30,
+            graus_maximos: 4,
+          },
+          AMARELA_INF: {
+            tempo_minimo_meses: 6,
+            aulas_por_grau: 30,
+            graus_maximos: 4,
+          },
+          AMAR_PRETA_INF: {
+            tempo_minimo_meses: 6,
+            aulas_por_grau: 30,
+            graus_maximos: 4,
+          },
+          LARA_BRANCA_INF: {
+            tempo_minimo_meses: 6,
+            aulas_por_grau: 30,
+            graus_maximos: 4,
+          },
+          LARANJA_INF: {
+            tempo_minimo_meses: 6,
+            aulas_por_grau: 30,
+            graus_maximos: 4,
+          },
+          LARA_PRETA_INF: {
+            tempo_minimo_meses: 6,
+            aulas_por_grau: 30,
+            graus_maximos: 4,
+          },
+          VERDE_BRANCA_INF: {
+            tempo_minimo_meses: 6,
+            aulas_por_grau: 30,
+            graus_maximos: 4,
+          },
+          VERDE_INF: {
+            tempo_minimo_meses: 6,
+            aulas_por_grau: 30,
+            graus_maximos: 4,
+          },
+          VERDE_PRETA_INF: {
+            tempo_minimo_meses: 6,
+            aulas_por_grau: 30,
+            graus_maximos: 4,
+          },
+          BRANCA: {
+            tempo_minimo_meses: 12,
+            aulas_por_grau: 40,
+            graus_maximos: 4,
+          },
+          AZUL: {
+            tempo_minimo_meses: 24,
+            aulas_por_grau: 40,
+            graus_maximos: 4,
+          },
+          ROXA: {
+            tempo_minimo_meses: 24,
+            aulas_por_grau: 40,
+            graus_maximos: 4,
+          },
+          MARROM: {
+            tempo_minimo_meses: 18,
+            aulas_por_grau: 40,
+            graus_maximos: 4,
+          },
+          PRETA: {
+            tempo_minimo_meses: null,
+            aulas_por_grau: 40,
+            graus_maximos: 10,
+          },
+        },
+        percentual_frequencia_minima: 75.0,
+        config_adicional: null,
+        created_at: null,
+        updated_at: null,
+      } as any;
+    }
+
+    return config;
+  }
+
+  /**
+   * Salva ou atualiza configuração de graduação da unidade
+   */
+  async salvarConfiguracaoGraduacao(
+    data: any,
+    user: any,
+  ): Promise<ConfiguracaoGraduacao> {
+    console.log('💾 [salvarConfiguracaoGraduacao]', {
+      unidade_id: data.unidade_id,
+      userId: user?.id,
+      perfis: user?.perfis,
+      configKeys: data.config_faixas ? Object.keys(data.config_faixas) : [],
+    });
+
+    // Verificar permissões
+    const temPermissao = await this.verificarPermissaoUnidade(
+      user,
+      data.unidade_id,
+    );
+    if (!temPermissao) {
+      console.error('🚫 Permissão negada para usuário:', user?.id);
+      throw new ForbiddenException(
+        'Você não tem permissão para configurar esta unidade',
+      );
+    }
+
+    console.log('✅ Permissão concedida');
+
+    // Verificar se já existe configuração
+    let config = await this.configuracaoGraduacaoRepository.findOne({
+      where: { unidade_id: data.unidade_id },
+    });
+
+    if (config) {
+      // Atualizar existente
+      Object.assign(config, {
+        config_faixas: data.config_faixas,
+        percentual_frequencia_minima: data.percentual_frequencia_minima,
+        config_adicional: data.config_adicional,
+      });
+    } else {
+      // Criar nova
+      config = this.configuracaoGraduacaoRepository.create({
+        unidade_id: data.unidade_id,
+        config_faixas: data.config_faixas,
+        percentual_frequencia_minima: data.percentual_frequencia_minima,
+        config_adicional: data.config_adicional,
+      });
+    }
+
+    return await this.configuracaoGraduacaoRepository.save(config);
+  }
+
+  /**
+   * Lista todas as configurações (para ADMIN_MASTER ou FRANQUEADO)
+   */
+  async listarConfiguracoes(user: any): Promise<ConfiguracaoGraduacao[]> {
+    const perfis = user?.perfis || [];
+
+    if (perfis.includes('ADMIN_MASTER')) {
+      // Admin Master vê todas
+      return await this.configuracaoGraduacaoRepository.find({
+        relations: ['unidade'],
+        order: { created_at: 'DESC' },
+      });
+    }
+
+    if (perfis.includes('FRANQUEADO')) {
+      // Franqueado vê apenas suas unidades
+      const franqueado = await this.franqueadoRepository.findOne({
+        where: { usuario_id: user.id },
+      });
+
+      if (!franqueado) {
+        return [];
+      }
+
+      return await this.configuracaoGraduacaoRepository
+        .createQueryBuilder('config')
+        .innerJoin('config.unidade', 'unidade')
+        .where('unidade.franqueado_id = :franqueadoId', {
+          franqueadoId: franqueado.id,
+        })
+        .orderBy('config.created_at', 'DESC')
+        .getMany();
+    }
+
+    throw new ForbiddenException(
+      'Você não tem permissão para listar configurações',
+    );
+  }
+
+  /**
+   * Verifica se usuário tem permissão para configurar a unidade
+   */
+  private async verificarPermissaoUnidade(
+    user: any,
+    unidadeId: string,
+  ): Promise<boolean> {
+    const perfis = user?.perfis || [];
+
+    // Extrair nomes dos perfis (pode ser array de strings ou array de objetos)
+    const nomesPerfis = perfis.map((p: any) =>
+      typeof p === 'string' ? p : p.nome,
+    );
+
+    console.log('🔐 [verificarPermissaoUnidade]', {
+      userId: user?.id,
+      nomesPerfis: nomesPerfis,
+      unidadeId: unidadeId,
+    });
+
+    // ADMIN_MASTER tem acesso total
+    if (nomesPerfis.includes('ADMIN_MASTER')) {
+      console.log('✅ ADMIN_MASTER - acesso permitido');
+      return true;
+    }
+
+    // FRANQUEADO tem acesso às suas unidades
+    if (nomesPerfis.includes('FRANQUEADO')) {
+      const franqueado = await this.franqueadoRepository.findOne({
+        where: { usuario_id: user.id },
+      });
+
+      console.log('👤 FRANQUEADO encontrado:', franqueado?.id);
+
+      if (!franqueado) {
+        console.log('❌ FRANQUEADO não encontrado');
+        return false;
+      }
+
+      const unidade = await this.unidadeRepository.findOne({
+        where: { id: unidadeId, franqueado_id: franqueado.id },
+      });
+
+      console.log('🏢 Unidade pertence ao franqueado?', !!unidade);
+      return !!unidade;
+    }
+
+    // GERENTE_UNIDADE tem acesso à sua unidade
+    if (nomesPerfis.includes('GERENTE_UNIDADE')) {
+      const gerente = await this.gerenteRepository.findOne({
+        where: { usuario_id: user.id },
+      });
+
+      console.log('👨‍💼 GERENTE encontrado:', gerente?.id);
+
+      if (!gerente) {
+        console.log('❌ GERENTE não encontrado');
+        return false;
+      }
+
+      console.log('🏢 Unidade do gerente:', gerente.unidade_id, '=', unidadeId);
+      return gerente.unidade_id === unidadeId;
+    }
+
+    console.log('❌ Nenhum perfil válido');
+    return false;
+  }
+
+  /**
+   * Obtém tempo mínimo em dias para uma faixa específica baseado na config da unidade
+   */
+  async getTempoMinimoDiasPorFaixa(
+    faixaCodigo: string,
+    unidadeId: string,
+  ): Promise<number> {
+    const config = await this.getConfiguracaoGraduacao(unidadeId);
+
+    const mesesParaDias = (meses: number) => Math.floor(meses * 30.44); // Média de dias por mês
+
+    // Buscar config da faixa no JSONB
+    const faixaConfig = config.config_faixas[faixaCodigo];
+
+    if (!faixaConfig) {
+      // Faixa não encontrada, retorna default 24 meses (2 anos)
+      return mesesParaDias(24);
+    }
+
+    // Se tempo_minimo_meses for null, retorna 0 (sem limite)
+    if (faixaConfig.tempo_minimo_meses === null) {
+      return 0;
+    }
+
+    return mesesParaDias(faixaConfig.tempo_minimo_meses);
   }
 }

@@ -34,6 +34,7 @@ import {
   ChevronRight,
   DollarSign,
   Mail,
+  Settings,
 } from "lucide-react";
 import ConviteModal from "@/components/convites/ConviteModal";
 
@@ -361,6 +362,13 @@ export default function FranqueadoDashboard() {
       icon: Trophy,
       action: () => router.push("/admin/sistema-graduacao"),
       color: "bg-amber-500",
+    },
+    {
+      title: "Configurar Graduação",
+      description: "Regras de graduação por unidade",
+      icon: Settings,
+      action: () => router.push("/admin/configuracao-graduacao"),
+      color: "bg-indigo-500",
     },
     {
       title: "Gestão Financeira",

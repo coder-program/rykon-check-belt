@@ -840,32 +840,32 @@ function RegisterPageContent() {
       <div className="absolute inset-0 bg-gradient-to-br from-gray-900 via-black to-red-900"></div>
 
       {/* Conteúdo principal */}
-      <div className="relative z-10 min-h-screen flex items-center justify-center p-4">
+      <div className="relative z-10 min-h-screen flex items-center justify-center p-3 sm:p-4 md:p-6">
         <div className="w-full max-w-2xl">
           <Card className="shadow-2xl border-2 border-red-600/20 bg-black/90 backdrop-blur-md">
-            <CardHeader className="space-y-1 text-center pb-6">
+            <CardHeader className="space-y-1 text-center pb-4 sm:pb-6 px-3 sm:px-6 pt-4 sm:pt-6">
               {/* Logo TeamCruz */}
-              <div className="flex justify-center mb-4">
-                <TeamCruzLogo size={80} />
+              <div className="flex justify-center mb-3 sm:mb-4">
+                <TeamCruzLogo size={60} />
               </div>
 
-              <CardTitle className="text-2xl font-bold text-white flex items-center justify-center gap-2">
-                <UserPlus className="h-6 w-6 text-red-400" />
+              <CardTitle className="text-xl sm:text-2xl font-bold text-white flex items-center justify-center gap-2">
+                <UserPlus className="h-5 w-5 sm:h-6 sm:w-6 text-red-400" />
                 CRIAR CONTA
               </CardTitle>
-              <CardDescription className="text-gray-300 mt-2">
+              <CardDescription className="text-sm sm:text-base text-gray-300 mt-2">
                 Cadastre-se para acessar o sistema TeamCruz
               </CardDescription>
             </CardHeader>
 
             <form onSubmit={handleSubmit}>
-              <CardContent className="px-6 space-y-4">
+              <CardContent className="px-3 sm:px-4 md:px-6 space-y-3 sm:space-y-4">
                 {/* Aviso sobre campos obrigatórios */}
-                <div className="bg-blue-900/30 border border-blue-500/30 rounded-lg p-3 flex items-start gap-2">
-                  <span className="text-blue-400 text-sm font-medium mt-0.5">
+                <div className="bg-blue-900/30 border border-blue-500/30 rounded-lg p-2 sm:p-3 flex items-start gap-2">
+                  <span className="text-blue-400 text-xs sm:text-sm font-medium mt-0.5">
                     ℹ️
                   </span>
-                  <p className="text-sm text-blue-200">
+                  <p className="text-xs sm:text-sm text-blue-200">
                     Campos marcados com{" "}
                     <span className="text-red-400 font-bold">*</span> são
                     obrigatórios
@@ -873,19 +873,21 @@ function RegisterPageContent() {
                 </div>
 
                 {error && (
-                  <div className="bg-red-900/50 border border-red-600/50 rounded-lg p-4 flex items-center gap-3">
-                    <AlertCircle className="h-5 w-5 text-red-400 flex-shrink-0" />
-                    <span className="text-red-200">{error}</span>
+                  <div className="bg-red-900/50 border border-red-600/50 rounded-lg p-3 sm:p-4 flex items-center gap-2 sm:gap-3">
+                    <AlertCircle className="h-4 w-4 sm:h-5 sm:w-5 text-red-400 flex-shrink-0" />
+                    <span className="text-xs sm:text-sm text-red-200">
+                      {error}
+                    </span>
                   </div>
                 )}
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
                   <div className="space-y-2">
                     <Label
                       htmlFor="nome"
-                      className="flex items-center gap-2 text-gray-200"
+                      className="flex items-center gap-2 text-gray-200 text-xs sm:text-sm"
                     >
-                      <User className="h-4 w-4 text-red-400" />
+                      <User className="h-3 w-3 sm:h-4 sm:w-4 text-red-400" />
                       Nome Completo <span className="text-red-400">*</span>
                     </Label>
                     <NameInput
@@ -894,7 +896,7 @@ function RegisterPageContent() {
                       required
                       value={formData.nome}
                       onChange={handleChange}
-                      className="h-11 bg-gray-800/50 border-gray-600 text-white placeholder-gray-400 focus:border-red-500 focus:ring-red-500"
+                      className="h-10 sm:h-11 bg-gray-800/50 border-gray-600 text-white text-sm sm:text-base placeholder-gray-400 focus:border-red-500 focus:ring-red-500"
                       placeholder="Seu nome completo"
                     />
                   </div>
@@ -902,9 +904,9 @@ function RegisterPageContent() {
                   <div className="space-y-2">
                     <Label
                       htmlFor="username"
-                      className="flex items-center gap-2 text-gray-200"
+                      className="flex items-center gap-2 text-gray-200 text-xs sm:text-sm"
                     >
-                      <User className="h-4 w-4 text-red-400" />
+                      <User className="h-3 w-3 sm:h-4 sm:w-4 text-red-400" />
                       Username <span className="text-red-400">*</span>
                     </Label>
                     <Input
@@ -914,11 +916,11 @@ function RegisterPageContent() {
                       required
                       value={formData.username}
                       onChange={handleChange}
-                      className="h-11 bg-gray-800/50 border-gray-600 text-white placeholder-gray-400 focus:border-red-500 focus:ring-red-500"
+                      className="h-10 sm:h-11 bg-gray-800/50 border-gray-600 text-white text-sm sm:text-base placeholder-gray-400 focus:border-red-500 focus:ring-red-500"
                       placeholder="seu.username (letras, números e ponto)"
                       minLength={3}
                     />
-                    <p className="text-xs text-gray-400">
+                    <p className="text-[10px] sm:text-xs text-gray-400">
                       Usado para login. Apenas letras, números e ponto (sem
                       espaços)
                     </p>
@@ -927,9 +929,9 @@ function RegisterPageContent() {
                   <div className="space-y-2">
                     <Label
                       htmlFor="email"
-                      className="flex items-center gap-2 text-gray-200"
+                      className="flex items-center gap-2 text-gray-200 text-xs sm:text-sm"
                     >
-                      <Mail className="h-4 w-4 text-red-400" />
+                      <Mail className="h-3 w-3 sm:h-4 sm:w-4 text-red-400" />
                       Email <span className="text-red-400">*</span>
                     </Label>
                     <Input
@@ -939,19 +941,19 @@ function RegisterPageContent() {
                       required
                       value={formData.email}
                       onChange={handleChange}
-                      className="h-11 bg-gray-800/50 border-gray-600 text-white placeholder-gray-400 focus:border-red-500 focus:ring-red-500"
+                      className="h-10 sm:h-11 bg-gray-800/50 border-gray-600 text-white text-sm sm:text-base placeholder-gray-400 focus:border-red-500 focus:ring-red-500"
                       placeholder="seu@email.com"
                     />
                   </div>
                 </div>
 
                 {/* PERFIL - MOVIDO PARA O TOPO E EM DESTAQUE */}
-                <div className="space-y-2 bg-red-900/20 border-2 border-red-500/50 rounded-lg p-4">
+                <div className="space-y-2 bg-red-900/20 border-2 border-red-500/50 rounded-lg p-3 sm:p-4">
                   <Label
                     htmlFor="perfil"
-                    className="flex items-center gap-2 text-gray-200 text-lg font-semibold"
+                    className="flex items-center gap-2 text-gray-200 text-base sm:text-lg font-semibold"
                   >
-                    <User2 className="h-5 w-5 text-red-400" />
+                    <User2 className="h-4 w-4 sm:h-5 sm:w-5 text-red-400" />
                     Perfil * (Escolha primeiro!)
                   </Label>
                   <Select
@@ -973,7 +975,7 @@ function RegisterPageContent() {
                     }}
                     disabled={loadingPerfis || !!perfilFromUrl}
                   >
-                    <SelectTrigger className="h-12 bg-gray-800/50 border-gray-600 text-white focus:border-red-500 focus:ring-red-500">
+                    <SelectTrigger className="h-11 sm:h-12 bg-gray-800/50 border-gray-600 text-white text-sm sm:text-base focus:border-red-500 focus:ring-red-500">
                       <SelectValue placeholder="👤 Selecione seu perfil" />
                     </SelectTrigger>
                     <SelectContent className="bg-gray-800 border-gray-600">
@@ -981,14 +983,14 @@ function RegisterPageContent() {
                         <SelectItem
                           key={perfil.id}
                           value={perfil.id}
-                          className="text-white hover:bg-gray-700 focus:bg-gray-700 py-3"
+                          className="text-white hover:bg-gray-700 focus:bg-gray-700 py-2 sm:py-3"
                         >
                           <div className="flex flex-col">
-                            <span className="font-bold text-base">
+                            <span className="font-bold text-sm sm:text-base">
                               {perfil.nome}
                             </span>
                             {perfil.descricao && (
-                              <span className="text-xs text-gray-400 mt-1">
+                              <span className="text-[10px] sm:text-xs text-gray-400 mt-1">
                                 {perfil.descricao}
                               </span>
                             )}
@@ -998,12 +1000,12 @@ function RegisterPageContent() {
                     </SelectContent>
                   </Select>
                   {perfilFromUrl ? (
-                    <p className="text-xs text-green-400 font-medium flex items-center gap-1">
-                      <CheckCircle className="h-4 w-4" />
+                    <p className="text-[10px] sm:text-xs text-green-400 font-medium flex items-center gap-1">
+                      <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4" />
                       Perfil pré-definido pelo convite
                     </p>
                   ) : (
-                    <p className="text-xs text-gray-300 font-medium">
+                    <p className="text-[10px] sm:text-xs text-gray-300 font-medium">
                       ℹ️ Selecione o perfil que melhor descreve você no sistema.
                       Os campos a seguir serão ajustados conforme sua escolha.
                     </p>
@@ -1011,10 +1013,10 @@ function RegisterPageContent() {
                   {formData.perfil_id &&
                     perfis.find((p) => p.id === formData.perfil_id)?.nome ===
                       "RESPONSAVEL" && (
-                      <div className="mt-3 bg-yellow-900/30 border border-yellow-600/50 rounded-lg p-3">
+                      <div className="mt-2 sm:mt-3 bg-yellow-900/30 border border-yellow-600/50 rounded-lg p-2 sm:p-3">
                         <div className="flex items-start gap-2">
-                          <AlertCircle className="h-4 w-4 text-yellow-400 flex-shrink-0 mt-0.5" />
-                          <p className="text-xs text-yellow-200">
+                          <AlertCircle className="h-3 w-3 sm:h-4 sm:w-4 text-yellow-400 flex-shrink-0 mt-0.5" />
+                          <p className="text-[10px] sm:text-xs text-yellow-200">
                             <strong>Atenção:</strong> Cadastros com perfil de
                             RESPONSAVEL requerem aprovação do administrador. Sua
                             conta ficará inativa até a aprovação.
@@ -1024,13 +1026,13 @@ function RegisterPageContent() {
                     )}
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
                   <div className="space-y-2">
                     <Label
                       htmlFor="cpf"
-                      className="flex items-center gap-2 text-gray-200"
+                      className="flex items-center gap-2 text-gray-200 text-xs sm:text-sm"
                     >
-                      <User2 className="h-4 w-4 text-red-400" />
+                      <User2 className="h-3 w-3 sm:h-4 sm:w-4 text-red-400" />
                       CPF <span className="text-red-400">*</span>
                     </Label>
                     <Input
@@ -1040,7 +1042,7 @@ function RegisterPageContent() {
                       required
                       value={formData.cpf}
                       onChange={handleCPFChange}
-                      className={`h-11 bg-gray-800/50 text-white placeholder-gray-400 focus:ring-red-500 ${
+                      className={`h-10 sm:h-11 bg-gray-800/50 text-white text-sm sm:text-base placeholder-gray-400 focus:ring-red-500 ${
                         cpfError
                           ? "border-red-500 focus:border-red-600"
                           : formData.cpf.length >= 14 &&
@@ -1053,16 +1055,16 @@ function RegisterPageContent() {
                       maxLength={14}
                     />
                     {cpfError && (
-                      <div className="flex items-center gap-2 text-red-400 text-sm">
-                        <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                      <div className="flex items-center gap-2 text-red-400 text-xs sm:text-sm">
+                        <AlertCircle className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
                         <span>{cpfError}</span>
                       </div>
                     )}
                     {!cpfError &&
                       formData.cpf.length >= 14 &&
                       isValidCPF(formData.cpf) && (
-                        <div className="flex items-center gap-2 text-green-400 text-sm">
-                          <CheckCircle className="h-4 w-4 flex-shrink-0" />
+                        <div className="flex items-center gap-2 text-green-400 text-xs sm:text-sm">
+                          <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
                           <span>CPF válido</span>
                         </div>
                       )}
@@ -1071,9 +1073,9 @@ function RegisterPageContent() {
                   <div className="space-y-2">
                     <Label
                       htmlFor="telefone"
-                      className="flex items-center gap-2 text-gray-200"
+                      className="flex items-center gap-2 text-gray-200 text-xs sm:text-sm"
                     >
-                      <Phone className="h-4 w-4 text-red-400" />
+                      <Phone className="h-3 w-3 sm:h-4 sm:w-4 text-red-400" />
                       Telefone <span className="text-red-400">*</span>
                     </Label>
                     <Input
@@ -1093,7 +1095,7 @@ function RegisterPageContent() {
                           }));
                         }
                       }}
-                      className={`h-11 bg-gray-800/50 text-white placeholder-gray-400 focus:ring-red-500 ${
+                      className={`h-10 sm:h-11 bg-gray-800/50 text-white text-sm sm:text-base placeholder-gray-400 focus:ring-red-500 ${
                         telefoneError
                           ? "border-red-500 focus:border-red-600"
                           : formData.telefone && isValidPhone(formData.telefone)
@@ -1616,14 +1618,14 @@ function RegisterPageContent() {
                   </div>
                 </div>
 
-                <div className="bg-blue-900/30 border border-blue-600/50 rounded-lg p-4 mt-2">
+                <div className="bg-blue-900/30 border border-blue-600/50 rounded-lg p-3 sm:p-4 mt-2">
                   <div className="flex items-start gap-2">
-                    <AlertCircle className="h-5 w-5 text-blue-400 mt-0.5 flex-shrink-0" />
-                    <div className="text-sm text-blue-100">
+                    <AlertCircle className="h-4 w-4 sm:h-5 sm:w-5 text-blue-400 mt-0.5 flex-shrink-0" />
+                    <div className="text-xs sm:text-sm text-blue-100">
                       <p className="font-medium mb-1">
                         Informações importantes:
                       </p>
-                      <ul className="space-y-1 text-xs text-blue-200">
+                      <ul className="space-y-1 text-[10px] sm:text-xs text-blue-200">
                         <li>• Selecione a unidade onde deseja se cadastrar</li>
                         <li>
                           • Selecione o perfil adequado ao seu papel no sistema
@@ -1642,10 +1644,10 @@ function RegisterPageContent() {
                 </div>
               </CardContent>
 
-              <CardFooter className="flex flex-col space-y-4 px-6 pb-6">
+              <CardFooter className="flex flex-col space-y-3 sm:space-y-4 px-3 sm:px-4 md:px-6 pb-4 sm:pb-6">
                 <Button
                   type="submit"
-                  className="w-full h-12 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-bold tracking-wide border border-red-500 shadow-lg shadow-red-900/50"
+                  className="w-full h-11 sm:h-12 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-bold tracking-wide border border-red-500 shadow-lg shadow-red-900/50 text-sm sm:text-base"
                   disabled={isLoading}
                 >
                   {isLoading ? (
@@ -1655,13 +1657,13 @@ function RegisterPageContent() {
                     </span>
                   ) : (
                     <span className="flex items-center justify-center gap-2">
-                      <UserPlus className="h-5 w-5" />
+                      <UserPlus className="h-4 w-4 sm:h-5 sm:w-5" />
                       CRIAR CONTA
                     </span>
                   )}
                 </Button>
 
-                <div className="text-center text-sm">
+                <div className="text-center text-xs sm:text-sm">
                   <p className="text-gray-400">
                     Já tem uma conta?{" "}
                     <Link
@@ -1685,10 +1687,10 @@ export default function RegisterPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center">
+        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center p-4">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p className="text-gray-600">Carregando...</p>
+            <div className="animate-spin rounded-full h-10 w-10 sm:h-12 sm:w-12 border-b-2 border-blue-600 mx-auto mb-3 sm:mb-4"></div>
+            <p className="text-sm sm:text-base text-gray-600">Carregando...</p>
           </div>
         </div>
       }

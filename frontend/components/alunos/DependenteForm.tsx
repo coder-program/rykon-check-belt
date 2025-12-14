@@ -212,30 +212,33 @@ export default function DependenteForm({
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center">
-          <h2 className="text-2xl font-bold">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
+      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[95vh] sm:max-h-[90vh] overflow-y-auto">
+        <div className="sticky top-0 bg-white border-b px-3 sm:px-4 md:px-6 py-3 sm:py-4 flex justify-between items-center z-10">
+          <h2 className="text-lg sm:text-xl md:text-2xl font-bold">
             {isEditMode ? "Editar Dependente" : "Cadastrar Dependente"}
           </h2>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0"
             type="button"
           >
-            <X className="h-5 w-5" />
+            <X className="h-4 w-4 sm:h-5 sm:w-5" />
           </button>
         </div>
 
-        <form onSubmit={onSubmit} className="p-6 space-y-6">
+        <form
+          onSubmit={onSubmit}
+          className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-5 md:space-y-6"
+        >
           {/* Informações Básicas */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">
+          <div className="space-y-3 sm:space-y-4">
+            <h3 className="text-base sm:text-lg font-semibold text-gray-900 border-b pb-2">
               Dados Pessoais
             </h3>
 
             <div>
-              <Label htmlFor="nome_completo">
+              <Label htmlFor="nome_completo" className="text-xs sm:text-sm">
                 Nome Completo <span className="text-red-500">*</span>
               </Label>
               <Input
@@ -246,12 +249,15 @@ export default function DependenteForm({
                 }
                 required
                 placeholder="Nome completo do dependente"
+                className="h-10 sm:h-11 text-sm sm:text-base"
               />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
               <div>
-                <Label htmlFor="cpf">CPF</Label>
+                <Label htmlFor="cpf" className="text-xs sm:text-sm">
+                  CPF
+                </Label>
                 <Input
                   id="cpf"
                   value={formData.cpf || ""}
@@ -260,11 +266,12 @@ export default function DependenteForm({
                   }}
                   placeholder="000.000.000-00"
                   maxLength={14}
+                  className="h-10 sm:h-11 text-sm sm:text-base"
                 />
               </div>
 
               <div>
-                <Label htmlFor="data_nascimento">
+                <Label htmlFor="data_nascimento" className="text-xs sm:text-sm">
                   Data de Nascimento <span className="text-red-500">*</span>
                 </Label>
                 <Input
@@ -275,21 +282,25 @@ export default function DependenteForm({
                     handleChange("data_nascimento", e.target.value)
                   }
                   required
-                  className={erroIdade ? "border-red-500" : ""}
+                  className={`h-10 sm:h-11 text-sm sm:text-base ${
+                    erroIdade ? "border-red-500" : ""
+                  }`}
                 />
                 {erroIdade && (
-                  <p className="text-sm text-red-600 mt-1">{erroIdade}</p>
+                  <p className="text-[10px] sm:text-xs text-red-600 mt-1">
+                    {erroIdade}
+                  </p>
                 )}
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-[10px] sm:text-xs text-gray-500 mt-1">
                   Dependentes devem fazer até 15 anos em{" "}
                   {new Date().getFullYear()}
                 </p>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
               <div>
-                <Label htmlFor="genero">
+                <Label htmlFor="genero" className="text-xs sm:text-sm">
                   Gênero <span className="text-red-500">*</span>
                 </Label>
                 <Select
@@ -297,7 +308,7 @@ export default function DependenteForm({
                   onValueChange={(value) => handleChange("genero", value)}
                   required
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="h-10 sm:h-11 text-sm sm:text-base">
                     <SelectValue placeholder="Selecione o gênero" />
                   </SelectTrigger>
                   <SelectContent>
@@ -309,10 +320,10 @@ export default function DependenteForm({
               </div>
 
               <div>
-                <Label htmlFor="unidade_id">
+                <Label htmlFor="unidade_id" className="text-xs sm:text-sm">
                   Unidade <span className="text-red-500">*</span>
                   {formData.unidade_id && (
-                    <span className="ml-2 text-xs text-green-600">
+                    <span className="ml-2 text-[10px] sm:text-xs text-green-600">
                       ✓ Selecionada
                     </span>
                   )}
@@ -323,6 +334,7 @@ export default function DependenteForm({
                     type="text"
                     placeholder="Digite para buscar a unidade..."
                     value={unidadeSearchTerm}
+                    className="h-10 sm:h-11 text-sm sm:text-base"
                     onChange={(e) => {
                       const valorDigitado = e.target.value;
                       setUnidadeSearchTerm(valorDigitado);
@@ -354,7 +366,7 @@ export default function DependenteForm({
                     required
                   />
                   {showUnidadeDropdown && unidadesFiltradas.length > 0 && (
-                    <div className="unidade-dropdown absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-xl max-h-60 overflow-y-auto">
+                    <div className="unidade-dropdown absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-xl max-h-48 sm:max-h-60 overflow-y-auto">
                       {unidadesFiltradas.map((unidade) => (
                         <div
                           key={unidade.id}
@@ -363,9 +375,9 @@ export default function DependenteForm({
                             setUnidadeSearchTerm(unidade.nome);
                             setShowUnidadeDropdown(false);
                           }}
-                          className="px-4 py-3 hover:bg-gray-100 cursor-pointer transition-colors border-b border-gray-200 last:border-b-0"
+                          className="px-3 sm:px-4 py-2 sm:py-3 hover:bg-gray-100 cursor-pointer transition-colors border-b border-gray-200 last:border-b-0"
                         >
-                          <span className="font-medium text-gray-900">
+                          <span className="font-medium text-sm sm:text-base text-gray-900">
                             {unidade.nome}
                           </span>
                         </div>
@@ -378,13 +390,15 @@ export default function DependenteForm({
           </div>
 
           {/* Informações de Contato */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">
+          <div className="space-y-3 sm:space-y-4">
+            <h3 className="text-base sm:text-lg font-semibold text-gray-900 border-b pb-2">
               Informações de Contato
             </h3>
 
             <div>
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email" className="text-xs sm:text-sm">
+                Email
+              </Label>
               <Input
                 id="email"
                 type="email"
@@ -393,12 +407,15 @@ export default function DependenteForm({
                   handleChange("email", e.target.value)
                 }
                 placeholder="email@exemplo.com"
+                className="h-10 sm:h-11 text-sm sm:text-base"
               />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
               <div>
-                <Label htmlFor="telefone">Telefone / WhatsApp</Label>
+                <Label htmlFor="telefone" className="text-xs sm:text-sm">
+                  Telefone / WhatsApp
+                </Label>
                 <Input
                   id="telefone"
                   value={formData.telefone || ""}
@@ -407,11 +424,15 @@ export default function DependenteForm({
                   }
                   placeholder="(00) 00000-0000"
                   maxLength={15}
+                  className="h-10 sm:h-11 text-sm sm:text-base"
                 />
               </div>
 
               <div>
-                <Label htmlFor="telefone_emergencia">
+                <Label
+                  htmlFor="telefone_emergencia"
+                  className="text-xs sm:text-sm"
+                >
                   Telefone de Emergência
                 </Label>
                 <Input
@@ -425,12 +446,16 @@ export default function DependenteForm({
                   }
                   placeholder="(00) 00000-0000"
                   maxLength={15}
+                  className="h-10 sm:h-11 text-sm sm:text-base"
                 />
               </div>
             </div>
 
             <div>
-              <Label htmlFor="nome_contato_emergencia">
+              <Label
+                htmlFor="nome_contato_emergencia"
+                className="text-xs sm:text-sm"
+              >
                 Nome do Contato de Emergência
               </Label>
               <Input
@@ -440,19 +465,22 @@ export default function DependenteForm({
                   handleChange("nome_contato_emergencia", e.target.value)
                 }
                 placeholder="Nome completo"
+                className="h-10 sm:h-11 text-sm sm:text-base"
               />
             </div>
           </div>
 
           {/* Informações de Matrícula */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">
+          <div className="space-y-3 sm:space-y-4">
+            <h3 className="text-base sm:text-lg font-semibold text-gray-900 border-b pb-2">
               Informações de Matrícula
             </h3>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
               <div>
-                <Label htmlFor="data_matricula">Data de Matrícula</Label>
+                <Label htmlFor="data_matricula" className="text-xs sm:text-sm">
+                  Data de Matrícula
+                </Label>
                 <Input
                   id="data_matricula"
                   type="date"
@@ -460,19 +488,22 @@ export default function DependenteForm({
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                     handleChange("data_matricula", e.target.value)
                   }
+                  className="h-10 sm:h-11 text-sm sm:text-base"
                 />
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
               <div>
-                <Label htmlFor="faixa_atual">Faixa Atual</Label>
+                <Label htmlFor="faixa_atual" className="text-xs sm:text-sm">
+                  Faixa Atual
+                </Label>
                 <Select
                   value={formData.faixa_atual || "CINZA"}
                   onValueChange={(value) => handleChange("faixa_atual", value)}
                   disabled={loadingFaixas && !faixas}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="h-10 sm:h-11 text-sm sm:text-base">
                     <SelectValue placeholder="Selecione a faixa" />
                   </SelectTrigger>
                   <SelectContent>
@@ -496,7 +527,9 @@ export default function DependenteForm({
               </div>
 
               <div>
-                <Label htmlFor="graus">Graus (0-4)</Label>
+                <Label htmlFor="graus" className="text-xs sm:text-sm">
+                  Graus (0-4)
+                </Label>
                 <Input
                   id="graus"
                   type="number"
@@ -507,45 +540,56 @@ export default function DependenteForm({
                     handleChange("graus", e.target.value)
                   }
                   placeholder="0"
+                  className="h-10 sm:h-11 text-sm sm:text-base"
                 />
               </div>
             </div>
           </div>
 
           {/* Informações de Saúde */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">
+          <div className="space-y-3 sm:space-y-4">
+            <h3 className="text-base sm:text-lg font-semibold text-gray-900 border-b pb-2">
               Informações de Saúde
             </h3>
 
             <div>
-              <Label htmlFor="observacoes_medicas">Observações Médicas</Label>
+              <Label
+                htmlFor="observacoes_medicas"
+                className="text-xs sm:text-sm"
+              >
+                Observações Médicas
+              </Label>
               <textarea
                 id="observacoes_medicas"
                 value={formData.observacoes_medicas || ""}
                 onChange={(e) =>
                   handleChange("observacoes_medicas", e.target.value)
                 }
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 rows={3}
                 placeholder="Ex: Problemas cardíacos, restrições físicas, etc."
               />
             </div>
 
             <div>
-              <Label htmlFor="alergias">Alergias</Label>
+              <Label htmlFor="alergias" className="text-xs sm:text-sm">
+                Alergias
+              </Label>
               <textarea
                 id="alergias"
                 value={formData.alergias || ""}
                 onChange={(e) => handleChange("alergias", e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 rows={2}
                 placeholder="Ex: Alergia a medicamentos, alimentos, etc."
               />
             </div>
 
             <div>
-              <Label htmlFor="medicamentos_uso_continuo">
+              <Label
+                htmlFor="medicamentos_uso_continuo"
+                className="text-xs sm:text-sm"
+              >
                 Medicamentos de Uso Contínuo
               </Label>
               <textarea
@@ -554,15 +598,17 @@ export default function DependenteForm({
                 onChange={(e) =>
                   handleChange("medicamentos_uso_continuo", e.target.value)
                 }
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 rows={2}
                 placeholder="Ex: Nome do medicamento, dosagem e horário"
               />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
               <div>
-                <Label htmlFor="plano_saude">Plano de Saúde</Label>
+                <Label htmlFor="plano_saude" className="text-xs sm:text-sm">
+                  Plano de Saúde
+                </Label>
                 <Input
                   id="plano_saude"
                   value={formData.plano_saude || ""}
@@ -570,11 +616,15 @@ export default function DependenteForm({
                     handleChange("plano_saude", e.target.value)
                   }
                   placeholder="Nome do plano de saúde"
+                  className="h-10 sm:h-11 text-sm sm:text-base"
                 />
               </div>
 
               <div>
-                <Label htmlFor="atestado_medico_validade">
+                <Label
+                  htmlFor="atestado_medico_validade"
+                  className="text-xs sm:text-sm"
+                >
                   Validade do Atestado Médico
                 </Label>
                 <Input
@@ -584,19 +634,25 @@ export default function DependenteForm({
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                     handleChange("atestado_medico_validade", e.target.value)
                   }
+                  className="h-10 sm:h-11 text-sm sm:text-base"
                 />
               </div>
             </div>
 
             <div>
-              <Label htmlFor="restricoes_medicas">Restrições Médicas</Label>
+              <Label
+                htmlFor="restricoes_medicas"
+                className="text-xs sm:text-sm"
+              >
+                Restrições Médicas
+              </Label>
               <textarea
                 id="restricoes_medicas"
                 value={formData.restricoes_medicas || ""}
                 onChange={(e) =>
                   handleChange("restricoes_medicas", e.target.value)
                 }
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 rows={2}
                 placeholder="Ex: Não pode fazer exercícios de alto impacto"
               />
@@ -604,18 +660,23 @@ export default function DependenteForm({
           </div>
 
           {/* Dados do Responsável Adicional */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">
+          <div className="space-y-3 sm:space-y-4">
+            <h3 className="text-base sm:text-lg font-semibold text-gray-900 border-b pb-2">
               Responsável Adicional (Opcional)
             </h3>
-            <p className="text-sm text-gray-600">
+            <p className="text-xs sm:text-sm text-gray-600">
               Preencha caso o dependente precise de outro responsável além de
               você
             </p>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
               <div>
-                <Label htmlFor="responsavel_nome">Nome do Responsável</Label>
+                <Label
+                  htmlFor="responsavel_nome"
+                  className="text-xs sm:text-sm"
+                >
+                  Nome do Responsável
+                </Label>
                 <Input
                   id="responsavel_nome"
                   value={formData.responsavel_nome || ""}
@@ -623,11 +684,14 @@ export default function DependenteForm({
                     handleChange("responsavel_nome", e.target.value)
                   }
                   placeholder="Nome completo"
+                  className="h-10 sm:h-11 text-sm sm:text-base"
                 />
               </div>
 
               <div>
-                <Label htmlFor="responsavel_cpf">CPF do Responsável</Label>
+                <Label htmlFor="responsavel_cpf" className="text-xs sm:text-sm">
+                  CPF do Responsável
+                </Label>
                 <Input
                   id="responsavel_cpf"
                   value={formData.responsavel_cpf || ""}
@@ -636,13 +700,17 @@ export default function DependenteForm({
                   }
                   placeholder="000.000.000-00"
                   maxLength={14}
+                  className="h-10 sm:h-11 text-sm sm:text-base"
                 />
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
               <div>
-                <Label htmlFor="responsavel_telefone">
+                <Label
+                  htmlFor="responsavel_telefone"
+                  className="text-xs sm:text-sm"
+                >
                   Telefone do Responsável
                 </Label>
                 <Input
@@ -656,11 +724,17 @@ export default function DependenteForm({
                   }
                   placeholder="(00) 00000-0000"
                   maxLength={15}
+                  className="h-10 sm:h-11 text-sm sm:text-base"
                 />
               </div>
 
               <div>
-                <Label htmlFor="responsavel_parentesco">Parentesco</Label>
+                <Label
+                  htmlFor="responsavel_parentesco"
+                  className="text-xs sm:text-sm"
+                >
+                  Parentesco
+                </Label>
                 <Input
                   id="responsavel_parentesco"
                   value={formData.responsavel_parentesco || ""}
@@ -668,20 +742,23 @@ export default function DependenteForm({
                     handleChange("responsavel_parentesco", e.target.value)
                   }
                   placeholder="Ex: Pai, Mãe, Avô, Tio, etc."
+                  className="h-10 sm:h-11 text-sm sm:text-base"
                 />
               </div>
             </div>
           </div>
 
           {/* Informações Financeiras */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">
+          <div className="space-y-3 sm:space-y-4">
+            <h3 className="text-base sm:text-lg font-semibold text-gray-900 border-b pb-2">
               Informações Financeiras (Opcional)
             </h3>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
               <div>
-                <Label htmlFor="dia_vencimento">Dia de Vencimento</Label>
+                <Label htmlFor="dia_vencimento" className="text-xs sm:text-sm">
+                  Dia de Vencimento
+                </Label>
                 <Input
                   id="dia_vencimento"
                   type="number"
@@ -692,11 +769,17 @@ export default function DependenteForm({
                     handleChange("dia_vencimento", e.target.value)
                   }
                   placeholder="Ex: 10"
+                  className="h-10 sm:h-11 text-sm sm:text-base"
                 />
               </div>
 
               <div>
-                <Label htmlFor="valor_mensalidade">Valor da Mensalidade</Label>
+                <Label
+                  htmlFor="valor_mensalidade"
+                  className="text-xs sm:text-sm"
+                >
+                  Valor da Mensalidade
+                </Label>
                 <Input
                   id="valor_mensalidade"
                   type="number"
@@ -707,11 +790,17 @@ export default function DependenteForm({
                     handleChange("valor_mensalidade", e.target.value)
                   }
                   placeholder="Ex: 150.00"
+                  className="h-10 sm:h-11 text-sm sm:text-base"
                 />
               </div>
 
               <div>
-                <Label htmlFor="desconto_percentual">Desconto (%)</Label>
+                <Label
+                  htmlFor="desconto_percentual"
+                  className="text-xs sm:text-sm"
+                >
+                  Desconto (%)
+                </Label>
                 <Input
                   id="desconto_percentual"
                   type="number"
@@ -723,18 +812,19 @@ export default function DependenteForm({
                     handleChange("desconto_percentual", e.target.value)
                   }
                   placeholder="Ex: 10"
+                  className="h-10 sm:h-11 text-sm sm:text-base"
                 />
               </div>
             </div>
           </div>
 
           {/* Consentimentos */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">
+          <div className="space-y-3 sm:space-y-4">
+            <h3 className="text-base sm:text-lg font-semibold text-gray-900 border-b pb-2">
               Consentimentos
             </h3>
 
-            <div className="space-y-3">
+            <div className="space-y-2 sm:space-y-3">
               <div className="flex items-start gap-2">
                 <input
                   type="checkbox"
@@ -746,11 +836,11 @@ export default function DependenteForm({
                       e.target.checked ? "true" : "false"
                     )
                   }
-                  className="mt-1"
+                  className="mt-1 h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0"
                 />
                 <Label
                   htmlFor="consent_lgpd"
-                  className="font-normal cursor-pointer"
+                  className="font-normal cursor-pointer text-xs sm:text-sm"
                 >
                   Autorizo o uso dos meus dados pessoais conforme a Lei Geral de
                   Proteção de Dados (LGPD)
@@ -768,11 +858,11 @@ export default function DependenteForm({
                       e.target.checked ? "true" : "false"
                     )
                   }
-                  className="mt-1"
+                  className="mt-1 h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0"
                 />
                 <Label
                   htmlFor="consent_imagem"
-                  className="font-normal cursor-pointer"
+                  className="font-normal cursor-pointer text-xs sm:text-sm"
                 >
                   Autorizo o uso de imagem para divulgação em redes sociais e
                   materiais de marketing da academia
@@ -782,18 +872,20 @@ export default function DependenteForm({
           </div>
 
           {/* Observações */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">
+          <div className="space-y-3 sm:space-y-4">
+            <h3 className="text-base sm:text-lg font-semibold text-gray-900 border-b pb-2">
               Observações Gerais
             </h3>
 
             <div>
-              <Label htmlFor="observacoes">Observações</Label>
+              <Label htmlFor="observacoes" className="text-xs sm:text-sm">
+                Observações
+              </Label>
               <textarea
                 id="observacoes"
                 value={formData.observacoes || ""}
                 onChange={(e) => handleChange("observacoes", e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 rows={3}
                 placeholder="Qualquer informação adicional relevante"
               />
@@ -801,19 +893,19 @@ export default function DependenteForm({
           </div>
 
           {/* Botões */}
-          <div className="flex gap-3 pt-4 border-t">
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 pt-3 sm:pt-4 border-t">
             <Button
               type="button"
               onClick={onClose}
               variant="outline"
-              className="flex-1"
+              className="flex-1 h-10 sm:h-11 text-sm sm:text-base order-2 sm:order-1"
               disabled={isLoading}
             >
               Cancelar
             </Button>
             <Button
               type="submit"
-              className="flex-1 bg-blue-600 hover:bg-blue-700"
+              className="flex-1 h-10 sm:h-11 text-sm sm:text-base bg-blue-600 hover:bg-blue-700 order-1 sm:order-2"
               disabled={isLoading || !!erroIdade}
             >
               {isLoading

@@ -396,26 +396,26 @@ export default function CompeticoesPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-gray-50 p-3 sm:p-4 md:p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="mb-8">
+        <div className="mb-6 sm:mb-8">
           <button
             onClick={() => router.back()}
-            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4"
+            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-3 sm:mb-4"
           >
             <ChevronLeft className="h-5 w-5" />
-            Voltar
+            <span className="text-sm sm:text-base">Voltar</span>
           </button>
 
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Trophy className="h-8 w-8 text-yellow-600" />
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <Trophy className="h-6 w-6 sm:h-8 sm:w-8 text-yellow-600" />
               <div>
-                <h1 className="text-3xl font-bold text-gray-900">
+                <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900">
                   Minhas Competições
                 </h1>
-                <p className="text-gray-600">
+                <p className="text-sm sm:text-base text-gray-600">
                   Gerencie seu histórico de campeonatos
                 </p>
               </div>
@@ -428,10 +428,11 @@ export default function CompeticoesPage() {
                   setEditando(null);
                   setShowForm(true);
                 }}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm sm:text-base w-full sm:w-auto justify-center"
               >
-                <Plus className="h-5 w-5" />
-                Adicionar Competição
+                <Plus className="h-4 w-4 sm:h-5 sm:w-5" />
+                <span className="hidden sm:inline">Adicionar Competição</span>
+                <span className="sm:hidden">Nova Competição</span>
               </button>
             )}
           </div>
@@ -439,15 +440,15 @@ export default function CompeticoesPage() {
 
         {/* Estatísticas */}
         {estatisticas && estatisticas.totalCompeticoes > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6 mb-6 sm:mb-8">
             <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium text-gray-600">
+              <CardHeader className="pb-2 sm:pb-3 p-3 sm:p-6">
+                <CardTitle className="text-xs sm:text-sm font-medium text-gray-600">
                   Total de Competições
                 </CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-blue-600">
+              <CardContent className="p-3 sm:p-6">
+                <div className="text-2xl sm:text-3xl font-bold text-blue-600">
                   {estatisticas.totalCompeticoes}
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
@@ -457,13 +458,13 @@ export default function CompeticoesPage() {
             </Card>
 
             <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium text-gray-600">
+              <CardHeader className="pb-2 sm:pb-3 p-3 sm:p-6">
+                <CardTitle className="text-xs sm:text-sm font-medium text-gray-600">
                   Medalhas
                 </CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="flex gap-3 text-2xl font-bold">
+              <CardContent className="p-3 sm:p-6">
+                <div className="flex gap-2 sm:gap-3 text-lg sm:text-2xl font-bold">
                   <span className="text-yellow-500">
                     🥇 {estatisticas.totalOuros}
                   </span>
@@ -478,13 +479,13 @@ export default function CompeticoesPage() {
             </Card>
 
             <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium text-gray-600">
+              <CardHeader className="pb-2 sm:pb-3 p-3 sm:p-6">
+                <CardTitle className="text-xs sm:text-sm font-medium text-gray-600">
                   Lutas
                 </CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-green-600">
+              <CardContent className="p-3 sm:p-6">
+                <div className="text-2xl sm:text-3xl font-bold text-green-600">
                   {estatisticas.totalLutas}
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
@@ -494,13 +495,13 @@ export default function CompeticoesPage() {
             </Card>
 
             <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium text-gray-600">
+              <CardHeader className="pb-2 sm:pb-3 p-3 sm:p-6">
+                <CardTitle className="text-xs sm:text-sm font-medium text-gray-600">
                   Aproveitamento
                 </CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-purple-600">
+              <CardContent className="p-3 sm:p-6">
+                <div className="text-2xl sm:text-3xl font-bold text-purple-600">
                   {estatisticas.aproveitamento}%
                 </div>
                 <p className="text-xs text-gray-500 mt-1">Taxa de vitória</p>
@@ -511,10 +512,10 @@ export default function CompeticoesPage() {
 
         {/* Formulário */}
         {showForm && (
-          <Card className="mb-8">
-            <CardHeader>
+          <Card className="mb-6 sm:mb-8">
+            <CardHeader className="p-3 sm:p-6">
               <div className="flex items-center justify-between">
-                <CardTitle>
+                <CardTitle className="text-base sm:text-lg md:text-xl">
                   {editando ? "Editar" : "Adicionar"} Competição
                 </CardTitle>
                 <button
@@ -529,16 +530,16 @@ export default function CompeticoesPage() {
                 </button>
               </div>
             </CardHeader>
-            <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-6">
+            <CardContent className="p-3 sm:p-6">
+              <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
                 {/* Informações da Competição */}
                 <div>
-                  <h3 className="text-lg font-semibold mb-4">
+                  <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4">
                     Informações da Competição
                   </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
                     <div className="md:col-span-2">
-                      <label className="block text-sm font-medium mb-2">
+                      <label className="block text-xs sm:text-sm font-medium mb-2">
                         Nome da Competição *
                       </label>
                       <input
@@ -551,13 +552,13 @@ export default function CompeticoesPage() {
                             nomeCompeticao: e.target.value,
                           })
                         }
-                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-3 py-2 text-sm sm:text-base border rounded-lg focus:ring-2 focus:ring-blue-500"
                         placeholder="Ex: Copa TeamCruz 2025"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium mb-2">
+                      <label className="block text-xs sm:text-sm font-medium mb-2">
                         Tipo *
                       </label>
                       <select
@@ -566,7 +567,7 @@ export default function CompeticoesPage() {
                         onChange={(e) =>
                           setFormData({ ...formData, tipo: e.target.value })
                         }
-                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-3 py-2 text-sm sm:text-base border rounded-lg focus:ring-2 focus:ring-blue-500"
                       >
                         <option value="LOCAL">Local</option>
                         <option value="REGIONAL">Regional</option>
@@ -578,7 +579,7 @@ export default function CompeticoesPage() {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium mb-2">
+                      <label className="block text-xs sm:text-sm font-medium mb-2">
                         Modalidade *
                       </label>
                       <select
@@ -590,7 +591,7 @@ export default function CompeticoesPage() {
                             modalidade: e.target.value,
                           })
                         }
-                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-3 py-2 text-sm sm:text-base border rounded-lg focus:ring-2 focus:ring-blue-500"
                       >
                         <option value="GI">Gi (Com Kimono)</option>
                         <option value="NO_GI">No-Gi (Sem Kimono)</option>
@@ -599,7 +600,7 @@ export default function CompeticoesPage() {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium mb-2">
+                      <label className="block text-xs sm:text-sm font-medium mb-2">
                         Data *
                       </label>
                       <input
@@ -675,12 +676,12 @@ export default function CompeticoesPage() {
                           }
                           setFormData({ ...formData, data: value });
                         }}
-                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-3 py-2 text-sm sm:text-base border rounded-lg focus:ring-2 focus:ring-blue-500"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium mb-2">
+                      <label className="block text-xs sm:text-sm font-medium mb-2">
                         Local
                       </label>
                       <input
@@ -689,13 +690,13 @@ export default function CompeticoesPage() {
                         onChange={(e) =>
                           setFormData({ ...formData, local: e.target.value })
                         }
-                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-3 py-2 text-sm sm:text-base border rounded-lg focus:ring-2 focus:ring-blue-500"
                         placeholder="Ex: Ginásio Municipal"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium mb-2">
+                      <label className="block text-xs sm:text-sm font-medium mb-2">
                         Estado
                       </label>
                       <select
@@ -1073,7 +1074,7 @@ export default function CompeticoesPage() {
                     </div>
 
                     <div className="md:col-span-2">
-                      <label className="block text-sm font-medium mb-2">
+                      <label className="block text-xs sm:text-sm font-medium mb-2">
                         Observações
                       </label>
                       <textarea
@@ -1085,14 +1086,14 @@ export default function CompeticoesPage() {
                             observacoes: e.target.value,
                           })
                         }
-                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-3 py-2 text-sm sm:text-base border rounded-lg focus:ring-2 focus:ring-blue-500"
                         placeholder="Adicione observações sobre sua participação..."
                       />
                     </div>
                   </div>
                 </div>
 
-                <div className="flex gap-3 justify-end">
+                <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 justify-end">
                   <button
                     type="button"
                     onClick={() => {
@@ -1100,13 +1101,13 @@ export default function CompeticoesPage() {
                       setEditando(null);
                       resetForm();
                     }}
-                    className="px-4 py-2 border rounded-lg hover:bg-gray-50"
+                    className="px-4 py-2 text-sm sm:text-base border rounded-lg hover:bg-gray-50 order-2 sm:order-1"
                   >
                     Cancelar
                   </button>
                   <button
                     type="submit"
-                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                    className="flex items-center justify-center gap-2 px-4 py-2 text-sm sm:text-base bg-blue-600 text-white rounded-lg hover:bg-blue-700 order-1 sm:order-2"
                   >
                     <Save className="h-4 w-4" />
                     {editando ? "Atualizar" : "Salvar"}
@@ -1119,9 +1120,11 @@ export default function CompeticoesPage() {
 
         {/* Lista de Participações */}
         <Card>
-          <CardHeader>
-            <CardTitle>Histórico de Participações</CardTitle>
-            <CardDescription>
+          <CardHeader className="p-3 sm:p-6">
+            <CardTitle className="text-base sm:text-lg">
+              Histórico de Participações
+            </CardTitle>
+            <CardDescription className="text-xs sm:text-sm">
               {participacoes.length > 0
                 ? `${participacoes.length} competição${
                     participacoes.length > 1 ? "ões" : ""
@@ -1129,55 +1132,61 @@ export default function CompeticoesPage() {
                 : "Nenhuma competição registrada ainda"}
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-3 sm:p-6">
             {loading ? (
-              <div className="text-center py-8 text-gray-500">
+              <div className="text-center py-6 sm:py-8 text-sm sm:text-base text-gray-500">
                 Carregando...
               </div>
             ) : participacoes.length === 0 ? (
-              <div className="text-center py-12">
-                <Trophy className="h-16 w-16 mx-auto mb-4 text-gray-300" />
-                <p className="text-gray-500 mb-4">
+              <div className="text-center py-8 sm:py-12">
+                <Trophy className="h-12 w-12 sm:h-16 sm:w-16 mx-auto mb-3 sm:mb-4 text-gray-300" />
+                <p className="text-sm sm:text-base text-gray-500 mb-3 sm:mb-4">
                   Você ainda não registrou nenhuma competição
                 </p>
                 <button
                   onClick={() => setShowForm(true)}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  className="px-4 py-2 text-sm sm:text-base bg-blue-600 text-white rounded-lg hover:bg-blue-700"
                 >
                   Adicionar Primeira Competição
                 </button>
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-3 sm:space-y-4">
                 {participacoes.map((part) => (
                   <div
                     key={part.id}
-                    className="border rounded-lg p-4 hover:shadow-md transition-shadow"
+                    className="border rounded-lg p-3 sm:p-4 hover:shadow-md transition-shadow"
                   >
-                    <div className="flex items-start justify-between">
-                      <div className="flex gap-4 flex-1">
-                        <div className="text-5xl">{part.medalha_emoji}</div>
-                        <div className="flex-1">
-                          <h3 className="text-lg font-semibold">
+                    <div className="flex flex-col sm:flex-row items-start justify-between gap-3">
+                      <div className="flex gap-3 sm:gap-4 flex-1 w-full">
+                        <div className="text-4xl sm:text-5xl flex-shrink-0">
+                          {part.medalha_emoji}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-base sm:text-lg font-semibold break-words">
                             {part.competicao.nome}
                           </h3>
-                          <div className="flex flex-wrap gap-3 mt-2 text-sm text-gray-600">
+                          <div className="flex flex-wrap gap-2 sm:gap-3 mt-2 text-xs sm:text-sm text-gray-600">
                             <span className="flex items-center gap-1">
-                              <Award className="h-4 w-4" />
-                              {part.competicao.tipo}
+                              <Award className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+                              <span className="truncate">
+                                {part.competicao.tipo}
+                              </span>
                             </span>
                             <span className="flex items-center gap-1">
-                              <Calendar className="h-4 w-4" />
+                              <Calendar className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
                               {new Date(
                                 part.competicao.data_inicio
                               ).toLocaleDateString("pt-BR")}
                             </span>
                             {part.competicao.cidade && (
                               <span className="flex items-center gap-1">
-                                <MapPin className="h-4 w-4" />
-                                {part.competicao.cidade}
-                                {part.competicao.estado &&
-                                  ` - ${part.competicao.estado}`}
+                                <MapPin className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+                                <span className="truncate">
+                                  {part.competicao.cidade}
+                                  {part.competicao.estado &&
+                                    ` - ${part.competicao.estado}`}
+                                </span>
                               </span>
                             )}
                           </div>
@@ -1215,8 +1224,8 @@ export default function CompeticoesPage() {
                             </span>
                           </div>
                           {part.total_lutas > 0 && (
-                            <div className="mt-2 text-sm flex items-center gap-1">
-                              <TrendingUp className="h-4 w-4 text-gray-500" />
+                            <div className="mt-2 text-xs sm:text-sm flex items-center gap-1 flex-wrap">
+                              <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4 text-gray-500 flex-shrink-0" />
                               <span className="font-semibold text-green-600">
                                 {part.vitorias}V
                               </span>
@@ -1239,26 +1248,26 @@ export default function CompeticoesPage() {
                             </div>
                           )}
                           {part.observacoes && (
-                            <p className="mt-2 text-sm text-gray-600 italic">
+                            <p className="mt-2 text-xs sm:text-sm text-gray-600 italic break-words">
                               {part.observacoes}
                             </p>
                           )}
                         </div>
                       </div>
-                      <div className="flex gap-2">
+                      <div className="flex sm:flex-col gap-2 w-full sm:w-auto">
                         <button
                           onClick={() => handleEditar(part)}
-                          className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"
+                          className="flex-1 sm:flex-none p-2 text-blue-600 hover:bg-blue-50 rounded-lg"
                           title="Editar"
                         >
-                          <Edit className="h-4 w-4" />
+                          <Edit className="h-4 w-4 mx-auto" />
                         </button>
                         <button
                           onClick={() => handleDeletar(part.id)}
-                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
+                          className="flex-1 sm:flex-none p-2 text-red-600 hover:bg-red-50 rounded-lg"
                           title="Remover"
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <Trash2 className="h-4 w-4 mx-auto" />
                         </button>
                       </div>
                     </div>

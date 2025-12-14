@@ -11,6 +11,7 @@ import { AlunoFaixaGrau } from './entities/aluno-faixa-grau.entity';
 import { AlunoGraduacao } from './entities/aluno-graduacao.entity';
 import { HistoricoGraus } from './entities/historico-graus.entity';
 import { HistoricoFaixas } from './entities/historico-faixas.entity';
+import { ConfiguracaoGraduacao } from './entities/configuracao-graduacao.entity';
 import { Person } from '../people/entities/person.entity';
 import { Aluno } from '../people/entities/aluno.entity';
 import { Franqueado } from '../people/entities/franqueado.entity';
@@ -29,6 +30,7 @@ import { PeopleModule } from '../people/people.module';
       AlunoGraduacao,
       HistoricoGraus,
       HistoricoFaixas,
+      ConfiguracaoGraduacao,
       Person,
       Aluno,
       Franqueado,
