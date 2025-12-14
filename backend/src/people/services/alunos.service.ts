@@ -1296,12 +1296,42 @@ export class AlunosService {
     });
 
     if (alunoExistente) {
+      // Se já é aluno, apenas garantir que tem o perfil ALUNO
+      const perfilAluno = await this.dataSource.query(
+        `SELECT id FROM teamcruz.perfis WHERE nome = 'ALUNO' LIMIT 1`,
+      );
+
+      if (perfilAluno && perfilAluno.length > 0) {
+        const perfilExistente = await this.dataSource.query(
+          `SELECT usuario_id FROM teamcruz.usuario_perfis
+           WHERE usuario_id = $1 AND perfil_id = $2`,
+          [user.id, perfilAluno[0].id],
+        );
+
+        if (!perfilExistente || perfilExistente.length === 0) {
+          await this.dataSource.query(
+            `INSERT INTO teamcruz.usuario_perfis (usuario_id, perfil_id, created_at)
+             VALUES ($1, $2, NOW())`,
+            [user.id, perfilAluno[0].id],
+          );
+
+          return {
+            success: true,
+            message: 'Perfil de aluno adicionado com sucesso!',
+            aluno: {
+              id: alunoExistente.id,
+              nome: alunoExistente.nome_completo,
+            },
+          };
+        }
+      }
+
       throw new BadRequestException('Você já é um aluno cadastrado');
     }
 
     // Buscar dados do responsável
     const responsavelData = await this.dataSource.query(
-      `SELECT r.*, u.nome, u.email, u.cpf, u.telefone 
+      `SELECT r.*, u.nome, u.email, u.cpf, u.telefone
        FROM teamcruz.responsaveis r
        INNER JOIN teamcruz.usuarios u ON u.id = r.usuario_id
        WHERE r.usuario_id = $1 LIMIT 1`,
@@ -1339,7 +1369,7 @@ export class AlunosService {
     if (perfilAluno && perfilAluno.length > 0) {
       // Verificar se já não tem o perfil
       const perfilExistente = await this.dataSource.query(
-        `SELECT id FROM teamcruz.usuario_perfis 
+        `SELECT usuario_id FROM teamcruz.usuario_perfis
          WHERE usuario_id = $1 AND perfil_id = $2`,
         [user.id, perfilAluno[0].id],
       );

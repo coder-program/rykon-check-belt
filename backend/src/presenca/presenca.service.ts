@@ -154,17 +154,19 @@ export class PresencaService {
 
     // Se for responsável, buscar unidades dos dependentes
     if (isResponsavel) {
-      const dependentes = await this.alunoRepository
-        .createQueryBuilder('aluno')
-        .innerJoin('aluno.responsaveis', 'resp')
-        .where('resp.usuario_id = :userId', { userId: user.id })
-        .andWhere('aluno.status = :status', { status: 'ATIVO' })
-        .select(['aluno.unidade_id'])
-        .getMany();
+      const dependentesData = await this.presencaRepository.manager.query(
+        `SELECT DISTINCT a.unidade_id
+         FROM teamcruz.alunos a
+         INNER JOIN teamcruz.responsaveis r ON r.id = a.responsavel_id
+         WHERE r.usuario_id = $1 AND a.status = 'ATIVO' AND a.unidade_id IS NOT NULL`,
+        [user.id],
+      );
 
       unidadesPermitidas = [
-        ...new Set(dependentes.map((d) => d.unidade_id).filter(Boolean)),
-      ];
+        ...new Set(
+          dependentesData.map((d: any) => d.unidade_id).filter(Boolean),
+        ),
+      ] as string[];
     }
     // Se for aluno, buscar sua própria unidade
     else if (isAluno) {
