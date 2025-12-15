@@ -222,10 +222,7 @@ export class DashboardFinanceiroService {
         }
         console.log('💰 [DASHBOARD] Total despesas mês:', totalDespesasMes);
       } catch (error) {
-        console.warn(
-          '⚠️ [DASHBOARD] Erro ao buscar despesas:',
-          error.message,
-        );
+        console.warn('⚠️ [DASHBOARD] Erro ao buscar despesas:', error.message);
       }
 
       const resultado = {
