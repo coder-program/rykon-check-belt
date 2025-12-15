@@ -5,6 +5,21 @@
 import { useState } from "react";
 import { conviteApi, CriarConviteDto } from "@/lib/conviteApi";
 import { Copy, Share2, X } from "lucide-react";
+import toast from "react-hot-toast";
+
+// Funções de máscara
+const formatPhone = (value: string) => {
+  const numbers = value.replace(/\D/g, "");
+  if (numbers.length <= 10) {
+    return numbers.replace(/(\d{2})(\d{4})(\d{0,4})/, "($1) $2-$3");
+  }
+  return numbers.replace(/(\d{2})(\d{5})(\d{0,4})/, "($1) $2-$3");
+};
+
+const formatCPF = (value: string) => {
+  const numbers = value.replace(/\D/g, "");
+  return numbers.replace(/(\d{3})(\d{3})(\d{3})(\d{0,2})/, "$1.$2.$3-$4");
+};
 
 interface ConviteModalProps {
   isOpen: boolean;
@@ -32,7 +47,7 @@ export default function ConviteModal({
 
     // Validar se unidade_id está presente
     if (!formData.unidade_id) {
-      alert("É necessário selecionar uma unidade antes de criar o convite");
+      toast.error("É necessário selecionar uma unidade antes de criar o convite");
       return;
     }
 
@@ -45,7 +60,7 @@ export default function ConviteModal({
         linkWhatsApp: response.linkWhatsApp,
       });
     } catch (error: any) {
-      alert(error.message || "Erro ao criar convite");
+      toast.error(error.message || "Erro ao criar convite");
     } finally {
       setLoading(false);
     }
@@ -54,7 +69,7 @@ export default function ConviteModal({
   const handleCopyLink = () => {
     if (result?.link) {
       navigator.clipboard.writeText(result.link);
-      alert("Link copiado para a área de transferência!");
+      toast.success("Link copiado para a área de transferência!");
     }
   };
 
@@ -154,11 +169,15 @@ export default function ConviteModal({
               <input
                 type="tel"
                 value={formData.telefone || ""}
-                onChange={(e) =>
-                  setFormData({ ...formData, telefone: e.target.value })
-                }
+                onChange={(e) => {
+                  const formatted = formatPhone(e.target.value);
+                  if (formatted.replace(/\D/g, "").length <= 11) {
+                    setFormData({ ...formData, telefone: formatted });
+                  }
+                }}
                 className="w-full border rounded px-3 py-2"
                 placeholder="(11) 99999-9999"
+                maxLength={15}
               />
             </div>
 
@@ -169,11 +188,15 @@ export default function ConviteModal({
               <input
                 type="text"
                 value={formData.cpf || ""}
-                onChange={(e) =>
-                  setFormData({ ...formData, cpf: e.target.value })
-                }
+                onChange={(e) => {
+                  const formatted = formatCPF(e.target.value);
+                  if (formatted.replace(/\D/g, "").length <= 11) {
+                    setFormData({ ...formData, cpf: formatted });
+                  }
+                }}
                 className="w-full border rounded px-3 py-2"
                 placeholder="000.000.000-00"
+                maxLength={14}
               />
             </div>
 
