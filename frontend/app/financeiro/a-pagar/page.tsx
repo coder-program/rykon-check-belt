@@ -14,6 +14,16 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -97,6 +107,18 @@ export default function ContasAPagar() {
   const [despesaBaixa, setDespesaBaixa] = useState<Despesa | null>(null);
   const [dataPagamento, setDataPagamento] = useState("");
   const [observacoesBaixa, setObservacoesBaixa] = useState("");
+  const [mensagemModal, setMensagemModal] = useState<{
+    aberto: boolean;
+    titulo: string;
+    descricao: string;
+    tipo: "sucesso" | "erro" | "confirmacao";
+    onConfirm?: () => void;
+  }>({
+    aberto: false,
+    titulo: "",
+    descricao: "",
+    tipo: "sucesso",
+  });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isBaixando, setIsBaixando] = useState(false);
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
@@ -171,11 +193,49 @@ export default function ContasAPagar() {
     setFilteredDespesas(filtered);
   };
 
+  const mostrarMensagem = (
+    titulo: string,
+    descricao: string,
+    tipo: "sucesso" | "erro" = "sucesso"
+  ) => {
+    setMensagemModal({
+      aberto: true,
+      titulo,
+      descricao,
+      tipo,
+    });
+  };
+
+  const mostrarConfirmacao = (
+    titulo: string,
+    descricao: string,
+    onConfirm: () => void
+  ) => {
+    setMensagemModal({
+      aberto: true,
+      titulo,
+      descricao,
+      tipo: "confirmacao",
+      onConfirm,
+    });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (isSubmitting) {
       console.log("⚠️ Já está processando uma requisição...");
+      return;
+    }
+
+    // Validar valor maior que zero
+    const valorNumerico = parseFloat(formData.valor);
+    if (valorNumerico <= 0) {
+      mostrarMensagem(
+        "Valor Inválido",
+        "O valor da despesa deve ser maior que zero",
+        "erro"
+      );
       return;
     }
 
@@ -203,16 +263,20 @@ export default function ContasAPagar() {
       });
 
       if (response.ok) {
-        alert(editingDespesa ? "Despesa atualizada!" : "Despesa criada!");
         setShowDialog(false);
         resetForm();
         carregarDespesas();
+        mostrarMensagem(
+          "Sucesso!",
+          editingDespesa ? "Despesa atualizada!" : "Despesa criada!",
+          "sucesso"
+        );
       } else {
-        alert("Erro ao salvar despesa");
+        mostrarMensagem("Erro", "Erro ao salvar despesa", "erro");
       }
     } catch (error) {
       console.error("Erro ao salvar despesa:", error);
-      alert("Erro ao salvar despesa");
+      mostrarMensagem("Erro", "Erro ao salvar despesa", "erro");
     } finally {
       setIsSubmitting(false);
     }
@@ -232,36 +296,53 @@ export default function ContasAPagar() {
     setShowDialog(true);
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Deseja realmente excluir esta despesa?")) return;
-
-    if (isDeleting) {
-      console.log("⚠️ Já está processando uma exclusão...");
+  const handleDelete = async (despesa: Despesa) => {
+    // Validar se a despesa já foi paga
+    if (despesa.status === "PAGA") {
+      mostrarMensagem(
+        "Ação não permitida",
+        "Não é possível excluir uma despesa que já foi paga.",
+        "erro"
+      );
       return;
     }
 
-    setIsDeleting(id);
-    try {
-      const token = localStorage.getItem("token");
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/despesas/${id}`,
-        {
-          method: "DELETE",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+    mostrarConfirmacao(
+      "Excluir Despesa",
+      "Deseja realmente excluir esta despesa?",
+      async () => {
+        if (isDeleting) {
+          console.log("⚠️ Já está processando uma exclusão...");
+          return;
         }
-      );
 
-      if (response.ok) {
-        alert("Despesa excluída!");
-        carregarDespesas();
+        setIsDeleting(despesa.id);
+        try {
+          const token = localStorage.getItem("token");
+          const response = await fetch(
+            `${process.env.NEXT_PUBLIC_API_URL}/despesas/${despesa.id}`,
+            {
+              method: "DELETE",
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            }
+          );
+
+          if (response.ok) {
+            carregarDespesas();
+            mostrarMensagem("Sucesso!", "Despesa excluída!", "sucesso");
+          } else {
+            mostrarMensagem("Erro", "Erro ao excluir despesa", "erro");
+          }
+        } catch (error) {
+          console.error("Erro ao excluir despesa:", error);
+          mostrarMensagem("Erro", "Erro ao excluir despesa", "erro");
+        } finally {
+          setIsDeleting(null);
+        }
       }
-    } catch (error) {
-      console.error("Erro ao excluir despesa:", error);
-    } finally {
-      setIsDeleting(null);
-    }
+    );
   };
 
   const handleBaixa = async () => {
@@ -292,12 +373,12 @@ export default function ContasAPagar() {
       );
 
       if (response.ok) {
-        alert("Despesa paga com sucesso!");
         setShowBaixaDialog(false);
         setDespesaBaixa(null);
         setDataPagamento("");
         setObservacoesBaixa("");
         carregarDespesas();
+        mostrarMensagem("Sucesso!", "Despesa paga com sucesso!", "sucesso");
       } else {
         const errorData = await response.json().catch(() => null);
         const errorMessage =
@@ -305,13 +386,15 @@ export default function ContasAPagar() {
           errorData?.error ||
           `Erro ao dar baixa na despesa (Status: ${response.status})`;
         console.error("Erro ao dar baixa:", errorData);
-        alert(errorMessage);
+        mostrarMensagem("Erro", errorMessage, "erro");
       }
     } catch (error) {
       console.error("Erro ao dar baixa:", error);
-      alert(
+      mostrarMensagem(
+        "Erro",
         "Erro ao dar baixa na despesa: " +
-          (error instanceof Error ? error.message : "Erro desconhecido")
+          (error instanceof Error ? error.message : "Erro desconhecido"),
+        "erro"
       );
     } finally {
       setIsBaixando(false);
@@ -558,7 +641,13 @@ export default function ContasAPagar() {
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => handleDelete(despesa.id)}
+                      onClick={() => handleDelete(despesa)}
+                      disabled={despesa.status === "PAGA"}
+                      className={
+                        despesa.status === "PAGA"
+                          ? "opacity-50 cursor-not-allowed"
+                          : ""
+                      }
                     >
                       <Trash2 className="h-4 w-4 text-red-600" />
                     </Button>
@@ -676,6 +765,7 @@ export default function ContasAPagar() {
                 <Input
                   type="number"
                   step="0.01"
+                  min="0.01"
                   value={formData.valor}
                   onChange={(e) =>
                     setFormData({ ...formData, valor: e.target.value })
@@ -855,6 +945,46 @@ export default function ContasAPagar() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Modal de Mensagem */}
+      <AlertDialog
+        open={mensagemModal.aberto}
+        onOpenChange={(aberto) =>
+          setMensagemModal({ ...mensagemModal, aberto })
+        }
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{mensagemModal.titulo}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {mensagemModal.descricao}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            {mensagemModal.tipo === "confirmacao" ? (
+              <>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => {
+                    mensagemModal.onConfirm?.();
+                    setMensagemModal({ ...mensagemModal, aberto: false });
+                  }}
+                >
+                  Confirmar
+                </AlertDialogAction>
+              </>
+            ) : (
+              <AlertDialogAction
+                onClick={() =>
+                  setMensagemModal({ ...mensagemModal, aberto: false })
+                }
+              >
+                OK
+              </AlertDialogAction>
+            )}
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

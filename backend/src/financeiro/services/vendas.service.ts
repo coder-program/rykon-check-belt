@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException, Inject } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  Inject,
+  BadRequestException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between, DataSource } from 'typeorm';
 import { Venda, StatusVenda } from '../entities/venda.entity';
@@ -26,6 +31,13 @@ export class VendasService {
   ) {}
 
   async create(createVendaDto: CreateVendaDto, user: any): Promise<Venda> {
+    // Validar valor maior que zero
+    if (!createVendaDto.valor || createVendaDto.valor <= 0) {
+      throw new BadRequestException(
+        'O valor da venda deve ser maior que zero.',
+      );
+    }
+
     // Gerar número da venda
     const numero_venda = await this.gerarNumeroVenda();
 
@@ -200,12 +212,83 @@ export class VendasService {
       return { message: 'Venda cancelada' };
     }
 
-    // Aqui você implementaria o envio real do link
-    // Por enquanto, retorna o link existente
+    // Buscar dados do aluno
+    const telefoneDestino = telefone || venda.aluno?.telefone;
+    const emailDestino = email || venda.aluno?.email;
+    const nomeAluno = venda.aluno?.nome_completo || 'Cliente';
+
+    if (telefoneDestino) {
+      await this.enviarWhatsApp(
+        telefoneDestino,
+        nomeAluno,
+        venda.numero_venda,
+        venda.valor,
+        venda.link_pagamento,
+      );
+    }
+
     return {
-      message: 'Link de pagamento reenviado com sucesso',
+      message: 'Link de pagamento enviado com sucesso',
       link: venda.link_pagamento,
     };
+  }
+
+  private async enviarWhatsApp(
+    telefone: string,
+    nomeAluno: string,
+    numeroVenda: string,
+    valor: number,
+    linkPagamento?: string,
+  ): Promise<void> {
+    try {
+      // Limpar telefone (remover caracteres especiais)
+      const telefoneLimpo = telefone.replace(/\D/g, '');
+
+      // Verificar se tem WhatsApp API configurado
+      const config = await this.dataSource.query(
+        `SELECT whatsapp_api_url, whatsapp_api_token
+         FROM teamcruz.configuracoes_cobranca
+         LIMIT 1`,
+      );
+
+      if (!config || !config[0]?.whatsapp_api_url) {
+        console.log('⚠️ [WHATSAPP] API não configurada');
+        return;
+      }
+
+      const { whatsapp_api_url, whatsapp_api_token } = config[0];
+
+      // Montar mensagem
+      const mensagem = `Olá *${nomeAluno}*! 👋
+
+Você tem uma venda pendente:
+
+📋 *Venda:* ${numeroVenda}
+💰 *Valor:* R$ ${Number(valor).toFixed(2)}
+
+${linkPagamento ? `🔗 *Link de Pagamento:*\n${linkPagamento}\n\n` : ''}Qualquer dúvida, estamos à disposição! 😊`;
+
+      // Enviar para API do WhatsApp
+      const response = await fetch(whatsapp_api_url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${whatsapp_api_token}`,
+        },
+        body: JSON.stringify({
+          number: telefoneLimpo,
+          message: mensagem,
+        }),
+      });
+
+      if (response.ok) {
+        console.log('✅ [WHATSAPP] Mensagem enviada para:', telefone);
+      } else {
+        console.error('❌ [WHATSAPP] Erro ao enviar:', await response.text());
+      }
+    } catch (error) {
+      console.error('❌ [WHATSAPP] Erro:', error);
+    }
   }
 
   async processarWebhook(dados: any): Promise<void> {
@@ -236,23 +319,58 @@ export class VendasService {
 
   private async gerarNumeroVenda(): Promise<string> {
     const ano = new Date().getFullYear();
-    const count = await this.vendasRepository.count();
-    const numero = (count + 1).toString().padStart(6, '0');
+
+    // Buscar a última venda do ano para pegar o último número
+    const ultimaVenda = await this.vendasRepository
+      .createQueryBuilder('venda')
+      .where('venda.numero_venda LIKE :prefixo', { prefixo: `VND${ano}%` })
+      .orderBy('venda.created_at', 'DESC')
+      .getOne();
+
+    let proximoNumero = 1;
+
+    if (ultimaVenda) {
+      // Extrair o número da venda (ex: VND2025000013 -> 13)
+      const numeroAtual = parseInt(ultimaVenda.numero_venda.slice(-6));
+      proximoNumero = numeroAtual + 1;
+    }
+
+    const numero = proximoNumero.toString().padStart(6, '0');
     return `VND${ano}${numero}`;
   }
 
-  async estatisticas(unidadeId?: string): Promise<any> {
-    const baseQuery = this.vendasRepository.createQueryBuilder('venda');
+  async estatisticas(
+    unidadeId?: string,
+    franqueado_id?: string | null,
+  ): Promise<any> {
+    const baseQuery = this.vendasRepository
+      .createQueryBuilder('venda')
+      .leftJoin('venda.unidade', 'unidade');
 
-    if (unidadeId) {
+    // Se foi passado franqueado_id, filtrar pelas unidades desse franqueado
+    if (franqueado_id) {
+      console.log(
+        '🔍 [VENDAS ESTATISTICAS SERVICE] Filtrando por franqueado_id:',
+        franqueado_id,
+      );
+      baseQuery.where('unidade.franqueado_id = :franqueado_id', {
+        franqueado_id,
+      });
+    } else if (unidadeId) {
       baseQuery.where('venda.unidade_id = :unidadeId', { unidadeId });
     }
 
     const totalVendas = await baseQuery.getCount();
 
     // Query para vendas pagas
-    const queryPagas = this.vendasRepository.createQueryBuilder('venda');
-    if (unidadeId) {
+    const queryPagas = this.vendasRepository
+      .createQueryBuilder('venda')
+      .leftJoin('venda.unidade', 'unidade');
+    if (franqueado_id) {
+      queryPagas.where('unidade.franqueado_id = :franqueado_id', {
+        franqueado_id,
+      });
+    } else if (unidadeId) {
       queryPagas.where('venda.unidade_id = :unidadeId', { unidadeId });
     }
     const vendasPagas = await queryPagas
@@ -260,8 +378,14 @@ export class VendasService {
       .getCount();
 
     // Query para vendas pendentes
-    const queryPendentes = this.vendasRepository.createQueryBuilder('venda');
-    if (unidadeId) {
+    const queryPendentes = this.vendasRepository
+      .createQueryBuilder('venda')
+      .leftJoin('venda.unidade', 'unidade');
+    if (franqueado_id) {
+      queryPendentes.where('unidade.franqueado_id = :franqueado_id', {
+        franqueado_id,
+      });
+    } else if (unidadeId) {
       queryPendentes.where('venda.unidade_id = :unidadeId', { unidadeId });
     }
     const vendasPendentes = await queryPendentes
@@ -269,8 +393,14 @@ export class VendasService {
       .getCount();
 
     // Query para vendas falhas
-    const queryFalhas = this.vendasRepository.createQueryBuilder('venda');
-    if (unidadeId) {
+    const queryFalhas = this.vendasRepository
+      .createQueryBuilder('venda')
+      .leftJoin('venda.unidade', 'unidade');
+    if (franqueado_id) {
+      queryFalhas.where('unidade.franqueado_id = :franqueado_id', {
+        franqueado_id,
+      });
+    } else if (unidadeId) {
       queryFalhas.where('venda.unidade_id = :unidadeId', { unidadeId });
     }
     const vendasFalhas = await queryFalhas
@@ -278,8 +408,14 @@ export class VendasService {
       .getCount();
 
     // Valor total
-    const queryValorTotal = this.vendasRepository.createQueryBuilder('venda');
-    if (unidadeId) {
+    const queryValorTotal = this.vendasRepository
+      .createQueryBuilder('venda')
+      .leftJoin('venda.unidade', 'unidade');
+    if (franqueado_id) {
+      queryValorTotal.where('unidade.franqueado_id = :franqueado_id', {
+        franqueado_id,
+      });
+    } else if (unidadeId) {
       queryValorTotal.where('venda.unidade_id = :unidadeId', { unidadeId });
     }
     const valorTotal = await queryValorTotal
@@ -287,8 +423,14 @@ export class VendasService {
       .getRawOne();
 
     // Valor pago
-    const queryValorPago = this.vendasRepository.createQueryBuilder('venda');
-    if (unidadeId) {
+    const queryValorPago = this.vendasRepository
+      .createQueryBuilder('venda')
+      .leftJoin('venda.unidade', 'unidade');
+    if (franqueado_id) {
+      queryValorPago.where('unidade.franqueado_id = :franqueado_id', {
+        franqueado_id,
+      });
+    } else if (unidadeId) {
       queryValorPago.where('venda.unidade_id = :unidadeId', { unidadeId });
     }
     const valorPago = await queryValorPago
@@ -298,6 +440,7 @@ export class VendasService {
 
     console.log('📊 [VENDAS ESTATISTICAS SERVICE]', {
       unidadeId,
+      franqueado_id,
       totalVendas,
       vendasPagas,
       vendasPendentes,
@@ -313,6 +456,47 @@ export class VendasService {
       vendasFalhas,
       valorTotal: parseFloat(valorTotal?.total || 0),
       valorPago: parseFloat(valorPago?.total || 0),
+    };
+  }
+
+  async remove(id: string): Promise<{ message: string }> {
+    const venda = await this.findOne(id);
+
+    // Validar se a venda pode ser excluída
+    if (venda.status === StatusVenda.PAGO) {
+      throw new BadRequestException(
+        'Não é possível excluir uma venda que já foi paga',
+      );
+    }
+
+    // Verificar se existe transação associada
+    const transacao = await this.transacaoRepository.findOne({
+      where: {
+        venda_id: id,
+        origem: OrigemTransacao.VENDA,
+        status: StatusTransacao.CONFIRMADA,
+      },
+    });
+
+    if (transacao) {
+      throw new BadRequestException(
+        'Não é possível excluir uma venda com transação confirmada',
+      );
+    }
+
+    // Se existir transação pendente, deletar junto
+    await this.transacaoRepository.delete({
+      venda_id: id,
+      origem: OrigemTransacao.VENDA,
+    });
+
+    // Deletar a venda
+    await this.vendasRepository.remove(venda);
+
+    console.log('🗑️ [VENDAS] Venda excluída:', id);
+
+    return {
+      message: 'Venda excluída com sucesso',
     };
   }
 }

@@ -13,6 +13,16 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -66,6 +76,17 @@ export default function ContasAReceber() {
   const [metodoPagamento, setMetodoPagamento] = useState("");
   const [valorPago, setValorPago] = useState("");
   const [observacoes, setObservacoes] = useState("");
+  const [mensagemModal, setMensagemModal] = useState<{
+    aberto: boolean;
+    titulo: string;
+    descricao: string;
+    tipo: "sucesso" | "erro";
+  }>({
+    aberto: false,
+    titulo: "",
+    descricao: "",
+    tipo: "sucesso",
+  });
 
   useEffect(() => {
     carregarFaturas();
@@ -122,9 +143,37 @@ export default function ContasAReceber() {
     setFilteredFaturas(filtered);
   };
 
+  const mostrarMensagem = (
+    titulo: string,
+    descricao: string,
+    tipo: "sucesso" | "erro" = "sucesso"
+  ) => {
+    setMensagemModal({
+      aberto: true,
+      titulo,
+      descricao,
+      tipo,
+    });
+  };
+
   const handlePagarFatura = async () => {
     if (!selectedFatura || !metodoPagamento || !valorPago) {
-      alert("Preencha todos os campos obrigatórios");
+      mostrarMensagem(
+        "Atenção",
+        "Preencha todos os campos obrigatórios",
+        "erro"
+      );
+      return;
+    }
+
+    // Validar valor maior que zero
+    const valorNumerico = parseFloat(valorPago);
+    if (valorNumerico <= 0) {
+      mostrarMensagem(
+        "Valor Inválido",
+        "O valor do pagamento deve ser maior que zero",
+        "erro"
+      );
       return;
     }
 
@@ -147,19 +196,23 @@ export default function ContasAReceber() {
       );
 
       if (response.ok) {
-        alert("Pagamento registrado com sucesso!");
         setShowPagarDialog(false);
         setSelectedFatura(null);
         setMetodoPagamento("");
         setValorPago("");
         setObservacoes("");
         carregarFaturas();
+        mostrarMensagem(
+          "Sucesso!",
+          "Pagamento registrado com sucesso!",
+          "sucesso"
+        );
       } else {
-        alert("Erro ao registrar pagamento");
+        mostrarMensagem("Erro", "Erro ao registrar pagamento", "erro");
       }
     } catch (error) {
       console.error("Erro ao pagar fatura:", error);
-      alert("Erro ao registrar pagamento");
+      mostrarMensagem("Erro", "Erro ao registrar pagamento", "erro");
     }
   };
 
@@ -242,25 +295,35 @@ export default function ContasAReceber() {
                 const result = await response.json();
 
                 if (result.geradas === 0) {
-                  alert(
-                    "ℹ️ Nenhuma fatura foi gerada.\n\nPossíveis motivos:\n- Não há assinaturas ativas\n- Já existem faturas deste mês\n- As assinaturas não pertencem a esta unidade"
+                  mostrarMensagem(
+                    "Informação",
+                    "Nenhuma fatura foi gerada.\n\nPossíveis motivos:\n- Não há assinaturas ativas\n- Já existem faturas deste mês\n- As assinaturas não pertencem a esta unidade",
+                    "erro"
                   );
                 } else {
-                  alert(
-                    `✅ ${result.geradas} fatura(s) gerada(s) com sucesso!`
+                  mostrarMensagem(
+                    "Sucesso!",
+                    `${result.geradas} fatura(s) gerada(s) com sucesso!`,
+                    "sucesso"
                   );
                 }
                 carregarFaturas();
               } else {
                 const errorText = await response.text();
                 console.error(" Erro:", errorText);
-                alert(
-                  ` Erro ao gerar faturas: ${response.status}\n${errorText}`
+                mostrarMensagem(
+                  "Erro",
+                  `Erro ao gerar faturas: ${response.status}\n${errorText}`,
+                  "erro"
                 );
               }
             } catch (error) {
               console.error(" Erro ao gerar faturas:", error);
-              alert(` Erro ao gerar faturas: ${error.message}`);
+              mostrarMensagem(
+                "Erro",
+                `Erro ao gerar faturas: ${error.message}`,
+                "erro"
+              );
             }
           }}
           variant="outline"
@@ -457,6 +520,7 @@ export default function ContasAReceber() {
               <Input
                 type="number"
                 step="0.01"
+                min="0.01"
                 value={valorPago}
                 onChange={(e) => setValorPago(e.target.value)}
                 placeholder="0.00"
@@ -481,6 +545,32 @@ export default function ContasAReceber() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Modal de Mensagem */}
+      <AlertDialog
+        open={mensagemModal.aberto}
+        onOpenChange={(aberto) =>
+          setMensagemModal({ ...mensagemModal, aberto })
+        }
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{mensagemModal.titulo}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {mensagemModal.descricao}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction
+              onClick={() =>
+                setMensagemModal({ ...mensagemModal, aberto: false })
+              }
+            >
+              OK
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

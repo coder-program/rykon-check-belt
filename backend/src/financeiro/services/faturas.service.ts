@@ -176,6 +176,14 @@ export class FaturasService {
     const fatura = await this.findOne(id);
 
     const valorPago = baixarDto.valor_pago || fatura.valor_total;
+
+    // Validar valor maior que zero
+    if (valorPago <= 0) {
+      throw new BadRequestException(
+        'O valor do pagamento deve ser maior que zero.',
+      );
+    }
+
     const dataPagamento = baixarDto.data_pagamento
       ? new Date(baixarDto.data_pagamento)
       : new Date();

@@ -5,6 +5,7 @@ import { FaturasService } from './faturas.service';
 import { DespesasService } from './despesas.service';
 import { TransacoesService } from './transacoes.service';
 import { AssinaturasService } from './assinaturas.service';
+import { VendasService } from './vendas.service';
 import { StatusFatura } from '../entities/fatura.entity';
 import { Unidade } from '../../people/entities/unidade.entity';
 
@@ -17,6 +18,7 @@ export class DashboardFinanceiroService {
     private despesasService: DespesasService,
     private transacoesService: TransacoesService,
     private assinaturasService: AssinaturasService,
+    private vendasService: VendasService,
     private readonly dataSource: DataSource,
   ) {}
 
@@ -166,10 +168,70 @@ export class DashboardFinanceiroService {
         .filter((f) => f.status === 'PAGA')
         .reduce((sum, f) => sum + Number(f.valor_pago || 0), 0);
 
-      return {
-        totalReceitasMes: receitasMes,
-        totalDespesasMes: 0, // Implementar depois
-        saldoMes: receitasMes,
+      // Buscar vendas online do mês e adicionar às receitas
+      let vendasMes: any[] = [];
+      if (unidadesIds.length > 0) {
+        // Franqueado: buscar vendas de todas as unidades
+        const franqueadoResult = await this.dataSource.query(
+          'SELECT id FROM teamcruz.franqueados WHERE usuario_id = $1 LIMIT 1',
+          [user.id],
+        );
+        const franqueado_id = franqueadoResult[0]?.id;
+        if (franqueado_id) {
+          vendasMes = await this.vendasService.findAll({}, franqueado_id);
+        }
+      } else {
+        // Gerente: buscar vendas da unidade
+        vendasMes = await this.vendasService.findAll({
+          unidadeId: unidadeFiltro,
+        });
+      }
+
+      // Filtrar vendas do mês atual e pagas
+      const vendasMesAtual = vendasMes.filter((v) => {
+        const dataVenda = new Date(v.created_at);
+        const mesVenda = `${dataVenda.getFullYear()}-${(dataVenda.getMonth() + 1).toString().padStart(2, '0')}`;
+        return mesVenda === mesAtual && v.status === 'PAGO';
+      });
+
+      const receitasVendas = vendasMesAtual.reduce(
+        (sum, v) => sum + Number(v.valor || 0),
+        0,
+      );
+
+      const receitasTotaisMes = receitasMes + receitasVendas;
+
+      console.log('💰 [DASHBOARD] Receitas do mês:', {
+        faturas: receitasMes,
+        vendas: receitasVendas,
+        total: receitasTotaisMes,
+      });
+
+      // Buscar despesas do mês
+      let totalDespesasMes = 0;
+      try {
+        if (unidadesIds.length > 0) {
+          // Franqueado: soma de todas as unidades
+          for (const uid of unidadesIds) {
+            totalDespesasMes += await this.despesasService.somarPendentes(uid);
+          }
+        } else {
+          // Gerente ou outro: uma unidade apenas
+          totalDespesasMes =
+            await this.despesasService.somarPendentes(unidadeFiltro);
+        }
+        console.log('💰 [DASHBOARD] Total despesas mês:', totalDespesasMes);
+      } catch (error) {
+        console.warn(
+          '⚠️ [DASHBOARD] Erro ao buscar despesas:',
+          error.message,
+        );
+      }
+
+      const resultado = {
+        totalReceitasMes: receitasTotaisMes,
+        totalDespesasMes: totalDespesasMes,
+        saldoMes: receitasTotaisMes - totalDespesasMes,
         faturasPendentes: faturasMes.filter(
           (f) => f.status === StatusFatura.PENDENTE,
         ).length,
@@ -184,6 +246,10 @@ export class DashboardFinanceiroService {
           0,
         ),
       };
+
+      console.log('📊 [DASHBOARD] Resultado final:', resultado);
+
+      return resultado;
     } catch (error) {
       console.error('Erro ao buscar dashboard:', error);
       return this.getEmptyDashboard();

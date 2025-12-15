@@ -9,6 +9,7 @@ import {
   UseGuards,
   Request,
   Inject,
+  Delete,
 } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
@@ -142,21 +143,24 @@ export class VendasController {
       isFranqueado,
     });
 
+    // Buscar franqueado_id se for franqueado
+    let franqueadoId: string | null = null;
+    if (isFranqueado && user?.id) {
+      const franqueadoResult = await this.dataSource.query(
+        `SELECT id FROM teamcruz.franqueados WHERE usuario_id = $1 LIMIT 1`,
+        [user.id],
+      );
+      franqueadoId = franqueadoResult[0]?.id || null;
+      console.log('🔍 [VENDAS ESTATISTICAS] Franqueado ID:', franqueadoId);
+    }
+
     if (!unidadeId) {
       if (isFranqueado) {
         console.log(
-          '⚠️ [VENDAS ESTATISTICAS] Franqueado sem unidade_id - retornando vazio',
+          '✅ [VENDAS ESTATISTICAS] Franqueado buscando estatísticas de suas unidades',
         );
-        return {
-          totalVendas: 0,
-          vendasPagas: 0,
-          vendasPendentes: 0,
-          vendasFalhas: 0,
-          valorTotal: 0,
-          valorPago: 0,
-        };
-      }
-      if (userUnidadeId) {
+        // Será filtrado no service pelo franqueado_id
+      } else if (userUnidadeId) {
         console.log(
           '✅ [VENDAS ESTATISTICAS] Aplicando unidade do usuário:',
           userUnidadeId,
@@ -182,7 +186,7 @@ export class VendasController {
       }
     }
 
-    return this.vendasService.estatisticas(unidadeId);
+    return this.vendasService.estatisticas(unidadeId, franqueadoId);
   }
 
   @Get(':id')
@@ -227,5 +231,10 @@ export class VendasController {
   @Post('webhook')
   processarWebhook(@Body() dados: any) {
     return this.vendasService.processarWebhook(dados);
+  }
+
+  @Delete(':id')
+  remove(@Param('id') id: string) {
+    return this.vendasService.remove(id);
   }
 }

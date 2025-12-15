@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import {
@@ -60,6 +64,13 @@ export class DespesasService {
     createDespesaDto: CreateDespesaDto,
     user: any,
   ): Promise<Despesa> {
+    // Validar valor maior que zero
+    if (!createDespesaDto.valor || createDespesaDto.valor <= 0) {
+      throw new BadRequestException(
+        'O valor da despesa deve ser maior que zero.',
+      );
+    }
+
     const despesa = this.despesaRepository.create({
       ...createDespesaDto,
       criado_por: user.id,
@@ -198,6 +209,14 @@ export class DespesasService {
 
   async remove(id: string): Promise<void> {
     const despesa = await this.findOne(id);
+
+    // Validar se a despesa já foi paga
+    if (despesa.status === StatusDespesa.PAGA) {
+      throw new BadRequestException(
+        'Não é possível excluir uma despesa que já foi paga.',
+      );
+    }
+
     despesa.status = StatusDespesa.CANCELADA;
     await this.despesaRepository.save(despesa);
   }

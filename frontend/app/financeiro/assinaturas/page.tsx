@@ -14,6 +14,16 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -86,6 +96,18 @@ export default function Assinaturas() {
   const [showDetalhesDialog, setShowDetalhesDialog] = useState(false);
   const [selectedAssinatura, setSelectedAssinatura] =
     useState<Assinatura | null>(null);
+  const [mensagemModal, setMensagemModal] = useState<{
+    aberto: boolean;
+    titulo: string;
+    descricao: string;
+    tipo: "sucesso" | "erro" | "confirmacao";
+    onConfirm?: () => void;
+  }>({
+    aberto: false,
+    titulo: "",
+    descricao: "",
+    tipo: "sucesso",
+  });
 
   const [formData, setFormData] = useState({
     aluno_id: "",
@@ -208,6 +230,33 @@ export default function Assinaturas() {
     }
   };
 
+  const mostrarMensagem = (
+    titulo: string,
+    descricao: string,
+    tipo: "sucesso" | "erro" = "sucesso"
+  ) => {
+    setMensagemModal({
+      aberto: true,
+      titulo,
+      descricao,
+      tipo,
+    });
+  };
+
+  const mostrarConfirmacao = (
+    titulo: string,
+    descricao: string,
+    onConfirm: () => void
+  ) => {
+    setMensagemModal({
+      aberto: true,
+      titulo,
+      descricao,
+      tipo: "confirmacao",
+      onConfirm,
+    });
+  };
+
   const filtrarAssinaturas = () => {
     let filtered = assinaturas;
 
@@ -242,7 +291,11 @@ export default function Assinaturas() {
 
     // Validar se unidade_id está presente
     if (!formData.unidade_id) {
-      alert("Por favor, selecione um aluno com unidade válida!");
+      mostrarMensagem(
+        "Atenção",
+        "Por favor, selecione um aluno com unidade válida!",
+        "erro"
+      );
       return;
     }
 
@@ -265,70 +318,98 @@ export default function Assinaturas() {
       );
 
       if (response.ok) {
-        alert("Assinatura criada com sucesso!");
         setShowDialog(false);
         resetForm();
         carregarDados();
+        mostrarMensagem(
+          "Sucesso!",
+          "Assinatura criada com sucesso!",
+          "sucesso"
+        );
       } else {
         const errorData = await response.json();
         console.error(" Erro ao criar:", errorData);
-        alert(
+        mostrarMensagem(
+          "Erro",
           "Erro ao criar assinatura: " +
-            (errorData.message || "Erro desconhecido")
+            (errorData.message || "Erro desconhecido"),
+          "erro"
         );
       }
     } catch (error) {
       console.error("Erro ao criar assinatura:", error);
-      alert("Erro ao criar assinatura");
+      mostrarMensagem("Erro", "Erro ao criar assinatura", "erro");
     }
   };
 
   const handleRenovar = async (id: string) => {
-    if (!confirm("Deseja renovar esta assinatura?")) return;
+    mostrarConfirmacao(
+      "Renovar Assinatura",
+      "Deseja renovar esta assinatura?",
+      async () => {
+        try {
+          const token = localStorage.getItem("token");
+          const response = await fetch(
+            `${process.env.NEXT_PUBLIC_API_URL}/financeiro/assinaturas/renovar/${id}`,
+            {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            }
+          );
 
-    try {
-      const token = localStorage.getItem("token");
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/financeiro/assinaturas/renovar/${id}`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          if (response.ok) {
+            carregarDados();
+            mostrarMensagem(
+              "Sucesso!",
+              "Assinatura renovada com sucesso!",
+              "sucesso"
+            );
+          } else {
+            mostrarMensagem("Erro", "Erro ao renovar assinatura", "erro");
+          }
+        } catch (error) {
+          console.error("Erro ao renovar assinatura:", error);
+          mostrarMensagem("Erro", "Erro ao renovar assinatura", "erro");
         }
-      );
-
-      if (response.ok) {
-        alert("Assinatura renovada!");
-        carregarDados();
       }
-    } catch (error) {
-      console.error("Erro ao renovar assinatura:", error);
-    }
+    );
   };
 
   const handleCancelar = async (id: string) => {
-    if (!confirm("Deseja cancelar esta assinatura?")) return;
+    mostrarConfirmacao(
+      "Cancelar Assinatura",
+      "Deseja realmente cancelar esta assinatura? Esta ação não pode ser desfeita.",
+      async () => {
+        try {
+          const token = localStorage.getItem("token");
+          const response = await fetch(
+            `${process.env.NEXT_PUBLIC_API_URL}/financeiro/assinaturas/cancelar/${id}`,
+            {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            }
+          );
 
-    try {
-      const token = localStorage.getItem("token");
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/financeiro/assinaturas/cancelar/${id}`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          if (response.ok) {
+            carregarDados();
+            mostrarMensagem(
+              "Sucesso!",
+              "Assinatura cancelada com sucesso!",
+              "sucesso"
+            );
+          } else {
+            mostrarMensagem("Erro", "Erro ao cancelar assinatura", "erro");
+          }
+        } catch (error) {
+          console.error("Erro ao cancelar assinatura:", error);
+          mostrarMensagem("Erro", "Erro ao cancelar assinatura", "erro");
         }
-      );
-
-      if (response.ok) {
-        alert("Assinatura cancelada!");
-        carregarDados();
       }
-    } catch (error) {
-      console.error("Erro ao cancelar assinatura:", error);
-    }
+    );
   };
 
   const resetForm = () => {
@@ -844,6 +925,46 @@ export default function Assinaturas() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Modal de Mensagem */}
+      <AlertDialog
+        open={mensagemModal.aberto}
+        onOpenChange={(aberto) =>
+          setMensagemModal({ ...mensagemModal, aberto })
+        }
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{mensagemModal.titulo}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {mensagemModal.descricao}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            {mensagemModal.tipo === "confirmacao" ? (
+              <>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => {
+                    mensagemModal.onConfirm?.();
+                    setMensagemModal({ ...mensagemModal, aberto: false });
+                  }}
+                >
+                  Confirmar
+                </AlertDialogAction>
+              </>
+            ) : (
+              <AlertDialogAction
+                onClick={() =>
+                  setMensagemModal({ ...mensagemModal, aberto: false })
+                }
+              >
+                OK
+              </AlertDialogAction>
+            )}
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

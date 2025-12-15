@@ -27,7 +27,19 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogDescription,
+  DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   DollarSign,
   CreditCard,
@@ -38,6 +50,7 @@ import {
   TrendingDown,
   Plus,
   CheckCircle,
+  Trash2,
 } from "lucide-react";
 import FiltroUnidade from "@/components/financeiro/FiltroUnidade";
 import { useFiltroUnidade } from "@/hooks/useFiltroUnidade";
@@ -122,6 +135,29 @@ export default function VendasOnline() {
   const [modalPagamentoAberto, setModalPagamentoAberto] = useState(false);
   const [vendaPagamento, setVendaPagamento] = useState<Venda | null>(null);
 
+  // Estados para exclusão
+  const [modalExcluirAberto, setModalExcluirAberto] = useState(false);
+  const [vendaParaExcluir, setVendaParaExcluir] = useState<Venda | null>(null);
+
+  // Estados para mensagens de sucesso/erro
+  const [modalMensagemAberto, setModalMensagemAberto] = useState(false);
+  const [mensagemTitulo, setMensagemTitulo] = useState("");
+  const [mensagemConteudo, setMensagemConteudo] = useState("");
+  const [mensagemTipo, setMensagemTipo] = useState<"success" | "error">(
+    "success"
+  );
+
+  const mostrarMensagem = (
+    titulo: string,
+    conteudo: string,
+    tipo: "success" | "error" = "success"
+  ) => {
+    setMensagemTitulo(titulo);
+    setMensagemConteudo(conteudo);
+    setMensagemTipo(tipo);
+    setModalMensagemAberto(true);
+  };
+
   useEffect(() => {
     carregarDados(unidadeIdAtual);
   }, [unidadeSelecionada, filtroStatus, filtroMetodo]);
@@ -174,13 +210,32 @@ export default function VendasOnline() {
 
   const criarVenda = async () => {
     if (!alunoSelecionado || !descricao || !valor) {
-      alert("Preencha todos os campos obrigatórios");
+      mostrarMensagem(
+        "Campos Obrigatórios",
+        "Preencha todos os campos obrigatórios",
+        "error"
+      );
+      return;
+    }
+
+    // Validar valor maior que zero
+    const valorNumerico = parseFloat(valor);
+    if (valorNumerico <= 0) {
+      mostrarMensagem(
+        "Valor Inválido",
+        "O valor da venda deve ser maior que zero",
+        "error"
+      );
       return;
     }
 
     // Validar unidade para franqueados
     if (isFranqueado && !unidadeVenda) {
-      alert("Selecione a unidade para esta venda");
+      mostrarMensagem(
+        "Unidade Necessária",
+        "Selecione a unidade para esta venda",
+        "error"
+      );
       return;
     }
 
@@ -208,7 +263,7 @@ export default function VendasOnline() {
       );
 
       if (response.ok) {
-        alert("✅ Venda criada com sucesso!");
+        mostrarMensagem("Venda Criada", "Venda criada com sucesso!", "success");
         setModalAberto(false);
         setAlunoSelecionado("");
         setUnidadeVenda("");
@@ -218,15 +273,21 @@ export default function VendasOnline() {
         carregarDados(unidadeIdAtual);
       } else {
         const error = await response.text();
-        alert(` Erro ao criar venda: ${error}`);
+        mostrarMensagem("Erro", `Erro ao criar venda: ${error}`, "error");
       }
     } catch (error) {
       console.error("Erro ao criar venda:", error);
-      alert(" Erro ao criar venda");
+      mostrarMensagem("Erro", "Erro ao criar venda", "error");
     }
   };
 
   const carregarDados = async (unidadeId: string) => {
+    console.log("🔄 [VENDAS] Carregando dados...", {
+      unidadeId,
+      filtroStatus,
+      filtroMetodo,
+    });
+
     const timeoutId = setTimeout(() => {
       console.warn("⏰ Timeout: A requisição está demorando muito (>10s)");
     }, 10000);
@@ -282,6 +343,12 @@ export default function VendasOnline() {
       const dataVendas = await resVendas.json();
       const dataStats = await resStats.json();
 
+      console.log("📊 [VENDAS] Dados carregados:", {
+        vendas: dataVendas.length,
+        stats: dataStats,
+        unidadeId,
+      });
+
       setVendas(dataVendas);
       setEstatisticas(dataStats);
     } catch (error) {
@@ -322,17 +389,25 @@ export default function VendasOnline() {
       );
 
       if (response.ok) {
-        alert("✅ Pagamento registrado com sucesso!");
+        mostrarMensagem(
+          "Pagamento Registrado",
+          "Pagamento registrado com sucesso!",
+          "success"
+        );
         setModalPagamentoAberto(false);
         setVendaPagamento(null);
         carregarDados(unidadeIdAtual);
       } else {
         const error = await response.text();
-        alert(` Erro ao registrar pagamento: ${error}`);
+        mostrarMensagem(
+          "Erro",
+          `Erro ao registrar pagamento: ${error}`,
+          "error"
+        );
       }
     } catch (error) {
       console.error("Erro ao registrar pagamento:", error);
-      alert(" Erro ao registrar pagamento");
+      mostrarMensagem("Erro", "Erro ao registrar pagamento", "error");
     }
   };
 
@@ -352,13 +427,56 @@ export default function VendasOnline() {
       );
 
       if (response.ok) {
-        alert("Link de pagamento reenviado com sucesso!");
+        mostrarMensagem(
+          "Link Reenviado",
+          "Link de pagamento reenviado com sucesso!",
+          "success"
+        );
       } else {
-        alert("Erro ao reenviar link");
+        mostrarMensagem("Erro", "Erro ao reenviar link", "error");
       }
     } catch (error) {
       console.error("Erro ao reenviar link:", error);
-      alert("Erro ao reenviar link");
+      mostrarMensagem("Erro", "Erro ao reenviar link", "error");
+    }
+  };
+
+  const excluirVenda = async () => {
+    if (!vendaParaExcluir) return;
+
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/vendas/${vendaParaExcluir.id}`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      const data = await response.json();
+
+      if (response.ok) {
+        mostrarMensagem(
+          "Venda Excluída",
+          "Venda excluída com sucesso!",
+          "success"
+        );
+        setModalExcluirAberto(false);
+        setVendaParaExcluir(null);
+        carregarDados(unidadeIdAtual);
+      } else {
+        mostrarMensagem(
+          "Erro",
+          data.message || "Erro ao excluir venda",
+          "error"
+        );
+      }
+    } catch (error) {
+      console.error("Erro ao excluir venda:", error);
+      mostrarMensagem("Erro", "Erro ao excluir venda", "error");
     }
   };
 
@@ -384,6 +502,9 @@ export default function VendasOnline() {
           <DialogContent className="max-w-md">
             <DialogHeader>
               <DialogTitle>Criar Venda Online</DialogTitle>
+              <DialogDescription>
+                Preencha os dados para criar uma nova venda
+              </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
               {/* Aluno */}
@@ -458,6 +579,7 @@ export default function VendasOnline() {
                 <Input
                   type="number"
                   step="0.01"
+                  min="0.01"
                   placeholder="0.00"
                   value={valor}
                   onChange={(e) => setValor(e.target.value)}
@@ -619,6 +741,7 @@ export default function VendasOnline() {
               <TableRow>
                 <TableHead>ID</TableHead>
                 <TableHead>Aluno</TableHead>
+                <TableHead>Descrição</TableHead>
                 <TableHead>Método</TableHead>
                 <TableHead>Valor</TableHead>
                 <TableHead>Status</TableHead>
@@ -629,7 +752,7 @@ export default function VendasOnline() {
             <TableBody>
               {vendas.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8">
+                  <TableCell colSpan={8} className="text-center py-8">
                     Nenhuma venda encontrada
                   </TableCell>
                 </TableRow>
@@ -643,6 +766,12 @@ export default function VendasOnline() {
                       {(venda as any).aluno_nome ||
                         venda.aluno?.nome_completo ||
                         "-"}
+                    </TableCell>
+                    <TableCell
+                      className="max-w-[200px] truncate"
+                      title={venda.descricao}
+                    >
+                      {venda.descricao}
                     </TableCell>
                     <TableCell>
                       <Badge variant="outline">
@@ -699,6 +828,9 @@ export default function VendasOnline() {
                               <DialogTitle>
                                 Detalhes da Venda {venda.numero_venda}
                               </DialogTitle>
+                              <DialogDescription>
+                                Informações completas da venda
+                              </DialogDescription>
                             </DialogHeader>
                             {vendaSelecionada && (
                               <div className="space-y-4">
@@ -782,6 +914,19 @@ export default function VendasOnline() {
                             <Send className="h-4 w-4" />
                           </Button>
                         )}
+
+                        {venda.status !== "PAGO" && (
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => {
+                              setVendaParaExcluir(venda);
+                              setModalExcluirAberto(true);
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>
@@ -792,57 +937,152 @@ export default function VendasOnline() {
         </CardContent>
       </Card>
 
+      {/* Modal de Exclusão */}
+      <AlertDialog
+        open={modalExcluirAberto}
+        onOpenChange={setModalExcluirAberto}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir Venda</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir a venda{" "}
+              <strong>{vendaParaExcluir?.numero_venda}</strong>?
+              <br />
+              <br />
+              Esta ação não pode ser desfeita. Apenas vendas não pagas podem ser
+              excluídas.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              onClick={() => {
+                setModalExcluirAberto(false);
+                setVendaParaExcluir(null);
+              }}
+            >
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={excluirVenda}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Modal de Confirmação de Pagamento */}
       <Dialog
         open={modalPagamentoAberto}
         onOpenChange={setModalPagamentoAberto}
       >
-        <DialogContent>
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Confirmar Pagamento</DialogTitle>
+            <DialogDescription>
+              Confirme o recebimento do pagamento da venda abaixo
+            </DialogDescription>
           </DialogHeader>
           {vendaPagamento && (
             <div className="space-y-4">
-              <p className="text-sm text-gray-600">
-                Confirme o recebimento do pagamento da venda:
-              </p>
-              <div className="bg-gray-50 p-4 rounded-lg space-y-2">
-                <p>
-                  <strong>Venda:</strong> {vendaPagamento.numero_venda}
-                </p>
-                <p>
-                  <strong>Aluno:</strong> {(vendaPagamento as any).aluno_nome}
-                </p>
-                <p>
-                  <strong>Descrição:</strong> {vendaPagamento.descricao}
-                </p>
-                <p>
-                  <strong>Valor:</strong> R${" "}
-                  {Number(vendaPagamento.valor).toFixed(2)}
-                </p>
-                <p>
-                  <strong>Método:</strong>{" "}
-                  {
-                    metodoConfig[
-                      vendaPagamento.metodo_pagamento as keyof typeof metodoConfig
-                    ]
-                  }
-                </p>
-              </div>
-              <div className="flex gap-2 pt-4">
-                <Button
-                  variant="outline"
-                  onClick={() => setModalPagamentoAberto(false)}
-                  className="flex-1"
-                >
-                  Cancelar
-                </Button>
-                <Button onClick={registrarPagamento} className="flex-1">
-                  Confirmar Pagamento
-                </Button>
+              <div className="bg-gray-50 p-4 rounded-lg space-y-3">
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-600">Venda:</span>
+                  <span className="font-semibold">
+                    {vendaPagamento.numero_venda}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-600">Aluno:</span>
+                  <span className="font-semibold">
+                    {(vendaPagamento as any).aluno_nome}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-600">Descrição:</span>
+                  <span className="font-semibold">
+                    {vendaPagamento.descricao}
+                  </span>
+                </div>
+                <div className="flex justify-between border-t pt-2">
+                  <span className="text-sm text-gray-600">Valor:</span>
+                  <span className="text-lg font-bold text-green-600">
+                    R$ {Number(vendaPagamento.valor).toFixed(2)}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-600">Método:</span>
+                  <span className="font-semibold">
+                    {
+                      metodoConfig[
+                        vendaPagamento.metodo_pagamento as keyof typeof metodoConfig
+                      ]
+                    }
+                  </span>
+                </div>
               </div>
             </div>
           )}
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => setModalPagamentoAberto(false)}
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={registrarPagamento}
+              className="bg-green-600 hover:bg-green-700"
+            >
+              <CheckCircle className="h-4 w-4 mr-2" />
+              Confirmar Pagamento
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de Mensagem (Sucesso/Erro) */}
+      <Dialog open={modalMensagemAberto} onOpenChange={setModalMensagemAberto}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {mensagemTipo === "success" ? (
+                <CheckCircle className="h-5 w-5 text-green-600" />
+              ) : (
+                <svg
+                  className="h-5 w-5 text-red-600"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              )}
+              {mensagemTitulo}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-sm text-gray-600">{mensagemConteudo}</p>
+          </div>
+          <DialogFooter>
+            <Button
+              onClick={() => setModalMensagemAberto(false)}
+              className={
+                mensagemTipo === "success"
+                  ? "bg-green-600 hover:bg-green-700"
+                  : ""
+              }
+            >
+              OK
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
