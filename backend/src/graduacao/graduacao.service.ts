@@ -1207,7 +1207,7 @@ export class GraduacaoService {
         ) as taxa_aprovacao
       FROM teamcruz.professores prof
       INNER JOIN teamcruz.usuarios u ON u.id = prof.usuario_id
-      LEFT JOIN teamcruz.aluno_graduacao ag ON ag.concedido_por = u.id::varchar
+      LEFT JOIN teamcruz.aluno_graduacao ag ON ag.concedido_por::uuid = u.id
         AND ag.dt_graduacao >= $1
       WHERE prof.status = 'ATIVO'
     `;
