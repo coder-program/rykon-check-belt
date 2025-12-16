@@ -776,6 +776,10 @@ export default function DashboardNew() {
 
         const stats = {
           totalAlunos: data.totalAlunos || 0,
+          alunosAtivos: data.alunosAtivos || 0,
+          alunosInativos: data.alunosInativos || 0,
+          novosEsteMes: data.novosEsteMes || 0,
+          taxaRetencao: data.taxaRetencao || 0,
           aulaHoje: data.aulasHoje || 0,
           proximosGraduaveis: data.proximosGraduaveis || 0,
           presencasHoje: data.presencasHoje || 0,
@@ -791,6 +795,10 @@ export default function DashboardNew() {
         // Fallback para dados zerados em caso de erro
         return {
           totalAlunos: 0,
+          alunosAtivos: 0,
+          alunosInativos: 0,
+          novosEsteMes: 0,
+          taxaRetencao: 0,
           aulaHoje: 0,
           proximosGraduaveis: 0,
           presencasHoje: 0,
@@ -1065,9 +1073,12 @@ export default function DashboardNew() {
         const params = new URLSearchParams({
           page: "1",
           pageSize: "50",
-          faixa:
-            overviewFilterFaixa === "todos" ? "todos" : overviewFilterFaixa,
         });
+
+        // Adicionar filtro de categoria (kids/adulto/todos)
+        if (overviewFilterFaixa && overviewFilterFaixa !== "todos") {
+          params.append("categoria", overviewFilterFaixa);
+        }
 
         if (overviewDebounced) {
           params.append("search", overviewDebounced);
@@ -1077,8 +1088,16 @@ export default function DashboardNew() {
           params.append("unidadeId", selectedUnidade);
         }
 
+        console.log(
+          "🔍 [FRONTEND] Chamando API com params:",
+          params.toString(),
+          { selectedUnidade, overviewFilterFaixa }
+        );
+
         const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/alunos?${params.toString()}`,
+          `${
+            process.env.NEXT_PUBLIC_API_URL
+          }/graduacao/proximos-graduar?${params.toString()}`,
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -1088,40 +1107,27 @@ export default function DashboardNew() {
         );
 
         if (!response.ok) {
-          throw new Error("Erro ao buscar alunos");
+          throw new Error("Erro ao buscar próximos graduáveis");
         }
 
         const data = await response.json();
 
-        // Mapear os dados reais dos alunos para o formato esperado
-        const items = data.items.map((aluno: any) => {
-          // Buscar a faixa ativa do aluno (relacionamento com aluno_faixa)
-          const faixaAtiva = aluno.faixas?.find((f: any) => f.ativa === true);
-          const faixaNome = faixaAtiva?.faixaDef?.nome_exibicao || "BRANCA";
-          const grausAtual = faixaAtiva?.graus_atual || 0;
-          const presencasNoCiclo = faixaAtiva?.presencas_no_ciclo || 0;
-
-          // Obter configuração para a faixa atual
-          const faixaEnum = faixaAtiva?.faixaDef?.codigo || "BRANCA";
-          const configFaixa =
-            graduationConfig[faixaEnum as keyof typeof graduationConfig] ||
-            graduationConfig.BRANCA;
-          const aulasPorGrau = configFaixa.aulasPorGrau;
-          const faltamAulas = Math.max(
-            0,
-            aulasPorGrau - (presencasNoCiclo % aulasPorGrau)
-          );
-
-          return {
-            id: aluno.id,
-            nome: aluno.nome_completo || aluno.nome,
-            faixa: faixaNome,
-            graus: grausAtual, // Graus reais da tabela aluno_faixa
-            faltam: faltamAulas, // Cálculo real baseado nas presenças
-            foto: null,
-            categoria: aluno.categoria || "adulto",
-          };
+        console.log("✅ [FRONTEND] Dados recebidos:", {
+          total: data.total,
+          items: data.items?.length,
+          primeiros3: data.items?.slice(0, 3),
         });
+
+        // Os dados já vêm no formato correto do backend
+        const items = data.items.map((item: any) => ({
+          id: item.alunoId,
+          nome: item.nomeCompleto,
+          faixa: item.faixa,
+          corHex: item.corHex,
+          graus: item.grausAtual,
+          faltam: item.faltamAulas,
+          kids: item.kids,
+        }));
 
         // Aplicar ordenação baseada no overviewSort
         items.sort((a: any, b: any) => {
@@ -1135,9 +1141,9 @@ export default function DashboardNew() {
         return {
           items,
           total: data.total || 0,
-          page: 1,
-          pageSize: 50,
-          hasNextPage: false,
+          page: data.page || 1,
+          pageSize: data.pageSize || 50,
+          hasNextPage: data.hasNextPage || false,
         };
       } catch (error) {
         console.error("Erro ao buscar alunos para próximos graduáveis:", error);
@@ -2372,7 +2378,7 @@ export default function DashboardNew() {
                           Total de Alunos
                         </p>
                         <p className="text-3xl font-bold text-blue-900">
-                          {alunosQuery.data?.pages[0]?.total || 0}
+                          {statsQuery.data?.totalAlunos || 0}
                         </p>
                       </div>
                       <Users className="h-10 w-10 text-blue-600 opacity-50" />
@@ -2388,9 +2394,7 @@ export default function DashboardNew() {
                           Ativos
                         </p>
                         <p className="text-3xl font-bold text-green-900">
-                          {alunosQuery.data?.pages[0]?.items?.filter(
-                            (a: any) => a.status === "ATIVO"
-                          ).length || 0}
+                          {statsQuery.data?.alunosAtivos || 0}
                         </p>
                       </div>
                       <CheckCircle className="h-10 w-10 text-green-600 opacity-50" />
@@ -2406,9 +2410,7 @@ export default function DashboardNew() {
                           Inativos
                         </p>
                         <p className="text-3xl font-bold text-red-900">
-                          {alunosQuery.data?.pages[0]?.items?.filter(
-                            (a: any) => a.status !== "ATIVO"
-                          ).length || 0}
+                          {statsQuery.data?.alunosInativos || 0}
                         </p>
                       </div>
                       <AlertTriangle className="h-10 w-10 text-red-600 opacity-50" />
@@ -2424,21 +2426,7 @@ export default function DashboardNew() {
                           Novos Este Mês
                         </p>
                         <p className="text-3xl font-bold text-cyan-900">
-                          {(() => {
-                            const alunos =
-                              alunosQuery.data?.pages[0]?.items || [];
-                            const mesAtual = new Date().getMonth();
-                            const anoAtual = new Date().getFullYear();
-
-                            return alunos.filter((a: any) => {
-                              if (!a.dt_cadastro) return false;
-                              const dtCadastro = new Date(a.dt_cadastro);
-                              return (
-                                dtCadastro.getMonth() === mesAtual &&
-                                dtCadastro.getFullYear() === anoAtual
-                              );
-                            }).length;
-                          })()}
+                          {statsQuery.data?.novosEsteMes || 0}
                         </p>
                       </div>
                       <Star className="h-10 w-10 text-cyan-600 opacity-50" />
@@ -2457,7 +2445,7 @@ export default function DashboardNew() {
                           Aptos a Graduar
                         </p>
                         <p className="text-3xl font-bold text-yellow-900">
-                          {proximosQuery.data?.items?.length || 0}
+                          {proximosQuery.data?.total || 0}
                         </p>
                       </div>
                       <Trophy className="h-10 w-10 text-yellow-600 opacity-50" />
@@ -2490,38 +2478,13 @@ export default function DashboardNew() {
                         </p>
                         <p className="text-3xl font-bold text-indigo-900">
                           {(() => {
-                            const alunos =
-                              alunosQuery.data?.pages[0]?.items || [];
-                            const total = alunos.length;
-                            if (total === 0) return "0%";
-
-                            // Calcular alunos com mais de 3 meses
-                            const tresMesesAtras = new Date();
-                            tresMesesAtras.setMonth(
-                              tresMesesAtras.getMonth() - 3
-                            );
-
-                            const alunosRetidos = alunos.filter((a: any) => {
-                              if (!a.dt_cadastro) return false;
-                              const dtCadastro = new Date(a.dt_cadastro);
-                              return (
-                                dtCadastro <= tresMesesAtras &&
-                                a.status === "ATIVO"
-                              );
-                            }).length;
-
-                            const alunosElegiveis = alunos.filter((a: any) => {
-                              if (!a.dt_cadastro) return false;
-                              const dtCadastro = new Date(a.dt_cadastro);
-                              return dtCadastro <= tresMesesAtras;
-                            }).length;
-
-                            if (alunosElegiveis === 0) return "N/A";
-
-                            const taxa = Math.round(
-                              (alunosRetidos / alunosElegiveis) * 100
-                            );
-                            return `${taxa}%`;
+                            const taxaRetencao = statsQuery.data?.taxaRetencao;
+                            if (
+                              taxaRetencao === undefined ||
+                              taxaRetencao === null
+                            )
+                              return "0%";
+                            return `${Math.round(taxaRetencao)}%`;
                           })()}
                         </p>
                       </div>
@@ -2719,7 +2682,7 @@ export default function DashboardNew() {
                       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
                     </div>
                   ) : (
-                    <div className="space-y-3">
+                    <div className="space-y-3 max-h-[500px] overflow-y-auto">
                       {(proximosQuery.data?.items || [])
                         .slice(0, 10)
                         .map((aluno: any, index: number) => (
@@ -2735,16 +2698,17 @@ export default function DashboardNew() {
                                 <p className="font-semibold text-gray-900 truncate">
                                   {aluno.nome}
                                 </p>
-                                <div className="flex items-center gap-2 text-xs text-gray-600 flex-wrap">
-                                  <span
-                                    className={`badge ${getBeltClass(
-                                      aluno.faixa
-                                    )} badge-xs whitespace-normal`}
-                                    style={{ maxWidth: "none" }}
+                                <div className="flex items-center gap-2 text-sm">
+                                  <div
+                                    className="px-3 py-1 rounded-md font-medium text-white"
+                                    style={{
+                                      backgroundColor:
+                                        aluno.corHex || "#6B7280",
+                                    }}
                                   >
                                     {aluno.faixa}
-                                  </span>
-                                  <span className="text-gray-500">
+                                  </div>
+                                  <span className="text-gray-500 text-xs">
                                     • {aluno.graus}{" "}
                                     {aluno.graus === 1 ? "grau" : "graus"}
                                   </span>

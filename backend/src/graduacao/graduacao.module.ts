@@ -14,6 +14,7 @@ import { HistoricoFaixas } from './entities/historico-faixas.entity';
 import { ConfiguracaoGraduacao } from './entities/configuracao-graduacao.entity';
 import { Person } from '../people/entities/person.entity';
 import { Aluno } from '../people/entities/aluno.entity';
+import { Usuario } from '../usuarios/entities/usuario.entity';
 import { Franqueado } from '../people/entities/franqueado.entity';
 import { Unidade } from '../people/entities/unidade.entity';
 import { GerenteUnidade } from '../people/entities/gerente-unidade.entity';
@@ -33,6 +34,7 @@ import { PeopleModule } from '../people/people.module';
       ConfiguracaoGraduacao,
       Person,
       Aluno,
+      Usuario,
       Franqueado,
       Unidade,
       GerenteUnidade,

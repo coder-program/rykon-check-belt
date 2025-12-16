@@ -13,6 +13,7 @@ import { AlunoGraduacao } from './entities/aluno-graduacao.entity';
 import { ConfiguracaoGraduacao } from './entities/configuracao-graduacao.entity';
 import { Person, TipoCadastro } from '../people/entities/person.entity';
 import { Aluno } from '../people/entities/aluno.entity';
+import { Usuario } from '../usuarios/entities/usuario.entity';
 import { Franqueado } from '../people/entities/franqueado.entity';
 import { Unidade } from '../people/entities/unidade.entity';
 import { GerenteUnidade } from '../people/entities/gerente-unidade.entity';
@@ -44,6 +45,8 @@ export class GraduacaoService {
     private personRepository: Repository<Person>,
     @InjectRepository(Aluno)
     private alunoRepository: Repository<Aluno>,
+    @InjectRepository(Usuario)
+    private usuarioRepository: Repository<Usuario>,
     @InjectRepository(Franqueado)
     private franqueadoRepository: Repository<Franqueado>,
     @InjectRepository(Unidade)
@@ -165,14 +168,159 @@ export class GraduacaoService {
     pageSize?: number;
     unidadeId?: string;
     categoria?: 'adulto' | 'kids' | 'todos';
+    userId?: string;
   }): Promise<ListaProximosGraduarDto> {
-    // Desabilitado para evitar consultas automáticas ao banco
+    console.log(
+      '🔍 [PROXIMOS GRADUAR] Params recebidos:',
+      JSON.stringify(params, null, 2),
+    );
+
+    const page = params.page || 1;
+    const pageSize = params.pageSize || 50;
+    const skip = (page - 1) * pageSize;
+
+    // Se não passou unidadeId mas passou userId, buscar unidades do franqueado
+    let unidadesDoFranqueado: string[] = [];
+    if (!params.unidadeId && params.userId) {
+      const usuario = await this.usuarioRepository.findOne({
+        where: { id: params.userId },
+        relations: ['perfis'],
+      });
+
+      const isFranqueado = usuario?.perfis?.some(
+        (p) => p.nome?.toUpperCase() === 'FRANQUEADO',
+      );
+
+      if (isFranqueado) {
+        const franqueado = await this.franqueadoRepository.findOne({
+          where: { usuario_id: params.userId },
+        });
+
+        if (franqueado) {
+          const unidades = await this.unidadeRepository.find({
+            where: { franqueado_id: franqueado.id },
+          });
+          unidadesDoFranqueado = unidades.map((u) => u.id);
+          console.log(
+            '✅ [PROXIMOS GRADUAR] Franqueado tem unidades:',
+            unidadesDoFranqueado,
+          );
+        }
+      }
+    }
+
+    // Query para buscar alunos próximos de graduar
+    let query = this.alunoFaixaRepository
+      .createQueryBuilder('af')
+      .leftJoinAndSelect('af.aluno', 'aluno')
+      .leftJoinAndSelect('af.faixaDef', 'faixaDef')
+      .where('af.ativa = true')
+      .andWhere('af.graus_atual < faixaDef.graus_max')
+      .andWhere('aluno.id IS NOT NULL'); // Garantir que o aluno existe
+
+    // Filtrar por unidade se fornecido
+    if (params.unidadeId) {
+      console.log(
+        '✅ [PROXIMOS GRADUAR] Filtrando por unidade:',
+        params.unidadeId,
+      );
+      query = query.andWhere('aluno.unidade_id = :unidadeId', {
+        unidadeId: params.unidadeId,
+      });
+    } else if (unidadesDoFranqueado.length > 0) {
+      console.log(
+        '✅ [PROXIMOS GRADUAR] Filtrando por unidades do franqueado:',
+        unidadesDoFranqueado,
+      );
+      query = query.andWhere('aluno.unidade_id IN (:...unidades)', {
+        unidades: unidadesDoFranqueado,
+      });
+    }
+
+    // Filtrar por categoria se fornecido
+    if (params.categoria && params.categoria !== 'todos') {
+      const isKids = params.categoria === 'kids';
+      console.log(
+        '✅ [PROXIMOS GRADUAR] Filtrando por categoria:',
+        params.categoria,
+        '(kids:',
+        isKids,
+        ')',
+      );
+      // Filtrar pela categoria da faixa
+      if (isKids) {
+        query = query.andWhere('faixaDef.categoria = :categoria', {
+          categoria: 'INFANTIL',
+        });
+      } else {
+        query = query.andWhere('faixaDef.categoria = :categoria', {
+          categoria: 'ADULTO',
+        });
+      }
+    }
+
+    // Ordenar por quem está mais próximo (mais presenças no ciclo)
+    query = query
+      .orderBy('af.presencas_no_ciclo', 'DESC')
+      .skip(skip)
+      .take(pageSize);
+
+    const [items, total] = await query.getManyAndCount();
+
+    console.log('📊 [PROXIMOS GRADUAR] Resultado:', {
+      total,
+      items: items.length,
+      categoria: params.categoria,
+      primeiros3: items.slice(0, 3).map((i) => {
+        const hoje = new Date();
+        const nascimento = new Date(i.aluno.data_nascimento);
+        const idade = hoje.getFullYear() - nascimento.getFullYear();
+        return {
+          nome: i.aluno.nome_completo,
+          nascimento: i.aluno.data_nascimento,
+          idade,
+          kids: idade < 16,
+          presencas: i.presencas_no_ciclo,
+        };
+      }),
+    });
+
+    // Mapear para o DTO
+    const mappedItems = items
+      .filter((af) => af.aluno != null) // Filtrar registros sem aluno
+      .map((af) => {
+        // Calcular idade do aluno
+        const hoje = new Date();
+        const nascimento = new Date(af.aluno.data_nascimento);
+        const idade = hoje.getFullYear() - nascimento.getFullYear();
+        const isKids = idade < 16;
+
+        return {
+          alunoId: af.aluno.id,
+          nomeCompleto: af.aluno.nome_completo || 'Nome não disponível',
+          faixa: af.faixaDef?.nome_exibicao || 'Não definida',
+          corHex: af.faixaDef?.cor_hex || '#CCCCCC',
+          grausAtual: af.graus_atual,
+          grausMax: af.faixaDef?.graus_max || 4,
+          faltamAulas: Math.max(
+            0,
+            (af.faixaDef?.aulas_por_grau || 0) - af.presencas_no_ciclo,
+          ),
+          prontoParaGraduar:
+            af.presencas_no_ciclo >= (af.faixaDef?.aulas_por_grau || 0),
+          progressoPercentual:
+            af.presencas_no_ciclo / (af.faixaDef?.aulas_por_grau || 1),
+          presencasTotalFaixa: af.presencas_no_ciclo,
+          kids: isKids,
+        };
+      });
+
     return {
-      items: [],
-      total: 0,
-      page: params.page || 1,
-      pageSize: params.pageSize || 50,
-      hasNextPage: false,
+      items: mappedItems,
+      total,
+      page,
+      pageSize,
+      hasNextPage: skip + items.length < total,
     };
   }
 

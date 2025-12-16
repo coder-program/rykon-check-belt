@@ -198,11 +198,86 @@ export class DashboardService {
         ? await this.franqueadoRepository.count()
         : 0;
 
+      // Estatísticas detalhadas de alunos
+      let alunosAtivos = 0;
+      let alunosInativos = 0;
+      let novosEsteMes = 0;
+      let taxaRetencao = 0;
+
+      // Buscar todos os alunos com base no filtro (unidade/franquia)
+      let todosAlunos: Aluno[] = [];
+
+      if (unidadeId) {
+        todosAlunos = await this.alunoRepository.find({
+          where: { unidade_id: unidadeId },
+        });
+      } else if (isFranqueado && unidadesDoFranqueado.length > 0) {
+        todosAlunos = await this.alunoRepository.find({
+          where: { unidade_id: In(unidadesDoFranqueado) },
+        });
+      } else if (isGerenteUnidade && unidadesDoFranqueado.length > 0) {
+        todosAlunos = await this.alunoRepository.find({
+          where: { unidade_id: In(unidadesDoFranqueado) },
+        });
+      } else if (isMaster) {
+        todosAlunos = await this.alunoRepository.find();
+      }
+
+      // Calcular estatísticas
+      alunosAtivos = todosAlunos.filter(
+        (a) => a.status === StatusAluno.ATIVO,
+      ).length;
+      alunosInativos = todosAlunos.filter(
+        (a) => a.status !== StatusAluno.ATIVO,
+      ).length;
+
+      // Novos este mês
+      const mesAtual = new Date().getMonth();
+      const anoAtual = new Date().getFullYear();
+      novosEsteMes = todosAlunos.filter((a) => {
+        if (!a.data_matricula) return false;
+        const dtMatricula = new Date(a.data_matricula);
+        return (
+          dtMatricula.getMonth() === mesAtual &&
+          dtMatricula.getFullYear() === anoAtual
+        );
+      }).length;
+
+      // Taxa de retenção (alunos com mais de 3 meses que ainda estão ativos)
+      const tresMesesAtras = new Date();
+      tresMesesAtras.setMonth(tresMesesAtras.getMonth() - 3);
+
+      const alunosElegiveis = todosAlunos.filter((a) => {
+        if (!a.data_matricula) return false;
+        const dtMatricula = new Date(a.data_matricula);
+        return dtMatricula <= tresMesesAtras;
+      }).length;
+
+      const alunosRetidos = todosAlunos.filter((a) => {
+        if (!a.data_matricula) return false;
+        const dtMatricula = new Date(a.data_matricula);
+        return dtMatricula <= tresMesesAtras && a.status === StatusAluno.ATIVO;
+      }).length;
+
+      if (alunosElegiveis > 0) {
+        taxaRetencao = Math.round((alunosRetidos / alunosElegiveis) * 100);
+      } else {
+        // Se não há alunos com mais de 3 meses, calcular taxa com base nos ativos atuais
+        const totalTodos = todosAlunos.length;
+        if (totalTodos > 0) {
+          taxaRetencao = Math.round((alunosAtivos / totalTodos) * 100);
+        }
+      }
+
       const stats = {
         totalUsuarios,
         usuariosPendentes,
         totalFranqueados,
         totalAlunos,
+        alunosAtivos,
+        alunosInativos,
+        novosEsteMes,
+        taxaRetencao,
         totalProfessores,
         totalUnidades,
         aulasHoje: 0, // TODO: implementar

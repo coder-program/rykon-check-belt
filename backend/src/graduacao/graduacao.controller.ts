@@ -267,6 +267,7 @@ export class GraduacaoController {
       tipo_usuario: user?.tipo_usuario,
       unidade_id_usuario: userUnidadeId,
       filtro_unidade_id: unidadeId,
+      categoria: categoria,
       isFranqueado,
     });
 
@@ -274,15 +275,10 @@ export class GraduacaoController {
     if (!unidadeId) {
       if (isFranqueado) {
         console.log(
-          '⚠️ [PROXIMOS-GRADUAR] Franqueado sem unidade_id - retornando vazio',
+          '✅ [PROXIMOS-GRADUAR] Franqueado buscando de todas suas unidades',
         );
-        return {
-          items: [],
-          total: 0,
-          page: 1,
-          pageSize: 20,
-          hasNextPage: false,
-        };
+        // Não passa unidadeId, o service vai buscar de todas as unidades
+        // que o franqueado tem acesso
       } else if (userUnidadeId) {
         console.log(
           '✅ [PROXIMOS-GRADUAR] Aplicando unidade do usuário:',
@@ -311,6 +307,7 @@ export class GraduacaoController {
       pageSize,
       unidadeId,
       categoria,
+      userId: user?.id,
     });
   }
 

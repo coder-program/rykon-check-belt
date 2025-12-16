@@ -45,6 +45,12 @@ export class ProximoGraduarDto {
     description: 'Total de presenças na faixa atual',
   })
   presencasTotalFaixa?: number;
+
+  @ApiProperty({
+    example: true,
+    description: 'Indica se é aluno infantil (kids)',
+  })
+  kids?: boolean;
 }
 
 export class ListaProximosGraduarDto {
