@@ -198,14 +198,16 @@ export class CompeticoesService {
   async registrarParticipacao(data: Partial<AlunoCompeticao>, userId: string) {
     // Buscar aluno vinculado ao usuário logado (se aluno_id não for fornecido)
     let alunoId = data.aluno_id;
-    
+
     if (!alunoId) {
       const aluno = await this.alunoRepository.findOne({
         where: { usuario_id: userId },
       });
 
       if (!aluno) {
-        throw new NotFoundException('Aluno não encontrado para o usuário logado');
+        throw new NotFoundException(
+          'Aluno não encontrado para o usuário logado',
+        );
       }
 
       alunoId = aluno.id;
@@ -214,10 +216,48 @@ export class CompeticoesService {
     // Verificar se aluno existe
     const aluno = await this.alunoRepository.findOne({
       where: { id: alunoId },
+      relations: ['faixas', 'faixas.faixaDef'],
     });
 
     if (!aluno) {
       throw new NotFoundException('Aluno não encontrado');
+    }
+
+    // Validar faixa - não pode competir em faixa superior à atual
+    if (data.categoria_faixa) {
+      // Buscar a faixa ativa do aluno
+      const faixaAtiva = aluno.faixas?.find((f) => f.ativa);
+      const faixaAtualCodigo = faixaAtiva?.faixaDef?.codigo;
+
+      const ordemFaixas = [
+        'BRANCA',
+        'CINZA',
+        'AMARELA',
+        'LARANJA',
+        'VERDE',
+        'AZUL',
+        'ROXA',
+        'MARROM',
+        'PRETA',
+        'CORAL',
+      ];
+
+      const faixaAtualIndex = ordemFaixas.indexOf(
+        faixaAtualCodigo?.toUpperCase() || '',
+      );
+      const faixaCompeticaoIndex = ordemFaixas.indexOf(
+        data.categoria_faixa.toUpperCase(),
+      );
+
+      if (
+        faixaAtualIndex !== -1 &&
+        faixaCompeticaoIndex !== -1 &&
+        faixaCompeticaoIndex > faixaAtualIndex
+      ) {
+        throw new BadRequestException(
+          `Não é permitido registrar participação em faixa superior à faixa atual do aluno (${faixaAtualCodigo})`,
+        );
+      }
     }
 
     // Verificar se competição existe
@@ -262,10 +302,48 @@ export class CompeticoesService {
   ) {
     const participacao = await this.alunoCompeticaoRepository.findOne({
       where: { id },
+      relations: ['aluno', 'aluno.faixas', 'aluno.faixas.faixaDef'],
     });
 
     if (!participacao) {
       throw new NotFoundException('Participação não encontrada');
+    }
+
+    // Validar faixa se estiver sendo atualizada
+    if (data.categoria_faixa && participacao.aluno) {
+      // Buscar a faixa ativa do aluno
+      const faixaAtiva = participacao.aluno.faixas?.find((f) => f.ativa);
+      const faixaAtualCodigo = faixaAtiva?.faixaDef?.codigo;
+
+      const ordemFaixas = [
+        'BRANCA',
+        'CINZA',
+        'AMARELA',
+        'LARANJA',
+        'VERDE',
+        'AZUL',
+        'ROXA',
+        'MARROM',
+        'PRETA',
+        'CORAL',
+      ];
+
+      const faixaAtualIndex = ordemFaixas.indexOf(
+        faixaAtualCodigo?.toUpperCase() || '',
+      );
+      const faixaCompeticaoIndex = ordemFaixas.indexOf(
+        data.categoria_faixa.toUpperCase(),
+      );
+
+      if (
+        faixaAtualIndex !== -1 &&
+        faixaCompeticaoIndex !== -1 &&
+        faixaCompeticaoIndex > faixaAtualIndex
+      ) {
+        throw new BadRequestException(
+          `Não é permitido registrar participação em faixa superior à faixa atual do aluno (${faixaAtualCodigo})`,
+        );
+      }
     }
 
     Object.assign(participacao, data);

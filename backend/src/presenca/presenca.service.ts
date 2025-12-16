@@ -1362,6 +1362,7 @@ export class PresencaService {
     return resultado.map((r: any) => ({
       id: r.id,
       nome: r.nome_completo,
+      dataNascimento: r.data_nascimento,
       totalPresencas: parseInt(r.total_presencas) || 0,
       diasPresentes: parseInt(r.dias_presentes) || 0,
       taxaFrequencia: parseFloat(r.taxa_frequencia) || 0,

@@ -669,23 +669,43 @@ export default function DashboardNew() {
     }
   }, [isGerenteUnidade, unidadeDoGerente]);
 
+  // Estados para filtros (declarar ANTES das queries)
+  const [filterFaixa, setFilterFaixa] = React.useState<string>("todos");
+  const [filterCategoriaRanking, setFilterCategoriaRanking] =
+    React.useState<string>("todos");
+
   // Query para ranking de frequência (Top Assiduidade)
   const { data: rankingFrequencia = [], isLoading: isLoadingRanking } =
     useQuery({
-      queryKey: ["ranking-frequencia", selectedUnidade],
+      queryKey: ["ranking-frequencia", selectedUnidade, filterCategoriaRanking],
       queryFn: async () => {
         if (selectedUnidade === "todas") {
           return [];
         }
-        return getRankingAlunosFrequencia(selectedUnidade, 5);
+        return getRankingAlunosFrequencia(selectedUnidade, 40);
       },
       enabled: !!selectedUnidade && selectedUnidade !== "todas",
       staleTime: 2 * 60 * 1000, // 2 minutos
     });
 
+  // Filtrar ranking por categoria
+  const rankingFiltrado = React.useMemo(() => {
+    if (filterCategoriaRanking === "todos") return rankingFrequencia;
+
+    return rankingFrequencia.filter((aluno: any) => {
+      if (!aluno.dataNascimento) return true; // Se não tem data, incluir
+
+      const hoje = new Date();
+      const nascimento = new Date(aluno.dataNascimento);
+      const idade = hoje.getFullYear() - nascimento.getFullYear();
+      const isKids = idade < 16;
+
+      return filterCategoriaRanking === "kids" ? isKids : !isKids;
+    });
+  }, [rankingFrequencia, filterCategoriaRanking]);
+
   // Paginação e filtros
   const pageSize = 30; // quantidade por página para infinite scroll
-  const [filterFaixa, setFilterFaixa] = React.useState<string>("todos");
 
   // Função de filtragem local (mock) — futuramente mover para servidor
   const filterLocal = React.useCallback(
@@ -1984,6 +2004,39 @@ export default function DashboardNew() {
                       <Zap className="h-5 w-5 text-yellow-500" />
                       Top Assiduidade
                     </CardTitle>
+                    {/* Filtro de Categoria */}
+                    <div className="flex gap-2 mt-3">
+                      <button
+                        onClick={() => setFilterCategoriaRanking("todos")}
+                        className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
+                          filterCategoriaRanking === "todos"
+                            ? "bg-blue-600 text-white"
+                            : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                        }`}
+                      >
+                        Todos
+                      </button>
+                      <button
+                        onClick={() => setFilterCategoriaRanking("kids")}
+                        className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
+                          filterCategoriaRanking === "kids"
+                            ? "bg-purple-600 text-white"
+                            : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                        }`}
+                      >
+                        Kids (≤15)
+                      </button>
+                      <button
+                        onClick={() => setFilterCategoriaRanking("adulto")}
+                        className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
+                          filterCategoriaRanking === "adulto"
+                            ? "bg-green-600 text-white"
+                            : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                        }`}
+                      >
+                        Adultos (16+)
+                      </button>
+                    </div>
                   </CardHeader>
                   <CardContent className="space-y-3">
                     {isLoadingRanking ? (
@@ -1992,52 +2045,59 @@ export default function DashboardNew() {
                         <div className="skeleton h-16 w-full mb-2" />
                         <div className="skeleton h-16 w-full" />
                       </div>
-                    ) : rankingFrequencia.length > 0 ? (
-                      rankingFrequencia.map((aluno, index) => (
-                        <div
-                          key={aluno.id}
-                          className="flex items-center gap-3 p-3 bg-gradient-to-r from-gray-50 to-blue-50 rounded-lg hover:shadow-md transition-shadow"
-                        >
+                    ) : rankingFiltrado.length > 0 ? (
+                      <div className="max-h-96 overflow-y-auto space-y-3 pr-2">
+                        {rankingFiltrado.map((aluno, index) => (
                           <div
-                            className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm shadow-md ${
-                              index === 0
-                                ? "bg-gradient-to-br from-yellow-400 to-yellow-500 text-yellow-900"
-                                : index === 1
-                                ? "bg-gradient-to-br from-gray-300 to-gray-400 text-white"
-                                : "bg-gradient-to-br from-orange-400 to-orange-500 text-orange-900"
-                            }`}
+                            key={aluno.id}
+                            className="flex items-center gap-3 p-3 bg-gradient-to-r from-gray-50 to-blue-50 rounded-lg hover:shadow-md transition-shadow"
                           >
-                            {index + 1}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="font-semibold text-sm text-gray-900 truncate">
-                              {aluno.nome}
-                            </p>
-                            <div className="w-full bg-gray-200 rounded-full h-2.5 mt-1.5">
-                              <motion.div
-                                initial={{ width: 0 }}
-                                animate={{ width: `${aluno.percent}%` }}
-                                transition={{ duration: 1, delay: index * 0.1 }}
-                                className="bg-gradient-to-r from-blue-500 to-blue-600 h-full rounded-full shadow-sm"
-                              />
+                            <div
+                              className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm shadow-md ${
+                                index === 0
+                                  ? "bg-gradient-to-br from-yellow-400 to-yellow-500 text-yellow-900"
+                                  : index === 1
+                                  ? "bg-gradient-to-br from-gray-300 to-gray-400 text-white"
+                                  : index === 2
+                                  ? "bg-gradient-to-br from-orange-400 to-orange-500 text-orange-900"
+                                  : "bg-gradient-to-br from-blue-400 to-blue-500 text-white"
+                              }`}
+                            >
+                              {index + 1}
                             </div>
-                            <div className="flex items-center gap-1 mt-1.5">
-                              <Zap className="h-3.5 w-3.5 text-yellow-500" />
-                              <span className="text-xs text-gray-600 font-medium">
-                                {aluno.diasPresentes} dias presentes
+                            <div className="flex-1 min-w-0">
+                              <p className="font-semibold text-sm text-gray-900 truncate">
+                                {aluno.nome}
+                              </p>
+                              <div className="w-full bg-gray-200 rounded-full h-2.5 mt-1.5">
+                                <motion.div
+                                  initial={{ width: 0 }}
+                                  animate={{ width: `${aluno.percent}%` }}
+                                  transition={{
+                                    duration: 1,
+                                    delay: index * 0.1,
+                                  }}
+                                  className="bg-gradient-to-r from-blue-500 to-blue-600 h-full rounded-full shadow-sm"
+                                />
+                              </div>
+                              <div className="flex items-center gap-1 mt-1.5">
+                                <Zap className="h-3.5 w-3.5 text-yellow-500" />
+                                <span className="text-xs text-gray-600 font-medium">
+                                  {aluno.diasPresentes} dias presentes
+                                </span>
+                              </div>
+                            </div>
+                            <div className="flex flex-col items-end">
+                              <span className="text-lg font-bold text-blue-600">
+                                {aluno.percent}%
+                              </span>
+                              <span className="text-xs text-gray-500">
+                                {aluno.totalPresencas} presenças
                               </span>
                             </div>
                           </div>
-                          <div className="flex flex-col items-end">
-                            <span className="text-lg font-bold text-blue-600">
-                              {aluno.percent}%
-                            </span>
-                            <span className="text-xs text-gray-500">
-                              {aluno.totalPresencas} presenças
-                            </span>
-                          </div>
-                        </div>
-                      ))
+                        ))}
+                      </div>
                     ) : (
                       <div className="text-center py-8 text-gray-500">
                         <Zap className="h-12 w-12 mx-auto mb-2 opacity-30" />

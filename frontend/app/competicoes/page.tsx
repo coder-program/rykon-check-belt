@@ -77,6 +77,7 @@ export default function CompeticoesPage() {
   const [editando, setEditando] = useState<string | null>(null);
   const [cidades, setCidades] = useState<string[]>([]);
   const [loadingCidades, setLoadingCidades] = useState(false);
+  const [faixaAtualAluno, setFaixaAtualAluno] = useState<string | null>(null);
 
   // Estados do Brasil com bandeiras
   const estados = [
@@ -190,11 +191,51 @@ export default function CompeticoesPage() {
     );
   };
 
+  // Ordem de progressão das faixas (adulto e infantil)
+  const ordemFaixas: string[] = [
+    "BRANCA",
+    "CINZA",
+    "AMARELA",
+    "LARANJA",
+    "VERDE",
+    "AZUL",
+    "ROXA",
+    "MARROM",
+    "PRETA",
+    "CORAL",
+  ];
+
+  // Função para obter faixas válidas (até a faixa atual do aluno)
+  const getFaixasValidas = () => {
+    if (!faixaAtualAluno) return ordemFaixas;
+
+    const faixaAtualIndex = ordemFaixas.findIndex(
+      (f) => f === faixaAtualAluno.toUpperCase()
+    );
+
+    if (faixaAtualIndex === -1) return ordemFaixas;
+
+    // Retorna apenas faixas até a faixa atual (inclusive)
+    return ordemFaixas.slice(0, faixaAtualIndex + 1);
+  };
+
   useEffect(() => {
     if (user?.id) {
       carregarDados();
+      carregarFaixaAtual();
     }
   }, [user?.id]);
+
+  const carregarFaixaAtual = async () => {
+    try {
+      const response = await http("/alunos/me", { auth: true });
+      if (response.faixa_atual) {
+        setFaixaAtualAluno(response.faixa_atual);
+      }
+    } catch (error) {
+      console.error("Erro ao carregar faixa do aluno:", error);
+    }
+  };
 
   const carregarDados = async () => {
     try {
@@ -852,17 +893,32 @@ export default function CompeticoesPage() {
                         className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
                       >
                         <option value="">Selecione a faixa</option>
-                        <option value="BRANCA">⚪ BRANCA</option>
-                        <option value="CINZA">⚫ CINZA</option>
-                        <option value="AMARELA">🟡 AMARELA</option>
-                        <option value="LARANJA">🟠 LARANJA</option>
-                        <option value="VERDE">🟢 VERDE</option>
-                        <option value="AZUL">🔵 AZUL</option>
-                        <option value="ROXA">🟣 ROXA</option>
-                        <option value="MARROM">🟤 MARROM</option>
-                        <option value="PRETA">⚫ PRETA</option>
-                        <option value="CORAL">🔴 CORAL</option>
+                        {getFaixasValidas().map((faixa) => {
+                          const emojis: Record<string, string> = {
+                            BRANCA: "⚪",
+                            CINZA: "⚫",
+                            AMARELA: "🟡",
+                            LARANJA: "🟠",
+                            VERDE: "🟢",
+                            AZUL: "🔵",
+                            ROXA: "🟣",
+                            MARROM: "🟤",
+                            PRETA: "⚫",
+                            CORAL: "🔴",
+                          };
+                          return (
+                            <option key={faixa} value={faixa}>
+                              {emojis[faixa]} {faixa}
+                            </option>
+                          );
+                        })}
                       </select>
+                      {faixaAtualAluno && (
+                        <p className="text-xs text-gray-500 mt-1">
+                          Sua faixa atual: {faixaAtualAluno.toUpperCase()}. Só
+                          pode competir até esta faixa.
+                        </p>
+                      )}
                     </div>
 
                     <div>

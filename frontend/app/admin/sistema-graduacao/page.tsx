@@ -226,17 +226,13 @@ export default function SistemaGraduacaoPage() {
   const stats = {
     totalProximos: proximos.length,
     prontosPraGrau: proximos.filter(
-      (a: AlunoGraduacao) => a.podeGraduar && a.grauAtual < 4
+      (a: any) => a.prontoParaGraduar && a.grausAtual < a.grausMax
     ).length,
     prontosPraFaixa: proximos.filter(
-      (a: AlunoGraduacao) => a.podeGraduar && a.grauAtual >= 4
+      (a: any) => a.prontoParaGraduar && a.grausAtual >= a.grausMax
     ).length,
-    categoriasAdulto: proximos.filter(
-      (a: AlunoGraduacao) => a.categoria === "ADULTO"
-    ).length,
-    categoriasKids: proximos.filter(
-      (a: AlunoGraduacao) => a.categoria === "INFANTIL"
-    ).length,
+    categoriasAdulto: proximos.filter((a: any) => !a.kids).length,
+    categoriasKids: proximos.filter((a: any) => a.kids).length,
     historicoMes: historico.filter((h: any) => {
       const dataGrad = new Date(h.dataGraduacao);
       const agora = new Date();

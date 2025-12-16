@@ -235,8 +235,8 @@ export class GraduacaoService {
       .leftJoinAndSelect('af.aluno', 'aluno')
       .leftJoinAndSelect('af.faixaDef', 'faixaDef')
       .where('af.ativa = true')
-      .andWhere('af.graus_atual < faixaDef.graus_max')
       .andWhere('aluno.id IS NOT NULL'); // Garantir que o aluno existe
+    // Removido filtro af.graus_atual < faixaDef.graus_max para incluir alunos prontos para nova faixa
 
     // Filtrar por unidade se fornecido
     if (params.unidadeId) {

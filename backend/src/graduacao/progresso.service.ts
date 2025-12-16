@@ -144,6 +144,21 @@ export class ProgressoService {
         order: { data_concessao: 'DESC' },
       });
 
+      console.log(
+        `📊 [PROGRESSO] Aluno ID: ${aluno.id}, Usuario ID: ${usuarioId}`,
+      );
+      console.log(
+        `📊 [PROGRESSO] Total de graus encontrados: ${historicoGraus.length}`,
+      );
+      if (historicoGraus.length > 0) {
+        console.log(`📊 [PROGRESSO] Primeiro grau:`, {
+          id: historicoGraus[0].id,
+          grau_numero: historicoGraus[0].grau_numero,
+          faixa: historicoGraus[0].faixa?.nome_exibicao,
+          data_concessao: historicoGraus[0].data_concessao,
+        });
+      }
+
       // Buscar histórico de faixas da tabela aluno_faixa
       // Ordena primeiro por faixas atuais (dt_fim null), depois por dt_inicio DESC
       const historicoFaixas = await this.alunoFaixaRepository

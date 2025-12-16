@@ -15,6 +15,7 @@ import {
 } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { AlunosService } from '../services/alunos.service';
+import { Aluno } from '../entities/aluno.entity';
 import {
   ApiOperation,
   ApiQuery,
@@ -57,6 +58,43 @@ export class AlunosController {
   @ApiResponse({ status: 200, description: '✅ Lista de alunos encontrados' })
   async buscarPorNome(@Query('nome') nome: string) {
     return this.service.buscarPorNome(nome);
+  }
+
+  @Get('me')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({
+    summary: '👤 Buscar dados do aluno logado',
+    description:
+      'Retorna os dados do aluno vinculado ao usuário logado incluindo faixa ativa',
+  })
+  @ApiResponse({
+    status: 200,
+    description: '✅ Dados do aluno logado',
+  })
+  @ApiResponse({ status: 404, description: '❌ Aluno não encontrado' })
+  @ApiResponse({ status: 401, description: '🔒 Token inválido ou expirado' })
+  async getMe(@Request() req) {
+    const aluno = await this.service.findByUsuarioId(req.user.id);
+
+    if (!aluno) {
+      throw new NotFoundException('Aluno não encontrado para o usuário logado');
+    }
+
+    // Buscar faixa ativa
+    const alunoComFaixa = await this.dataSource
+      .getRepository(Aluno)
+      .createQueryBuilder('aluno')
+      .leftJoinAndSelect('aluno.faixas', 'faixas')
+      .leftJoinAndSelect('faixas.faixaDef', 'faixaDef')
+      .where('aluno.id = :id', { id: aluno.id })
+      .getOne();
+
+    const faixaAtiva = alunoComFaixa?.faixas?.find((f: any) => f.ativa);
+
+    return {
+      ...aluno,
+      faixa_atual: faixaAtiva?.faixaDef?.codigo || null,
+    };
   }
 
   @Get('meus-dependentes')

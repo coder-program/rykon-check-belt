@@ -211,7 +211,10 @@ export default function Planos() {
         duracao_dias: parseInt(formData.duracao_dias),
         max_alunos: formData.max_alunos ? parseInt(formData.max_alunos) : null,
         // Se não é franqueado, garantir que sempre envie a unidade do usuário
-        unidade_id: formData.unidade_id || (isFranqueado ? null : user.unidade_id) || null,
+        unidade_id:
+          formData.unidade_id ||
+          (isFranqueado ? null : user.unidade_id) ||
+          null,
       };
 
       console.log("URL:", url);
@@ -263,7 +266,7 @@ export default function Planos() {
   const handleEdit = (plano: Plano) => {
     const userData = localStorage.getItem("user");
     const user = JSON.parse(userData || "{}");
-    
+
     setEditingPlano(plano);
     setFormData({
       nome: plano.nome || "",
@@ -274,7 +277,9 @@ export default function Planos() {
       beneficios: plano.beneficios || "",
       max_alunos: plano.max_alunos?.toString() || "",
       // Se não é franqueado, usar sempre a unidade do usuário
-      unidade_id: isFranqueado ? (plano.unidade_id || "") : (user.unidade_id || plano.unidade_id || ""),
+      unidade_id: isFranqueado
+        ? plano.unidade_id || ""
+        : user.unidade_id || plano.unidade_id || "",
       ativo: plano.ativo ?? true,
     });
     setShowDialog(true);
@@ -738,7 +743,7 @@ export default function Planos() {
                 htmlFor="ativo"
                 className="text-sm font-semibold text-gray-700 cursor-pointer"
               >
-                ✅ Plano ativo (disponível para assinaturas)
+                Plano ativo (disponível para assinaturas)
               </label>
             </div>
             <DialogFooter className="border-t pt-4 mt-4">
@@ -769,7 +774,6 @@ export default function Planos() {
         title="Sucesso!"
         message={successDialog.message}
         confirmText="OK"
-        cancelText=""
         type="info"
         icon="warning"
       />

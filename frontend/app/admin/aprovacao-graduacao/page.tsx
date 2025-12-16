@@ -1097,9 +1097,12 @@ export default function AprovacaoGraduacaoPage() {
                         filtroCategoria === categoria;
 
                       // Filtro por faixa
+                      const faixaAtiva =
+                        aluno.faixas?.find((f) => f.ativa) || aluno.faixas?.[0];
+                      const faixaCodigo =
+                        faixaAtiva?.faixaDef?.codigo || aluno.faixa_atual;
                       const matchFaixa =
-                        filtroFaixa === "todas" ||
-                        aluno.faixa_atual === filtroFaixa;
+                        filtroFaixa === "todas" || faixaCodigo === filtroFaixa;
 
                       return matchNome && matchCategoria && matchFaixa;
                     })

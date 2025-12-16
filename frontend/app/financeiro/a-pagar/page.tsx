@@ -162,7 +162,7 @@ export default function ContasAPagar() {
 
       if (response.ok) {
         const data = await response.json();
-        console.log('📊 Despesas carregadas:', data);
+        console.log("📊 Despesas carregadas:", data);
         setDespesas(data);
       }
       setLoading(false);
@@ -243,6 +243,22 @@ export default function ContasAPagar() {
       return;
     }
 
+    // Validar data de vencimento no ano vigente
+    if (formData.data_vencimento) {
+      const dataVencimento = new Date(formData.data_vencimento);
+      const anoAtual = new Date().getFullYear();
+      const anoVencimento = dataVencimento.getFullYear();
+
+      if (anoVencimento !== anoAtual) {
+        mostrarMensagem(
+          "Data Inválida",
+          `A data de vencimento deve ser do ano vigente (${anoAtual})`,
+          "erro"
+        );
+        return;
+      }
+    }
+
     const userData = localStorage.getItem("user");
     const user = JSON.parse(userData || "{}");
 
@@ -259,7 +275,7 @@ export default function ContasAPagar() {
         unidade_id: formData.unidade_id || user.unidade_id,
       };
 
-      console.log('📤 Payload enviado:', payload);
+      console.log("📤 Payload enviado:", payload);
 
       const response = await fetch(url, {
         method: editingDespesa ? "PUT" : "POST",
@@ -301,19 +317,19 @@ export default function ContasAPagar() {
       data_vencimento: despesa.data_vencimento.split("T")[0],
       observacoes: despesa.observacoes || "",
     });
-    
+
     // Se for recorrente, extrair o dia do vencimento
     if (despesa.recorrencia && despesa.recorrencia !== "UNICA") {
       // Adiciona T00:00:00 para evitar problemas de timezone
-      const dataComHora = despesa.data_vencimento.includes('T') 
-        ? despesa.data_vencimento 
-        : despesa.data_vencimento + 'T00:00:00';
+      const dataComHora = despesa.data_vencimento.includes("T")
+        ? despesa.data_vencimento
+        : despesa.data_vencimento + "T00:00:00";
       const dia = new Date(dataComHora).getDate();
       setDiaVencimento(dia.toString());
     } else {
       setDiaVencimento("");
     }
-    
+
     setShowDialog(true);
   };
 
@@ -351,12 +367,12 @@ export default function ContasAPagar() {
           );
 
           if (response.ok) {
-            console.log('✅ Despesa excluída com sucesso');
+            console.log("✅ Despesa excluída com sucesso");
             await carregarDespesas();
             mostrarMensagem("Sucesso!", "Despesa excluída!", "sucesso");
           } else {
             const errorText = await response.text();
-            console.error('❌ Erro ao excluir:', response.status, errorText);
+            console.error("❌ Erro ao excluir:", response.status, errorText);
             mostrarMensagem("Erro", "Erro ao excluir despesa", "erro");
           }
         } catch (error) {
@@ -374,6 +390,34 @@ export default function ContasAPagar() {
 
     if (isBaixando) {
       console.log("⚠️ Já está processando o pagamento...");
+      return;
+    }
+
+    // Validar data de pagamento
+    const dataSelecionada = new Date(dataPagamento);
+    const hoje = new Date();
+    const anoAtual = hoje.getFullYear();
+    const mesAtual = hoje.getMonth();
+    const anoSelecionado = dataSelecionada.getFullYear();
+    const mesSelecionado = dataSelecionada.getMonth();
+
+    // Verificar se a data está no ano atual
+    if (anoSelecionado !== anoAtual) {
+      mostrarMensagem(
+        "Data Inválida",
+        "A data de pagamento deve ser do ano vigente (" + anoAtual + ").",
+        "erro"
+      );
+      return;
+    }
+
+    // Verificar se a data não está no futuro
+    if (dataSelecionada > hoje) {
+      mostrarMensagem(
+        "Data Inválida",
+        "A data de pagamento não pode ser no futuro.",
+        "erro"
+      );
       return;
     }
 
@@ -468,7 +512,7 @@ export default function ContasAPagar() {
 
   const formatDate = (date: string) => {
     // Adiciona T00:00:00 para evitar problemas de timezone
-    const dateWithTime = date.includes('T') ? date : date + 'T00:00:00';
+    const dateWithTime = date.includes("T") ? date : date + "T00:00:00";
     return new Date(dateWithTime).toLocaleDateString("pt-BR");
   };
 
@@ -815,8 +859,12 @@ export default function ContasAPagar() {
                         data_vencimento: e.target.value,
                       })
                     }
+                    min={`${new Date().getFullYear()}-01-01`}
                     required
                   />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Data deve ser do ano vigente ({new Date().getFullYear()})
+                  </p>
                 </div>
               ) : (
                 <div>
@@ -839,7 +887,9 @@ export default function ContasAPagar() {
                         // Se estiver editando e já tiver uma data, preserva mês/ano
                         let novaData;
                         if (formData.data_vencimento) {
-                          const dataAtual = new Date(formData.data_vencimento + 'T00:00:00');
+                          const dataAtual = new Date(
+                            formData.data_vencimento + "T00:00:00"
+                          );
                           novaData = new Date(
                             dataAtual.getFullYear(),
                             dataAtual.getMonth(),
@@ -856,9 +906,7 @@ export default function ContasAPagar() {
                         }
                         setFormData({
                           ...formData,
-                          data_vencimento: novaData
-                            .toISOString()
-                            .split("T")[0],
+                          data_vencimento: novaData.toISOString().split("T")[0],
                         });
                       } else if (!valor) {
                         // Limpa a data se o campo ficar vazio
@@ -939,8 +987,13 @@ export default function ContasAPagar() {
                 type="date"
                 value={dataPagamento}
                 onChange={(e) => setDataPagamento(e.target.value)}
+                min={`${new Date().getFullYear()}-01-01`}
+                max={new Date().toISOString().split("T")[0]}
                 required
               />
+              <p className="text-xs text-gray-500 mt-1">
+                Apenas datas do ano vigente ({new Date().getFullYear()})
+              </p>
             </div>
             <div>
               <label className="text-sm font-medium text-gray-700">
