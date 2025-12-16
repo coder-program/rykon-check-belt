@@ -573,6 +573,19 @@ export default function AlunoDashboard({
     // Prevenir múltiplas submissões
     if (isLoading) return;
 
+    // Validar consentimentos obrigatórios
+    if (formData.consent_lgpd !== "true") {
+      toast.error(
+        "É obrigatório autorizar o uso dos dados pessoais conforme a LGPD"
+      );
+      return;
+    }
+
+    if (formData.consent_imagem !== "true") {
+      toast.error("É obrigatório autorizar o uso de imagem para divulgação");
+      return;
+    }
+
     setIsLoading(true);
     try {
       if (isEditMode && editingDependenteId) {
@@ -737,7 +750,7 @@ export default function AlunoDashboard({
   if (presencaMensal === 100) {
     conquistas.push({
       titulo: "Assiduidade Perfeita!",
-      descricao: "100% de presença neste mes",
+      descricao: "100% de presença neste mês",
       data: new Date().toLocaleDateString("pt-BR"),
       icon: Star,
       color: "text-blue-600",

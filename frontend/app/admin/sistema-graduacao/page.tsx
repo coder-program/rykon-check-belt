@@ -219,7 +219,7 @@ export default function SistemaGraduacaoPage() {
 
   // Filtrar por busca
   const proximosFiltrados = proximos.filter((aluno: AlunoGraduacao) =>
-    aluno.nome.toLowerCase().includes(searchTerm.toLowerCase())
+    aluno.nome?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   // Estatísticas

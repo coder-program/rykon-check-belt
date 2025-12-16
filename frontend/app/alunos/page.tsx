@@ -717,12 +717,31 @@ function AlunosContent() {
                                 {aluno.faixa_atual}
                               </span>
                             )}
-                            {aluno.responsavel_id && (
-                              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-                                <Users className="h-3 w-3" />
-                                Dependente
-                              </span>
-                            )}
+                            {aluno.responsavel_id &&
+                              aluno.data_nascimento &&
+                              (() => {
+                                const hoje = new Date();
+                                const nascimento = new Date(
+                                  aluno.data_nascimento
+                                );
+                                let idade =
+                                  hoje.getFullYear() - nascimento.getFullYear();
+                                const mesAtual = hoje.getMonth();
+                                const mesNascimento = nascimento.getMonth();
+                                if (
+                                  mesAtual < mesNascimento ||
+                                  (mesAtual === mesNascimento &&
+                                    hoje.getDate() < nascimento.getDate())
+                                ) {
+                                  idade--;
+                                }
+                                return idade < 18;
+                              })() && (
+                                <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                                  <Users className="h-3 w-3" />
+                                  Dependente
+                                </span>
+                              )}
                           </div>
                           <div className="grid grid-cols-2 gap-4 text-sm text-gray-600">
                             <div>CPF: {aluno.cpf}</div>

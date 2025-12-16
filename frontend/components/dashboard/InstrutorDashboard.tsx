@@ -463,7 +463,7 @@ export default function InstrutorDashboard() {
                 <div className="text-2xl font-bold text-blue-600 mt-2">
                   +{stats.novasInscricoes}
                 </div>
-                <div className="text-xs text-gray-600">Este mes</div>
+                <div className="text-xs text-gray-600">Este mês</div>
               </div>
 
               <div className="p-4 bg-green-50 rounded-lg">

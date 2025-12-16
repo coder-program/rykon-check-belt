@@ -393,9 +393,7 @@ function DashboardFinanceiro() {
         {/* Faturas Pendentes (A Receber) */}
         <Card className="bg-gradient-to-br from-green-500 to-green-600 text-white">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">
-              A Receber
-            </CardTitle>
+            <CardTitle className="text-sm font-medium">A Receber</CardTitle>
             <TrendingUp className="h-4 w-4" />
           </CardHeader>
           <CardContent>
@@ -403,7 +401,8 @@ function DashboardFinanceiro() {
               {resumo?.faturasPendentes || 0}
             </div>
             <p className="text-xs text-green-100 mt-1">
-              {formatCurrency(Number(resumo?.valorFaturasPendentes || 0))} • {resumo?.faturasAtrasadas || 0} atrasadas
+              {formatCurrency(Number(resumo?.valorFaturasPendentes || 0))} •{" "}
+              {resumo?.faturasAtrasadas || 0} atrasadas
             </p>
           </CardContent>
         </Card>
@@ -411,9 +410,7 @@ function DashboardFinanceiro() {
         {/* Despesas Pendentes (A Pagar) */}
         <Card className="bg-gradient-to-br from-red-500 to-red-600 text-white">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">
-              A Pagar
-            </CardTitle>
+            <CardTitle className="text-sm font-medium">A Pagar</CardTitle>
             <TrendingDown className="h-4 w-4" />
           </CardHeader>
           <CardContent>
@@ -583,7 +580,7 @@ function DashboardFinanceiro() {
               </span>
             </div>
             <Button
-              onClick={() => router.push("/financeiro/vendas")}
+              onClick={() => router.push("/financeiro/vendas-online")}
               className="w-full"
               variant="outline"
             >

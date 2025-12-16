@@ -685,9 +685,7 @@ export default function DashboardNew() {
 
   // Paginação e filtros
   const pageSize = 30; // quantidade por página para infinite scroll
-  const [filterFaixa, setFilterFaixa] = React.useState<
-    "todos" | "kids" | "adulto"
-  >("todos");
+  const [filterFaixa, setFilterFaixa] = React.useState<string>("todos");
 
   // Função de filtragem local (mock) — futuramente mover para servidor
   const filterLocal = React.useCallback(
@@ -713,6 +711,36 @@ export default function DashboardNew() {
 
   // Hook para buscar estatísticas reais das unidades
   const unidadesStats = useUnidadesStats();
+
+  // Query para buscar faixas disponíveis
+  const faixasQuery = useQuery({
+    queryKey: ["faixas-disponiveis"],
+    queryFn: async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/graduacao/faixas`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error("Erro ao buscar faixas");
+        }
+
+        const data = await response.json();
+        return data || [];
+      } catch (error) {
+        console.error("Erro ao buscar faixas:", error);
+        return [];
+      }
+    },
+    staleTime: 60 * 60 * 1000, // Cache por 1 hora
+  });
 
   // Query para buscar unidades disponíveis
   const unidadesQuery = useQuery({
@@ -821,13 +849,14 @@ export default function DashboardNew() {
       lastPage.hasNextPage ? lastPage.page + 1 : undefined,
     queryFn: async ({ pageParam }) => {
       // Buscar dados reais do banco
-      // Não enviar faixa se for categoria (kids/adulto), apenas se for faixa real
+      // Enviar faixa específica se não for categoria (kids/adulto)
+      // Para categorias, filtrar client-side
       const faixaParam =
-        filterFaixa === "todos" ||
-        filterFaixa === "kids" ||
-        filterFaixa === "adulto"
-          ? undefined
-          : filterFaixa;
+        filterFaixa !== "todos" &&
+        filterFaixa !== "kids" &&
+        filterFaixa !== "adulto"
+          ? filterFaixa
+          : undefined;
 
       const response = await listAlunos({
         page: pageParam,
@@ -889,13 +918,13 @@ export default function DashboardNew() {
     getNextPageParam: (lastPage) =>
       lastPage.hasNextPage ? lastPage.page + 1 : undefined,
     queryFn: async ({ pageParam }) => {
-      // Não enviar faixa se for categoria (kids/adulto), apenas se for faixa real
+      // Enviar faixa específica se não for categoria (kids/adulto)
       const faixaParam =
-        filterFaixa === "todos" ||
-        filterFaixa === "kids" ||
-        filterFaixa === "adulto"
-          ? undefined
-          : filterFaixa;
+        filterFaixa !== "todos" &&
+        filterFaixa !== "kids" &&
+        filterFaixa !== "adulto"
+          ? filterFaixa
+          : undefined;
 
       const response = await listProfessores({
         page: pageParam,
@@ -941,13 +970,13 @@ export default function DashboardNew() {
       lastPage.hasNextPage ? lastPage.page + 1 : undefined,
     queryFn: async ({ pageParam }) => {
       // Buscar dados reais do banco
-      // Não enviar faixa se for categoria (kids/adulto), apenas se for faixa real
+      // Enviar faixa específica se não for categoria (kids/adulto)
       const faixaParam =
-        filterFaixa === "todos" ||
-        filterFaixa === "kids" ||
-        filterFaixa === "adulto"
-          ? undefined
-          : filterFaixa;
+        filterFaixa !== "todos" &&
+        filterFaixa !== "kids" &&
+        filterFaixa !== "adulto"
+          ? filterFaixa
+          : undefined;
 
       const response = await listAlunos({
         page: pageParam,
@@ -1047,9 +1076,8 @@ export default function DashboardNew() {
   // Estado de filtros na Visão Geral (Próximos a Receber Grau)
   const [overviewSearch, setOverviewSearch] = React.useState("");
   const [overviewDebounced, setOverviewDebounced] = React.useState("");
-  const [overviewFilterFaixa, setOverviewFilterFaixa] = React.useState<
-    "todos" | "kids" | "adulto"
-  >("todos");
+  const [overviewFilterFaixa, setOverviewFilterFaixa] =
+    React.useState<string>("todos");
   const [overviewSort, setOverviewSort] = React.useState<
     "faltam-asc" | "faltam-desc"
   >("faltam-asc");
@@ -1075,9 +1103,18 @@ export default function DashboardNew() {
           pageSize: "50",
         });
 
-        // Adicionar filtro de categoria (kids/adulto/todos)
+        // Se for faixa específica (não "todos", "kids", "adulto"), enviar como faixa
         if (overviewFilterFaixa && overviewFilterFaixa !== "todos") {
-          params.append("categoria", overviewFilterFaixa);
+          if (
+            overviewFilterFaixa === "kids" ||
+            overviewFilterFaixa === "adulto"
+          ) {
+            // Filtro de categoria
+            params.append("categoria", overviewFilterFaixa);
+          } else {
+            // Filtro de faixa específica
+            params.append("faixa", overviewFilterFaixa);
+          }
         }
 
         if (overviewDebounced) {
@@ -1115,6 +1152,7 @@ export default function DashboardNew() {
         console.log("✅ [FRONTEND] Dados recebidos:", {
           total: data.total,
           items: data.items?.length,
+          filtro: overviewFilterFaixa,
           primeiros3: data.items?.slice(0, 3),
         });
 
@@ -1127,6 +1165,7 @@ export default function DashboardNew() {
           graus: item.grausAtual,
           faltam: item.faltamAulas,
           kids: item.kids,
+          isFaixaPreta: item.isFaixaPreta || false,
         }));
 
         // Aplicar ordenação baseada no overviewSort
@@ -1785,16 +1824,35 @@ export default function DashboardNew() {
 
                         <div className="flex gap-2">
                           <select
-                            className="px-4 py-2 text-sm font-medium border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                            className="px-4 py-2 text-sm font-medium border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white min-w-[160px]"
                             value={overviewFilterFaixa}
                             onChange={(e) =>
-                              setOverviewFilterFaixa(e.target.value as any)
+                              setOverviewFilterFaixa(e.target.value)
                             }
                           >
-                            <option value="todos">📊 Todos</option>
-                            <option value="kids">👶 Kids</option>
-                            <option value="adulto">👤 Adulto</option>
+                            <option value="todos">📋 Todas as Faixas</option>
+                            <optgroup label="Por Categoria">
+                              <option value="kids">👶 Kids</option>
+                              <option value="adulto">👤 Adulto</option>
+                            </optgroup>
+                            <optgroup label="Por Faixa Específica">
+                              {(faixasQuery.data || []).map((faixa: any) => (
+                                <option key={faixa.id} value={faixa.codigo}>
+                                  {faixa.nome_exibicao}
+                                </option>
+                              ))}
+                            </optgroup>
                           </select>
+
+                          {overviewFilterFaixa !== "todos" && (
+                            <button
+                              className="px-3 py-2 text-sm font-medium border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                              onClick={() => setOverviewFilterFaixa("todos")}
+                              title="Limpar filtro de faixa"
+                            >
+                              ✕
+                            </button>
+                          )}
 
                           <select
                             className="px-4 py-2 text-sm font-medium border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
@@ -1881,7 +1939,11 @@ export default function DashboardNew() {
                                       </p>
                                       <div>
                                         <p className="text-sm text-gray-600 font-medium">
-                                          aulas
+                                          {aluno.isFaixaPreta
+                                            ? aluno.faltam === 1
+                                              ? "mês"
+                                              : "meses"
+                                            : "aulas"}
                                         </p>
                                       </div>
                                     </div>
@@ -2219,15 +2281,35 @@ export default function DashboardNew() {
                           onChange={(e) => setSearchTerm(e.target.value)}
                         />
                       </div>
-                      <select
-                        className="select select-bordered select-sm"
-                        value={filterFaixa}
-                        onChange={(e) => setFilterFaixa(e.target.value as any)}
-                      >
-                        <option value="todos">Todos</option>
-                        <option value="kids">Kids</option>
-                        <option value="adulto">Adulto</option>
-                      </select>
+                      <div className="flex items-center gap-2">
+                        <select
+                          className="select select-bordered select-sm min-w-[160px]"
+                          value={filterFaixa}
+                          onChange={(e) => setFilterFaixa(e.target.value)}
+                        >
+                          <option value="todos">📋 Todas as Faixas</option>
+                          <optgroup label="Por Categoria">
+                            <option value="kids">👶 Kids</option>
+                            <option value="adulto">👤 Adulto</option>
+                          </optgroup>
+                          <optgroup label="Por Faixa Específica">
+                            {(faixasQuery.data || []).map((faixa: any) => (
+                              <option key={faixa.id} value={faixa.codigo}>
+                                {faixa.nome_exibicao}
+                              </option>
+                            ))}
+                          </optgroup>
+                        </select>
+                        {filterFaixa !== "todos" && (
+                          <button
+                            className="btn btn-sm btn-ghost btn-circle"
+                            onClick={() => setFilterFaixa("todos")}
+                            title="Limpar filtro"
+                          >
+                            ✕
+                          </button>
+                        )}
+                      </div>
                       {selectedAlunos.length > 0 && (
                         <button
                           className="btn btn-primary"
@@ -2718,7 +2800,13 @@ export default function DashboardNew() {
                             <div className="text-right">
                               <p className="text-sm font-semibold text-gray-900">
                                 Faltam {aluno.faltam}{" "}
-                                {aluno.faltam === 1 ? "aula" : "aulas"}
+                                {aluno.isFaixaPreta
+                                  ? aluno.faltam === 1
+                                    ? "mês"
+                                    : "meses"
+                                  : aluno.faltam === 1
+                                  ? "aula"
+                                  : "aulas"}
                               </p>
                               <p className="text-xs text-gray-600">
                                 para próximo grau

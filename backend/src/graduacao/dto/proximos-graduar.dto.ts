@@ -51,6 +51,12 @@ export class ProximoGraduarDto {
     description: 'Indica se é aluno infantil (kids)',
   })
   kids?: boolean;
+
+  @ApiProperty({
+    example: false,
+    description: 'Indica se é faixa preta (graduação por tempo, não por aulas)',
+  })
+  isFaixaPreta?: boolean;
 }
 
 export class ListaProximosGraduarDto {

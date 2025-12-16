@@ -91,9 +91,9 @@ function LoginContent() {
     const message = searchParams.get("message");
     if (message === "registration-success") {
       toast.success(
-        "Cadastro realizado com sucesso! Faça login para continuar.",
+        "Cadastro enviado para aprovação da unidade. Aguarde a liberação para acessar o sistema.",
         {
-          duration: 4000,
+          duration: 5000,
           position: "top-center",
         }
       );

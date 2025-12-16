@@ -499,6 +499,12 @@ export class PresencaService {
       throw new NotFoundException('Unidade não encontrada');
     }
 
+    console.log('🔍 [CHECK-IN] Configuração da unidade:', {
+      unidadeId: unidade.id,
+      nome: unidade.nome,
+      requer_aprovacao: unidade.requer_aprovacao_checkin,
+    });
+
     // Verificar se já existe check-in hoje (apenas 1 check-in por dia permitido)
     const hoje = new Date();
     hoje.setHours(0, 0, 0, 0);
@@ -519,9 +525,15 @@ export class PresencaService {
     }
 
     // Definir status de aprovação baseado na configuração da unidade
-    const statusAprovacao = unidade.requer_aprovacao_checkin
-      ? 'PENDENTE'
-      : 'APROVADO';
+    // Garantir que NULL seja tratado como false (não requer aprovação)
+    const requerAprovacao = unidade.requer_aprovacao_checkin === true;
+    const statusAprovacao = requerAprovacao ? 'PENDENTE' : 'APROVADO';
+
+    console.log('✅ [CHECK-IN] Status de aprovação determinado:', {
+      requer_aprovacao_checkin: unidade.requer_aprovacao_checkin,
+      requerAprovacao,
+      statusAprovacao,
+    });
 
     // Registrar presença
     const presenca = this.presencaRepository.create({

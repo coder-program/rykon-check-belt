@@ -57,6 +57,25 @@ export class GraduacaoService {
   ) {}
 
   /**
+   * Calcula o número de meses entre duas datas
+   */
+  private calcularMesesEntreDatas(dataInicio: Date, dataFim: Date): number {
+    const inicio = new Date(dataInicio);
+    const fim = new Date(dataFim);
+
+    let meses =
+      (fim.getFullYear() - inicio.getFullYear()) * 12 +
+      (fim.getMonth() - inicio.getMonth());
+
+    // Se o dia final for menor que o dia inicial, subtrair 1 mês
+    if (fim.getDate() < inicio.getDate()) {
+      meses--;
+    }
+
+    return Math.max(0, meses);
+  }
+
+  /**
    * Busca ou cria a faixa ativa do aluno
    */
   async getFaixaAtivaAluno(alunoId: string): Promise<AlunoFaixa | null> {
@@ -168,6 +187,7 @@ export class GraduacaoService {
     pageSize?: number;
     unidadeId?: string;
     categoria?: 'adulto' | 'kids' | 'todos';
+    faixa?: string;
     userId?: string;
   }): Promise<ListaProximosGraduarDto> {
     console.log(
@@ -259,6 +279,17 @@ export class GraduacaoService {
       }
     }
 
+    // Filtrar por faixa específica se fornecido
+    if (params.faixa) {
+      console.log(
+        '✅ [PROXIMOS GRADUAR] Filtrando por faixa específica:',
+        params.faixa,
+      );
+      query = query.andWhere('faixaDef.codigo = :faixa', {
+        faixa: params.faixa,
+      });
+    }
+
     // Ordenar por quem está mais próximo (mais presenças no ciclo)
     query = query
       .orderBy('af.presencas_no_ciclo', 'DESC')
@@ -285,6 +316,35 @@ export class GraduacaoService {
       }),
     });
 
+    // Buscar configurações de graduação de todas as unidades envolvidas
+    const unidadesIds = [
+      ...new Set(items.map((af) => af.aluno?.unidade_id).filter(Boolean)),
+    ];
+    const configuracoesMap = new Map<string, any>();
+
+    if (unidadesIds.length > 0) {
+      const configuracoes = await this.configuracaoGraduacaoRepository.find({
+        where: unidadesIds.map((uid) => ({ unidade_id: uid })),
+      });
+
+      configuracoes.forEach((config) => {
+        configuracoesMap.set(config.unidade_id, config.config_faixas);
+        console.log(`📋 [CONFIG] Unidade ${config.unidade_id}:`, {
+          faixas: Object.keys(config.config_faixas),
+          exemplo:
+            config.config_faixas[Object.keys(config.config_faixas)[0] || ''],
+        });
+      });
+
+      console.log(
+        '⚙️ [PROXIMOS GRADUAR] Configurações carregadas:',
+        configuracoesMap.size,
+        'unidades',
+        '| IDs buscados:',
+        unidadesIds,
+      );
+    }
+
     // Mapear para o DTO
     const mappedItems = items
       .filter((af) => af.aluno != null) // Filtrar registros sem aluno
@@ -295,23 +355,113 @@ export class GraduacaoService {
         const idade = hoje.getFullYear() - nascimento.getFullYear();
         const isKids = idade < 16;
 
+        // Buscar configuração personalizada da unidade para esta faixa
+        const unidadeId = af.aluno.unidade_id;
+        const faixaCodigo = af.faixaDef?.codigo;
+        const configUnidade = configuracoesMap.get(unidadeId);
+
+        // Tentar encontrar config da faixa com fallback inteligente
+        let configFaixa = configUnidade?.[faixaCodigo];
+
+        // Se não encontrou exato, tentar variações comuns
+        if (!configFaixa && faixaCodigo) {
+          // Tentar com sufixo _INF (infantil)
+          configFaixa = configUnidade?.[`${faixaCodigo}_INF`];
+
+          // Tentar sem sufixo _INFANTIL
+          if (!configFaixa && faixaCodigo.endsWith('_INFANTIL')) {
+            const codigoSemSufixo = faixaCodigo.replace('_INFANTIL', '_INF');
+            configFaixa = configUnidade?.[codigoSemSufixo];
+          }
+
+          // Tentar abreviações (AMARELA_BRANCA -> AMAR_BRANCA_INF)
+          if (!configFaixa) {
+            const codigoAbreviado = faixaCodigo
+              .replace('AMARELA', 'AMAR')
+              .replace('LARANJA', 'LARA')
+              .replace('_INFANTIL', '_INF');
+            configFaixa =
+              configUnidade?.[`${codigoAbreviado}_INF`] ||
+              configUnidade?.[codigoAbreviado];
+          }
+        }
+
+        console.log(`🔍 [DEBUG ${af.aluno.nome_completo}]:`, {
+          unidade_id: unidadeId,
+          faixa_codigo: faixaCodigo,
+          tem_config_unidade: !!configUnidade,
+          tem_config_faixa: !!configFaixa,
+          config_faixa: configFaixa,
+          config_unidade_keys: configUnidade ? Object.keys(configUnidade) : [],
+          default_aulas: af.faixaDef?.aulas_por_grau,
+        });
+
+        // Usar configuração personalizada se existir, senão usar padrão da faixaDef
+        const aulasPorGrau =
+          configFaixa?.aulas_por_grau || af.faixaDef?.aulas_por_grau || 40;
+        const grausMax =
+          configFaixa?.graus_maximos || af.faixaDef?.graus_max || 4;
+        const tempoMinimoMeses = configFaixa?.tempo_minimo_meses || null;
+
+        // REGRA ESPECIAL: Faixa Preta é por TEMPO (36 meses), não por aulas
+        const isFaixaPreta = faixaCodigo === 'PRETA';
+        let faltamAulas = 0;
+        let prontoParaGraduar = false;
+        let progressoPercentual = 0;
+
+        if (isFaixaPreta) {
+          // Para faixa preta: calcular tempo desde último grau
+          const tempoMinimoRequerido = tempoMinimoMeses || 36; // 36 meses (3 anos)
+          const dataInicioFaixa = af.dt_inicio || af.created_at;
+          const mesesNaFaixa = this.calcularMesesEntreDatas(
+            dataInicioFaixa,
+            hoje,
+          );
+
+          faltamAulas = Math.max(0, tempoMinimoRequerido - mesesNaFaixa);
+          prontoParaGraduar = mesesNaFaixa >= tempoMinimoRequerido;
+          progressoPercentual = Math.min(
+            mesesNaFaixa / tempoMinimoRequerido,
+            1.0,
+          );
+
+          console.log(`🥋 [${af.aluno.nome_completo}] FAIXA PRETA (TEMPO):`, {
+            faixa: faixaCodigo,
+            meses_na_faixa: mesesNaFaixa,
+            tempo_minimo_meses: tempoMinimoRequerido,
+            faltam_meses: faltamAulas,
+            pronto: prontoParaGraduar,
+          });
+        } else {
+          // Para outras faixas: calcular por aulas
+          faltamAulas = Math.max(0, aulasPorGrau - af.presencas_no_ciclo);
+          prontoParaGraduar = af.presencas_no_ciclo >= aulasPorGrau;
+          progressoPercentual = af.presencas_no_ciclo / aulasPorGrau;
+
+          console.log(`👤 [${af.aluno.nome_completo}] Config:`, {
+            faixa: faixaCodigo,
+            unidade_id: unidadeId,
+            tem_config_custom: !!configFaixa,
+            aulas_por_grau: aulasPorGrau,
+            graus_max: grausMax,
+            presencas_no_ciclo: af.presencas_no_ciclo,
+            faltam: faltamAulas,
+          });
+        }
+
         return {
           alunoId: af.aluno.id,
           nomeCompleto: af.aluno.nome_completo || 'Nome não disponível',
           faixa: af.faixaDef?.nome_exibicao || 'Não definida',
           corHex: af.faixaDef?.cor_hex || '#CCCCCC',
           grausAtual: af.graus_atual,
-          grausMax: af.faixaDef?.graus_max || 4,
-          faltamAulas: Math.max(
-            0,
-            (af.faixaDef?.aulas_por_grau || 0) - af.presencas_no_ciclo,
-          ),
-          prontoParaGraduar:
-            af.presencas_no_ciclo >= (af.faixaDef?.aulas_por_grau || 0),
-          progressoPercentual:
-            af.presencas_no_ciclo / (af.faixaDef?.aulas_por_grau || 1),
+          grausMax: grausMax,
+          faltamAulas: faltamAulas,
+          prontoParaGraduar: prontoParaGraduar,
+          progressoPercentual: progressoPercentual,
           presencasTotalFaixa: af.presencas_no_ciclo,
           kids: isKids,
+          isFaixaPreta: isFaixaPreta, // Adicionar flag para frontend saber se é tempo ou aulas
         };
       });
 
@@ -1572,16 +1722,16 @@ export class GraduacaoService {
    */
   async aprovarGraduacoesEmMassa(graduacaoIds: string[], aprovadorId: string) {
     return await this.dataSource.transaction(async (manager: EntityManager) => {
-      let aprovadorNome = 'Sistema';
+      let aprovadorIdFinal: string | null = null;
 
-      // Só busca aprovador se for um UUID válido (não "sistema")
+      // Só usa aprovador se for um UUID válido (não "sistema")
       if (aprovadorId && aprovadorId !== 'sistema') {
         const aprovador = await manager.findOne(Person, {
           where: { id: aprovadorId },
         });
 
         if (aprovador) {
-          aprovadorNome = aprovador.nome_completo || 'Sistema';
+          aprovadorIdFinal = aprovador.id;
         }
       }
 
@@ -1625,7 +1775,7 @@ export class GraduacaoService {
         await manager.update(AlunoGraduacao, graduacao.id, {
           aprovado: true,
           dt_aprovacao: now,
-          aprovado_por: aprovadorNome,
+          aprovado_por: aprovadorIdFinal, // UUID ou null (não string "Sistema")
         });
       }
 

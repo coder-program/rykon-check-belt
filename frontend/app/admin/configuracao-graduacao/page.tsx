@@ -95,7 +95,7 @@ export default function ConfiguracaoGraduacaoPage() {
   }>({});
   const [percentualFrequencia, setPercentualFrequencia] = useState<number>(75);
 
-  const { data: unidadesResponse } = useQuery({
+  const { data: unidadesResponse, isLoading: loadingUnidades } = useQuery({
     queryKey: ["unidades"],
     queryFn: async () => {
       const token = localStorage.getItem("token");
@@ -104,9 +104,10 @@ export default function ConfiguracaoGraduacaoPage() {
       });
       return response.data;
     },
+    enabled: !!user && temPermissao,
   });
 
-  const unidades = unidadesResponse?.items || [];
+  const unidades: Unidade[] = unidadesResponse?.items || [];
 
   const { data: configAtual, isLoading: loadingConfig } =
     useQuery<ConfiguracaoGraduacao>({
@@ -245,19 +246,31 @@ export default function ConfiguracaoGraduacaoPage() {
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Unidade *
             </label>
-            <select
-              value={selectedUnidade}
-              onChange={(e) => setSelectedUnidade(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              required
-            >
-              <option value="">Selecione uma unidade</option>
-              {unidades?.map((unidade: Unidade) => (
-                <option key={unidade.id} value={unidade.id}>
-                  {unidade.nome}
-                </option>
-              ))}
-            </select>
+            {loadingUnidades ? (
+              <div className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50">
+                <p className="text-gray-500">Carregando unidades...</p>
+              </div>
+            ) : (
+              <select
+                value={selectedUnidade}
+                onChange={(e) => setSelectedUnidade(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                required
+              >
+                <option value="">Selecione uma unidade</option>
+                {unidades.length > 0 ? (
+                  unidades.map((unidade: Unidade) => (
+                    <option key={unidade.id} value={unidade.id}>
+                      {unidade.nome}
+                    </option>
+                  ))
+                ) : (
+                  <option value="" disabled>
+                    Nenhuma unidade disponível
+                  </option>
+                )}
+              </select>
+            )}
           </div>
 
           {selectedUnidade && !loadingConfig && (

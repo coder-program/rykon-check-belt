@@ -247,6 +247,7 @@ export class GraduacaoController {
     @Query('pageSize') pageSize?: number,
     @Query('unidadeId') unidadeId?: string,
     @Query('categoria') categoria?: 'adulto' | 'kids' | 'todos',
+    @Query('faixa') faixa?: string,
     @Request() req?: any,
   ): Promise<ListaProximosGraduarDto> {
     // VALIDAÇÃO DE SEGURANÇA
@@ -268,6 +269,7 @@ export class GraduacaoController {
       unidade_id_usuario: userUnidadeId,
       filtro_unidade_id: unidadeId,
       categoria: categoria,
+      faixa: faixa,
       isFranqueado,
     });
 
@@ -307,6 +309,7 @@ export class GraduacaoController {
       pageSize,
       unidadeId,
       categoria,
+      faixa,
       userId: user?.id,
     });
   }

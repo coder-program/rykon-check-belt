@@ -843,7 +843,8 @@ export default function DependenteForm({
                   className="font-normal cursor-pointer text-xs sm:text-sm"
                 >
                   Autorizo o uso dos meus dados pessoais conforme a Lei Geral de
-                  Proteção de Dados (LGPD)
+                  Proteção de Dados (LGPD){" "}
+                  <span className="text-red-500">*</span>
                 </Label>
               </div>
 
@@ -865,7 +866,8 @@ export default function DependenteForm({
                   className="font-normal cursor-pointer text-xs sm:text-sm"
                 >
                   Autorizo o uso de imagem para divulgação em redes sociais e
-                  materiais de marketing da academia
+                  materiais de marketing da academia{" "}
+                  <span className="text-red-500">*</span>
                 </Label>
               </div>
             </div>
@@ -906,7 +908,12 @@ export default function DependenteForm({
             <Button
               type="submit"
               className="flex-1 h-10 sm:h-11 text-sm sm:text-base bg-blue-600 hover:bg-blue-700 order-1 sm:order-2"
-              disabled={isLoading || !!erroIdade}
+              disabled={
+                isLoading ||
+                !!erroIdade ||
+                formData.consent_lgpd !== "true" ||
+                formData.consent_imagem !== "true"
+              }
             >
               {isLoading
                 ? isEditMode

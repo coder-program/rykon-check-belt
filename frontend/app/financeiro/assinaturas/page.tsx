@@ -94,6 +94,7 @@ export default function Assinaturas() {
   const [processando, setProcessando] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [alunoSearchTerm, setAlunoSearchTerm] = useState("");
+  const [alunoSelecionado, setAlunoSelecionado] = useState<Aluno | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [showDialog, setShowDialog] = useState(false);
   const [showDetalhesDialog, setShowDetalhesDialog] = useState(false);
@@ -347,13 +348,13 @@ export default function Assinaturas() {
 
   const handleRenovar = async (id: string) => {
     if (processando) return; // Prevenir cliques múltiplos
-    
+
     mostrarConfirmacao(
       "Renovar Assinatura",
       "Deseja renovar esta assinatura?",
       async () => {
         if (processando) return; // Prevenir cliques múltiplos
-        
+
         try {
           setProcessando(true);
           const token = localStorage.getItem("token");
@@ -390,13 +391,13 @@ export default function Assinaturas() {
 
   const handleCancelar = async (id: string) => {
     if (processando) return; // Prevenir cliques múltiplos
-    
+
     mostrarConfirmacao(
       "Cancelar Assinatura",
       "Deseja realmente cancelar esta assinatura? Esta ação não pode ser desfeita.",
       async () => {
         if (processando) return; // Prevenir cliques múltiplos
-        
+
         try {
           setProcessando(true);
           const token = localStorage.getItem("token");
@@ -437,13 +438,13 @@ export default function Assinaturas() {
 
   const handlePausar = async (id: string) => {
     if (processando) return;
-    
+
     mostrarConfirmacao(
       "Pausar Assinatura",
       "Deseja pausar esta assinatura? Não serão geradas faturas enquanto estiver pausada.",
       async () => {
         if (processando) return;
-        
+
         try {
           setProcessando(true);
           const token = localStorage.getItem("token");
@@ -480,13 +481,13 @@ export default function Assinaturas() {
 
   const handleReativar = async (id: string) => {
     if (processando) return;
-    
+
     mostrarConfirmacao(
       "Reativar Assinatura",
       "Deseja reativar esta assinatura? As faturas voltarão a ser geradas.",
       async () => {
         if (processando) return;
-        
+
         try {
           setProcessando(true);
           const token = localStorage.getItem("token");
@@ -743,7 +744,11 @@ export default function Assinaturas() {
                           onClick={() => handleRenovar(assinatura.id)}
                           disabled={processando}
                         >
-                          <RefreshCw className={`h-4 w-4 ${processando ? 'animate-spin' : ''}`} />
+                          <RefreshCw
+                            className={`h-4 w-4 ${
+                              processando ? "animate-spin" : ""
+                            }`}
+                          />
                         </Button>
                         <Button
                           size="sm"
@@ -802,9 +807,40 @@ export default function Assinaturas() {
               <Input
                 placeholder="🔍 Buscar aluno por nome..."
                 value={alunoSearchTerm}
-                onChange={(e) => setAlunoSearchTerm(e.target.value)}
+                onChange={(e) => {
+                  setAlunoSearchTerm(e.target.value);
+                  setAlunoSelecionado(null);
+                }}
               />
-              {alunoSearchTerm && (
+              {alunoSelecionado && (
+                <div className="mt-2 p-3 bg-green-50 border border-green-200 rounded-md">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="font-medium text-green-900">
+                        ✓{" "}
+                        {alunoSelecionado.nome_completo ||
+                          alunoSelecionado.nome}
+                      </div>
+                      {alunoSelecionado.cpf && (
+                        <div className="text-sm text-green-700">
+                          CPF: {alunoSelecionado.cpf}
+                        </div>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAlunoSelecionado(null);
+                        setFormData({ ...formData, aluno_id: "" });
+                      }}
+                      className="text-red-600 hover:text-red-800"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                </div>
+              )}
+              {alunoSearchTerm && !alunoSelecionado && (
                 <div className="mt-2 max-h-[200px] overflow-y-auto border rounded-md bg-white shadow-lg">
                   {alunos
                     .filter((aluno) => {
@@ -823,9 +859,8 @@ export default function Assinaturas() {
                             aluno_id: aluno.id,
                             unidade_id: aluno.unidade_id || formData.unidade_id,
                           });
-                          setAlunoSearchTerm(
-                            aluno.nome_completo || aluno.nome || ""
-                          );
+                          setAlunoSelecionado(aluno);
+                          setAlunoSearchTerm("");
                         }}
                       >
                         <div className="font-medium">
