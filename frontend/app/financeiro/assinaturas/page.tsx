@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import ProtegerRotaFinanceira from "@/components/financeiro/ProtegerRotaFinanceira";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -79,6 +80,7 @@ interface Assinatura {
 }
 
 export default function Assinaturas() {
+  const queryClient = useQueryClient();
   const [assinaturas, setAssinaturas] = useState<Assinatura[]>([]);
   const [planos, setPlanos] = useState<Plano[]>([]);
   const [unidades, setUnidades] = useState<Unidade[]>([]);
@@ -89,6 +91,7 @@ export default function Assinaturas() {
   );
   const [unidadeSelecionada, setUnidadeSelecionada] = useState<string>("todas");
   const [loading, setLoading] = useState(true);
+  const [processando, setProcessando] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [alunoSearchTerm, setAlunoSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -343,11 +346,16 @@ export default function Assinaturas() {
   };
 
   const handleRenovar = async (id: string) => {
+    if (processando) return; // Prevenir cliques múltiplos
+    
     mostrarConfirmacao(
       "Renovar Assinatura",
       "Deseja renovar esta assinatura?",
       async () => {
+        if (processando) return; // Prevenir cliques múltiplos
+        
         try {
+          setProcessando(true);
           const token = localStorage.getItem("token");
           const response = await fetch(
             `${process.env.NEXT_PUBLIC_API_URL}/financeiro/assinaturas/renovar/${id}`,
@@ -361,6 +369,7 @@ export default function Assinaturas() {
 
           if (response.ok) {
             carregarDados();
+            queryClient.invalidateQueries({ queryKey: ["transacoes"] });
             mostrarMensagem(
               "Sucesso!",
               "Assinatura renovada com sucesso!",
@@ -372,30 +381,42 @@ export default function Assinaturas() {
         } catch (error) {
           console.error("Erro ao renovar assinatura:", error);
           mostrarMensagem("Erro", "Erro ao renovar assinatura", "erro");
+        } finally {
+          setProcessando(false);
         }
       }
     );
   };
 
   const handleCancelar = async (id: string) => {
+    if (processando) return; // Prevenir cliques múltiplos
+    
     mostrarConfirmacao(
       "Cancelar Assinatura",
       "Deseja realmente cancelar esta assinatura? Esta ação não pode ser desfeita.",
       async () => {
+        if (processando) return; // Prevenir cliques múltiplos
+        
         try {
+          setProcessando(true);
           const token = localStorage.getItem("token");
           const response = await fetch(
-            `${process.env.NEXT_PUBLIC_API_URL}/financeiro/assinaturas/cancelar/${id}`,
+            `${process.env.NEXT_PUBLIC_API_URL}/financeiro/assinaturas/${id}/cancelar`,
             {
-              method: "POST",
+              method: "PATCH",
               headers: {
                 Authorization: `Bearer ${token}`,
+                "Content-Type": "application/json",
               },
+              body: JSON.stringify({
+                motivo_cancelamento: "Cancelado pelo usuário",
+              }),
             }
           );
 
           if (response.ok) {
             carregarDados();
+            queryClient.invalidateQueries({ queryKey: ["transacoes"] });
             mostrarMensagem(
               "Sucesso!",
               "Assinatura cancelada com sucesso!",
@@ -407,6 +428,8 @@ export default function Assinaturas() {
         } catch (error) {
           console.error("Erro ao cancelar assinatura:", error);
           mostrarMensagem("Erro", "Erro ao cancelar assinatura", "erro");
+        } finally {
+          setProcessando(false);
         }
       }
     );
@@ -632,13 +655,15 @@ export default function Assinaturas() {
                           size="sm"
                           variant="outline"
                           onClick={() => handleRenovar(assinatura.id)}
+                          disabled={processando}
                         >
-                          <RefreshCw className="h-4 w-4" />
+                          <RefreshCw className={`h-4 w-4 ${processando ? 'animate-spin' : ''}`} />
                         </Button>
                         <Button
                           size="sm"
                           variant="outline"
                           onClick={() => handleCancelar(assinatura.id)}
+                          disabled={processando}
                         >
                           <XCircle className="h-4 w-4 text-red-600" />
                         </Button>

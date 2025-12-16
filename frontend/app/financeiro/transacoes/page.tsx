@@ -58,7 +58,7 @@ export default function TransacoesPage() {
     tipo: "",
     origem: "",
     categoria: "",
-    status: "",
+    status: "CONFIRMADA", // Padrão: mostrar apenas confirmadas (saldo limpo)
     dataInicio: "",
     dataFim: "",
     busca: "",
@@ -95,6 +95,8 @@ export default function TransacoesPage() {
 
       return response.json();
     },
+    refetchInterval: 10000, // Atualiza automaticamente a cada 10 segundos
+    refetchOnWindowFocus: true, // Atualiza quando a janela recebe foco
   });
 
   // Filtrar localmente pela busca
@@ -108,13 +110,16 @@ export default function TransacoesPage() {
     );
   });
 
-  // Calcular totais
+  // Calcular totais APENAS com transações CONFIRMADAS
   const totais = transacoesFiltradas.reduce(
     (acc, t) => {
-      if (t.tipo === "ENTRADA") {
-        acc.entradas += Number(t.valor);
-      } else {
-        acc.saidas += Number(t.valor);
+      // Só conta no saldo se for CONFIRMADA
+      if (t.status === "CONFIRMADA") {
+        if (t.tipo === "ENTRADA") {
+          acc.entradas += Number(t.valor);
+        } else {
+          acc.saidas += Number(t.valor);
+        }
       }
       return acc;
     },
@@ -126,8 +131,8 @@ export default function TransacoesPage() {
   const getStatusBadge = (status: string) => {
     const badges: Record<string, { text: string; color: string }> = {
       CONFIRMADA: { text: "Confirmada", color: "bg-green-100 text-green-800" },
-      PENDENTE: { text: "Pendente", color: "bg-yellow-100 text-yellow-800" },
-      CANCELADA: { text: "Cancelada", color: "bg-red-100 text-red-800" },
+      PENDENTE: { text: "Pendente", color: "bg-blue-100 text-blue-800" }, // Azul para pendente
+      CANCELADA: { text: "Cancelada", color: "bg-gray-100 text-gray-800" }, // Cinza para cancelada
       ESTORNADA: { text: "Estornada", color: "bg-orange-100 text-orange-800" },
     };
 
@@ -471,7 +476,7 @@ export default function TransacoesPage() {
                     tipo: "",
                     origem: "",
                     categoria: "",
-                    status: "",
+                    status: "CONFIRMADA", // Voltar ao padrão: apenas confirmadas
                     dataInicio: "",
                     dataFim: "",
                     busca: "",

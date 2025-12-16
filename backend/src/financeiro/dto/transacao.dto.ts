@@ -84,6 +84,10 @@ export class FiltroTransacoesDto {
   categoria?: CategoriaTransacao;
 
   @IsOptional()
+  @IsEnum(StatusTransacao)
+  status?: StatusTransacao;
+
+  @IsOptional()
   @IsUUID()
   unidade_id?: string;
 

@@ -78,6 +78,12 @@ export class TransacoesService {
       });
     }
 
+    if (filtro.status) {
+      query.andWhere('transacao.status = :status', {
+        status: filtro.status,
+      });
+    }
+
     if (filtro.aluno_id) {
       query.andWhere('transacao.aluno_id = :aluno_id', {
         aluno_id: filtro.aluno_id,

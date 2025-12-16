@@ -34,6 +34,7 @@ interface Transacao {
   unidade_nome?: string;
   aluno_id?: string;
   aluno_nome?: string;
+  status?: string; // Status da transação
   created_at: string;
 }
 
@@ -44,6 +45,7 @@ export default function Extrato() {
   const [dataFim, setDataFim] = useState("");
   const [tipoFilter, setTipoFilter] = useState<string>("all");
   const [categoriaFilter, setCategoriaFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string>("all"); // Mostrar todos por padrão
   const [isFranqueado, setIsFranqueado] = useState(false);
   const [unidades, setUnidades] = useState<any[]>([]);
   const [unidadeSelecionada, setUnidadeSelecionada] = useState<string>("todas");
@@ -104,7 +106,7 @@ export default function Extrato() {
     if (dataInicio && dataFim) {
       carregarTransacoes();
     }
-  }, [dataInicio, dataFim, tipoFilter, categoriaFilter, unidadeSelecionada]);
+  }, [dataInicio, dataFim, tipoFilter, categoriaFilter, statusFilter, unidadeSelecionada]);
 
   const carregarTransacoes = async () => {
     try {
@@ -135,6 +137,10 @@ export default function Extrato() {
 
       if (categoriaFilter !== "all") {
         params.append("categoria", categoriaFilter);
+      }
+
+      if (statusFilter && statusFilter !== "all") {
+        params.append("status", statusFilter);
       }
 
       const response = await fetch(
@@ -234,12 +240,32 @@ export default function Extrato() {
     return badges[tipo as keyof typeof badges] || null;
   };
 
+  const getStatusBadge = (status: string) => {
+    const badges: Record<string, { text: string; color: string }> = {
+      CONFIRMADA: { text: "Confirmada", color: "bg-green-100 text-green-800" },
+      PENDENTE: { text: "Pendente", color: "bg-blue-100 text-blue-800" },
+      CANCELADA: { text: "Cancelada", color: "bg-gray-100 text-gray-800" },
+      ESTORNADA: { text: "Estornada", color: "bg-orange-100 text-orange-800" },
+    };
+
+    const badge = badges[status] || {
+      text: status,
+      color: "bg-gray-100 text-gray-800",
+    };
+
+    return (
+      <Badge className={badge.color}>
+        {badge.text}
+      </Badge>
+    );
+  };
+
   const totais = {
     receitas: transacoes
-      .filter((t) => t.tipo === "RECEITA" || t.tipo === "ENTRADA")
+      .filter((t) => (t.tipo === "RECEITA" || t.tipo === "ENTRADA") && (!t.status || t.status === "CONFIRMADA"))
       .reduce((sum, t) => sum + Number(t.valor || 0), 0),
     despesas: transacoes
-      .filter((t) => t.tipo === "DESPESA" || t.tipo === "SAIDA")
+      .filter((t) => (t.tipo === "DESPESA" || t.tipo === "SAIDA") && (!t.status || t.status === "CONFIRMADA"))
       .reduce((sum, t) => sum + Number(t.valor || 0), 0),
     saldo: 0,
   };
@@ -334,7 +360,7 @@ export default function Extrato() {
       {/* Filtros */}
       <Card>
         <CardContent className="pt-6">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
             <div>
               <label className="text-sm font-medium text-gray-700 mb-2 block">
                 Data Início
@@ -369,6 +395,23 @@ export default function Extrato() {
                   <SelectItem value="RECEITA">Receitas</SelectItem>
                   <SelectItem value="DESPESA">Despesas</SelectItem>
                   <SelectItem value="TRANSFERENCIA">Transferências</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-gray-700 mb-2 block">
+                Status
+              </label>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  <SelectItem value="CONFIRMADA">Confirmada</SelectItem>
+                  <SelectItem value="PENDENTE">Pendente</SelectItem>
+                  <SelectItem value="CANCELADA">Cancelada</SelectItem>
+                  <SelectItem value="ESTORNADA">Estornada</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -422,6 +465,7 @@ export default function Extrato() {
                     <div className="flex items-center gap-3">
                       {getTipoBadge(transacao.tipo)}
                       <Badge variant="outline">{transacao.origem}</Badge>
+                      {transacao.status && getStatusBadge(transacao.status)}
                     </div>
                     <p className="font-semibold text-gray-900 mt-1">
                       {transacao.descricao || "Sem descrição"}

@@ -278,6 +278,20 @@ export class FaturasService {
     return parseFloat(result.total) || 0;
   }
 
+  async contarAtrasadas(unidade_id?: string): Promise<number> {
+    const query = this.faturaRepository
+      .createQueryBuilder('fatura')
+      .where('fatura.status = :status', { status: StatusFatura.VENCIDA });
+
+    if (unidade_id) {
+      query
+        .leftJoin('fatura.assinatura', 'assinatura')
+        .andWhere('assinatura.unidade_id = :unidade_id', { unidade_id });
+    }
+
+    return await query.getCount();
+  }
+
   async findByAluno(alunoId: string): Promise<Fatura[]> {
     return await this.faturaRepository.find({
       where: { aluno_id: alunoId },

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import ProtegerRotaFinanceira from "@/components/financeiro/ProtegerRotaFinanceira";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -107,6 +108,7 @@ const metodoConfig = {
 };
 
 export default function VendasOnline() {
+  const queryClient = useQueryClient();
   const {
     isFranqueado,
     unidades,
@@ -264,6 +266,7 @@ export default function VendasOnline() {
 
       if (response.ok) {
         mostrarMensagem("Venda Criada", "Venda criada com sucesso!", "success");
+        queryClient.invalidateQueries({ queryKey: ["transacoes"] }); // Atualiza transações
         setModalAberto(false);
         setAlunoSelecionado("");
         setUnidadeVenda("");

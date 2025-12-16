@@ -98,32 +98,40 @@ export class DashboardFinanceiroService {
         // Para queries mais complexas, vamos precisar de outra abordagem
       }
 
-      // Buscar faturas pendentes (agregado de todas as unidades do franqueado)
-      let faturasPendentes = 0;
+      // Buscar faturas pendentes (quantidade, não valor)
+      let faturasPendentesCount = 0;
+      let faturasAtrasadasCount = 0;
+      let valorPendente = 0;
+      
       if (unidadesIds.length > 0) {
         // Franqueado: soma de todas as unidades
         for (const uid of unidadesIds) {
-          faturasPendentes += await this.faturasService.somarPendentes(uid);
+          faturasPendentesCount += await this.faturasService.contarPendentes(uid);
+          faturasAtrasadasCount += await this.faturasService.contarAtrasadas(uid);
+          valorPendente += await this.faturasService.somarPendentes(uid);
         }
       } else {
         // Gerente ou outro: uma unidade apenas
-        faturasPendentes =
-          await this.faturasService.somarPendentes(unidadeFiltro);
+        faturasPendentesCount = await this.faturasService.contarPendentes(unidadeFiltro);
+        faturasAtrasadasCount = await this.faturasService.contarAtrasadas(unidadeFiltro);
+        valorPendente = await this.faturasService.somarPendentes(unidadeFiltro);
       }
 
-      // Buscar despesas (com fallback se não existir)
-      let despesasPendentes = 0;
+      // Buscar despesas pendentes (quantidade e valor)
+      let despesasPendentesCount = 0;
+      let despesasPendentesValor = 0;
       try {
         if (unidadesIds.length > 0) {
           for (const uid of unidadesIds) {
-            despesasPendentes += await this.despesasService.somarPendentes(uid);
+            despesasPendentesCount += await this.despesasService.contarPendentes(uid);
+            despesasPendentesValor += await this.despesasService.somarPendentes(uid);
           }
         } else {
-          despesasPendentes =
-            await this.despesasService.somarPendentes(unidadeFiltro);
+          despesasPendentesCount = await this.despesasService.contarPendentes(unidadeFiltro);
+          despesasPendentesValor = await this.despesasService.somarPendentes(unidadeFiltro);
         }
       } catch (error) {
-        console.warn('Método somarPendentes não existe em DespesasService');
+        console.warn('⚠️ [DASHBOARD] Erro ao buscar despesas pendentes:', error.message);
       }
 
       // Buscar assinaturas ativas
@@ -207,6 +215,16 @@ export class DashboardFinanceiroService {
         total: receitasTotaisMes,
       });
 
+      // Contar vendas pendentes (não pagas)
+      const vendasPendentes = vendasMes.filter(
+        (v) => v.status === 'PENDENTE' || v.status === 'AGUARDANDO_PAGAMENTO',
+      );
+      const vendasPendentesCount = vendasPendentes.length;
+      const vendasPendentesValor = vendasPendentes.reduce(
+        (sum, v) => sum + Number(v.valor || 0),
+        0,
+      );
+
       // Buscar despesas do mês
       let totalDespesasMes = 0;
       try {
@@ -229,14 +247,15 @@ export class DashboardFinanceiroService {
         totalReceitasMes: receitasTotaisMes,
         totalDespesasMes: totalDespesasMes,
         saldoMes: receitasTotaisMes - totalDespesasMes,
-        faturasPendentes: faturasMes.filter(
-          (f) => f.status === StatusFatura.PENDENTE,
-        ).length,
+        faturasPendentes: faturasPendentesCount, // Quantidade de faturas a receber
         faturasPagas: faturasMes.filter((f) => f.status === StatusFatura.PAGA)
           .length,
-        faturasAtrasadas: faturasMes.filter(
-          (f) => f.status === StatusFatura.VENCIDA,
-        ).length,
+        faturasAtrasadas: faturasAtrasadasCount, // Quantidade de faturas atrasadas
+        valorFaturasPendentes: valorPendente, // Valor total faturas pendentes
+        despesasPendentes: despesasPendentesCount, // Quantidade de despesas a pagar
+        valorDespesasPendentes: despesasPendentesValor, // Valor total despesas pendentes
+        vendasPendentes: vendasPendentesCount, // Quantidade de vendas online pendentes
+        valorVendasPendentes: vendasPendentesValor, // Valor total vendas pendentes
         totalAssinaturasAtivas: assinaturasAtivas.length,
         previsaoReceitaMesProximo: assinaturasAtivas.reduce(
           (sum, a) => sum + Number(a.valor || 0),

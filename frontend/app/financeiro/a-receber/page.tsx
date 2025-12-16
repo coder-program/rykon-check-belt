@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -59,6 +60,7 @@ interface Fatura {
 }
 
 export default function ContasAReceber() {
+  const queryClient = useQueryClient();
   const {
     isFranqueado,
     unidades,
@@ -202,6 +204,7 @@ export default function ContasAReceber() {
         setValorPago("");
         setObservacoes("");
         carregarFaturas();
+        queryClient.invalidateQueries({ queryKey: ["transacoes"] });
         mostrarMensagem(
           "Sucesso!",
           "Pagamento registrado com sucesso!",
@@ -293,6 +296,7 @@ export default function ContasAReceber() {
 
               if (response.ok) {
                 const result = await response.json();
+                queryClient.invalidateQueries({ queryKey: ["transacoes"] });
 
                 if (result.geradas === 0) {
                   mostrarMensagem(

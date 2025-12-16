@@ -37,6 +37,11 @@ interface ResumoFinanceiro {
   faturasPendentes: number;
   faturasPagas: number;
   faturasAtrasadas: number;
+  valorFaturasPendentes: number;
+  despesasPendentes: number;
+  valorDespesasPendentes: number;
+  vendasPendentes: number;
+  valorVendasPendentes: number;
   totalAssinaturasAtivas: number;
   previsaoReceitaMesProximo: number;
 }
@@ -330,7 +335,7 @@ function DashboardFinanceiro() {
       )}
 
       {/* Cards de Resumo */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {/* Receitas do Mês */}
         <Card className="bg-gradient-to-br from-green-500 to-green-600 text-white">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -385,20 +390,56 @@ function DashboardFinanceiro() {
           </CardContent>
         </Card>
 
-        {/* Faturas Pendentes */}
-        <Card className="bg-gradient-to-br from-yellow-500 to-yellow-600 text-white">
+        {/* Faturas Pendentes (A Receber) */}
+        <Card className="bg-gradient-to-br from-green-500 to-green-600 text-white">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">
-              Faturas Pendentes
+              A Receber
             </CardTitle>
-            <AlertCircle className="h-4 w-4" />
+            <TrendingUp className="h-4 w-4" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
               {resumo?.faturasPendentes || 0}
             </div>
-            <p className="text-xs text-yellow-100 mt-1">
-              {resumo?.faturasAtrasadas || 0} em atraso
+            <p className="text-xs text-green-100 mt-1">
+              {formatCurrency(Number(resumo?.valorFaturasPendentes || 0))} • {resumo?.faturasAtrasadas || 0} atrasadas
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* Despesas Pendentes (A Pagar) */}
+        <Card className="bg-gradient-to-br from-red-500 to-red-600 text-white">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">
+              A Pagar
+            </CardTitle>
+            <TrendingDown className="h-4 w-4" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {resumo?.despesasPendentes || 0}
+            </div>
+            <p className="text-xs text-red-100 mt-1">
+              {formatCurrency(Number(resumo?.valorDespesasPendentes || 0))}
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* Vendas Online Pendentes */}
+        <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">
+              Vendas Pendentes
+            </CardTitle>
+            <CreditCard className="h-4 w-4" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {resumo?.vendasPendentes || 0}
+            </div>
+            <p className="text-xs text-purple-100 mt-1">
+              {formatCurrency(Number(resumo?.valorVendasPendentes || 0))}
             </p>
           </CardContent>
         </Card>

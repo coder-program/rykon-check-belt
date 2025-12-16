@@ -249,4 +249,18 @@ export class DespesasService {
     const result = await query.getRawOne();
     return parseFloat(result.total) || 0;
   }
+
+  async contarPendentes(unidade_id?: string): Promise<number> {
+    const query = this.despesaRepository
+      .createQueryBuilder('despesa')
+      .where('despesa.status IN (:...status)', {
+        status: [StatusDespesa.A_PAGAR, StatusDespesa.ATRASADA],
+      });
+
+    if (unidade_id) {
+      query.andWhere('despesa.unidade_id = :unidade_id', { unidade_id });
+    }
+
+    return await query.getCount();
+  }
 }
