@@ -31,7 +31,15 @@ export class CreatePlanoDto {
 
   @IsOptional()
   @IsNumber()
+  duracao_dias?: number;
+
+  @IsOptional()
+  @IsNumber()
   numero_aulas?: number;
+
+  @IsOptional()
+  @IsNumber()
+  max_alunos?: number;
 
   @IsOptional()
   @IsBoolean()
@@ -69,7 +77,15 @@ export class UpdatePlanoDto {
 
   @IsOptional()
   @IsNumber()
+  duracao_dias?: number;
+
+  @IsOptional()
+  @IsNumber()
   numero_aulas?: number;
+
+  @IsOptional()
+  @IsNumber()
+  max_alunos?: number;
 
   @IsOptional()
   @IsBoolean()

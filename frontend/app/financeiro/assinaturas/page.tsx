@@ -435,6 +435,92 @@ export default function Assinaturas() {
     );
   };
 
+  const handlePausar = async (id: string) => {
+    if (processando) return;
+    
+    mostrarConfirmacao(
+      "Pausar Assinatura",
+      "Deseja pausar esta assinatura? Não serão geradas faturas enquanto estiver pausada.",
+      async () => {
+        if (processando) return;
+        
+        try {
+          setProcessando(true);
+          const token = localStorage.getItem("token");
+          const response = await fetch(
+            `${process.env.NEXT_PUBLIC_API_URL}/financeiro/assinaturas/${id}/pausar`,
+            {
+              method: "PATCH",
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            }
+          );
+
+          if (response.ok) {
+            carregarDados();
+            queryClient.invalidateQueries({ queryKey: ["assinaturas"] });
+            mostrarMensagem(
+              "Sucesso!",
+              "Assinatura pausada com sucesso!",
+              "sucesso"
+            );
+          } else {
+            mostrarMensagem("Erro", "Erro ao pausar assinatura", "erro");
+          }
+        } catch (error) {
+          console.error("Erro ao pausar assinatura:", error);
+          mostrarMensagem("Erro", "Erro ao pausar assinatura", "erro");
+        } finally {
+          setProcessando(false);
+        }
+      }
+    );
+  };
+
+  const handleReativar = async (id: string) => {
+    if (processando) return;
+    
+    mostrarConfirmacao(
+      "Reativar Assinatura",
+      "Deseja reativar esta assinatura? As faturas voltarão a ser geradas.",
+      async () => {
+        if (processando) return;
+        
+        try {
+          setProcessando(true);
+          const token = localStorage.getItem("token");
+          const response = await fetch(
+            `${process.env.NEXT_PUBLIC_API_URL}/financeiro/assinaturas/${id}/reativar`,
+            {
+              method: "PATCH",
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            }
+          );
+
+          if (response.ok) {
+            carregarDados();
+            queryClient.invalidateQueries({ queryKey: ["assinaturas"] });
+            mostrarMensagem(
+              "Sucesso!",
+              "Assinatura reativada com sucesso!",
+              "sucesso"
+            );
+          } else {
+            mostrarMensagem("Erro", "Erro ao reativar assinatura", "erro");
+          }
+        } catch (error) {
+          console.error("Erro ao reativar assinatura:", error);
+          mostrarMensagem("Erro", "Erro ao reativar assinatura", "erro");
+        } finally {
+          setProcessando(false);
+        }
+      }
+    );
+  };
+
   const resetForm = () => {
     setFormData({
       aluno_id: "",
@@ -662,12 +748,32 @@ export default function Assinaturas() {
                         <Button
                           size="sm"
                           variant="outline"
+                          onClick={() => handlePausar(assinatura.id)}
+                          disabled={processando}
+                          title="Pausar Assinatura"
+                        >
+                          <PauseCircle className="h-4 w-4 text-orange-600" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
                           onClick={() => handleCancelar(assinatura.id)}
                           disabled={processando}
                         >
                           <XCircle className="h-4 w-4 text-red-600" />
                         </Button>
                       </>
+                    )}
+                    {assinatura.status === "PAUSADA" && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleReativar(assinatura.id)}
+                        disabled={processando}
+                        title="Reativar Assinatura"
+                      >
+                        <RefreshCw className="h-4 w-4 text-green-600" />
+                      </Button>
                     )}
                   </div>
                 </div>
@@ -697,22 +803,7 @@ export default function Assinaturas() {
                 placeholder="🔍 Buscar aluno por nome..."
                 value={alunoSearchTerm}
                 onChange={(e) => setAlunoSearchTerm(e.target.value)}
-                list="alunos-list"
               />
-              <datalist id="alunos-list">
-                {alunos
-                  .filter((aluno) =>
-                    aluno.nome
-                      ?.toLowerCase()
-                      .includes(alunoSearchTerm.toLowerCase())
-                  )
-                  .map((aluno) => (
-                    <option key={aluno.id} value={aluno.nome}>
-                      {aluno.cpf && `CPF: ${aluno.cpf}`}
-                      {aluno.unidade_nome && ` - ${aluno.unidade_nome}`}
-                    </option>
-                  ))}
-              </datalist>
               {alunoSearchTerm && (
                 <div className="mt-2 max-h-[200px] overflow-y-auto border rounded-md bg-white shadow-lg">
                   {alunos

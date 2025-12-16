@@ -24,7 +24,7 @@ import FiltroUnidade from "@/components/financeiro/FiltroUnidade";
 
 interface Transacao {
   id: string;
-  tipo: "RECEITA" | "DESPESA" | "TRANSFERENCIA";
+  tipo: "RECEITA" | "DESPESA" | "ENTRADA" | "SAIDA" | "TRANSFERENCIA";
   origem: string;
   categoria?: string;
   valor: number;
@@ -392,8 +392,8 @@ export default function Extrato() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todos</SelectItem>
-                  <SelectItem value="RECEITA">Receitas</SelectItem>
-                  <SelectItem value="DESPESA">Despesas</SelectItem>
+                  <SelectItem value="ENTRADA">Receitas</SelectItem>
+                  <SelectItem value="SAIDA">Despesas</SelectItem>
                   <SelectItem value="TRANSFERENCIA">Transferências</SelectItem>
                 </SelectContent>
               </Select>

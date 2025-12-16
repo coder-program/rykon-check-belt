@@ -147,13 +147,10 @@ export default function ConfiguracoesFinanceiro() {
       setSalvando(true);
       const token = localStorage.getItem("token");
 
-      const method = config.id ? "PUT" : "POST";
-      const url = config.id
-        ? `${process.env.NEXT_PUBLIC_API_URL}/configuracoes-cobranca/${config.id}`
-        : `${process.env.NEXT_PUBLIC_API_URL}/configuracoes-cobranca`;
+      const url = `${process.env.NEXT_PUBLIC_API_URL}/configuracoes-cobranca/unidade/${config.unidade_id}`;
 
       const response = await fetch(url, {
-        method,
+        method: "PUT",
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",

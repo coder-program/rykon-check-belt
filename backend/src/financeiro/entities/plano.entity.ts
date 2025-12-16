@@ -45,8 +45,14 @@ export class Plano {
   @Column({ type: 'int', default: 1, comment: 'Duração em meses' })
   duracao_meses: number;
 
+  @Column({ type: 'int', nullable: true, comment: 'Duração em dias' })
+  duracao_dias: number;
+
   @Column({ type: 'int', nullable: true, comment: 'Número de aulas inclusas' })
   numero_aulas: number;
+
+  @Column({ type: 'int', nullable: true, comment: 'Máximo de alunos permitidos' })
+  max_alunos: number;
 
   @Column({ type: 'boolean', default: true })
   recorrencia_automatica: boolean;

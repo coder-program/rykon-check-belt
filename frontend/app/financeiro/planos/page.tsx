@@ -210,7 +210,8 @@ export default function Planos() {
         valor: parseFloat(formData.valor),
         duracao_dias: parseInt(formData.duracao_dias),
         max_alunos: formData.max_alunos ? parseInt(formData.max_alunos) : null,
-        unidade_id: formData.unidade_id,
+        // Se não é franqueado, garantir que sempre envie a unidade do usuário
+        unidade_id: formData.unidade_id || (isFranqueado ? null : user.unidade_id) || null,
       };
 
       console.log("URL:", url);
@@ -260,6 +261,9 @@ export default function Planos() {
   };
 
   const handleEdit = (plano: Plano) => {
+    const userData = localStorage.getItem("user");
+    const user = JSON.parse(userData || "{}");
+    
     setEditingPlano(plano);
     setFormData({
       nome: plano.nome || "",
@@ -269,7 +273,8 @@ export default function Planos() {
       duracao_dias: plano.duracao_dias?.toString() || "30",
       beneficios: plano.beneficios || "",
       max_alunos: plano.max_alunos?.toString() || "",
-      unidade_id: plano.unidade_id || "",
+      // Se não é franqueado, usar sempre a unidade do usuário
+      unidade_id: isFranqueado ? (plano.unidade_id || "") : (user.unidade_id || plano.unidade_id || ""),
       ativo: plano.ativo ?? true,
     });
     setShowDialog(true);
@@ -569,7 +574,6 @@ export default function Planos() {
             </DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4 pt-4">
-            \n{" "}
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-sm font-semibold text-gray-700 block mb-1">

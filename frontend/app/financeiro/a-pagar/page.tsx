@@ -162,6 +162,7 @@ export default function ContasAPagar() {
 
       if (response.ok) {
         const data = await response.json();
+        console.log('📊 Despesas carregadas:', data);
         setDespesas(data);
       }
       setLoading(false);
@@ -173,6 +174,9 @@ export default function ContasAPagar() {
 
   const filtrarDespesas = () => {
     let filtered = despesas;
+
+    // Sempre filtrar despesas canceladas (excluídas logicamente)
+    filtered = filtered.filter((d) => d.status !== "CANCELADA");
 
     if (statusFilter !== "all") {
       filtered = filtered.filter((d) => d.status === statusFilter);
@@ -249,17 +253,21 @@ export default function ContasAPagar() {
         ? `${process.env.NEXT_PUBLIC_API_URL}/despesas/${editingDespesa.id}`
         : `${process.env.NEXT_PUBLIC_API_URL}/despesas`;
 
+      const payload = {
+        ...formData,
+        valor: parseFloat(formData.valor),
+        unidade_id: formData.unidade_id || user.unidade_id,
+      };
+
+      console.log('📤 Payload enviado:', payload);
+
       const response = await fetch(url, {
-        method: editingDespesa ? "PATCH" : "POST",
+        method: editingDespesa ? "PUT" : "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          ...formData,
-          valor: parseFloat(formData.valor),
-          unidade_id: formData.unidade_id || user.unidade_id,
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (response.ok) {
@@ -293,6 +301,19 @@ export default function ContasAPagar() {
       data_vencimento: despesa.data_vencimento.split("T")[0],
       observacoes: despesa.observacoes || "",
     });
+    
+    // Se for recorrente, extrair o dia do vencimento
+    if (despesa.recorrencia && despesa.recorrencia !== "UNICA") {
+      // Adiciona T00:00:00 para evitar problemas de timezone
+      const dataComHora = despesa.data_vencimento.includes('T') 
+        ? despesa.data_vencimento 
+        : despesa.data_vencimento + 'T00:00:00';
+      const dia = new Date(dataComHora).getDate();
+      setDiaVencimento(dia.toString());
+    } else {
+      setDiaVencimento("");
+    }
+    
     setShowDialog(true);
   };
 
@@ -330,9 +351,12 @@ export default function ContasAPagar() {
           );
 
           if (response.ok) {
-            carregarDespesas();
+            console.log('✅ Despesa excluída com sucesso');
+            await carregarDespesas();
             mostrarMensagem("Sucesso!", "Despesa excluída!", "sucesso");
           } else {
+            const errorText = await response.text();
+            console.error('❌ Erro ao excluir:', response.status, errorText);
             mostrarMensagem("Erro", "Erro ao excluir despesa", "erro");
           }
         } catch (error) {
@@ -443,7 +467,9 @@ export default function ContasAPagar() {
   };
 
   const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString("pt-BR");
+    // Adiciona T00:00:00 para evitar problemas de timezone
+    const dateWithTime = date.includes('T') ? date : date + 'T00:00:00';
+    return new Date(dateWithTime).toLocaleDateString("pt-BR");
   };
 
   const totais = {
@@ -810,15 +836,27 @@ export default function ContasAPagar() {
                       // Só atualiza data_vencimento se o valor for válido
                       const dia = parseInt(valor);
                       if (valor && dia >= 1 && dia <= 31) {
-                        const hoje = new Date();
-                        const proximoMes = new Date(
-                          hoje.getFullYear(),
-                          hoje.getMonth() + 1,
-                          dia
-                        );
+                        // Se estiver editando e já tiver uma data, preserva mês/ano
+                        let novaData;
+                        if (formData.data_vencimento) {
+                          const dataAtual = new Date(formData.data_vencimento + 'T00:00:00');
+                          novaData = new Date(
+                            dataAtual.getFullYear(),
+                            dataAtual.getMonth(),
+                            dia
+                          );
+                        } else {
+                          // Se for nova despesa, usa próximo mês
+                          const hoje = new Date();
+                          novaData = new Date(
+                            hoje.getFullYear(),
+                            hoje.getMonth() + 1,
+                            dia
+                          );
+                        }
                         setFormData({
                           ...formData,
-                          data_vencimento: proximoMes
+                          data_vencimento: novaData
                             .toISOString()
                             .split("T")[0],
                         });

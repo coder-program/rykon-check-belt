@@ -126,9 +126,30 @@ export class DespesasService {
     id: string,
     updateDespesaDto: UpdateDespesaDto,
   ): Promise<Despesa> {
+    console.log('📝 [DESPESAS] Atualizando despesa:', id);
+    console.log('📝 [DESPESAS] DTO recebido:', updateDespesaDto);
+    
     const despesa = await this.findOne(id);
+    console.log('📝 [DESPESAS] Despesa antes:', {
+      data_vencimento: despesa.data_vencimento,
+      categoria: despesa.categoria,
+    });
+    
     Object.assign(despesa, updateDespesaDto);
-    return await this.despesaRepository.save(despesa);
+    
+    console.log('📝 [DESPESAS] Despesa depois do assign:', {
+      data_vencimento: despesa.data_vencimento,
+      categoria: despesa.categoria,
+    });
+    
+    const resultado = await this.despesaRepository.save(despesa);
+    
+    console.log('📝 [DESPESAS] Despesa salva:', {
+      data_vencimento: resultado.data_vencimento,
+      categoria: resultado.categoria,
+    });
+    
+    return resultado;
   }
 
   async baixar(

@@ -13,6 +13,17 @@ export class PlanosService {
 
   async create(createPlanoDto: CreatePlanoDto): Promise<Plano> {
     const plano = this.planoRepository.create(createPlanoDto);
+    
+    // Se duracao_dias foi fornecido mas duracao_meses não, calcular duracao_meses
+    if (plano.duracao_dias && !plano.duracao_meses) {
+      plano.duracao_meses = Math.ceil(plano.duracao_dias / 30);
+    }
+    
+    // Se duracao_meses foi fornecido mas duracao_dias não, calcular duracao_dias
+    if (plano.duracao_meses && !plano.duracao_dias) {
+      plano.duracao_dias = plano.duracao_meses * 30;
+    }
+    
     return await this.planoRepository.save(plano);
   }
 
@@ -68,6 +79,17 @@ export class PlanosService {
   async update(id: string, updatePlanoDto: UpdatePlanoDto): Promise<Plano> {
     const plano = await this.findOne(id);
     Object.assign(plano, updatePlanoDto);
+    
+    // Se duracao_dias foi fornecido mas duracao_meses não, calcular duracao_meses
+    if (plano.duracao_dias && !plano.duracao_meses) {
+      plano.duracao_meses = Math.ceil(plano.duracao_dias / 30);
+    }
+    
+    // Se duracao_meses foi fornecido mas duracao_dias não, calcular duracao_dias
+    if (plano.duracao_meses && !plano.duracao_dias) {
+      plano.duracao_dias = plano.duracao_meses * 30;
+    }
+    
     return await this.planoRepository.save(plano);
   }
 
