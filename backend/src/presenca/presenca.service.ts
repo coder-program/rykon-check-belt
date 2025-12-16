@@ -1307,7 +1307,6 @@ export class PresencaService {
     }
 
     // Query para buscar alunos com melhor frequência
-    // CORREÇÃO: Incluir também alunos sem presenças (ex: menores recém-cadastrados)
     let query = `
       SELECT
         a.id,
@@ -1322,7 +1321,7 @@ export class PresencaService {
         MAX(pr.hora_checkin) as ultima_presenca
       FROM teamcruz.alunos a
       INNER JOIN teamcruz.usuarios u ON u.id = a.usuario_id
-      LEFT JOIN teamcruz.presencas pr ON pr.aluno_id = a.id
+      INNER JOIN teamcruz.presencas pr ON pr.aluno_id = a.id
         AND pr.hora_checkin >= $1
         AND pr.status = 'presente'
       WHERE a.status = 'ATIVO'

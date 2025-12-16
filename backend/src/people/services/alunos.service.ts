@@ -384,7 +384,7 @@ export class AlunosService {
       }
 
       // 3. Validar se é menor de idade e tem responsável (apenas se não for dependente)
-      const dataNascimento = new Date(dto.data_nascimento);
+      const dataNascimento = new Date(dto.data_nascimento + 'T12:00:00');
       const idade = this.calcularIdade(dataNascimento);
 
       if (!dto.responsavel_id && idade <= 15) {
@@ -437,9 +437,9 @@ export class AlunosService {
         data_matricula: dto.data_matricula
           ? new Date(dto.data_matricula + 'T12:00:00') // Adicionar horário meio-dia para evitar problemas de timezone
           : new Date(new Date().toISOString().split('T')[0] + 'T12:00:00'),
-        data_nascimento: new Date(dto.data_nascimento),
+        data_nascimento: new Date(dto.data_nascimento + 'T12:00:00'), // Adicionar horário meio-dia para evitar problemas de timezone
         data_ultima_graduacao: dto.data_ultima_graduacao
-          ? new Date(dto.data_ultima_graduacao)
+          ? new Date(dto.data_ultima_graduacao + 'T12:00:00')
           : undefined,
         // Converter strings vazias para null em campos de data
         atestado_medico_validade:
@@ -711,7 +711,7 @@ export class AlunosService {
 
     // Validar responsável se for menor de idade
     if (dto.data_nascimento) {
-      const dataNascimento = new Date(dto.data_nascimento);
+      const dataNascimento = new Date(dto.data_nascimento + 'T12:00:00');
       const idade = this.calcularIdade(dataNascimento);
 
       if (idade <= 15) {
@@ -732,13 +732,13 @@ export class AlunosService {
     const updateData: any = {
       ...dto,
       data_nascimento: dto.data_nascimento
-        ? new Date(dto.data_nascimento)
+        ? new Date(dto.data_nascimento + 'T12:00:00')
         : aluno.data_nascimento,
       data_matricula: dto.data_matricula
-        ? new Date(dto.data_matricula)
+        ? new Date(dto.data_matricula + 'T12:00:00')
         : aluno.data_matricula,
       data_ultima_graduacao: dto.data_ultima_graduacao
-        ? new Date(dto.data_ultima_graduacao)
+        ? new Date(dto.data_ultima_graduacao + 'T12:00:00')
         : aluno.data_ultima_graduacao,
     };
 

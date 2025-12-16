@@ -358,24 +358,6 @@ export default function ConfiguracoesFinanceiro() {
                   }
                 />
               </div>
-
-              <Separator />
-
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label htmlFor="aceita_transferencia">
-                    Transferência Bancária
-                  </Label>
-                  <p className="text-sm text-gray-500">TED/DOC</p>
-                </div>
-                <Switch
-                  id="aceita_transferencia"
-                  checked={config.aceita_transferencia}
-                  onCheckedChange={(checked) =>
-                    updateConfig("aceita_transferencia", checked)
-                  }
-                />
-              </div>
             </CardContent>
           </Card>
         </TabsContent>

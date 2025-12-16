@@ -169,6 +169,20 @@ function RegisterPageContent() {
   const unidadeFromUrl = searchParams?.get("unidade");
   const perfilFromUrl = searchParams?.get("perfil");
 
+  // Função para obter o número máximo de graus baseado na faixa
+  const getMaxGrausPorFaixa = (codigoFaixa: string): number => {
+    const faixasComMaisGraus = ["PRETA", "CORAL", "VERMELHA"];
+    const faixaUpper = codigoFaixa?.toUpperCase() || "";
+
+    // Faixas preta, coral e vermelha têm 10 graus (0 a 9)
+    if (faixasComMaisGraus.some((f) => faixaUpper.includes(f))) {
+      return 9; // 0 a 9 = 10 graus
+    }
+
+    // Outras faixas têm 5 graus (0 a 4)
+    return 4; // 0 a 4 = 5 graus
+  };
+
   // Função para calcular idade que vai completar no ano atual
   const calcularIdade = (dataNascimento: string): number => {
     if (!dataNascimento) return 0;
@@ -1285,25 +1299,33 @@ function RegisterPageContent() {
                               <SelectValue placeholder="Selecione os graus" />
                             </SelectTrigger>
                             <SelectContent className="bg-gray-800 border-gray-600">
-                              <SelectItem value="0" className="text-white">
-                                0 graus (sem grau)
-                              </SelectItem>
-                              <SelectItem value="1" className="text-white">
-                                1 grau
-                              </SelectItem>
-                              <SelectItem value="2" className="text-white">
-                                2 graus
-                              </SelectItem>
-                              <SelectItem value="3" className="text-white">
-                                3 graus
-                              </SelectItem>
-                              <SelectItem value="4" className="text-white">
-                                4 graus
-                              </SelectItem>
+                              {Array.from(
+                                {
+                                  length:
+                                    getMaxGrausPorFaixa(formData.faixa_atual) +
+                                    1,
+                                },
+                                (_, i) => (
+                                  <SelectItem
+                                    key={i}
+                                    value={i.toString()}
+                                    className="text-white"
+                                  >
+                                    {i === 0
+                                      ? "0 graus (sem grau)"
+                                      : `${i} ${i === 1 ? "grau" : "graus"}`}
+                                  </SelectItem>
+                                )
+                              )}
                             </SelectContent>
                           </Select>
                           <p className="text-xs text-gray-400">
                             Quantos graus você possui na sua faixa atual
+                            {formData.faixa_atual &&
+                              ["PRETA", "CORAL", "VERMELHA"].some((f) =>
+                                formData.faixa_atual.toUpperCase().includes(f)
+                              ) &&
+                              " (Faixas preta, coral e vermelha possuem até 9 graus)"}
                           </p>
                         </div>
                       </div>

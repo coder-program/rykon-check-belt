@@ -164,11 +164,19 @@ export default function ResponsavelDashboard() {
 
     setIsLoading(true);
     try {
+      // Corrigir timezone na data de nascimento antes de enviar
+      const dataParaEnviar = { ...formData };
+      if (dataParaEnviar.data_nascimento) {
+        // Garantir que a data seja enviada no formato correto sem conversão de timezone
+        const [ano, mes, dia] = dataParaEnviar.data_nascimento.split("-");
+        dataParaEnviar.data_nascimento = `${ano}-${mes}-${dia}`;
+      }
+
       if (isEditMode && editingDependenteId) {
         // Editar dependente existente
         const response = await http(`/alunos/${editingDependenteId}`, {
           method: "PATCH",
-          body: formData as Record<string, unknown>,
+          body: dataParaEnviar as Record<string, unknown>,
           auth: true,
         });
 
@@ -179,7 +187,7 @@ export default function ResponsavelDashboard() {
         // Criar novo dependente
         const response = await http("/alunos", {
           method: "POST",
-          body: formData as Record<string, unknown>,
+          body: dataParaEnviar as Record<string, unknown>,
           auth: true,
         });
 
