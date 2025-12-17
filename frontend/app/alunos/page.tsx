@@ -616,30 +616,6 @@ function AlunosContent() {
                   </div>
                   <div className="text-sm text-red-600">Cancelados</div>
                 </div>
-
-                {Object.entries(statsQuery.data.porFaixa || {}).length > 0 && (
-                  <div className="col-span-2 md:col-span-4 bg-gradient-to-br from-purple-50 to-blue-50 p-3 rounded-lg border border-purple-200">
-                    <div className="text-sm font-semibold text-purple-900 mb-2 flex items-center gap-2">
-                      <GraduationCap className="h-4 w-4" />
-                      Distribuição por Faixa (Ativos)
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {Object.entries(statsQuery.data.porFaixa || {})
-                        .sort(([, a], [, b]) => (b as number) - (a as number))
-                        .map(([faixa, count]) => (
-                          <div
-                            key={faixa}
-                            className="inline-flex items-center gap-2 bg-white rounded-lg px-3 py-2 shadow-sm border border-gray-200"
-                          >
-                            <span className="text-xs font-bold text-purple-600 min-w-[1.5rem]">
-                              {count as number}
-                            </span>
-                            <BeltTip faixa={faixa} graus={0} />
-                          </div>
-                        ))}
-                    </div>
-                  </div>
-                )}
               </div>
             )}
 
@@ -947,6 +923,32 @@ function AlunosContent() {
                 )}
               </div>
             )}
+
+            {/* Distribuição por Faixa */}
+            {statsQuery.isSuccess &&
+              Object.entries(statsQuery.data.porFaixa || {}).length > 0 && (
+                <div className="mt-6 bg-gradient-to-br from-purple-50 to-blue-50 p-4 rounded-lg border border-purple-200">
+                  <div className="text-sm font-semibold text-purple-900 mb-3 flex items-center gap-2">
+                    <GraduationCap className="h-4 w-4" />
+                    Distribuição por Faixa (Ativos)
+                  </div>
+                  <div className="flex flex-wrap gap-3 justify-center">
+                    {Object.entries(statsQuery.data.porFaixa || {})
+                      .sort(([, a], [, b]) => (b as number) - (a as number))
+                      .map(([faixa, count]) => (
+                        <div
+                          key={faixa}
+                          className="inline-flex items-center gap-2 bg-white rounded-lg px-3 py-2 shadow-sm border border-gray-200"
+                        >
+                          <span className="text-xs font-bold text-purple-600 min-w-[1.5rem]">
+                            {count as number}
+                          </span>
+                          <BeltTip faixa={faixa} graus={0} />
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              )}
 
             {/* Modal */}
             {showModal && (
