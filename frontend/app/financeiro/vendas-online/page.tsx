@@ -822,6 +822,7 @@ export default function VendasOnline() {
                               size="sm"
                               variant="outline"
                               onClick={() => setVendaSelecionada(venda)}
+                              title="Ver Detalhes"
                             >
                               <Eye className="h-4 w-4" />
                             </Button>
@@ -913,6 +914,7 @@ export default function VendasOnline() {
                             size="sm"
                             variant="outline"
                             onClick={() => reenviarLink(venda.id)}
+                            title="Reenviar Link de Pagamento"
                           >
                             <Send className="h-4 w-4" />
                           </Button>
@@ -926,6 +928,7 @@ export default function VendasOnline() {
                               setVendaParaExcluir(venda);
                               setModalExcluirAberto(true);
                             }}
+                            title="Excluir Venda"
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>

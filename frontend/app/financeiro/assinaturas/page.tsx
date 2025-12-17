@@ -733,6 +733,7 @@ export default function Assinaturas() {
                         setSelectedAssinatura(assinatura);
                         setShowDetalhesDialog(true);
                       }}
+                      title="Ver Detalhes"
                     >
                       <Eye className="h-4 w-4" />
                     </Button>
@@ -743,6 +744,7 @@ export default function Assinaturas() {
                           variant="outline"
                           onClick={() => handleRenovar(assinatura.id)}
                           disabled={processando}
+                          title="Renovar Assinatura"
                         >
                           <RefreshCw
                             className={`h-4 w-4 ${
@@ -764,6 +766,7 @@ export default function Assinaturas() {
                           variant="outline"
                           onClick={() => handleCancelar(assinatura.id)}
                           disabled={processando}
+                          title="Cancelar Assinatura"
                         >
                           <XCircle className="h-4 w-4 text-red-600" />
                         </Button>

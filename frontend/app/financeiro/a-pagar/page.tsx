@@ -697,6 +697,7 @@ export default function ContasAPagar() {
                         variant="default"
                         className="bg-green-600 hover:bg-green-700"
                         onClick={() => openBaixaDialog(despesa)}
+                        title="Registrar Pagamento"
                       >
                         <DollarSign className="h-4 w-4" />
                       </Button>
@@ -705,6 +706,7 @@ export default function ContasAPagar() {
                       size="sm"
                       variant="outline"
                       onClick={() => handleEdit(despesa)}
+                      title="Editar Despesa"
                     >
                       <Edit className="h-4 w-4" />
                     </Button>
@@ -718,6 +720,7 @@ export default function ContasAPagar() {
                           ? "opacity-50 cursor-not-allowed"
                           : ""
                       }
+                      title="Excluir Despesa"
                     >
                       <Trash2 className="h-4 w-4 text-red-600" />
                     </Button>
