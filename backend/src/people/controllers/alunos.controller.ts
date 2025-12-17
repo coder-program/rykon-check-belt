@@ -154,6 +154,11 @@ export class AlunosController {
   @ApiOperation({ summary: 'Listar alunos (paginado/filtrado)' })
   @ApiQuery({ name: 'search', required: false })
   @ApiQuery({ name: 'faixa', required: false })
+  @ApiQuery({
+    name: 'categoria',
+    required: false,
+    description: 'Categoria: kids ou adulto',
+  })
   @ApiQuery({ name: 'unidade_id', required: false })
   @ApiQuery({ name: 'status', required: false })
   @ApiQuery({ name: 'page', required: false })

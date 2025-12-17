@@ -128,6 +128,7 @@ interface FormData {
   perfil_ids: string[];
   unidade_id?: string; // Unidade para GERENTE_UNIDADE
   foto?: string; // URL ou base64 da foto
+  faixa_ministrante_id?: string; // Faixa do instrutor
   // Campos do franqueado (opcionais)
   nome_franqueado?: string;
   email_franqueado?: string;
@@ -225,6 +226,30 @@ export default function UsuariosManagerNew() {
   const { data: perfis = [] } = useQuery({
     queryKey: ["perfis"],
     queryFn: getPerfis,
+  });
+
+  // Buscar faixas para instrutores (Azul, Roxa, Marrom, Preta)
+  const { data: faixasInstrutores = [] } = useQuery({
+    queryKey: ["faixas-instrutores"],
+    queryFn: async () => {
+      const response = await fetch(
+        `${
+          process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api"
+        }/graduacao/faixas`,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
+      if (!response.ok) throw new Error("Erro ao buscar faixas");
+      const data = await response.json();
+      // Filtrar apenas faixas de instrutor: Azul, Roxa, Marrom, Preta
+      const faixasPermitidas = ["AZUL", "ROXA", "MARROM", "PRETA"];
+      return data.filter((f: any) =>
+        faixasPermitidas.includes(f.codigo?.toUpperCase())
+      );
+    },
   });
 
   // Buscar unidades do franqueado ou gerente logado
@@ -1415,11 +1440,20 @@ export default function UsuariosManagerNew() {
                                     : formData.cadastro_completo,
                                 });
                               } else {
+                                // Limpa faixa se INSTRUTOR for desmarcado
+                                const isInstrutor =
+                                  perfis
+                                    .find((p) => p.id === perfil.id)
+                                    ?.nome?.toUpperCase() === "INSTRUTOR";
+
                                 setFormData({
                                   ...formData,
                                   perfil_ids: formData.perfil_ids.filter(
                                     (id) => id !== perfil.id
                                   ),
+                                  faixa_ministrante_id: isInstrutor
+                                    ? undefined
+                                    : formData.faixa_ministrante_id,
                                 });
                               }
                             }}
@@ -1448,6 +1482,41 @@ export default function UsuariosManagerNew() {
                       </p>
                     )}
                 </div>
+
+                {/* Faixa do Instrutor (apenas se INSTRUTOR estiver selecionado) */}
+                {isInstrutorSelecionado && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Faixa do Instrutor <span className="text-red-500">*</span>
+                      <span className="text-xs text-gray-500 ml-2">
+                        (Azul, Roxa, Marrom ou Preta)
+                      </span>
+                    </label>
+                    <select
+                      value={formData.faixa_ministrante_id || ""}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          faixa_ministrante_id: e.target.value,
+                        })
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="">Selecione a faixa</option>
+                      {faixasInstrutores.map((faixa: any) => (
+                        <option key={faixa.id} value={faixa.id}>
+                          {faixa.nome_exibicao || faixa.nome}
+                        </option>
+                      ))}
+                    </select>
+                    {isInstrutorSelecionado &&
+                      !formData.faixa_ministrante_id && (
+                        <p className="text-amber-600 text-sm mt-2">
+                          ⚠️ Selecione a faixa do instrutor
+                        </p>
+                      )}
+                  </div>
+                )}
 
                 {/* Unidade (para GERENTE_UNIDADE, RECEPCIONISTA, INSTRUTOR e TABLET_CHECKIN) */}
                 {formData.perfil_ids.some((id) => {

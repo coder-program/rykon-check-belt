@@ -376,21 +376,40 @@ const mockAulasSemana = [
   },
 ];
 
+function isFaixaBranca(faixa: string): boolean {
+  const faixaNormalizada = faixa?.toUpperCase() || "";
+  return faixaNormalizada.includes("BRANCA") || faixaNormalizada === "BRANCA";
+}
+
 function getBeltClass(faixa: string) {
+  const faixaNormalizada = faixa?.toUpperCase() || "";
+
+  // Faixa branca precisa de estilo especial para ser legível - SEM badge do DaisyUI
+  if (isFaixaBranca(faixa)) {
+    return "bg-white border-2 border-gray-500 text-gray-900 font-semibold px-2 py-1 rounded-full text-xs inline-block";
+  }
+
   const classes: Record<string, string> = {
-    Branca: "badge-ghost",
-    Cinza: "badge-secondary",
-    Amarela: "badge-warning",
-    Laranja: "badge-warning",
-    Verde: "badge-success",
-    Azul: "badge-info",
-    Roxa: "badge-primary",
-    Marrom: "badge-accent",
-    Preta: "badge-neutral",
-    Coral: "badge-error",
-    Vermelha: "badge-error",
+    CINZA: "badge-secondary",
+    AMARELA: "badge-warning",
+    LARANJA: "badge-warning",
+    VERDE: "badge-success",
+    AZUL: "badge-info",
+    ROXA: "badge-primary",
+    MARROM: "badge-accent",
+    PRETA: "badge-neutral",
+    CORAL: "badge-error",
+    VERMELHA: "badge-error",
   };
-  return classes[faixa] || "badge-ghost";
+
+  // Procurar pela cor na string normalizada
+  for (const [cor, classe] of Object.entries(classes)) {
+    if (faixaNormalizada.includes(cor)) {
+      return classe;
+    }
+  }
+
+  return "badge-ghost";
 }
 
 // Converter enum de faixa para nome exibível
@@ -863,7 +882,7 @@ export default function DashboardNew() {
 
   // Query para Alunos (aba Alunos) - DADOS REAIS DO BANCO
   const alunosQuery = useInfiniteQuery({
-    queryKey: ["alunos", debouncedSearch, filterFaixa],
+    queryKey: ["alunos", debouncedSearch, filterFaixa, selectedUnidade],
     initialPageParam: 1,
     getNextPageParam: (lastPage) =>
       lastPage.hasNextPage ? lastPage.page + 1 : undefined,
@@ -883,6 +902,7 @@ export default function DashboardNew() {
         pageSize: 30,
         search: debouncedSearch,
         faixa: faixaParam,
+        unidadeId: selectedUnidade !== "todas" ? selectedUnidade : undefined,
       });
 
       // Adaptar os dados para o formato esperado pelo componente
@@ -2780,15 +2800,16 @@ export default function DashboardNew() {
                           key={faixa}
                           className="p-4 bg-gray-50 rounded-lg border border-gray-200 hover:border-blue-300 transition-colors"
                         >
-                          <div className="flex items-center justify-between mb-2">
-                            <span
-                              className={`badge ${getBeltClass(faixa)} text-xs`}
-                            >
-                              {faixa}
-                            </span>
-                            <span className="text-2xl font-bold text-gray-900">
-                              {count as number}
-                            </span>
+                          <div className="flex flex-col gap-2 mb-2">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-medium text-gray-600">
+                                {faixa}
+                              </span>
+                              <span className="text-2xl font-bold text-gray-900">
+                                {count as number}
+                              </span>
+                            </div>
+                            <BeltTip faixa={faixa} graus={0} />
                           </div>
                           <div className="w-full bg-gray-200 rounded-full h-2">
                             <div
@@ -2840,18 +2861,13 @@ export default function DashboardNew() {
                                 <p className="font-semibold text-gray-900 truncate">
                                   {aluno.nome}
                                 </p>
-                                <div className="flex items-center gap-2 text-sm">
-                                  <div
-                                    className="px-3 py-1 rounded-md font-medium text-white"
-                                    style={{
-                                      backgroundColor:
-                                        aluno.corHex || "#6B7280",
-                                    }}
-                                  >
-                                    {aluno.faixa}
-                                  </div>
+                                <div className="flex flex-col gap-1 mt-1">
+                                  <BeltTip
+                                    faixa={aluno.faixa}
+                                    graus={aluno.graus || 0}
+                                  />
                                   <span className="text-gray-500 text-xs">
-                                    • {aluno.graus}{" "}
+                                    • {aluno.graus || 0}{" "}
                                     {aluno.graus === 1 ? "grau" : "graus"}
                                   </span>
                                 </div>
@@ -2939,9 +2955,13 @@ export default function DashboardNew() {
                                   {aluno.nome}
                                 </span>
                                 <span
-                                  className={`badge ${getBeltClass(
-                                    aluno.faixa
-                                  )} badge-xs`}
+                                  className={
+                                    isFaixaBranca(aluno.faixa)
+                                      ? getBeltClass(aluno.faixa)
+                                      : `badge ${getBeltClass(
+                                          aluno.faixa
+                                        )} badge-xs`
+                                  }
                                 >
                                   {aluno.faixa}
                                 </span>
@@ -3070,9 +3090,13 @@ export default function DashboardNew() {
                                 graduou para
                               </span>
                               <span
-                                className={`badge ${getBeltClass(
-                                  grad.faixa_destino_nome
-                                )} badge-xs`}
+                                className={
+                                  isFaixaBranca(grad.faixa_destino_nome)
+                                    ? getBeltClass(grad.faixa_destino_nome)
+                                    : `badge ${getBeltClass(
+                                        grad.faixa_destino_nome
+                                      )} badge-xs`
+                                }
                               >
                                 {grad.faixa_destino_nome}
                               </span>
@@ -3289,15 +3313,18 @@ export default function DashboardNew() {
                           key={faixa}
                           className="p-4 bg-gray-50 rounded-lg border border-gray-200 hover:border-red-300 transition-colors"
                         >
-                          <div className="flex items-center justify-between mb-2">
-                            <span
-                              className={`badge ${getBeltClass(faixa)} text-xs`}
-                            >
-                              {faixa}
-                            </span>
-                            <span className="text-2xl font-bold text-gray-900">
-                              {count as number}
-                            </span>
+                          <div className="flex flex-col gap-2 mb-2">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-medium text-gray-600">
+                                {faixa}
+                              </span>
+                              <span className="text-2xl font-bold text-gray-900">
+                                {count as number}
+                              </span>
+                            </div>
+                            {faixa !== "Não definida" && (
+                              <BeltTip faixa={faixa} graus={0} />
+                            )}
                           </div>
                           <div className="w-full bg-gray-200 rounded-full h-2">
                             <div
@@ -3363,14 +3390,18 @@ export default function DashboardNew() {
                                 <p className="font-semibold text-gray-900">
                                   {prof.nome}
                                 </p>
-                                <div className="flex items-center gap-2 text-xs text-gray-600">
-                                  <span
-                                    className={`badge ${getBeltClass(
-                                      prof.faixa?.nome || ""
-                                    )} badge-xs`}
-                                  >
-                                    {prof.faixa?.nome || "Não definida"}
-                                  </span>
+                                <div className="flex flex-col gap-1 mt-1">
+                                  {prof.faixa?.nome &&
+                                  prof.faixa.nome !== "Não definida" ? (
+                                    <BeltTip
+                                      faixa={prof.faixa.nome}
+                                      graus={0}
+                                    />
+                                  ) : (
+                                    <span className="text-xs text-gray-500">
+                                      Não definida
+                                    </span>
+                                  )}
                                 </div>
                               </div>
                             </div>
@@ -3438,18 +3469,22 @@ export default function DashboardNew() {
                                 <p className="font-semibold text-gray-900">
                                   {prof.nome}
                                 </p>
-                                <div className="flex items-center gap-2 text-xs text-gray-600">
-                                  <span
-                                    className={`badge ${getBeltClass(
-                                      prof.faixa?.nome || ""
-                                    )} badge-xs`}
-                                  >
-                                    {prof.faixa?.nome || "Não definida"}
-                                  </span>
+                                <div className="flex flex-col gap-1 mt-1">
+                                  {prof.faixa?.nome &&
+                                  prof.faixa.nome !== "Não definida" ? (
+                                    <BeltTip
+                                      faixa={prof.faixa.nome}
+                                      graus={0}
+                                    />
+                                  ) : (
+                                    <span className="text-xs text-gray-500">
+                                      Não definida
+                                    </span>
+                                  )}
                                   {prof.modalidades &&
                                     Array.isArray(prof.modalidades) &&
                                     prof.modalidades.length > 0 && (
-                                      <span className="text-gray-500">
+                                      <span className="text-xs text-gray-500">
                                         • {prof.modalidades.join(", ")}
                                       </span>
                                     )}
@@ -3577,9 +3612,13 @@ export default function DashboardNew() {
                             </div>
                             <div className="flex items-center gap-3">
                               <span
-                                className={`badge ${getBeltClass(
-                                  prof.faixa?.nome || ""
-                                )} badge-sm`}
+                                className={
+                                  isFaixaBranca(prof.faixa?.nome || "")
+                                    ? getBeltClass(prof.faixa?.nome || "")
+                                    : `badge ${getBeltClass(
+                                        prof.faixa?.nome || ""
+                                      )} badge-sm`
+                                }
                               >
                                 {prof.faixa?.nome || "N/A"}
                               </span>

@@ -30,6 +30,7 @@ interface ListAlunosParams {
   unidade_id?: string;
   status?: StatusAluno;
   faixa?: string;
+  categoria?: string;
 }
 
 @Injectable()
@@ -142,6 +143,25 @@ export class AlunosService {
       query.andWhere('aluno.status = :status', { status: params.status });
     }
 
+    // Filtro por categoria (kids/adulto baseado na idade)
+    if (params.categoria && params.categoria !== 'todos') {
+      const anoAtual = new Date().getFullYear();
+
+      if (params.categoria.toLowerCase() === 'kids') {
+        // Kids: menores de 16 anos no ano atual
+        query.andWhere(
+          ':anoAtual - EXTRACT(YEAR FROM aluno.data_nascimento::timestamp) < 16',
+          { anoAtual },
+        );
+      } else if (params.categoria.toLowerCase() === 'adulto') {
+        // Adulto: 16 anos ou mais no ano atual
+        query.andWhere(
+          ':anoAtual - EXTRACT(YEAR FROM aluno.data_nascimento::timestamp) >= 16',
+          { anoAtual },
+        );
+      }
+    }
+
     // Filtro por faixa (apenas valores válidos do enum)
     // Ignorar valores de categoria como 'kids', 'adulto', 'todos', 'todas'
     const faixasValidas = [
@@ -206,15 +226,23 @@ export class AlunosService {
       }, {});
     }
 
-    // Mapear os resultados para incluir o status do usuário
-    const itemsWithStatus = items.map((aluno) => ({
-      ...aluno,
-      status_usuario: aluno.usuario_id
-        ? usuariosStatus[aluno.usuario_id]
-          ? 'ATIVO'
-          : 'INATIVO'
-        : null,
-    }));
+    // Mapear os resultados para incluir o status do usuário e a faixa atual
+    const itemsWithStatus = items.map((aluno) => {
+      // Extrair a faixa ativa
+      const faixaAtiva = aluno.faixas?.find((f: any) => f.ativa);
+      const faixaCodigo = faixaAtiva?.faixaDef?.codigo || null;
+
+      return {
+        ...aluno,
+        faixa_atual: faixaCodigo,
+        graus: faixaAtiva?.graus_atual || 0,
+        status_usuario: aluno.usuario_id
+          ? usuariosStatus[aluno.usuario_id]
+            ? 'ATIVO'
+            : 'INATIVO'
+          : null,
+      };
+    });
 
     return {
       items: itemsWithStatus,

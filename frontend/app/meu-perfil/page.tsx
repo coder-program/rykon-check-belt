@@ -249,6 +249,32 @@ export default function MeuPerfilPage() {
     retry: false,
   });
 
+  // Query para buscar faixas de instrutores
+  const { data: faixasInstrutores = [] } = useQuery({
+    queryKey: ["faixas-instrutores"],
+    queryFn: async () => {
+      const response = await fetch(`${API_URL}/graduacao/faixas`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
+
+      if (!response.ok) {
+        return [];
+      }
+
+      const data = await response.json();
+      // Filtrar apenas faixas de instrutores (AZUL, ROXA, MARROM, PRETA, CORAL, VERMELHA)
+      return data.filter((faixa: any) =>
+        ["AZUL", "ROXA", "MARROM", "PRETA", "CORAL", "VERMELHA"].includes(
+          faixa.nome_faixa
+        )
+      );
+    },
+    enabled: !!user?.id && user?.perfis?.includes("INSTRUTOR"),
+    retry: false,
+  });
+
   // Query para buscar endereço do franqueado
   const { data: enderecoFranqueado } = useQuery({
     queryKey: ["endereco-franqueado", dadosFranqueado?.endereco_id],
@@ -583,6 +609,7 @@ export default function MeuPerfilPage() {
           telefone_whatsapp: data.telefone,
           data_nascimento: data.data_nascimento,
           genero: data.genero,
+          faixa_ministrante: data.faixa_ministrante,
           data_inicio_docencia: data.data_inicio_docencia,
           registro_profissional: data.registro_profissional,
           // Dados de endereço
@@ -1002,6 +1029,7 @@ export default function MeuPerfilPage() {
     if (tipoUsuario === "professor") {
       dataToSubmit.data_nascimento = formData.data_nascimento;
       dataToSubmit.genero = formData.genero;
+      dataToSubmit.faixa_ministrante = formData.faixa_ministrante;
       dataToSubmit.data_inicio_docencia = formData.data_inicio_docencia;
       dataToSubmit.registro_profissional = formData.registro_profissional;
       // Dados de endereço
@@ -1862,6 +1890,118 @@ export default function MeuPerfilPage() {
                         sociais e materiais de marketing
                       </label>
                     </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Seção específica para Professor/Instrutor */}
+            {tipoUsuario === "professor" && (
+              <div className="border-t pt-6">
+                <h3 className="text-lg font-medium text-gray-900 mb-4">
+                  🥋 Dados do Instrutor
+                </h3>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Data de Nascimento */}
+                  <div>
+                    <label
+                      htmlFor="data_nascimento_professor"
+                      className="block text-sm font-medium text-gray-700 mb-2"
+                    >
+                      Data de Nascimento
+                    </label>
+                    <input
+                      type="date"
+                      id="data_nascimento_professor"
+                      name="data_nascimento"
+                      value={formData.data_nascimento || ""}
+                      onChange={handleChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+
+                  {/* Gênero */}
+                  <div>
+                    <label
+                      htmlFor="genero_professor"
+                      className="block text-sm font-medium text-gray-700 mb-2"
+                    >
+                      Gênero
+                    </label>
+                    <select
+                      id="genero_professor"
+                      name="genero"
+                      value={formData.genero || "MASCULINO"}
+                      onChange={handleChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="MASCULINO">Masculino</option>
+                      <option value="FEMININO">Feminino</option>
+                      <option value="OUTRO">Outro</option>
+                    </select>
+                  </div>
+
+                  {/* Faixa do Instrutor */}
+                  <div>
+                    <label
+                      htmlFor="faixa_ministrante"
+                      className="block text-sm font-medium text-gray-700 mb-2"
+                    >
+                      Faixa do Instrutor *
+                    </label>
+                    <select
+                      id="faixa_ministrante"
+                      name="faixa_ministrante"
+                      value={formData.faixa_ministrante || ""}
+                      onChange={handleChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      required
+                    >
+                      <option value="">Selecione a faixa</option>
+                      {faixasInstrutores.map((faixa: any) => (
+                        <option key={faixa.id} value={faixa.nome_faixa}>
+                          {faixa.nome_faixa}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Data de Início da Docência */}
+                  <div>
+                    <label
+                      htmlFor="data_inicio_docencia"
+                      className="block text-sm font-medium text-gray-700 mb-2"
+                    >
+                      Data de Início da Docência
+                    </label>
+                    <input
+                      type="date"
+                      id="data_inicio_docencia"
+                      name="data_inicio_docencia"
+                      value={formData.data_inicio_docencia || ""}
+                      onChange={handleChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+
+                  {/* Registro Profissional */}
+                  <div className="md:col-span-2">
+                    <label
+                      htmlFor="registro_profissional"
+                      className="block text-sm font-medium text-gray-700 mb-2"
+                    >
+                      Registro Profissional
+                    </label>
+                    <input
+                      type="text"
+                      id="registro_profissional"
+                      name="registro_profissional"
+                      value={formData.registro_profissional || ""}
+                      onChange={handleChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="Número do registro profissional"
+                    />
                   </div>
                 </div>
               </div>

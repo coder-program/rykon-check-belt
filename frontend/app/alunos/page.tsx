@@ -29,6 +29,113 @@ import { getMyFranqueado } from "@/lib/peopleApi";
 type Genero = "MASCULINO" | "FEMININO" | "OUTRO";
 type StatusAluno = "ATIVO" | "INATIVO" | "SUSPENSO" | "CANCELADO";
 
+// Helper functions para renderização visual das faixas
+function getBeltTipStyle(faixa: string) {
+  let tip = "bg-black";
+  let stripeActive = "bg-white";
+  let stripeInactive = "bg-white/30";
+
+  if (faixa === "PRETA") {
+    tip = "bg-red-600";
+    stripeActive = "bg-white";
+    stripeInactive = "bg-white/30";
+  }
+  if (faixa === "CORAL" || faixa === "VERMELHA") {
+    tip = "bg-white";
+    stripeActive = "bg-black";
+    stripeInactive = "bg-black/30";
+  }
+  return { tip, stripeActive, stripeInactive } as const;
+}
+
+function colorBgClass(nome: string) {
+  const map: Record<string, string> = {
+    BRANCA: "bg-white",
+    CINZA: "bg-gray-400",
+    PRETA: "bg-black",
+    AMARELA: "bg-yellow-400",
+    LARANJA: "bg-orange-500",
+    VERDE: "bg-green-600",
+    AZUL: "bg-blue-600",
+    ROXA: "bg-purple-700",
+    MARROM: "bg-amber-800",
+    CORAL: "bg-red-500",
+    VERMELHA: "bg-red-600",
+  };
+  return map[nome] || "bg-gray-300";
+}
+
+const KIDS_BASES = ["CINZA", "AMARELA", "LARANJA", "VERDE"];
+function parseKidsPattern(faixa: string): {
+  isKids: boolean;
+  base?: string;
+  stripe?: "white" | "black" | null;
+} {
+  const raw = faixa.trim();
+  const lower = raw.toLowerCase();
+  const base = KIDS_BASES.find((b) => lower.startsWith(b.toLowerCase()));
+  if (!base) return { isKids: false };
+  const hasWhite = /branca/i.test(raw) || /infantil/i.test(raw);
+  const hasBlack = /preta/i.test(raw);
+  return {
+    isKids: true,
+    base,
+    stripe: hasWhite ? "white" : hasBlack ? "black" : null,
+  };
+}
+
+function getBeltMainSegments(faixa: string): string[] {
+  const raw = faixa.replace(/\s+/g, " ").trim();
+  const parts = raw.split(/\s*\/\s*|\s+e\s+/i).map((p) => p.trim());
+  if (parts.length >= 2) return [parts[0], parts[1]];
+  return [raw];
+}
+
+function BeltTip({ faixa, graus }: { faixa: string; graus?: number }) {
+  const { tip, stripeActive, stripeInactive } = getBeltTipStyle(faixa);
+  const kids = parseKidsPattern(faixa);
+  const segments = kids.isKids
+    ? [kids.base as string]
+    : getBeltMainSegments(faixa);
+  const grauCount = graus || 0;
+
+  return (
+    <div className="flex items-center w-24 h-3 rounded-sm overflow-hidden ring-1 ring-black/10">
+      <div className="relative flex-1 h-full flex">
+        {segments.length === 2 ? (
+          <>
+            <div className={`flex-1 h-full ${colorBgClass(segments[0])}`}></div>
+            <div className={`flex-1 h-full ${colorBgClass(segments[1])}`}></div>
+          </>
+        ) : (
+          <div
+            className={`flex-1 h-full ${colorBgClass(segments[0])} ${
+              segments[0] === "BRANCA" ? "border border-gray-300" : ""
+            }`}
+          ></div>
+        )}
+        {kids.isKids && kids.stripe && (
+          <div
+            className={`absolute top-1/2 -translate-y-1/2 left-0 right-0 ${
+              kids.stripe === "white" ? "bg-white" : "bg-black"
+            } h-0.5`}
+          ></div>
+        )}
+      </div>
+      <div className={`flex items-center justify-start ${tip} h-full w-8 px-1`}>
+        {[...Array(4)].map((_, i) => (
+          <div
+            key={i}
+            className={`h-2 w-1 rounded-sm ${
+              i < grauCount ? stripeActive : stripeInactive
+            } ${i < 3 ? "mr-0.5" : ""}`}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 interface AlunoFormData {
   nome_completo: string;
   cpf: string;
@@ -511,21 +618,25 @@ function AlunosContent() {
                 </div>
 
                 {Object.entries(statsQuery.data.porFaixa || {}).length > 0 && (
-                  <div className="bg-purple-100 p-3 rounded-lg">
-                    <div className="text-sm font-semibold text-purple-800 mb-1">
-                      Por Faixa (Ativos)
+                  <div className="col-span-2 md:col-span-4 bg-gradient-to-br from-purple-50 to-blue-50 p-3 rounded-lg border border-purple-200">
+                    <div className="text-sm font-semibold text-purple-900 mb-2 flex items-center gap-2">
+                      <GraduationCap className="h-4 w-4" />
+                      Distribuição por Faixa (Ativos)
                     </div>
-                    <div className="text-xs text-purple-600 space-y-1 max-h-32 overflow-y-auto">
-                      {Object.entries(statsQuery.data.porFaixa || {}).map(
-                        ([faixa, count]) => (
-                          <div key={faixa} className="flex justify-between">
-                            <span>{faixa.replace(/_/g, " ")}</span>
-                            <span className="font-semibold">
+                    <div className="flex flex-wrap gap-2">
+                      {Object.entries(statsQuery.data.porFaixa || {})
+                        .sort(([, a], [, b]) => (b as number) - (a as number))
+                        .map(([faixa, count]) => (
+                          <div
+                            key={faixa}
+                            className="inline-flex items-center gap-2 bg-white rounded-lg px-3 py-2 shadow-sm border border-gray-200"
+                          >
+                            <span className="text-xs font-bold text-purple-600 min-w-[1.5rem]">
                               {count as number}
                             </span>
+                            <BeltTip faixa={faixa} graus={0} />
                           </div>
-                        )
-                      )}
+                        ))}
                     </div>
                   </div>
                 )}
@@ -627,7 +738,7 @@ function AlunosContent() {
                     value={faixa}
                     onChange={(e) => setFaixa(e.target.value)}
                   >
-                    <option value="todas">Todas as Faixas</option>
+                    <option value="todos">Todas as Faixas</option>
                     <option value="BRANCA">Branca</option>
                     <option value="CINZA">Cinza</option>
                     <option value="CINZA_BRANCA">Cinza Branca</option>
@@ -655,7 +766,7 @@ function AlunosContent() {
                       setDebounced("");
                       setStatus("todos");
                       setCategoria("todos");
-                      setFaixa("todas");
+                      setFaixa("todos");
                       if (!isGerenteUnidade) {
                         setUnidadeId("");
                       }
@@ -743,19 +854,34 @@ function AlunosContent() {
                                 </span>
                               )}
                           </div>
-                          <div className="grid grid-cols-2 gap-4 text-sm text-gray-600">
-                            <div>CPF: {aluno.cpf}</div>
-                            <div>
-                              Matrícula: {aluno.numero_matricula || "N/A"}
+                          <div className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-1 text-sm text-gray-600">
+                            <div className="flex items-center gap-1">
+                              <span className="font-medium">CPF:</span>{" "}
+                              {aluno.cpf || "N/A"}
                             </div>
-                            <div>
-                              Unidade:{" "}
+                            <div className="flex items-center gap-1">
+                              <span className="font-medium">Matrícula:</span>{" "}
+                              {aluno.numero_matricula || "N/A"}
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <span className="font-medium">Faixa:</span>{" "}
+                              {aluno.faixa_atual || "N/A"}
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <span className="font-medium">Telefone:</span>{" "}
+                              {aluno.telefone || "N/A"}
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <span className="font-medium">Email:</span>{" "}
+                              {aluno.email || "N/A"}
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <span className="font-medium">Unidade:</span>{" "}
                               {aluno.unidade?.nome || aluno.unidade_id || "N/A"}
                             </div>
-                            <div>
-                              {aluno.graus !== undefined
-                                ? `${aluno.graus} graus`
-                                : "0 graus"}
+                            <div className="flex items-center gap-1">
+                              <span className="font-medium">Graus:</span>{" "}
+                              {aluno.graus !== undefined ? aluno.graus : 0}
                             </div>
                           </div>
                         </div>
@@ -791,6 +917,36 @@ function AlunosContent() {
                 }}
               </List>
             </div>
+
+            {/* Informações de Paginação */}
+            {items.length > 0 && (
+              <div className="mt-4 flex items-center justify-between border-t pt-4 px-4">
+                <div className="text-sm text-gray-700">
+                  Mostrando <span className="font-medium">{items.length}</span>{" "}
+                  de{" "}
+                  <span className="font-medium">
+                    {query.data?.pages[0]?.total || 0}
+                  </span>{" "}
+                  alunos
+                  {query.hasNextPage && (
+                    <span className="text-gray-500 ml-2">
+                      (role para carregar mais)
+                    </span>
+                  )}
+                </div>
+                {query.hasNextPage && (
+                  <button
+                    onClick={() => query.fetchNextPage()}
+                    disabled={query.isFetchingNextPage}
+                    className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {query.isFetchingNextPage
+                      ? "Carregando..."
+                      : "Carregar Mais"}
+                  </button>
+                )}
+              </div>
+            )}
 
             {/* Modal */}
             {showModal && (

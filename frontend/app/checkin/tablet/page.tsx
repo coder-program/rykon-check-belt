@@ -303,7 +303,7 @@ export default function TabletCheckinPage() {
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 sm:w-5 sm:h-5" />
                     <Input
                       type="text"
-                      placeholder="Buscar por nome, CPF ou matrícula..."
+                      placeholder="Buscar por nome ou CPF"
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                       className="pl-9 sm:pl-10 text-base sm:text-lg h-10 sm:h-12"
