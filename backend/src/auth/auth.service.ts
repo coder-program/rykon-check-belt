@@ -746,9 +746,28 @@ export class AuthService {
       // Aluno: criar registro na tabela alunos
       if (perfilNome === 'aluno') {
         try {
+          console.log('[AUTH SERVICE] Dados recebidos no payload:', JSON.stringify(payload, null, 2));
+          console.log('[AUTH SERVICE] user.data_nascimento:', user.data_nascimento);
+          console.log('[AUTH SERVICE] payload.data_nascimento:', payload.data_nascimento);
+          
           // Validar data de nascimento
           const dataNascimento = user.data_nascimento || payload.data_nascimento;
-          if (!dataNascimento || dataNascimento.includes('NaN') || dataNascimento === '0NaN-aN-aN') {
+          console.log('[AUTH SERVICE] dataNascimento escolhida:', dataNascimento);
+          console.log('[AUTH SERVICE] tipo da dataNascimento:', typeof dataNascimento);
+          
+          // Verificar se a data existe e não é vazia
+          if (!dataNascimento || String(dataNascimento).trim() === '') {
+            console.error('[AUTH SERVICE] Data de nascimento vazia ou undefined');
+            throw new BadRequestException('Data de nascimento é obrigatória');
+          }
+
+          // Converter para string para validação
+          const dataNascimentoStr = dataNascimento instanceof Date 
+            ? dataNascimento.toISOString() 
+            : String(dataNascimento);
+          
+          // Rejeitar strings com NaN ou formato inválido
+          if (dataNascimentoStr.includes('NaN') || dataNascimentoStr.includes('undefined') || dataNascimentoStr.includes('null')) {
             throw new BadRequestException('Data de nascimento inválida');
           }
 

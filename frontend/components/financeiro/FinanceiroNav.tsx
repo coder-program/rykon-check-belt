@@ -10,7 +10,7 @@ import {
   Repeat,
   ListChecks,
   Settings,
-  Tag,
+  Tags,
 } from "lucide-react";
 
 const menuItems = [
@@ -28,7 +28,7 @@ const menuItems = [
   },
   {
     title: "Planos",
-    icon: Tag,
+    icon: Tags,
     href: "/financeiro/planos",
     description: "Gerenciar planos",
   },

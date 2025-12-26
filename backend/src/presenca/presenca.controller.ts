@@ -171,6 +171,50 @@ export class PresencaController {
     return this.presencaService.checkInNome(body.nome, body.aulaId, req.user);
   }
 
+  @Post('checkin-manual')
+  @ApiOperation({
+    summary: 'Check-in manual por ID do aluno (para recepcionista)',
+  })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        aluno_id: { type: 'string', description: 'ID do aluno' },
+        aula_id: {
+          type: 'string',
+          description: 'ID da aula (opcional, usa aula ativa se não informado)',
+        },
+      },
+      required: ['aluno_id'],
+    },
+  })
+  @ApiResponse({ status: 200, description: 'Check-in realizado com sucesso' })
+  @ApiResponse({ status: 400, description: 'Erro ao realizar check-in' })
+  async checkinManual(
+    @Body() body: { aluno_id: string; aula_id?: string },
+    @Request() req,
+  ) {
+    const { aluno_id, aula_id } = body;
+
+    // Se não passou aula_id, buscar aula ativa
+    let aulaId = aula_id;
+    if (!aulaId) {
+      const aulaAtiva = await this.presencaService.getAulaAtiva(req.user);
+      if (!aulaAtiva) {
+        throw new Error('Nenhuma aula ativa no momento');
+      }
+      aulaId = aulaAtiva.id;
+    }
+
+    // Fazer check-in diretamente pelo ID do aluno
+    return this.presencaService.realizarCheckInPorId(
+      aluno_id,
+      aulaId,
+      'manual',
+      req.user,
+    );
+  }
+
   @Get('estatisticas-admin')
   @ApiOperation({ summary: 'Estatísticas administrativas de presença' })
   @ApiResponse({ status: 200, description: 'Estatísticas administrativas' })

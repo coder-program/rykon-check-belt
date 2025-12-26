@@ -761,6 +761,29 @@ function RegisterPageContent() {
     setError("");
 
     try {
+      console.log('[REGISTER] FormData completo:', formData);
+      console.log('[REGISTER] Data de nascimento:', formData.data_nascimento);
+      console.log('[REGISTER] Tipo da data:', typeof formData.data_nascimento);
+      
+      // Validar data de nascimento antes de enviar
+      if (!formData.data_nascimento || formData.data_nascimento.trim() === '') {
+        console.error('[REGISTER] Data de nascimento vazia');
+        setError('Data de nascimento é obrigatória');
+        setIsLoading(false);
+        return;
+      }
+
+      // Verificar se a data é válida
+      const testDate = new Date(formData.data_nascimento);
+      console.log('[REGISTER] TestDate:', testDate);
+      console.log('[REGISTER] TestDate.getTime():', testDate.getTime());
+      if (isNaN(testDate.getTime())) {
+        console.error('[REGISTER] Data de nascimento inválida - NaN');
+        setError('Data de nascimento inválida');
+        setIsLoading(false);
+        return;
+      }
+
       const registerData: {
         nome: string;
         username: string;
@@ -810,6 +833,7 @@ function RegisterPageContent() {
         console.warn("perfil_id inválido, não enviando:", formData.perfil_id);
       }
 
+      console.log('[REGISTER] Dados que serão enviados:', JSON.stringify(registerData, null, 2));
       await authService.register(registerData);
 
       // Verificar se o perfil escolhido requer aprovação

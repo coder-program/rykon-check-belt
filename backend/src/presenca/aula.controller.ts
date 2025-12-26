@@ -170,22 +170,26 @@ export class AulaController {
       }
     }
 
-    // Se for master/admin (null) ou não passou unidade_id, requer unidade no query
-    if (
-      unidadesDoUsuario === null ||
-      Array.isArray(unidadesDoUsuario) ||
-      !unidade_id
-    ) {
-      if (!unidade_id) {
-        throw new UnauthorizedException(
-          'É necessário especificar uma unidade para buscar horários.',
-        );
-      }
-      // Master/admin/franqueado podem buscar qualquer unidade especificada
+    // Se for master/admin (null) e não passou unidade_id, requer unidade no query
+    if (unidadesDoUsuario === null && !unidade_id) {
+      throw new UnauthorizedException(
+        'É necessário especificar uma unidade para buscar horários.',
+      );
+    }
+
+    // Se for franqueado (array) e não passou unidade_id, requer unidade no query
+    if (Array.isArray(unidadesDoUsuario) && !unidade_id) {
+      throw new UnauthorizedException(
+        'É necessário especificar uma unidade para buscar horários.',
+      );
+    }
+
+    // Se passou unidade_id específica, usar ela (para master/admin/franqueado)
+    if (unidade_id) {
       return this.aulaService.findHorariosDisponiveis(unidade_id);
     }
 
-    // Se for unidade única (gerente/professor/etc), usar a unidade do usuário
+    // Se for unidade única (gerente/professor/recepcionista), usar a unidade do usuário
     return this.aulaService.findHorariosDisponiveis(
       unidadesDoUsuario as string,
     );

@@ -20,7 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Edit, XCircle, DollarSign } from "lucide-react";
+import { Plus, Edit, XCircle, DollarSign, Loader2 } from "lucide-react";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 
 interface Plano {
@@ -58,6 +58,7 @@ export default function Planos() {
   const [isFranqueado, setIsFranqueado] = useState(false);
   const [unidadeFiltro, setUnidadeFiltro] = useState<string>("todas");
   const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
   const [showDialog, setShowDialog] = useState(false);
   const [editingPlano, setEditingPlano] = useState<Plano | null>(null);
   const [successDialog, setSuccessDialog] = useState<{
@@ -207,6 +208,38 @@ export default function Planos() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Prevenir múltiplos cliques
+    if (submitting) return;
+    setSubmitting(true);
+
+    // Validações de tamanho
+    if (formData.nome.length > 100) {
+      setErrorDialog({
+        isOpen: true,
+        message: "O nome do plano deve ter no máximo 100 caracteres.",
+      });
+      setSubmitting(false);
+      return;
+    }
+
+    if (formData.descricao && formData.descricao.length > 500) {
+      setErrorDialog({
+        isOpen: true,
+        message: "A descrição deve ter no máximo 500 caracteres.",
+      });
+      setSubmitting(false);
+      return;
+    }
+
+    if (formData.beneficios && formData.beneficios.length > 1000) {
+      setErrorDialog({
+        isOpen: true,
+        message: "Os benefícios devem ter no máximo 1000 caracteres.",
+      });
+      setSubmitting(false);
+      return;
+    }
+
     const userData = localStorage.getItem("user");
     const user = JSON.parse(userData || "{}");
 
@@ -261,21 +294,35 @@ export default function Planos() {
         setShowDialog(false);
         resetForm();
         carregarPlanos();
+        setSubmitting(false);
       } else {
         const errorData = await response.text();
         console.error("Error response:", errorData);
+        
+        let errorMessage = "Erro ao salvar plano.";
+        try {
+          const errorJson = JSON.parse(errorData);
+          if (errorJson.message) {
+            errorMessage = errorJson.message;
+          }
+        } catch {
+          // Se não for JSON, usar mensagem genérica
+        }
+        
         setErrorDialog({
           isOpen: true,
-          message: "Erro ao salvar plano",
+          message: errorMessage,
         });
+        setSubmitting(false);
       }
     } catch (error) {
       console.error("=== ERRO AO SALVAR PLANO ===");
       console.error("Erro ao salvar plano:", error);
       setErrorDialog({
         isOpen: true,
-        message: "Erro ao salvar plano",
+        message: "Erro ao salvar plano. Verifique sua conexão e tente novamente.",
       });
+      setSubmitting(false);
     }
   };
 
@@ -351,6 +398,9 @@ export default function Planos() {
   };
 
   const resetForm = () => {
+    const userData = localStorage.getItem("user");
+    const user = JSON.parse(userData || "{}");
+    
     setEditingPlano(null);
     setFormData({
       nome: "",
@@ -360,6 +410,7 @@ export default function Planos() {
       duracao_dias: "30",
       beneficios: "",
       max_alunos: "",
+      unidade_id: isFranqueado ? "" : user.unidade_id || "",
       ativo: true,
     });
   };
@@ -661,8 +712,10 @@ export default function Planos() {
                   }
                   placeholder="Ex: Plano Mensal Premium"
                   required
+                  maxLength={100}
                   className="border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
                 />
+                <p className="text-xs text-gray-500 mt-1">{formData.nome.length}/100 caracteres</p>
               </div>
               <div>
                 <label className="text-sm font-semibold text-gray-700 block mb-1">
@@ -736,8 +789,10 @@ export default function Planos() {
                 }
                 placeholder="Descreva o plano"
                 rows={2}
+                maxLength={500}
                 className="border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
               />
+              <p className="text-xs text-gray-500 mt-1">{formData.descricao.length}/500 caracteres</p>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -782,8 +837,10 @@ export default function Planos() {
                 }
                 placeholder="Acesso ilimitado&#10;2 aulas por semana&#10;Suporte prioritário"
                 rows={4}
+                maxLength={1000}
                 className="border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
               />
+              <p className="text-xs text-gray-500 mt-1">{formData.beneficios.length}/1000 caracteres</p>
             </div>
             <div>
               <label className="text-sm font-semibold text-gray-700 block mb-1">
@@ -820,16 +877,31 @@ export default function Planos() {
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => setShowDialog(false)}
+                onClick={() => {
+                  setShowDialog(false);
+                  setErrorDialog({ isOpen: false, message: "" });
+                  resetForm();
+                }}
                 className="hover:bg-gray-100"
+                disabled={submitting}
               >
                 Cancelar
               </Button>
               <Button
                 type="submit"
                 className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700"
+                disabled={submitting}
               >
-                {editingPlano ? "💾 Atualizar" : "➕ Criar"} Plano
+                {submitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Salvando...
+                  </>
+                ) : (
+                  <>
+                    {editingPlano ? "💾 Atualizar" : "➕ Criar"} Plano
+                  </>
+                )}
               </Button>
             </DialogFooter>
           </form>
@@ -844,6 +916,7 @@ export default function Planos() {
         title="Sucesso!"
         message={successDialog.message}
         confirmText="OK"
+        cancelText=""
         type="info"
         icon="warning"
       />

@@ -104,12 +104,14 @@ export default function ConfirmDialog({
 
         {/* Buttons */}
         <div className="flex gap-3">
-          <button
-            onClick={onClose}
-            className="flex-1 px-4 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg transition-all duration-200 hover:shadow-md"
-          >
-            {cancelText}
-          </button>
+          {cancelText && (
+            <button
+              onClick={onClose}
+              className="flex-1 px-4 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg transition-all duration-200 hover:shadow-md"
+            >
+              {cancelText}
+            </button>
+          )}
           <button
             onClick={() => {
               onConfirm();
@@ -117,7 +119,7 @@ export default function ConfirmDialog({
                 onClose();
               }
             }}
-            className={`flex-1 px-4 py-3 ${colors.buttonBg} ${colors.buttonText} font-medium rounded-lg transition-all duration-200 hover:shadow-lg hover:scale-105`}
+            className={`${cancelText ? 'flex-1' : 'w-full'} px-4 py-3 ${colors.buttonBg} ${colors.buttonText} font-medium rounded-lg transition-all duration-200 hover:shadow-lg hover:scale-105`}
           >
             {confirmText}
           </button>

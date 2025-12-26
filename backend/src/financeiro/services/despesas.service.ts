@@ -106,7 +106,34 @@ export class DespesasService {
       query.andWhere('despesa.status = :status', { status });
     }
 
-    return await query.getMany();
+    const despesas = await query.getMany();
+
+    // Atualizar status de despesas atrasadas automaticamente
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+
+    const despesasParaAtualizar = despesas.filter((despesa) => {
+      if (despesa.status !== StatusDespesa.A_PAGAR) return false;
+      
+      const dataVencimento = new Date(despesa.data_vencimento);
+      dataVencimento.setHours(0, 0, 0, 0);
+      
+      return dataVencimento < hoje;
+    });
+
+    if (despesasParaAtualizar.length > 0) {
+      await this.despesaRepository
+        .createQueryBuilder()
+        .update(Despesa)
+        .set({ status: StatusDespesa.ATRASADA })
+        .where('id IN (:...ids)', { ids: despesasParaAtualizar.map(d => d.id) })
+        .execute();
+
+      // Atualizar os objetos em memória
+      despesasParaAtualizar.forEach(d => d.status = StatusDespesa.ATRASADA);
+    }
+
+    return despesas;
   }
 
   async findOne(id: string): Promise<Despesa> {

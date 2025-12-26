@@ -492,8 +492,10 @@ export default function VendasOnline() {
   }
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6">
-      <div className="flex justify-between items-center">
+    <ProtegerRotaFinanceira requerPermissao="podeAcessarVendasOnline">
+    <div className="w-full h-full overflow-hidden">
+    <div className="p-4 md:p-6 space-y-6 max-w-full">
+      <div className="flex justify-between items-center flex-wrap gap-4">
         <h1 className="text-3xl font-bold">💳 Vendas Online</h1>
         <Dialog open={modalAberto} onOpenChange={setModalAberto}>
           <DialogTrigger asChild>
@@ -734,37 +736,33 @@ export default function VendasOnline() {
       </Card>
 
       {/* Tabela de Vendas */}
-      <Card>
+      <Card className="w-full max-w-full overflow-hidden">
         <CardHeader>
           <CardTitle>Lista de Vendas</CardTitle>
         </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>ID</TableHead>
-                <TableHead>Aluno</TableHead>
-                <TableHead>Descrição</TableHead>
-                <TableHead>Método</TableHead>
-                <TableHead>Valor</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Data</TableHead>
-                <TableHead>Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
+        <CardContent className="p-0 overflow-x-auto">
+            <Table className="w-full">
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="whitespace-nowrap px-4">Aluno</TableHead>
+                  <TableHead className="whitespace-nowrap px-4">Descrição</TableHead>
+                  <TableHead className="whitespace-nowrap px-4">Método</TableHead>
+                  <TableHead className="whitespace-nowrap px-4">Valor</TableHead>
+                  <TableHead className="whitespace-nowrap px-4">Status</TableHead>
+                  <TableHead className="whitespace-nowrap px-4">Data</TableHead>
+                  <TableHead className="whitespace-nowrap px-4">Ações</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
               {vendas.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-8">
+                  <TableCell colSpan={7} className="text-center py-8">
                     Nenhuma venda encontrada
                   </TableCell>
                 </TableRow>
               ) : (
                 vendas.map((venda) => (
                   <TableRow key={venda.id}>
-                    <TableCell className="font-mono text-sm">
-                      {venda.numero_venda}
-                    </TableCell>
                     <TableCell>
                       {(venda as any).aluno_nome ||
                         venda.aluno?.nome_completo ||
@@ -1092,5 +1090,7 @@ export default function VendasOnline() {
         </DialogContent>
       </Dialog>
     </div>
+    </div>
+    </ProtegerRotaFinanceira>
   );
 }

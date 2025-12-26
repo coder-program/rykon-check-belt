@@ -412,7 +412,34 @@ export class AlunosService {
       }
 
       // 3. Validar se é menor de idade e tem responsável (apenas se não for dependente)
-      const dataNascimento = new Date(dto.data_nascimento + 'T12:00:00');
+      // Validar data de nascimento primeiro
+      console.log('[ALUNOS SERVICE] DTO recebido:', JSON.stringify(dto, null, 2));
+      console.log('[ALUNOS SERVICE] dto.data_nascimento:', dto.data_nascimento);
+      console.log('[ALUNOS SERVICE] tipo:', typeof dto.data_nascimento);
+      
+      if (!dto.data_nascimento || String(dto.data_nascimento).trim() === '') {
+        console.error('[ALUNOS SERVICE] Data de nascimento vazia');
+        throw new BadRequestException('Data de nascimento é obrigatória');
+      }
+
+      // Verificar se a data é válida
+      let dataNascimento: Date;
+      if (dto.data_nascimento instanceof Date) {
+        // Já é um objeto Date
+        dataNascimento = dto.data_nascimento;
+        console.log('[ALUNOS SERVICE] Data já é objeto Date');
+      } else {
+        // É uma string, converter
+        const testDate = new Date(String(dto.data_nascimento));
+        if (isNaN(testDate.getTime())) {
+          console.error('[ALUNOS SERVICE] Data de nascimento inválida');
+          throw new BadRequestException('Data de nascimento inválida');
+        }
+        dataNascimento = new Date(String(dto.data_nascimento) + 'T12:00:00');
+        console.log('[ALUNOS SERVICE] Data convertida de string');
+      }
+      
+      console.log('[ALUNOS SERVICE] dataNascimento final:', dataNascimento);
       const idade = this.calcularIdade(dataNascimento);
 
       if (!dto.responsavel_id && idade <= 15) {
@@ -463,9 +490,9 @@ export class AlunosService {
         status: dto.status || StatusAluno.ATIVO,
         // Garantir que data_matricula seja sempre a data local atual (sem problemas de timezone)
         data_matricula: dto.data_matricula
-          ? new Date(dto.data_matricula + 'T12:00:00') // Adicionar horário meio-dia para evitar problemas de timezone
+          ? (dto.data_matricula instanceof Date ? dto.data_matricula : new Date(dto.data_matricula + 'T12:00:00'))
           : new Date(new Date().toISOString().split('T')[0] + 'T12:00:00'),
-        data_nascimento: new Date(dto.data_nascimento + 'T12:00:00'), // Adicionar horário meio-dia para evitar problemas de timezone
+        data_nascimento: dataNascimento, // Usar a data já processada acima
         data_ultima_graduacao: dto.data_ultima_graduacao
           ? new Date(dto.data_ultima_graduacao + 'T12:00:00')
           : undefined,
@@ -739,6 +766,16 @@ export class AlunosService {
 
     // Validar responsável se for menor de idade
     if (dto.data_nascimento) {
+      // Validar se a data é válida
+      if (String(dto.data_nascimento).trim() === '') {
+        throw new BadRequestException('Data de nascimento não pode ser vazia');
+      }
+
+      const testDate = new Date(dto.data_nascimento);
+      if (isNaN(testDate.getTime())) {
+        throw new BadRequestException('Data de nascimento inválida');
+      }
+
       const dataNascimento = new Date(dto.data_nascimento + 'T12:00:00');
       const idade = this.calcularIdade(dataNascimento);
 

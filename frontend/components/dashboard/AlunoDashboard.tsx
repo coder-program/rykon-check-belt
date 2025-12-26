@@ -1080,7 +1080,7 @@ export default function AlunoDashboard({
                     </div>
                     <p className="text-xs text-muted-foreground">
                       {rankingData?.presencas || 0} aula
-                      {rankingData?.presencas === 1 ? "" : "s"} no mes
+                      {rankingData?.presencas === 1 ? "" : "s"} no mês
                     </p>
                     <p className="text-xs text-gray-400">
                       de {rankingData?.totalAlunos || 0} alunos

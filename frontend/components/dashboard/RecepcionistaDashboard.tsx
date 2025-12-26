@@ -5,6 +5,7 @@ import { useAuth } from "@/app/auth/AuthContext";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { listUnidades, listAlunos } from "@/lib/peopleApi";
+import { getAulas } from "@/lib/aulasApi";
 import {
   Card,
   CardContent,
@@ -65,6 +66,51 @@ export default function RecepcionistaDashboard() {
 
   const unidade = unidadesData?.items?.[0];
 
+  // Buscar aulas de hoje (dia da semana atual)
+  const diaSemanaHoje = new Date().getDay(); // 0 = domingo, 1 = segunda, etc.
+  const { data: aulasHoje = [], isLoading: loadingAulas } = useQuery({
+    queryKey: ["aulas-hoje", unidade?.id, diaSemanaHoje],
+    queryFn: async () => {
+      if (!unidade?.id) return [];
+      return getAulas({
+        unidade_id: unidade.id,
+        dia_semana: diaSemanaHoje,
+        ativo: true,
+      });
+    },
+    enabled: !!unidade?.id,
+    refetchInterval: 60000, // Atualizar a cada 1 minuto
+  });
+
+  // Verificar se há aulas acontecendo agora
+  const aulaAtual = aulasHoje.find((aula) => {
+    try {
+      const agora = new Date();
+      const inicio = new Date(aula.data_hora_inicio);
+      const fim = new Date(aula.data_hora_fim);
+      
+      return agora >= inicio && agora <= fim;
+    } catch (error) {
+      console.error("Erro ao verificar horário da aula:", error);
+      return false;
+    }
+  });
+
+  const temAulaAgora = !!aulaAtual;
+
+  // Formatar horários para exibição
+  const aulasFormatadas = aulasHoje.map((aula) => ({
+    ...aula,
+    horarioInicio: new Date(aula.data_hora_inicio).toLocaleTimeString("pt-BR", {
+      hour: "2-digit",
+      minute: "2-digit",
+    }),
+    horarioFim: new Date(aula.data_hora_fim).toLocaleTimeString("pt-BR", {
+      hour: "2-digit",
+      minute: "2-digit",
+    }),
+  }));
+
   // Buscar alunos da unidade
   const { data: alunosData, isLoading: loadingAlunos } = useQuery({
     queryKey: ["alunos-unidade-recep", unidade?.id, searchAluno],
@@ -80,9 +126,50 @@ export default function RecepcionistaDashboard() {
     enabled: !!unidade?.id,
   });
 
+  // Buscar check-ins de hoje
+  const { data: checkInsData } = useQuery({
+    queryKey: ["checkins-hoje", unidade?.id],
+    queryFn: async () => {
+      if (!unidade?.id) return { total: 0 };
+      const token = localStorage.getItem("token");
+      const hoje = new Date().toISOString().split("T")[0];
+      
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/presenca/relatorio-presencas?dataInicio=${hoje}&dataFim=${hoje}&unidadeId=${unidade.id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      
+      if (!response.ok) {
+        console.error("Erro ao buscar check-ins:", response.status);
+        return { total: 0 };
+      }
+      
+      const data = await response.json();
+      console.log("Check-ins recebidos:", data);
+      
+      // O backend agora retorna um array diretamente
+      const checkIns = Array.isArray(data) ? data : [];
+      const total = checkIns.length;
+      console.log("Total de check-ins hoje:", total);
+      
+      return { total, checkIns };
+    },
+    enabled: !!unidade?.id,
+    refetchInterval: 30000, // Atualizar a cada 30 segundos
+  });
+
   const alunos = alunosData?.items || [];
   const alunosAtivos = alunos.filter(
     (a: { status?: string; ativo?: boolean }) => a.status === "ATIVO" || a.ativo
+  );
+  
+  // Lista de IDs dos alunos que já fizeram check-in hoje
+  const alunosComCheckIn = new Set(
+    (checkInsData?.checkIns || []).map((c: any) => c.aluno?.id)
   );
 
   // Mutation para check-in manual
@@ -114,6 +201,7 @@ export default function RecepcionistaDashboard() {
       toast.success(data.message || "Check-in registrado com sucesso!");
       setCheckInModal({ isOpen: false });
       queryClient.invalidateQueries({ queryKey: ["alunos-unidade-recep"] });
+      queryClient.invalidateQueries({ queryKey: ["checkins-hoje"] });
     },
     onError: (error: Error) => {
       toast.error(error.message || "Erro ao registrar check-in");
@@ -141,11 +229,11 @@ export default function RecepcionistaDashboard() {
   const stats = {
     totalAlunos: alunos.length,
     alunosAtivos: alunosAtivos.length,
-    checkInsHoje: 0, // TODO: buscar da API
-    aulasHoje: 0, // TODO: buscar da API
+    checkInsHoje: checkInsData?.total || 0,
+    aulasHoje: aulasHoje.length,
   };
 
-  const isLoading = loadingUnidade || loadingAlunos;
+  const isLoading = loadingUnidade || loadingAlunos || loadingAulas;
 
   if (isLoading) {
     return (
@@ -331,19 +419,22 @@ export default function RecepcionistaDashboard() {
           </div>
         </div>
 
-        {/* Lista de Alunos para Check-in */}
-        <Card id="lista-alunos">
-          <CardHeader>
-            <div>
-              <CardTitle className="flex items-center gap-2">
-                <UserCheck className="h-5 w-5" />
-                Check-in de Alunos
-              </CardTitle>
-              <CardDescription>
-                Registre a presença dos alunos manualmente
-              </CardDescription>
-            </div>
-          </CardHeader>
+        {/* Lista de Alunos para Check-in - Só aparece se houver aula no horário */}
+        {temAulaAgora ? (
+          <Card id="lista-alunos">
+            <CardHeader>
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <UserCheck className="h-5 w-5" />
+                  Check-in de Alunos
+                </CardTitle>
+                <CardDescription>
+                  Aula em andamento: {aulaAtual?.nome || "Aula Regular"} (
+                  {new Date(aulaAtual.data_hora_inicio).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })} - 
+                  {new Date(aulaAtual.data_hora_fim).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })})
+                </CardDescription>
+              </div>
+            </CardHeader>
           <CardContent>
             {/* Busca */}
             <div className="mb-6">
@@ -405,13 +496,23 @@ export default function RecepcionistaDashboard() {
                           </div>
                         </div>
                       </div>
-                      <Button
-                        onClick={() => handleCheckIn(aluno)}
-                        className="bg-green-600 hover:bg-green-700"
-                      >
-                        <CheckCircle className="h-4 w-4 mr-2" />
-                        Check-in
-                      </Button>
+                      {alunosComCheckIn.has(aluno.id) ? (
+                        <Button
+                          disabled
+                          className="bg-gray-400 cursor-not-allowed"
+                        >
+                          <CheckCircle className="h-4 w-4 mr-2" />
+                          Já fez check-in
+                        </Button>
+                      ) : (
+                        <Button
+                          onClick={() => handleCheckIn(aluno)}
+                          className="bg-green-600 hover:bg-green-700"
+                        >
+                          <CheckCircle className="h-4 w-4 mr-2" />
+                          Check-in
+                        </Button>
+                      )}
                     </div>
                   )
                 )
@@ -419,6 +520,49 @@ export default function RecepcionistaDashboard() {
             </div>
           </CardContent>
         </Card>
+        ) : (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Clock className="h-5 w-5" />
+                Check-in Indisponível
+              </CardTitle>
+              <CardDescription>
+                O check-in só está disponível durante o horário das aulas
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="text-center py-8">
+                <AlertCircle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-600 mb-2">
+                  {aulasHoje.length === 0
+                    ? "Não há aulas cadastradas para hoje"
+                    : "Não há aulas em andamento no momento"}
+                </p>
+                {aulasHoje.length > 0 && (
+                  <div className="mt-4">
+                    <p className="text-sm font-medium text-gray-700 mb-2">Próximas aulas de hoje:</p>
+                    <div className="space-y-2">
+                      {aulasFormatadas.slice(0, 3).map((aula, index) => (
+                        <div key={index} className="text-sm text-gray-600">
+                          {aula.horarioInicio} - {aula.horarioFim}: {aula.nome || "Aula Regular"}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                <Button
+                  onClick={() => router.push("/horarios")}
+                  variant="outline"
+                  className="mt-4"
+                >
+                  <Calendar className="h-4 w-4 mr-2" />
+                  Ver Horários Completos
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* Modal de Confirmação de Check-in */}

@@ -689,6 +689,7 @@ export default function DashboardNew() {
   }, [isGerenteUnidade, unidadeDoGerente]);
 
   // Estados para filtros (declarar ANTES das queries)
+  const [filterCategoria, setFilterCategoria] = React.useState<string>("todos");
   const [filterFaixa, setFilterFaixa] = React.useState<string>("todos");
   const [filterCategoriaRanking, setFilterCategoriaRanking] =
     React.useState<string>("todos");
@@ -737,13 +738,21 @@ export default function DashboardNew() {
             a.matricula.toLowerCase().includes(q)
         )
         .filter((a) => {
-          const isKids = parseKidsPattern(a.faixa).isKids;
-          if (filterFaixa === "kids") return isKids;
-          if (filterFaixa === "adulto") return !isKids;
+          // Filtro de categoria
+          if (filterCategoria !== "todos") {
+            const isKids = parseKidsPattern(a.faixa).isKids;
+            if (filterCategoria === "kids" && !isKids) return false;
+            if (filterCategoria === "adulto" && isKids) return false;
+          }
+          // Filtro de faixa específica
+          if (filterFaixa !== "todos") {
+            // Lógica de comparação de faixa específica
+            return a.faixa === filterFaixa;
+          }
           return true;
         });
     },
-    [debouncedSearch, filterFaixa]
+    [debouncedSearch, filterCategoria, filterFaixa]
   );
 
   // QUERIES - Todas as queries vêm depois dos estados
@@ -1116,6 +1125,8 @@ export default function DashboardNew() {
   // Estado de filtros na Visão Geral (Próximos a Receber Grau)
   const [overviewSearch, setOverviewSearch] = React.useState("");
   const [overviewDebounced, setOverviewDebounced] = React.useState("");
+  const [overviewFilterCategoria, setOverviewFilterCategoria] =
+    React.useState<string>("todos");
   const [overviewFilterFaixa, setOverviewFilterFaixa] =
     React.useState<string>("todos");
   const [overviewSort, setOverviewSort] = React.useState<
@@ -1130,6 +1141,7 @@ export default function DashboardNew() {
   const proximosQuery = useQuery({
     queryKey: [
       "proximos-graus",
+      overviewFilterCategoria,
       overviewFilterFaixa,
       selectedUnidade,
       overviewDebounced,
@@ -1143,18 +1155,14 @@ export default function DashboardNew() {
           pageSize: "50",
         });
 
-        // Se for faixa específica (não "todos", "kids", "adulto"), enviar como faixa
+        // Aplicar filtro de categoria se selecionado
+        if (overviewFilterCategoria && overviewFilterCategoria !== "todos") {
+          params.append("categoria", overviewFilterCategoria);
+        }
+
+        // Aplicar filtro de faixa específica se selecionado
         if (overviewFilterFaixa && overviewFilterFaixa !== "todos") {
-          if (
-            overviewFilterFaixa === "kids" ||
-            overviewFilterFaixa === "adulto"
-          ) {
-            // Filtro de categoria
-            params.append("categoria", overviewFilterFaixa);
-          } else {
-            // Filtro de faixa específica
-            params.append("faixa", overviewFilterFaixa);
-          }
+          params.append("faixa", overviewFilterFaixa);
         }
 
         if (overviewDebounced) {
@@ -1168,7 +1176,7 @@ export default function DashboardNew() {
         console.log(
           "🔍 [FRONTEND] Chamando API com params:",
           params.toString(),
-          { selectedUnidade, overviewFilterFaixa }
+          { selectedUnidade, overviewFilterCategoria, overviewFilterFaixa }
         );
 
         const response = await fetch(
@@ -1192,7 +1200,8 @@ export default function DashboardNew() {
         console.log("✅ [FRONTEND] Dados recebidos:", {
           total: data.total,
           items: data.items?.length,
-          filtro: overviewFilterFaixa,
+          filtroCategoria: overviewFilterCategoria,
+          filtroFaixa: overviewFilterFaixa,
           primeiros3: data.items?.slice(0, 3),
         });
 
@@ -1863,6 +1872,30 @@ export default function DashboardNew() {
                         </div>
 
                         <div className="flex gap-2">
+                          {/* Filtro de Categoria */}
+                          <select
+                            className="px-4 py-2 text-sm font-medium border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white min-w-[140px]"
+                            value={overviewFilterCategoria}
+                            onChange={(e) =>
+                              setOverviewFilterCategoria(e.target.value)
+                            }
+                          >
+                            <option value="todos">📋 Todas Categorias</option>
+                            <option value="kids">👶 Kids</option>
+                            <option value="adulto">👤 Adulto</option>
+                          </select>
+
+                          {overviewFilterCategoria !== "todos" && (
+                            <button
+                              className="px-3 py-2 text-sm font-medium border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                              onClick={() => setOverviewFilterCategoria("todos")}
+                              title="Limpar filtro de categoria"
+                            >
+                              ✕
+                            </button>
+                          )}
+
+                          {/* Filtro de Faixa Específica */}
                           <select
                             className="px-4 py-2 text-sm font-medium border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white min-w-[160px]"
                             value={overviewFilterFaixa}
@@ -1870,18 +1903,12 @@ export default function DashboardNew() {
                               setOverviewFilterFaixa(e.target.value)
                             }
                           >
-                            <option value="todos">📋 Todas as Faixas</option>
-                            <optgroup label="Por Categoria">
-                              <option value="kids">👶 Kids</option>
-                              <option value="adulto">👤 Adulto</option>
-                            </optgroup>
-                            <optgroup label="Por Faixa Específica">
-                              {(faixasQuery.data || []).map((faixa: any) => (
-                                <option key={faixa.id} value={faixa.codigo}>
-                                  {faixa.nome_exibicao}
-                                </option>
-                              ))}
-                            </optgroup>
+                            <option value="todos">🎯 Todas as Faixas</option>
+                            {(faixasQuery.data || []).map((faixa: any) => (
+                              <option key={faixa.id} value={faixa.codigo}>
+                                {faixa.nome_exibicao}
+                              </option>
+                            ))}
                           </select>
 
                           {overviewFilterFaixa !== "todos" && (
@@ -2362,29 +2389,44 @@ export default function DashboardNew() {
                         />
                       </div>
                       <div className="flex items-center gap-2">
+                        {/* Filtro de Categoria */}
+                        <select
+                          className="select select-bordered select-sm min-w-[140px]"
+                          value={filterCategoria}
+                          onChange={(e) => setFilterCategoria(e.target.value)}
+                        >
+                          <option value="todos">📋 Todas Categorias</option>
+                          <option value="kids">👶 Kids</option>
+                          <option value="adulto">👤 Adulto</option>
+                        </select>
+                        {filterCategoria !== "todos" && (
+                          <button
+                            className="btn btn-sm btn-ghost btn-circle"
+                            onClick={() => setFilterCategoria("todos")}
+                            title="Limpar filtro de categoria"
+                          >
+                            ✕
+                          </button>
+                        )}
+
+                        {/* Filtro de Faixa Específica */}
                         <select
                           className="select select-bordered select-sm min-w-[160px]"
                           value={filterFaixa}
                           onChange={(e) => setFilterFaixa(e.target.value)}
                         >
-                          <option value="todos">📋 Todas as Faixas</option>
-                          <optgroup label="Por Categoria">
-                            <option value="kids">👶 Kids</option>
-                            <option value="adulto">👤 Adulto</option>
-                          </optgroup>
-                          <optgroup label="Por Faixa Específica">
-                            {(faixasQuery.data || []).map((faixa: any) => (
-                              <option key={faixa.id} value={faixa.codigo}>
-                                {faixa.nome_exibicao}
-                              </option>
-                            ))}
-                          </optgroup>
+                          <option value="todos">🎯 Todas as Faixas</option>
+                          {(faixasQuery.data || []).map((faixa: any) => (
+                            <option key={faixa.id} value={faixa.codigo}>
+                              {faixa.nome_exibicao}
+                            </option>
+                          ))}
                         </select>
                         {filterFaixa !== "todos" && (
                           <button
                             className="btn btn-sm btn-ghost btn-circle"
                             onClick={() => setFilterFaixa("todos")}
-                            title="Limpar filtro"
+                            title="Limpar filtro de faixa"
                           >
                             ✕
                           </button>

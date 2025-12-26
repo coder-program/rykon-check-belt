@@ -150,6 +150,7 @@ export class PresencaService {
     const isResponsavel = perfis.includes('RESPONSAVEL');
     const isAluno = perfis.includes('ALUNO');
     const isGerente = perfis.includes('GERENTE_UNIDADE');
+    const isRecepcionista = perfis.includes('RECEPCIONISTA');
     const isMaster = perfis.includes('MASTER') || perfis.includes('ADMIN');
 
     // Se for responsável, buscar unidades dos dependentes
@@ -181,6 +182,16 @@ export class PresencaService {
     else if (isGerente) {
       const unidadeResult = await this.presencaRepository.manager.query(
         `SELECT unidade_id FROM teamcruz.gerente_unidades WHERE usuario_id = $1 AND ativo = true LIMIT 1`,
+        [user.id],
+      );
+      if (unidadeResult.length > 0) {
+        unidadesPermitidas = [unidadeResult[0].unidade_id];
+      }
+    }
+    // Se for recepcionista, buscar unidade vinculada
+    else if (isRecepcionista) {
+      const unidadeResult = await this.presencaRepository.manager.query(
+        `SELECT unidade_id FROM teamcruz.recepcionista_unidades WHERE usuario_id = $1 AND ativo = true LIMIT 1`,
         [user.id],
       );
       if (unidadeResult.length > 0) {
@@ -731,6 +742,23 @@ export class PresencaService {
     return this.realizarCheckInAdmin(aluno.id, aulaId, 'cpf', adminUser);
   }
 
+  async getAlunoByCpfOrId(cpfOrId: string) {
+    // Tentar buscar por ID primeiro
+    let aluno = await this.alunoRepository.findOne({
+      where: { id: cpfOrId },
+    });
+
+    // Se não encontrou por ID, tentar por CPF
+    if (!aluno) {
+      const cpfSemFormatacao = cpfOrId.replace(/\D/g, '');
+      aluno = await this.alunoRepository.findOne({
+        where: [{ cpf: cpfSemFormatacao }, { cpf: cpfOrId }],
+      });
+    }
+
+    return aluno;
+  }
+
   async checkInNome(nome: string, aulaId: string, adminUser: any) {
     // Buscar aluno pelo nome na tabela alunos
     const aluno = await this.alunoRepository.findOne({
@@ -744,6 +772,24 @@ export class PresencaService {
     }
 
     return this.realizarCheckInAdmin(aluno.id, aulaId, 'nome', adminUser);
+  }
+
+  async realizarCheckInPorId(
+    alunoId: string,
+    aulaId: string,
+    metodo: string,
+    adminUser: any,
+  ) {
+    // Verificar se aluno existe
+    const aluno = await this.alunoRepository.findOne({
+      where: { id: alunoId },
+    });
+
+    if (!aluno) {
+      throw new NotFoundException('Aluno não encontrado');
+    }
+
+    return this.realizarCheckInAdmin(alunoId, aulaId, metodo, adminUser);
   }
 
   private async realizarCheckInAdmin(
@@ -781,6 +827,13 @@ export class PresencaService {
     });
 
     const presencaSalva = await this.presencaRepository.save(presenca);
+    
+    console.log('✅ [realizarCheckInAdmin] Presença criada:', {
+      id: presencaSalva.id,
+      aluno_id: presencaSalva.aluno_id,
+      created_at: presencaSalva.created_at,
+      hora_checkin: presencaSalva.hora_checkin,
+    });
 
     // Incrementar contador de graduação
     try {
@@ -872,40 +925,90 @@ export class PresencaService {
     dataFim?: string,
     unidadeId?: string,
   ) {
-    const inicio = dataInicio
-      ? new Date(dataInicio)
-      : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-    const fim = dataFim ? new Date(dataFim) : new Date();
+    // Parse dates correctly to avoid timezone issues
+    let inicio: Date;
+    let fim: Date;
+
+    if (dataInicio) {
+      // Parse date string in local timezone
+      const [year, month, day] = dataInicio.split('-').map(Number);
+      inicio = new Date(year, month - 1, day, 0, 0, 0, 0);
+    } else {
+      inicio = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      inicio.setHours(0, 0, 0, 0);
+    }
+
+    if (dataFim) {
+      const [year, month, day] = dataFim.split('-').map(Number);
+      fim = new Date(year, month - 1, day, 23, 59, 59, 999);
+    } else {
+      fim = new Date();
+      fim.setHours(23, 59, 59, 999);
+    }
+
+    console.log('🔍 [getRelatorioPresencas] Buscando presenças:', {
+      dataInicio,
+      dataFim,
+      inicio: inicio.toISOString(),
+      fim: fim.toISOString(),
+      unidadeId,
+    });
 
     const query = this.presencaRepository
       .createQueryBuilder('presenca')
-      .leftJoinAndSelect('presenca.pessoa', 'pessoa')
-      .where('presenca.data BETWEEN :inicio AND :fim', { inicio, fim });
+      .innerJoin(Aluno, 'aluno', 'aluno.id = presenca.aluno_id')
+      .leftJoinAndSelect('presenca.aula', 'aula')
+      .where('presenca.created_at BETWEEN :inicio AND :fim', { inicio, fim });
 
-    if (unidadeId) {
-      // Filtrar por unidade quando implementarmos a relação
-      // query.andWhere('pessoa.unidadeId = :unidadeId', { unidadeId });
+    // Primeiro buscar SEM filtro de unidade para ver se existem presenças
+    const todasPresencas = await this.presencaRepository
+      .createQueryBuilder('presenca')
+      .innerJoin(Aluno, 'aluno', 'aluno.id = presenca.aluno_id')
+      .addSelect('aluno.unidade_id', 'aluno_unidade_id')
+      .where('presenca.created_at BETWEEN :inicio AND :fim', { inicio, fim })
+      .getRawMany();
+    
+    console.log('📊 [DEBUG] Total de presenças no período (sem filtro):', todasPresencas.length);
+    if (todasPresencas.length > 0) {
+      todasPresencas.forEach((p, i) => {
+        console.log(`  Presença ${i + 1}:`, {
+          id: p.presenca_id,
+          aluno_id: p.presenca_aluno_id,
+          unidade_do_aluno: p.aluno_unidade_id,
+          created_at: p.presenca_created_at,
+        });
+      });
     }
 
-    const presencas = await query.orderBy('presenca.data', 'DESC').getMany();
+    if (unidadeId) {
+      query.andWhere('aluno.unidade_id = :unidadeId', { unidadeId });
+    }
 
-    return {
-      periodo: {
-        inicio: inicio.toISOString(),
-        fim: fim.toISOString(),
+    const presencas = await query
+      .addSelect('aluno.nome_completo', 'aluno_nome')
+      .addSelect('aluno.id', 'aluno_id_select')
+      .orderBy('presenca.created_at', 'DESC')
+      .getRawMany();
+
+    console.log('✅ [getRelatorioPresencas] Encontradas:', presencas.length, 'presenças (com filtro de unidade)');
+    if (presencas.length > 0) {
+      console.log('📅 Primeira presença created_at:', presencas[0].presenca_created_at);
+    }
+
+    return presencas.map((p) => ({
+      id: p.presenca_id,
+      data: p.presenca_created_at,
+      aluno: {
+        id: p.aluno_id_select || p.presenca_aluno_id,
+        nome: p.aluno_nome || 'Nome não encontrado',
       },
-      total: presencas.length,
-      presencas: presencas.map((p) => ({
-        id: p.id,
-        data: p.created_at,
-        aluno: {
-          id: p.aluno_id,
-          nome: 'Nome não encontrado', // Remover relação pessoa por enquanto
-        },
-        metodo: p.modo_registro || PresencaMetodo.MANUAL,
-        detalhes: p.observacoes || '',
-      })),
-    };
+      aula: {
+        id: p.aula_id || p.presenca_aula_id,
+        nome: p.aula_nome || 'Aula',
+      },
+      status: p.presenca_status,
+      metodo: p.presenca_modo_registro,
+    }));
   }
 
   async getFrequenciaUltimos30Dias(user: any, unidadeId?: string) {
