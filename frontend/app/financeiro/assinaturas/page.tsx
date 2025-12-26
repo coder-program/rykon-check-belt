@@ -48,6 +48,8 @@ interface Plano {
   nome: string;
   tipo: string;
   valor: number;
+  ativo?: boolean;
+  max_alunos?: number;
 }
 
 interface Unidade {
@@ -83,6 +85,9 @@ export default function Assinaturas() {
   const queryClient = useQueryClient();
   const [assinaturas, setAssinaturas] = useState<Assinatura[]>([]);
   const [planos, setPlanos] = useState<Plano[]>([]);
+  const [planosComContagem, setPlanosComContagem] = useState<
+    Map<string, number>
+  >(new Map());
   const [unidades, setUnidades] = useState<Unidade[]>([]);
   const [alunos, setAlunos] = useState<Aluno[]>([]);
   const [isFranqueado, setIsFranqueado] = useState(false);
@@ -189,6 +194,18 @@ export default function Assinaturas() {
       if (planosRes.ok) {
         const data = await planosRes.json();
         setPlanos(data);
+
+        // Contar alunos ativos para cada plano
+        const contagens = new Map<string, number>();
+        for (const plano of data) {
+          if (plano.max_alunos && plano.max_alunos > 0) {
+            const count = assinaturas.filter(
+              (a) => a.plano_id === plano.id && a.status === "ATIVA"
+            ).length;
+            contagens.set(plano.id, count);
+          }
+        }
+        setPlanosComContagem(contagens);
       }
 
       // Se for franqueado, carregar unidades
@@ -301,6 +318,53 @@ export default function Assinaturas() {
         "erro"
       );
       return;
+    }
+
+    // Validar limite de alunos no plano
+    const planoSelecionado = planos.find((p) => p.id === formData.plano_id);
+    if (planoSelecionado?.max_alunos && planoSelecionado.max_alunos > 0) {
+      const alunosAtivos = planosComContagem.get(formData.plano_id) || 0;
+      if (alunosAtivos >= planoSelecionado.max_alunos) {
+        mostrarMensagem(
+          "Limite Atingido",
+          `Este plano permite no máximo ${planoSelecionado.max_alunos} aluno(s). Já existem ${alunosAtivos} aluno(s) ativo(s) neste plano.`,
+          "erro"
+        );
+        return;
+      }
+    }
+
+    // Validar se a assinatura não estaria expirada
+    if (planoSelecionado && formData.data_inicio) {
+      const dataInicio = new Date(formData.data_inicio);
+      const dataFim = new Date(dataInicio);
+
+      // Buscar duracao_meses do plano (assumindo 1 mês = 30 dias)
+      const duracaoMeses =
+        planoSelecionado.tipo === "MENSAL"
+          ? 1
+          : planoSelecionado.tipo === "SEMESTRAL"
+          ? 6
+          : planoSelecionado.tipo === "ANUAL"
+          ? 12
+          : 1;
+
+      dataFim.setMonth(dataFim.getMonth() + duracaoMeses);
+
+      const hoje = new Date();
+      hoje.setHours(0, 0, 0, 0);
+      dataFim.setHours(0, 0, 0, 0);
+
+      if (dataFim < hoje) {
+        mostrarMensagem(
+          "Data Inválida",
+          `A assinatura terminaria em ${dataFim.toLocaleDateString(
+            "pt-BR"
+          )}, que já passou. Por favor, ajuste a data de início.`,
+          "erro"
+        );
+        return;
+      }
     }
 
     try {
@@ -526,20 +590,61 @@ export default function Assinaturas() {
     setFormData({
       aluno_id: "",
       plano_id: "",
+      unidade_id: "",
       data_inicio: new Date().toISOString().split("T")[0],
       metodo_pagamento: "PIX",
+      dia_vencimento: "10",
       observacoes: "",
     });
   };
 
   const getStatusBadge = (status: string) => {
     const badges = {
-      ATIVA: <Badge className="bg-green-100 text-green-800">Ativa</Badge>,
-      PAUSADA: <Badge className="bg-yellow-100 text-yellow-800">Pausada</Badge>,
-      CANCELADA: <Badge className="bg-red-100 text-red-800">Cancelada</Badge>,
-      EXPIRADA: <Badge className="bg-gray-100 text-gray-800">Expirada</Badge>,
+      ATIVA: <Badge className="bg-green-100 text-green-800">✓ Ativa</Badge>,
+      PAUSADA: (
+        <Badge className="bg-yellow-100 text-yellow-800">⏸ Pausada</Badge>
+      ),
+      CANCELADA: <Badge className="bg-red-100 text-red-800">✗ Cancelada</Badge>,
+      EXPIRADA: (
+        <Badge className="bg-gray-100 text-gray-800">⏰ Expirada</Badge>
+      ),
+      INADIMPLENTE: (
+        <Badge className="bg-orange-100 text-orange-800">⚠ Inadimplente</Badge>
+      ),
     };
     return badges[status as keyof typeof badges] || null;
+  };
+
+  const calcularDiasParaVencimento = (dataFim: string): number => {
+    const hoje = new Date();
+    const vencimento = new Date(dataFim);
+    const diffTime = vencimento.getTime() - hoje.getTime();
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  };
+
+  const getAlertaVencimento = (dataFim: string) => {
+    const dias = calcularDiasParaVencimento(dataFim);
+
+    if (dias < 0) {
+      return (
+        <span className="text-xs text-red-600 font-medium">
+          ⚠️ Vencida há {Math.abs(dias)} dia(s)
+        </span>
+      );
+    } else if (dias <= 7) {
+      return (
+        <span className="text-xs text-orange-600 font-medium">
+          ⚡ Vence em {dias} dia(s)
+        </span>
+      );
+    } else if (dias <= 15) {
+      return (
+        <span className="text-xs text-yellow-600">
+          ⏰ Vence em {dias} dia(s)
+        </span>
+      );
+    }
+    return null;
   };
 
   const formatCurrency = (value: number) => {
@@ -557,6 +662,7 @@ export default function Assinaturas() {
     ativas: assinaturas.filter((a) => a.status === "ATIVA").length,
     pausadas: assinaturas.filter((a) => a.status === "PAUSADA").length,
     canceladas: assinaturas.filter((a) => a.status === "CANCELADA").length,
+    expiradas: assinaturas.filter((a) => a.status === "EXPIRADA").length,
     receita: assinaturas
       .filter((a) => a.status === "ATIVA")
       .reduce((sum, a) => sum + Number(a.valor_mensal || 0), 0),
@@ -636,12 +742,12 @@ export default function Assinaturas() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Canceladas</p>
-                <p className="text-2xl font-bold text-red-600">
-                  {totais.canceladas}
+                <p className="text-sm text-gray-600">Expiradas</p>
+                <p className="text-2xl font-bold text-gray-600">
+                  {totais.expiradas}
                 </p>
               </div>
-              <XCircle className="h-8 w-8 text-red-600" />
+              <XCircle className="h-8 w-8 text-gray-600" />
             </div>
           </CardContent>
         </Card>
@@ -712,11 +818,16 @@ export default function Assinaturas() {
                   <p className="text-sm text-gray-600 mt-1">
                     Plano: {assinatura.plano_nome || "N/A"}
                   </p>
-                  <p className="text-sm text-gray-500">
-                    Início: {formatDate(assinatura.data_inicio)}
+                  <div className="flex items-center gap-2 mt-1">
+                    <p className="text-sm text-gray-500">
+                      Início: {formatDate(assinatura.data_inicio)}
+                      {assinatura.data_fim &&
+                        ` • Fim: ${formatDate(assinatura.data_fim)}`}
+                    </p>
                     {assinatura.data_fim &&
-                      ` • Fim: ${formatDate(assinatura.data_fim)}`}
-                  </p>
+                      assinatura.status === "ATIVA" &&
+                      getAlertaVencimento(assinatura.data_fim)}
+                  </div>
                 </div>
                 <div className="flex items-center gap-4">
                   <div className="text-right">
@@ -944,13 +1055,73 @@ export default function Assinaturas() {
                 <SelectContent>
                   {planos
                     .filter((plano) => plano.ativo)
-                    .map((plano) => (
-                      <SelectItem key={plano.id} value={plano.id}>
-                        {plano.nome} - {formatCurrency(plano.valor)}
-                      </SelectItem>
-                    ))}
+                    .map((plano) => {
+                      const alunosAtivos = planosComContagem.get(plano.id) || 0;
+                      const limiteAtingido = !!(
+                        plano.max_alunos &&
+                        plano.max_alunos > 0 &&
+                        alunosAtivos >= plano.max_alunos
+                      );
+
+                      return (
+                        <SelectItem
+                          key={plano.id}
+                          value={plano.id}
+                          disabled={limiteAtingido}
+                        >
+                          <div className="flex items-center justify-between w-full">
+                            <span>
+                              {plano.nome} - {formatCurrency(plano.valor)}
+                            </span>
+                            {plano.max_alunos && plano.max_alunos > 0 && (
+                              <span
+                                className={`ml-2 text-xs ${
+                                  limiteAtingido
+                                    ? "text-red-600 font-semibold"
+                                    : "text-gray-500"
+                                }`}
+                              >
+                                ({alunosAtivos}/{plano.max_alunos} alunos)
+                                {limiteAtingido && " - COMPLETO"}
+                              </span>
+                            )}
+                          </div>
+                        </SelectItem>
+                      );
+                    })}
                 </SelectContent>
               </Select>
+              {formData.plano_id &&
+                (() => {
+                  const planoSelecionado = planos.find(
+                    (p) => p.id === formData.plano_id
+                  );
+                  if (
+                    planoSelecionado?.max_alunos &&
+                    planoSelecionado.max_alunos > 0
+                  ) {
+                    const alunosAtivos =
+                      planosComContagem.get(formData.plano_id) || 0;
+                    const vagasRestantes =
+                      planoSelecionado.max_alunos - alunosAtivos;
+                    return (
+                      <p
+                        className={`text-xs mt-1 ${
+                          vagasRestantes === 0
+                            ? "text-red-600"
+                            : vagasRestantes <= 2
+                            ? "text-orange-600"
+                            : "text-green-600"
+                        }`}
+                      >
+                        {vagasRestantes > 0
+                          ? `✓ ${vagasRestantes} vaga(s) disponível(is)`
+                          : "✗ Plano completo - sem vagas disponíveis"}
+                      </p>
+                    );
+                  }
+                  return null;
+                })()}
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>

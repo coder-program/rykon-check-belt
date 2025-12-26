@@ -1153,12 +1153,8 @@ function RegisterPageContent() {
                     onChange={handleChange}
                     max={(() => {
                       const hoje = new Date();
-                      const dataMaxima = new Date(
-                        hoje.getFullYear() - 10,
-                        hoje.getMonth(),
-                        hoje.getDate()
-                      );
-                      return dataMaxima.toISOString().split("T")[0];
+                      hoje.setFullYear(hoje.getFullYear() - 10);
+                      return hoje.toISOString().split("T")[0];
                     })()}
                     className="h-11 bg-gray-800/50 border-gray-600 text-white placeholder-gray-400 focus:border-red-500 focus:ring-red-500"
                   />

@@ -63,10 +63,38 @@ export class AssinaturasService {
       throw new BadRequestException('Aluno já possui uma assinatura ativa');
     }
 
+    // Verificar limite de alunos no plano
+    if (plano.max_alunos && plano.max_alunos > 0) {
+      const totalAlunosAtivos = await this.assinaturaRepository.count({
+        where: {
+          plano_id: createAssinaturaDto.plano_id,
+          status: StatusAssinatura.ATIVA,
+        },
+      });
+
+      if (totalAlunosAtivos >= plano.max_alunos) {
+        throw new BadRequestException(
+          `Este plano atingiu o limite máximo de ${plano.max_alunos} aluno(s). Atualmente existem ${totalAlunosAtivos} aluno(s) ativo(s) neste plano.`,
+        );
+      }
+    }
+
     // Calcular data_fim e proxima_cobranca
     const dataInicio = new Date(createAssinaturaDto.data_inicio);
     const dataFim = new Date(dataInicio);
     dataFim.setMonth(dataFim.getMonth() + plano.duracao_meses);
+
+    // Verificar se a assinatura já está expirada
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0); // Zerar horas para comparação apenas de data
+    const dataFimComparacao = new Date(dataFim);
+    dataFimComparacao.setHours(0, 0, 0, 0);
+
+    if (dataFimComparacao < hoje) {
+      throw new BadRequestException(
+        `Não é possível criar assinatura com data de término no passado. A assinatura terminaria em ${dataFim.toLocaleDateString('pt-BR')}, que já passou.`,
+      );
+    }
 
     const proximaCobranca = new Date(dataInicio);
     const diaVencimento = createAssinaturaDto.dia_vencimento || 10;
@@ -75,13 +103,19 @@ export class AssinaturasService {
       proximaCobranca.setMonth(proximaCobranca.getMonth() + 1);
     }
 
+    // Determinar status inicial
+    let statusInicial = StatusAssinatura.ATIVA;
+    if (dataFimComparacao <= hoje) {
+      statusInicial = StatusAssinatura.EXPIRADA;
+    }
+
     const assinatura = this.assinaturaRepository.create({
       ...createAssinaturaDto,
       valor: plano.valor,
       data_fim: dataFim,
       proxima_cobranca: proximaCobranca,
       dia_vencimento: diaVencimento,
-      status: StatusAssinatura.ATIVA,
+      status: statusInicial,
     });
 
     return await this.assinaturaRepository.save(assinatura);
@@ -179,10 +213,44 @@ export class AssinaturasService {
     }
 
     const result = await query.getMany();
+
+    // Atualizar automaticamente assinaturas expiradas
+    await this.atualizarAssinaturasExpiradas(result);
+
     console.log(
       `✅ [ASSINATURAS-SERVICE] Retornando ${result.length} assinaturas`,
     );
     return result;
+  }
+
+  /**
+   * Verifica e atualiza automaticamente assinaturas que expiraram
+   */
+  private async atualizarAssinaturasExpiradas(
+    assinaturas: Assinatura[],
+  ): Promise<void> {
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+
+    const assinaturasParaAtualizar = assinaturas.filter((assinatura) => {
+      if (assinatura.status === StatusAssinatura.ATIVA && assinatura.data_fim) {
+        const dataFim = new Date(assinatura.data_fim);
+        dataFim.setHours(0, 0, 0, 0);
+        return dataFim < hoje;
+      }
+      return false;
+    });
+
+    if (assinaturasParaAtualizar.length > 0) {
+      console.log(
+        `⏰ [ASSINATURAS-SERVICE] Atualizando ${assinaturasParaAtualizar.length} assinatura(s) expirada(s)`,
+      );
+
+      for (const assinatura of assinaturasParaAtualizar) {
+        assinatura.status = StatusAssinatura.EXPIRADA;
+        await this.assinaturaRepository.save(assinatura);
+      }
+    }
   }
 
   async findOne(id: string): Promise<Assinatura> {

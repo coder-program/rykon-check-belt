@@ -53,6 +53,7 @@ const TIPOS_PLANO = [
 export default function Planos() {
   const [planos, setPlanos] = useState<Plano[]>([]);
   const [filteredPlanos, setFilteredPlanos] = useState<Plano[]>([]);
+  const [assinaturas, setAssinaturas] = useState<any[]>([]);
   const [unidades, setUnidades] = useState<Unidade[]>([]);
   const [isFranqueado, setIsFranqueado] = useState(false);
   const [unidadeFiltro, setUnidadeFiltro] = useState<string>("todas");
@@ -171,6 +172,21 @@ export default function Planos() {
         console.log("Planos carregados (raw):", data);
         console.log("Tipo de data:", typeof data, Array.isArray(data));
         setPlanos(data);
+
+        // Carregar assinaturas para contagem
+        const assinaturasRes = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/financeiro/assinaturas`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+
+        if (assinaturasRes.ok) {
+          const assinaturasData = await assinaturasRes.json();
+          setAssinaturas(assinaturasData);
+        }
       } else {
         const errorText = await response.text();
         console.error(
@@ -379,6 +395,12 @@ export default function Planos() {
     return periodos[tipo] || `${duracao_dias} dias`;
   };
 
+  const contarAlunosAtivos = (planoId: string): number => {
+    return assinaturas.filter(
+      (a) => a.plano_id === planoId && a.status === "ATIVA"
+    ).length;
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -526,9 +548,57 @@ export default function Planos() {
               {/* Limite de Alunos */}
               {plano.max_alunos && (
                 <div className="pt-2 border-t">
-                  <p className="text-sm text-gray-600">
-                    Máximo de {plano.max_alunos} alunos
-                  </p>
+                  {(() => {
+                    const alunosAtivos = contarAlunosAtivos(plano.id);
+                    const percentualOcupacao =
+                      (alunosAtivos / plano.max_alunos) * 100;
+                    const corStatus =
+                      percentualOcupacao >= 100
+                        ? "text-red-600"
+                        : percentualOcupacao >= 80
+                        ? "text-orange-600"
+                        : "text-green-600";
+
+                    return (
+                      <div>
+                        <p className="text-sm text-gray-600 mb-1">
+                          Máximo de {plano.max_alunos} aluno(s)
+                        </p>
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
+                            <div
+                              className={`h-full transition-all ${
+                                percentualOcupacao >= 100
+                                  ? "bg-red-500"
+                                  : percentualOcupacao >= 80
+                                  ? "bg-orange-500"
+                                  : "bg-green-500"
+                              }`}
+                              style={{
+                                width: `${Math.min(percentualOcupacao, 100)}%`,
+                              }}
+                            />
+                          </div>
+                          <span
+                            className={`text-sm font-semibold ${corStatus}`}
+                          >
+                            {alunosAtivos}/{plano.max_alunos}
+                          </span>
+                        </div>
+                        {percentualOcupacao >= 100 && (
+                          <p className="text-xs text-red-600 font-medium mt-1">
+                            ⚠️ Plano completo
+                          </p>
+                        )}
+                        {percentualOcupacao >= 80 &&
+                          percentualOcupacao < 100 && (
+                            <p className="text-xs text-orange-600 font-medium mt-1">
+                              ⚡ Poucas vagas restantes
+                            </p>
+                          )}
+                      </div>
+                    );
+                  })()}
                 </div>
               )}
 

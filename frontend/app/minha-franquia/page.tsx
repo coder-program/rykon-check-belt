@@ -213,13 +213,33 @@ export default function MinhaFranquiaPage() {
   if (shouldBlock) return null;
 
   const baixarContratoPDF = () => {
-    // Criar conteúdo HTML para o PDF
+    // Usar window.print() para gerar PDF diretamente
+    const printWindow = window.open("", "_blank");
+
+    if (!printWindow) {
+      toast.error("Por favor, permita pop-ups para baixar o contrato.");
+      return;
+    }
+
     const conteudoHTML = `
       <!DOCTYPE html>
       <html>
       <head>
         <meta charset="UTF-8">
+        <title>Contrato de Franquia TeamCruz</title>
         <style>
+          @media print {
+            @page {
+              size: A4;
+              margin: 2cm;
+            }
+            body {
+              margin: 0;
+            }
+            .no-print {
+              display: none;
+            }
+          }
           body {
             font-family: Arial, sans-serif;
             line-height: 1.6;
@@ -259,34 +279,46 @@ export default function MinhaFranquiaPage() {
           strong {
             color: #1a1a1a;
           }
+          .print-button {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 10px 20px;
+            background: #f59e0b;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            z-index: 1000;
+          }
+          .print-button:hover {
+            background: #d97706;
+          }
         </style>
       </head>
       <body>
+        <button class="print-button no-print" onclick="window.print()">
+          🖨️ Salvar como PDF
+        </button>
         ${CONTRATO_TEXT.replace(/\n/g, "<br>")
           .replace(/#{1,2}\s/g, "<h2>")
           .replace(/<h2>/g, "</p><h2>")
           .replace(/<\/h2>/g, "</h2><p>")}
+        <script>
+          // Definir o nome do arquivo PDF ao imprimir
+          document.title = 'Contrato_de_Franquia_TeamCruz_v${CONTRATO_VERSAO}';
+        </script>
       </body>
       </html>
     `;
 
-    // Criar um blob com o conteúdo
-    const blob = new Blob([conteudoHTML], { type: "text/html" });
-    const url = window.URL.createObjectURL(blob);
-
-    // Criar link de download
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `Contrato_Franquia_TeamCruz_${CONTRATO_VERSAO}.html`;
-    document.body.appendChild(a);
-    a.click();
-
-    // Limpar
-    window.URL.revokeObjectURL(url);
-    document.body.removeChild(a);
+    printWindow.document.write(conteudoHTML);
+    printWindow.document.close();
 
     toast.success(
-      "Contrato baixado! Abra o arquivo HTML e use Ctrl+P para imprimir como PDF."
+      'Contrato aberto! Clique em "Salvar como PDF" ou use Ctrl+P para salvar.',
+      { duration: 5000 }
     );
   };
 
@@ -495,12 +527,8 @@ export default function MinhaFranquiaPage() {
       });
 
       if (response.ok) {
-        // Se foi um novo cadastro, redirecionar para o dashboard após um breve delay
+        // Se foi um novo cadastro, redirecionar para o dashboard silenciosamente
         if (!franquiaExistente) {
-          toast.success("Franquia cadastrada com sucesso!", {
-            duration: 1500, // Toast desaparece antes do redirecionamento
-          });
-
           // Atualizar o estado do usuário para marcar cadastro como completo
           if (user && updateUser) {
             updateUser({
@@ -509,18 +537,14 @@ export default function MinhaFranquiaPage() {
             });
           }
 
-          setTimeout(() => {
-            router.push("/dashboard");
-          }, 1500);
+          // Redirecionar imediatamente sem mensagem
+          router.push("/dashboard");
         } else {
+          // Somente exibir mensagem em caso de atualização
           toast.success("Franquia atualizada com sucesso!", {
             duration: 3000,
           });
-        }
-
-        // Se foi atualização, recarregar os dados
-        if (franquiaExistente) {
-          // Se foi atualização, apenas recarregar os dados
+          // Se foi atualização, recarregar os dados
           await verificarFranquiaExistente();
         }
       } else {
@@ -694,9 +718,10 @@ export default function MinhaFranquiaPage() {
                   type="button"
                   onClick={baixarContratoPDF}
                   className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
+                  title="Abrir contrato para salvar como PDF"
                 >
                   <Download className="w-4 h-4" />
-                  Baixar PDF
+                  Baixar Contrato (PDF)
                 </button>
               </div>
 

@@ -746,6 +746,18 @@ export class AuthService {
       // Aluno: criar registro na tabela alunos
       if (perfilNome === 'aluno') {
         try {
+          // Validar data de nascimento
+          const dataNascimento = user.data_nascimento || payload.data_nascimento;
+          if (!dataNascimento || dataNascimento.includes('NaN') || dataNascimento === '0NaN-aN-aN') {
+            throw new BadRequestException('Data de nascimento inválida');
+          }
+
+          // Verificar se a data é válida
+          const testDate = new Date(dataNascimento);
+          if (isNaN(testDate.getTime())) {
+            throw new BadRequestException('Data de nascimento em formato inválido');
+          }
+
           // Usar dados do usuário + dados adicionais do payload
           const alunoData = {
             // Dados obrigatórios
@@ -753,7 +765,7 @@ export class AuthService {
             unidade_id: payload.unidade_id,
             nome_completo: user.nome,
             cpf: user.cpf,
-            data_nascimento: user.data_nascimento || payload.data_nascimento,
+            data_nascimento: dataNascimento,
             genero: payload.genero || 'OUTRO', // Default se não informado
 
             // Contato
