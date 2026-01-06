@@ -168,18 +168,7 @@ export class CreateAlunoDto {
   status?: StatusAluno;
 
   // ===== GRADUAÇÃO =====
-  @IsEnum(FaixaEnum, { message: 'Faixa inválida' })
-  @IsOptional()
-  faixa_atual?: FaixaEnum;
-
-  @IsInt({ message: 'Graus deve ser um número inteiro' })
-  @Min(0, { message: 'Graus deve ser no mínimo 0' })
-  @Max(4, { message: 'Graus deve ser no máximo 4' })
-  @IsOptional()
-  @Transform(({ value }) =>
-    value === '' || value === null ? 0 : parseInt(value),
-  )
-  graus?: number;
+  // NOTA: faixa_atual e graus removidos - usar sistema de graduação (aluno_faixa)
 
   @IsDateString({}, { message: 'Data de última graduação inválida' })
   @IsOptional()

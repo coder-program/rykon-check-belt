@@ -327,43 +327,67 @@ export class PresencaService {
       throw new BadRequestException('Você já fez check-in hoje');
     }
 
+    // Verificar configuração de aprovação da unidade
+    const requerAprovacao = aula.unidade.requer_aprovacao_checkin === true;
+    const statusAprovacao = requerAprovacao ? 'PENDENTE' : 'APROVADO';
+
+    console.log('✅ [checkInQR] Status de aprovação:', {
+      unidade: aula.unidade.nome,
+      requer_aprovacao_checkin: aula.unidade.requer_aprovacao_checkin,
+      statusAprovacao,
+    });
+
     // Registrar presença
     const presenca = this.presencaRepository.create({
       aluno_id: aluno.id,
       aula_id: aula.id,
       status: PresencaStatus.PRESENTE,
       modo_registro: PresencaMetodo.QR_CODE,
+      status_aprovacao: statusAprovacao,
       hora_checkin: new Date(),
       observacoes: `QR Code: ${qrCode}`,
       created_by: user.id,
+      // Se aprovação automática, preencher campos de aprovação
+      ...(statusAprovacao === 'APROVADO' && {
+        aprovado_por_id: user.id,
+        aprovado_em: new Date(),
+        observacao_aprovacao: 'Aprovado automaticamente (unidade não requer aprovação)',
+      }),
     });
 
     const presencaSalva = await this.presencaRepository.save(presenca);
 
     // Incrementar contador de graduação - buscar aluno_faixa ativa
-    try {
-      const alunoFaixaAtiva = await this.alunoFaixaRepository.findOne({
-        where: {
-          aluno_id: aluno.id,
-          ativa: true,
-        },
-      });
+    // Apenas incrementar se aprovado automaticamente
+    if (statusAprovacao === 'APROVADO') {
+      try {
+        const alunoFaixaAtiva = await this.alunoFaixaRepository.findOne({
+          where: {
+            aluno_id: aluno.id,
+            ativa: true,
+          },
+        });
 
-      if (alunoFaixaAtiva) {
-        alunoFaixaAtiva.presencas_no_ciclo += 1;
-        alunoFaixaAtiva.presencas_total_fx += 1;
-        await this.alunoFaixaRepository.save(alunoFaixaAtiva);
+        if (alunoFaixaAtiva) {
+          alunoFaixaAtiva.presencas_no_ciclo += 1;
+          alunoFaixaAtiva.presencas_total_fx += 1;
+          await this.alunoFaixaRepository.save(alunoFaixaAtiva);
+        }
+      } catch (error) {
+        console.error(
+          ' [checkInQR] Erro ao incrementar graduação:',
+          error.message,
+        );
       }
-    } catch (error) {
-      console.error(
-        ' [checkInQR] Erro ao incrementar graduação:',
-        error.message,
-      );
     }
+
+    const mensagem = requerAprovacao
+      ? 'Check-in registrado. Aguardando aprovação.'
+      : 'Check-in realizado e aprovado automaticamente!';
 
     return {
       success: true,
-      message: 'Check-in realizado com sucesso!',
+      message: mensagem,
       presenca: presencaSalva,
     };
   }
@@ -425,43 +449,66 @@ export class PresencaService {
       );
     }
 
+    // Verificar configuração de aprovação da unidade
+    const requerAprovacao = aula.unidade.requer_aprovacao_checkin === true;
+    const statusAprovacao = requerAprovacao ? 'PENDENTE' : 'APROVADO';
+
+    console.log('✅ [checkInManual] Status de aprovação:', {
+      unidade: aula.unidade.nome,
+      requer_aprovacao_checkin: aula.unidade.requer_aprovacao_checkin,
+      statusAprovacao,
+    });
+
     // Registrar presença manual
     const presenca = this.presencaRepository.create({
       aluno_id: aluno.id,
       aula_id: aula.id,
       status: PresencaStatus.PRESENTE,
       modo_registro: PresencaMetodo.MANUAL,
+      status_aprovacao: statusAprovacao,
       hora_checkin: new Date(),
       observacoes: `Check-in manual - Aula: ${aula.nome}`,
       created_by: user.id,
+      // Se aprovação automática, preencher campos de aprovação
+      ...(statusAprovacao === 'APROVADO' && {
+        aprovado_por_id: user.id,
+        aprovado_em: new Date(),
+        observacao_aprovacao: 'Aprovado automaticamente (unidade não requer aprovação)',
+      }),
     });
 
     const presencaSalva = await this.presencaRepository.save(presenca);
 
-    // Incrementar contador de graduação
-    try {
-      const alunoFaixaAtiva = await this.alunoFaixaRepository.findOne({
-        where: {
-          aluno_id: aluno.id,
-          ativa: true,
-        },
-      });
+    // Incrementar contador de graduação apenas se aprovado automaticamente
+    if (statusAprovacao === 'APROVADO') {
+      try {
+        const alunoFaixaAtiva = await this.alunoFaixaRepository.findOne({
+          where: {
+            aluno_id: aluno.id,
+            ativa: true,
+          },
+        });
 
-      if (alunoFaixaAtiva) {
-        alunoFaixaAtiva.presencas_no_ciclo += 1;
-        alunoFaixaAtiva.presencas_total_fx += 1;
-        await this.alunoFaixaRepository.save(alunoFaixaAtiva);
+        if (alunoFaixaAtiva) {
+          alunoFaixaAtiva.presencas_no_ciclo += 1;
+          alunoFaixaAtiva.presencas_total_fx += 1;
+          await this.alunoFaixaRepository.save(alunoFaixaAtiva);
+        }
+      } catch (error) {
+        console.error(
+          ' [checkInManual] Erro ao incrementar graduação:',
+          error.message,
+        );
       }
-    } catch (error) {
-      console.error(
-        ' [checkInManual] Erro ao incrementar graduação:',
-        error.message,
-      );
     }
+
+    const mensagem = requerAprovacao
+      ? 'Check-in registrado. Aguardando aprovação.'
+      : 'Check-in manual realizado e aprovado automaticamente!';
 
     return {
       success: true,
-      message: 'Check-in manual realizado com sucesso!',
+      message: mensagem,
       presenca: presencaSalva,
     };
   }
@@ -815,15 +862,42 @@ export class PresencaService {
       throw new BadRequestException('Aluno já fez check-in hoje');
     }
 
+    // Buscar aula com unidade para verificar configuração de aprovação
+    const aula = await this.aulaRepository.findOne({
+      where: { id: aulaId },
+      relations: ['unidade'],
+    });
+
+    if (!aula) {
+      throw new NotFoundException('Aula não encontrada');
+    }
+
+    // Verificar configuração de aprovação da unidade
+    const requerAprovacao = aula.unidade?.requer_aprovacao_checkin === true;
+    const statusAprovacao = requerAprovacao ? 'PENDENTE' : 'APROVADO';
+
+    console.log('✅ [realizarCheckInAdmin] Status de aprovação:', {
+      unidade: aula.unidade?.nome,
+      requer_aprovacao_checkin: aula.unidade?.requer_aprovacao_checkin,
+      statusAprovacao,
+    });
+
     // Registrar presença
     const presenca = this.presencaRepository.create({
       aluno_id: alunoId,
       aula_id: aulaId,
       status: PresencaStatus.PRESENTE,
       modo_registro: metodo as PresencaMetodo,
+      status_aprovacao: statusAprovacao,
       hora_checkin: new Date(),
       observacoes: `Registrado por: ${adminUser.id}`,
       created_by: adminUser.id,
+      // Se aprovação automática, preencher campos de aprovação
+      ...(statusAprovacao === 'APROVADO' && {
+        aprovado_por_id: adminUser.id,
+        aprovado_em: new Date(),
+        observacao_aprovacao: 'Aprovado automaticamente (unidade não requer aprovação)',
+      }),
     });
 
     const presencaSalva = await this.presencaRepository.save(presenca);
@@ -831,18 +905,25 @@ export class PresencaService {
     console.log('✅ [realizarCheckInAdmin] Presença criada:', {
       id: presencaSalva.id,
       aluno_id: presencaSalva.aluno_id,
+      status_aprovacao: presencaSalva.status_aprovacao,
       created_at: presencaSalva.created_at,
       hora_checkin: presencaSalva.hora_checkin,
     });
 
-    // Incrementar contador de graduação
-    try {
-      await this.graduacaoService.incrementarPresenca(alunoId);
-    } catch (error) {}
+    // Incrementar contador de graduação apenas se aprovado automaticamente
+    if (statusAprovacao === 'APROVADO') {
+      try {
+        await this.graduacaoService.incrementarPresenca(alunoId);
+      } catch (error) {}
+    }
+
+    const mensagem = requerAprovacao
+      ? 'Check-in registrado. Aguardando aprovação.'
+      : 'Check-in administrativo realizado e aprovado automaticamente!';
 
     return {
       success: true,
-      message: 'Check-in administrativo realizado com sucesso!',
+      message: mensagem,
       presenca: presencaSalva,
     };
   }
