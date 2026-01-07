@@ -18,8 +18,14 @@ export function NameInput({
     // Remove números e caracteres especiais, mantém apenas letras, espaços e acentos
     value = value.replace(/[0-9!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/g, "");
 
-    // Capitaliza primeira letra de cada palavra
-    value = value.replace(/\b\w/g, (letter) => letter.toUpperCase());
+    // Capitaliza primeira letra de cada palavra, respeitando caracteres acentuados
+    value = value
+      .split(' ')
+      .map(word => {
+        if (word.length === 0) return word;
+        return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+      })
+      .join(' ');
 
     // Atualiza o valor no input
     e.target.value = value;
