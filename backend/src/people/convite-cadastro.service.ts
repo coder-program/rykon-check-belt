@@ -30,31 +30,12 @@ export class ConviteCadastroService {
   ) {}
 
   async criarConvite(dto: CriarConviteDto, criadoPorId: string) {
-    // Gerar token único
-    const token = randomBytes(32).toString('hex');
-
-    // Criar convite
-    const convite = this.conviteRepository.create({
-      ...dto,
-      token,
-      criado_por: criadoPorId,
-      data_expiracao: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 dias
-    });
-
-    await this.conviteRepository.save(convite);
-
-    // Buscar perfil_id de 'aluno'
-    const perfilAluno = await this.usuarioRepository.query(
-      `SELECT id FROM teamcruz.perfis WHERE UPPER(nome) = 'ALUNO' LIMIT 1`,
-    );
-    const perfilId = perfilAluno[0]?.id;
-
-    // Gerar link para /register com unidade e perfil pré-preenchidos
+    // Apenas gerar link público de cadastro
     const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-    const link = `${baseUrl}/register?unidade=${dto.unidade_id}&perfil=${perfilId}`;
+    const link = `${baseUrl}/register`;
 
     return {
-      ...convite,
+      telefone: dto.telefone,
       link,
       linkWhatsApp: this.gerarLinkWhatsApp(
         dto.telefone,
@@ -228,7 +209,7 @@ export class ConviteCadastroService {
       data_nascimento: dataNasc,
       genero: dto.genero as any,
       endereco_id: enderecoId || undefined,
-      unidade_id: convite.unidade_id,
+      unidade_id: convite.unidade_id || undefined,
       usuario_id: usuarioId || undefined,
       status: 'ATIVO' as any,
       data_matricula:
@@ -266,9 +247,8 @@ export class ConviteCadastroService {
     if (!telefone) return null;
 
     const telefoneFormatado = telefone.replace(/\D/g, '');
-    const mensagem = nome
-      ? `Olá ${nome}! Seu link de cadastro está pronto: ${link}`
-      : `Olá! Seu link de cadastro está pronto: ${link}`;
+    // Enviar apenas o link, sem informações adicionais
+    const mensagem = link;
 
     return `https://wa.me/55${telefoneFormatado}?text=${encodeURIComponent(mensagem)}`;
   }

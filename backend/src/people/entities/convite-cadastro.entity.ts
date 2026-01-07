@@ -20,8 +20,8 @@ export class ConviteCadastro {
   @Column({ type: 'varchar', length: 20 })
   tipo_cadastro: 'ALUNO' | 'RESPONSAVEL';
 
-  @Column({ type: 'uuid' })
-  unidade_id: string;
+  @Column({ type: 'uuid', nullable: true })
+  unidade_id: string | null;
 
   @Column({ type: 'varchar', length: 255, nullable: true })
   email: string | null;

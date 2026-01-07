@@ -807,6 +807,10 @@ export class AlunosService {
         : aluno.data_ultima_graduacao,
     };
 
+    // Remover campos que não existem mais na entidade Aluno
+    delete updateData.faixa_atual;
+    delete updateData.graus;
+
     // Fazer UPDATE direto no banco (bypass da relação @ManyToOne)
     await this.alunoRepository.update(id, updateData);
 
@@ -1455,6 +1459,75 @@ export class AlunosService {
         id: novoAluno.id,
         nome: novoAluno.nome_completo,
       },
+    };
+  }
+
+  /**
+   * Atualizar faixa do aluno manualmente
+   */
+  async atualizarFaixaManual(
+    alunoId: string,
+    faixaCodigo: string,
+    graus: number,
+    dataGraduacao?: string,
+  ): Promise<any> {
+    const aluno = await this.alunoRepository.findOne({
+      where: { id: alunoId },
+      relations: ['faixas', 'faixas.faixaDef'],
+    });
+
+    if (!aluno) {
+      throw new NotFoundException(`Aluno ${alunoId} não encontrado`);
+    }
+
+    // Buscar definição da faixa
+    const faixaDef = await this.dataSource.query(
+      `SELECT id FROM teamcruz.faixa_def WHERE codigo = $1`,
+      [faixaCodigo],
+    );
+
+    if (!faixaDef || faixaDef.length === 0) {
+      throw new NotFoundException(`Faixa ${faixaCodigo} não encontrada`);
+    }
+
+    const faixaDefId = faixaDef[0].id;
+    const dataInicio = dataGraduacao ? new Date(dataGraduacao) : new Date();
+
+    // Desativar faixa atual
+    await this.dataSource.query(
+      `UPDATE teamcruz.aluno_faixa SET ativa = false WHERE aluno_id = $1 AND ativa = true`,
+      [alunoId],
+    );
+
+    // Criar nova faixa ativa
+    await this.dataSource.query(
+      `INSERT INTO teamcruz.aluno_faixa (aluno_id, faixa_def_id, dt_inicio, ativa)
+       VALUES ($1, $2, $3, true)`,
+      [alunoId, faixaDefId, dataInicio],
+    );
+
+    // Adicionar graus se tiver
+    if (graus > 0) {
+      for (let i = 1; i <= graus; i++) {
+        await this.dataSource.query(
+          `INSERT INTO teamcruz.aluno_faixa_grau (aluno_id, faixa_def_id, dt_grau, grau_numero)
+           VALUES ($1, $2, $3, $4)`,
+          [alunoId, faixaDefId, dataInicio, i],
+        );
+      }
+    }
+
+    // Atualizar data_ultima_graduacao no aluno
+    await this.dataSource.query(
+      `UPDATE teamcruz.alunos SET data_ultima_graduacao = $1 WHERE id = $2`,
+      [dataInicio, alunoId],
+    );
+
+    return {
+      success: true,
+      message: 'Faixa atualizada com sucesso',
+      faixa: faixaCodigo,
+      graus: graus,
     };
   }
 }

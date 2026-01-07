@@ -467,18 +467,41 @@ function AlunosContent() {
           : formData.data_matricula,
     };
 
+    // Separar dados de faixa dos outros dados
+    const { faixa_atual, graus, data_ultima_graduacao, ...dadosSemFaixa } = cleanedData;
+
     // Remover campos undefined para não enviar ao backend
-    Object.keys(cleanedData).forEach((key) => {
+    Object.keys(dadosSemFaixa).forEach((key) => {
       if (
-        cleanedData[key as keyof typeof cleanedData] === undefined ||
-        cleanedData[key as keyof typeof cleanedData] === ""
+        dadosSemFaixa[key as keyof typeof dadosSemFaixa] === undefined ||
+        dadosSemFaixa[key as keyof typeof dadosSemFaixa] === ""
       ) {
-        delete cleanedData[key as keyof typeof cleanedData];
+        delete dadosSemFaixa[key as keyof typeof dadosSemFaixa];
       }
     });
 
     if (editingAluno?.id) {
-      updateMutation.mutate({ id: editingAluno.id, data: cleanedData });
+      // Atualizar dados básicos do aluno
+      updateMutation.mutate({ id: editingAluno.id, data: dadosSemFaixa });
+
+      // Se a faixa foi modificada, atualizar separadamente
+      if (faixa_atual && (faixa_atual !== editingAluno.faixa_atual || graus !== editingAluno.graus)) {
+        http(`/alunos/${editingAluno.id}/faixa`, {
+          method: "PATCH",
+          body: {
+            faixa_atual,
+            graus: Number(graus) || 0,
+            data_ultima_graduacao,
+          },
+          auth: true,
+        }).then(() => {
+          toast.success("Faixa atualizada com sucesso!");
+          qc.invalidateQueries({ queryKey: ["alunos"] });
+        }).catch((error) => {
+          console.error("Erro ao atualizar faixa:", error);
+          toast.error("Erro ao atualizar faixa");
+        });
+      }
     } else {
       createMutation.mutate(cleanedData);
     }

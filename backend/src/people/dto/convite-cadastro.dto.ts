@@ -9,9 +9,10 @@ export class CriarConviteDto {
   @IsEnum(['ALUNO', 'RESPONSAVEL'])
   tipo_cadastro: 'ALUNO' | 'RESPONSAVEL';
 
-  @ApiProperty({ description: 'ID da unidade' })
+  @ApiProperty({ description: 'ID da unidade', required: false })
   @IsUUID()
-  unidade_id: string;
+  @IsOptional()
+  unidade_id?: string;
 
   @ApiProperty({ description: 'Email do convidado', required: false })
   @IsEmail()

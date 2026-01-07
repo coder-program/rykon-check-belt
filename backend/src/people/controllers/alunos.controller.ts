@@ -359,6 +359,84 @@ export class AlunosController {
     );
   }
 
+  @Patch(':id/faixa')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({
+    summary: '🥋 Atualizar faixa do aluno manualmente',
+    description:
+      'Permite atualizar a faixa do aluno. Alunos podem atualizar a própria faixa, franqueados podem atualizar de seus alunos',
+  })
+  @ApiResponse({ status: 200, description: '✅ Faixa atualizada com sucesso' })
+  @ApiResponse({ status: 404, description: '❌ Aluno não encontrado' })
+  async atualizarFaixa(
+    @Param('id') id: string,
+    @Body()
+    dto: {
+      faixa_atual: string;
+      graus: number;
+      data_ultima_graduacao?: string;
+    },
+    @Request() req,
+  ) {
+    const perfis = req.user?.perfis?.map((p: any) =>
+      (typeof p === 'string' ? p : p.nome)?.toUpperCase(),
+    );
+
+    // Buscar aluno
+    const aluno = await this.service.findById(id, req.user);
+
+    // Verificar permissões
+    const isProprioAluno = aluno.usuario_id === req.user.id;
+    const isAdmin =
+      perfis.includes('ADMIN') || perfis.includes('SUPER_ADMIN');
+    const isProfessor =
+      perfis.includes('PROFESSOR') || perfis.includes('INSTRUTOR');
+
+    // Verificar se é franqueado do aluno
+    let isFranqueadoDoAluno = false;
+    if (perfis.includes('FRANQUEADO')) {
+      const franqueadoResult = await this.dataSource.query(
+        `SELECT id FROM teamcruz.franqueados WHERE usuario_id = $1 LIMIT 1`,
+        [req.user.id],
+      );
+
+      if (franqueadoResult && franqueadoResult.length > 0) {
+        const franqueadoId = franqueadoResult[0].id;
+
+        // Verificar se a unidade do aluno pertence ao franqueado
+        const unidadeResult = await this.dataSource.query(
+          `SELECT u.franqueado_id FROM teamcruz.unidades u
+           INNER JOIN teamcruz.alunos a ON a.unidade_id = u.id
+           WHERE a.id = $1 AND u.franqueado_id = $2`,
+          [id, franqueadoId],
+        );
+
+        isFranqueadoDoAluno =
+          unidadeResult && unidadeResult.length > 0;
+      }
+    }
+
+    // Verificar se tem permissão
+    if (
+      !isProprioAluno &&
+      !isAdmin &&
+      !isProfessor &&
+      !isFranqueadoDoAluno
+    ) {
+      throw new NotFoundException(
+        'Você não tem permissão para atualizar a faixa deste aluno',
+      );
+    }
+
+    // Atualizar usando o sistema de graduação
+    return this.service.atualizarFaixaManual(
+      id,
+      dto.faixa_atual,
+      dto.graus,
+      dto.data_ultima_graduacao,
+    );
+  }
+
   // ===== TABLET CHECK-IN =====
 
   @Get('unidade/checkin')

@@ -598,6 +598,33 @@ export default function MeuPerfilPage() {
             errorData.message || "Erro ao atualizar dados do aluno"
           );
         }
+
+        // Atualizar faixa se foi modificada
+        if (data.faixa_atual || data.graus !== undefined || data.data_ultima_graduacao) {
+          const dadosFaixa = {
+            faixa_atual: data.faixa_atual,
+            graus: Number(data.graus) || 0,
+            data_ultima_graduacao: data.data_ultima_graduacao,
+          };
+
+          const faixaResponse = await fetch(
+            `${API_URL}/alunos/${dadosAluno.id}/faixa`,
+            {
+              method: "PATCH",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${localStorage.getItem("token")}`,
+              },
+              body: JSON.stringify(dadosFaixa),
+            }
+          );
+
+          if (!faixaResponse.ok) {
+            const errorData = await faixaResponse.json();
+            console.warn("Aviso ao atualizar faixa:", errorData.message);
+            // Não lançar erro, apenas avisar
+          }
+        }
       }
 
       // Se é professor e tem dados específicos para atualizar
@@ -1513,6 +1540,94 @@ export default function MeuPerfilPage() {
                             } grau(s)`
                           : "Não informado"}
                       </p>
+                    </div>
+                  </div>
+
+                  {/* Campos editáveis de graduação */}
+                  <div className="mt-4 bg-blue-50 p-4 rounded-lg">
+                    <h5 className="text-sm font-medium text-gray-900 mb-3">
+                      🥋 Atualizar Graduação
+                    </h5>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div>
+                        <label
+                          htmlFor="faixa_atual"
+                          className="block text-sm font-medium text-gray-700 mb-2"
+                        >
+                          Faixa Atual
+                        </label>
+                        <select
+                          id="faixa_atual"
+                          name="faixa_atual"
+                          value={formData.faixa_atual || ""}
+                          onChange={handleChange}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          <option value="">Selecione a faixa</option>
+                          <optgroup label="Faixas Infantis">
+                            <option value="BRANCA">Branca</option>
+                            <option value="CINZA_BRANCA">Cinza-Branca</option>
+                            <option value="CINZA">Cinza</option>
+                            <option value="CINZA_PRETA">Cinza-Preta</option>
+                            <option value="AMARELA_BRANCA">Amarela-Branca</option>
+                            <option value="AMARELA">Amarela</option>
+                            <option value="AMARELA_PRETA">Amarela-Preta</option>
+                            <option value="LARANJA_BRANCA">Laranja-Branca</option>
+                            <option value="LARANJA">Laranja</option>
+                            <option value="LARANJA_PRETA">Laranja-Preta</option>
+                            <option value="VERDE_BRANCA">Verde-Branca</option>
+                            <option value="VERDE">Verde</option>
+                            <option value="VERDE_PRETA">Verde-Preta</option>
+                          </optgroup>
+                          <optgroup label="Faixas Adultas">
+                            <option value="AZUL">Azul</option>
+                            <option value="ROXA">Roxa</option>
+                            <option value="MARROM">Marrom</option>
+                            <option value="PRETA">Preta</option>
+                            <option value="CORAL">Coral</option>
+                            <option value="VERMELHA">Vermelha</option>
+                          </optgroup>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label
+                          htmlFor="graus"
+                          className="block text-sm font-medium text-gray-700 mb-2"
+                        >
+                          Graus
+                        </label>
+                        <select
+                          id="graus"
+                          name="graus"
+                          value={formData.graus || 0}
+                          onChange={handleChange}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          <option value="0">0 graus</option>
+                          <option value="1">1 grau</option>
+                          <option value="2">2 graus</option>
+                          <option value="3">3 graus</option>
+                          <option value="4">4 graus</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label
+                          htmlFor="data_ultima_graduacao"
+                          className="block text-sm font-medium text-gray-700 mb-2"
+                        >
+                          Data da Última Graduação
+                        </label>
+                        <input
+                          type="date"
+                          id="data_ultima_graduacao"
+                          name="data_ultima_graduacao"
+                          value={formData.data_ultima_graduacao || ""}
+                          onChange={handleChange}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>
