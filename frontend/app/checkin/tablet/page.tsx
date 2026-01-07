@@ -227,7 +227,7 @@ export default function TabletCheckinPage() {
 
   return (
     <ProtectedRoute requiredPerfis={["TABLET_CHECKIN"]}>
-      <div className="min-h-screen bg-gradient-to-br from-indigo-600 via-blue-600 to-cyan-500 p-3">
+      <div className="min-h-screen bg-gradient-to-br from-slate-700 via-gray-800 to-slate-900 p-3">
         <div className="max-w-2xl mx-auto">
           {/* Header Compacto */}
           <div className="mb-4">
