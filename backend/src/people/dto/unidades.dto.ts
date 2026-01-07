@@ -224,6 +224,27 @@ export class CreateUnidadeDto {
   @IsOptional()
   longitude?: number;
 
+  @ApiPropertyOptional({
+    description: 'Capacidade máxima de alunos na unidade',
+    example: 100,
+  })
+  @IsOptional()
+  capacidade_max_alunos?: number;
+
+  @ApiPropertyOptional({
+    description: 'Valor da mensalidade padrão (plano padrão) da unidade',
+    example: 350.0,
+  })
+  @IsOptional()
+  valor_plano_padrao?: number;
+
+  @ApiPropertyOptional({
+    description: 'Quantidade de instrutores/professores da unidade',
+    example: 5,
+  })
+  @IsOptional()
+  qtde_instrutores?: number;
+
   @ApiPropertyOptional({ description: 'ID do endereço da unidade' })
   @IsOptional()
   @IsString()
@@ -307,6 +328,27 @@ export class UpdateUnidadeDto {
   })
   @IsOptional()
   longitude?: number;
+
+  @ApiPropertyOptional({
+    description: 'Capacidade máxima de alunos na unidade',
+    example: 100,
+  })
+  @IsOptional()
+  capacidade_max_alunos?: number;
+
+  @ApiPropertyOptional({
+    description: 'Valor da mensalidade padrão (plano padrão) da unidade',
+    example: 350.0,
+  })
+  @IsOptional()
+  valor_plano_padrao?: number;
+
+  @ApiPropertyOptional({
+    description: 'Quantidade de instrutores/professores da unidade',
+    example: 5,
+  })
+  @IsOptional()
+  qtde_instrutores?: number;
 
   @ApiPropertyOptional({
     example: { seg: '06:00-22:00', ter: '06:00-22:00', sab: '08:00-16:00' },

@@ -44,6 +44,8 @@ export default function GerenteDashboard() {
       return result;
     },
     enabled: !!user?.id,
+    staleTime: 0, // Sempre buscar dados frescos
+    refetchOnMount: true, // Recarregar ao montar componente
   });
 
   const unidade = unidadesData?.items?.[0];
@@ -96,19 +98,22 @@ export default function GerenteDashboard() {
     alunosAtivos,
     alunosInativos: alunos.length - alunosAtivos,
     capacidadeMax: unidade?.capacidade_max_alunos || 0,
-    ocupacao: unidade?.capacidade_max_alunos
-      ? Math.round((alunosAtivos / unidade.capacidade_max_alunos) * 100)
-      : 0,
+    ocupacao:
+      unidade?.capacidade_max_alunos && unidade.capacidade_max_alunos > 0
+        ? Math.round((alunosAtivos / unidade.capacidade_max_alunos) * 100)
+        : null,
     totalProfessores: unidade?.qtde_instrutores || 0,
-    receitaMensal: alunos.reduce(
-      (sum: number, aluno: { status?: string; ativo?: boolean }) => {
-        if (aluno.status === "ATIVO" || aluno.ativo) {
-          return sum + (unidade?.valor_plano_padrao || 350);
-        }
-        return sum;
-      },
-      0
-    ),
+    receitaMensal: unidade?.valor_plano_padrao
+      ? alunos.reduce(
+          (sum: number, aluno: { status?: string; ativo?: boolean }) => {
+            if (aluno.status === "ATIVO" || aluno.ativo) {
+              return sum + unidade.valor_plano_padrao;
+            }
+            return sum;
+          },
+          0
+        )
+      : 0,
     graduacoesPendentes: 0, // TODO: Implementar API de graduações pendentes
     aulasHoje: aulasHoje?.count || 0, // ✅ Buscar do banco
   };
@@ -320,10 +325,12 @@ export default function GerenteDashboard() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-blue-600">
-                {stats.ocupacao}%
+                {stats.ocupacao !== null ? `${stats.ocupacao}%` : "—"}
               </div>
               <p className="text-xs text-muted-foreground">
-                {stats.alunosAtivos} de {stats.capacidadeMax} vagas
+                {stats.capacidadeMax > 0
+                  ? `${stats.alunosAtivos} de ${stats.capacidadeMax} vagas`
+                  : `${stats.alunosAtivos} alunos (capacidade não configurada)`}
               </p>
             </CardContent>
           </Card>
@@ -337,10 +344,14 @@ export default function GerenteDashboard() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-green-600">
-                R$ {stats.receitaMensal.toLocaleString()}
+                {unidade.valor_plano_padrao
+                  ? `R$ ${stats.receitaMensal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                  : "Não configurado"}
               </div>
               <p className="text-xs text-muted-foreground">
-                Plano padrão: R$ {unidade.valor_plano_padrao?.toLocaleString()}
+                {unidade.valor_plano_padrao
+                  ? `Plano padrão: R$ ${unidade.valor_plano_padrao.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                  : "Configure o valor do plano na unidade"}
               </p>
             </CardContent>
           </Card>

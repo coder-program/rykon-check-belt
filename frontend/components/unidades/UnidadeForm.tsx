@@ -72,6 +72,10 @@ interface UnidadeFormData {
   // Geolocalização
   latitude?: number;
   longitude?: number;
+  // Configurações operacionais
+  capacidade_max_alunos?: number;
+  valor_plano_padrao?: number;
+  qtde_instrutores?: number;
 }
 
 interface Franqueado {
@@ -1578,6 +1582,83 @@ export default function UnidadeForm({
                         </p>
                       </div>
                     )}
+                  </div>
+
+                  {/* Configurações Operacionais */}
+                  <div className="border-t pt-6">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                      <Building2 className="h-5 w-5 text-blue-600" />
+                      Configurações Operacionais
+                    </h3>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Capacidade Máxima de Alunos
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          value={formData.capacidade_max_alunos || ""}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              capacidade_max_alunos: e.target.value ? parseInt(e.target.value) : undefined,
+                            })
+                          }
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          placeholder="Ex: 100"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">
+                          Total de vagas disponíveis na unidade
+                        </p>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Valor do Plano Padrão (R$)
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={formData.valor_plano_padrao || ""}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              valor_plano_padrao: e.target.value ? parseFloat(e.target.value) : undefined,
+                            })
+                          }
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          placeholder="Ex: 350.00"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">
+                          Mensalidade padrão da unidade
+                        </p>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Quantidade de Instrutores
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          value={formData.qtde_instrutores || ""}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              qtde_instrutores: e.target.value ? parseInt(e.target.value) : undefined,
+                            })
+                          }
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          placeholder="Ex: 5"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">
+                          Total de professores/instrutores
+                        </p>
+                      </div>
+                    </div>
                   </div>
 
                   {/* Configuração de Aprovação de Check-ins */}

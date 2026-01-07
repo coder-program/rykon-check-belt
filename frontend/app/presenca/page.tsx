@@ -125,6 +125,15 @@ export default function PresencaPage() {
     }
   }, [user, meusFilhos]);
 
+  // Auto-iniciar scanner QR Code para alunos
+  useEffect(() => {
+    const isAluno = user?.perfis?.some(
+      (p: string) => p.toLowerCase() === "aluno"
+    );
+    
+    // Removido auto-start - scanner inicia apenas ao clicar no botão
+  }, [aulaAtiva, user, metodoCheckin]);
+
   const loadAulaAtiva = async () => {
     try {
       const token = localStorage.getItem("token");
@@ -280,9 +289,13 @@ export default function PresencaPage() {
     }
   };
 
-  const startQRScanner = () => {
+  const startQRScanner = async () => {
+    console.log('🎥 startQRScanner chamado');
+    
     if (scanner) {
+      console.log('🧹 Limpando scanner anterior');
       scanner.clear();
+      setScanner(null);
     }
 
     // Primeiro ativa o scanner state para renderizar o elemento
@@ -291,39 +304,55 @@ export default function PresencaPage() {
     // Aguarda o próximo tick para garantir que o elemento foi renderizado
     setTimeout(() => {
       const element = document.getElementById("qr-reader");
+      console.log('📦 Elemento qr-reader:', element);
+      
       if (!element) {
-        console.error("Elemento qr-reader não encontrado");
-        setMessage({ type: "error", text: "Erro ao inicializar scanner" });
+        console.error("❌ Elemento qr-reader não encontrado");
+        toast.error("Erro ao inicializar scanner");
         setScannerActive(false);
         return;
       }
 
-      const newScanner = new Html5QrcodeScanner(
-        "qr-reader",
-        {
-          fps: 10,
-          qrbox: { width: 250, height: 250 },
-          aspectRatio: 1.0,
-        },
-        false
-      );
+      try {
+        console.log('🔧 Criando Html5QrcodeScanner...');
+        const newScanner = new Html5QrcodeScanner(
+          "qr-reader",
+          {
+            fps: 10,
+            qrbox: { width: 250, height: 250 },
+            aspectRatio: 1.0,
+            rememberLastUsedCamera: true,
+            showTorchButtonIfSupported: true,
+          },
+          false
+        );
 
-      newScanner.render(
-        (decodedText) => {
-          processQRCode(decodedText);
-          newScanner.clear();
-          setScannerActive(false);
-        },
-        (error) => {
-          // Silenciar erros de scan contínuo
-          if (!error.includes("QR code parse error")) {
-            console.warn("Erro no scanner:", error);
+        console.log('🎬 Renderizando scanner...');
+        newScanner.render(
+          (decodedText) => {
+            console.log('✅ QR Code lido:', decodedText);
+            processQRCode(decodedText);
+            newScanner.clear();
+            setScannerActive(false);
+            setScanner(null);
+          },
+          (error) => {
+            // Silenciar erros de scan contínuo
+            if (!error.includes("QR code parse error") && !error.includes("NotFoundException")) {
+              console.warn("⚠️ Erro no scanner:", error);
+            }
           }
-        }
-      );
+        );
 
-      setScanner(newScanner);
-    }, 100);
+        setScanner(newScanner);
+        console.log('✅ Scanner criado com sucesso');
+        
+      } catch (error) {
+        console.error("❌ Erro ao criar scanner:", error);
+        toast.error("Erro ao inicializar câmera. Clique em 'Request Camera Permissions'");
+        setScannerActive(false);
+      }
+    }, 200);
   };
 
   const processQRCode = async (qrData: string) => {
@@ -934,8 +963,10 @@ export default function PresencaPage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 md:gap-8">
             {/* Check-in Section */}
             <div className="space-y-4 sm:space-y-6">
-              {/* Seletor de Método de Check-in */}
-              {aulaAtiva && (
+              {/* Seletor de Método de Check-in - Apenas para não-alunos */}
+              {aulaAtiva && !user?.perfis?.some(
+                (p: string) => p.toLowerCase() === "aluno"
+              ) && (
                 <Card className="border-2">
                   <CardHeader className="p-4 sm:p-6">
                     <CardTitle className="text-base sm:text-lg">
@@ -955,43 +986,37 @@ export default function PresencaPage() {
                         <span className="hidden sm:inline">QR Code</span>
                         <span className="sm:hidden">QR</span>
                       </Button>
-                      {!user?.perfis?.some(
-                        (p: string) => p.toLowerCase() === "aluno"
-                      ) && (
-                        <>
-                          <Button
-                            variant={
-                              metodoCheckin === "CPF" ? "default" : "outline"
-                            }
-                            onClick={() => setMetodoCheckin("CPF")}
-                            className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 py-3 sm:py-2 text-xs sm:text-sm"
-                          >
-                            <CreditCard className="h-4 w-4" />
-                            CPF
-                          </Button>
-                          <Button
-                            variant={
-                              metodoCheckin === "FACIAL" ? "default" : "outline"
-                            }
-                            onClick={() => setMetodoCheckin("FACIAL")}
-                            className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 py-3 sm:py-2 text-xs sm:text-sm"
-                          >
-                            <Camera className="h-4 w-4" />
-                            <span className="hidden sm:inline">Facial</span>
-                            <span className="sm:hidden">Face</span>
-                          </Button>
-                          <Button
-                            variant={
-                              metodoCheckin === "NOME" ? "default" : "outline"
-                            }
-                            onClick={() => setMetodoCheckin("NOME")}
-                            className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 py-3 sm:py-2 text-xs sm:text-sm"
-                          >
-                            <Search className="h-4 w-4" />
-                            Nome
-                          </Button>
-                        </>
-                      )}
+                      <Button
+                        variant={
+                          metodoCheckin === "CPF" ? "default" : "outline"
+                        }
+                        onClick={() => setMetodoCheckin("CPF")}
+                        className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 py-3 sm:py-2 text-xs sm:text-sm"
+                      >
+                        <CreditCard className="h-4 w-4" />
+                        CPF
+                      </Button>
+                      <Button
+                        variant={
+                          metodoCheckin === "FACIAL" ? "default" : "outline"
+                        }
+                        onClick={() => setMetodoCheckin("FACIAL")}
+                        className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 py-3 sm:py-2 text-xs sm:text-sm"
+                      >
+                        <Camera className="h-4 w-4" />
+                        <span className="hidden sm:inline">Facial</span>
+                        <span className="sm:hidden">Face</span>
+                      </Button>
+                      <Button
+                        variant={
+                          metodoCheckin === "NOME" ? "default" : "outline"
+                        }
+                        onClick={() => setMetodoCheckin("NOME")}
+                        className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 py-3 sm:py-2 text-xs sm:text-sm"
+                      >
+                        <Search className="h-4 w-4" />
+                        Nome
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>
@@ -1003,19 +1028,18 @@ export default function PresencaPage() {
                   <CardHeader className="p-4 sm:p-6">
                     <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
                       <QrCode className="h-5 w-5" />
-                      <span className="hidden sm:inline">Scanner QR Code</span>
-                      <span className="sm:hidden">Scanner QR</span>
+                      Scanner QR Code
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="p-4 sm:p-6">
                     {!scannerActive ? (
                       <div className="space-y-4">
-                        <p className="text-gray-600">
+                         <p className="text-gray-600">
                           Posicione o QR Code da carteirinha em frente à câmera
                           para fazer o check-in automaticamente.
                         </p>
-                        <Button onClick={startQRScanner} className="w-full">
-                          <QrCode className="mr-2 h-4 w-4" />
+                        <Button onClick={startQRScanner} className="w-full" size="lg">
+                          <Camera className="mr-2 h-4 w-4" />
                           Iniciar Scanner
                         </Button>
                       </div>
@@ -1024,10 +1048,10 @@ export default function PresencaPage() {
                         <div id="qr-reader" className="w-full"></div>
                         <Button
                           onClick={stopScanner}
-                          variant="outline"
+                          variant="destructive"
                           className="w-full"
                         >
-                          Parar Scanner
+                          Fechar Câmera
                         </Button>
                       </div>
                     )}

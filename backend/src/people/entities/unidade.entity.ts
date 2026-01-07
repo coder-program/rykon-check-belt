@@ -101,6 +101,16 @@ export class Unidade {
   @Column({ type: 'decimal', precision: 11, scale: 8, nullable: true })
   longitude: number;
 
+  // Configurações operacionais
+  @Column({ type: 'integer', nullable: true })
+  capacidade_max_alunos: number;
+
+  @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
+  valor_plano_padrao: number;
+
+  @Column({ type: 'integer', nullable: true })
+  qtde_instrutores: number;
+
   // Dados estruturais (JSONB)
   @Column({ type: 'jsonb', nullable: true })
   horarios_funcionamento: HorariosFuncionamento | null;

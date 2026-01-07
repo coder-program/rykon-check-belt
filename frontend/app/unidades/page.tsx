@@ -31,6 +31,7 @@ import {
   ArrowLeft,
   ChevronLeft,
   ChevronRight,
+  QrCode,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import UnidadeForm from "@/components/unidades/UnidadeForm";
@@ -83,6 +84,10 @@ interface UnidadeFormData {
   requer_aprovacao_checkin?: boolean;
   latitude?: number;
   longitude?: number;
+  // Configurações operacionais
+  capacidade_max_alunos?: number;
+  valor_plano_padrao?: number;
+  qtde_instrutores?: number;
 }
 
 export default function PageUnidades() {
@@ -629,6 +634,13 @@ export default function PageUnidades() {
                       </div>
                     </div>
                     <div className="flex gap-2 ml-4">
+                      <button
+                        onClick={() => router.push(`/unidades/${unidade.id}/qrcode`)}
+                        className="p-2 hover:bg-green-100 rounded-lg transition-colors"
+                        title="QR Code Check-in"
+                      >
+                        <QrCode className="h-4 w-4 text-green-600" />
+                      </button>
                       <button
                         onClick={() => handleEdit(unidade)}
                         className="p-2 hover:bg-blue-100 rounded-lg transition-colors"
