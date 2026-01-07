@@ -75,21 +75,8 @@ export class UnidadesController {
   @ApiQuery({ name: 'page', required: false, example: '1' })
   @ApiQuery({ name: 'pageSize', required: false, example: '20' })
   async listar(@Query() query: UnidadeQueryDto, @Request() req) {
-    // usuário autenticado é obrigatório para filtrar corretamente
     const user = req.user;
-    // Log incoming query and auth info for debugging responsavel_cpf flows
-    const result = await this.unidadesService.listar(query, user);
-    console.log('🔍 [UnidadesController] Listando unidades, primeira unidade:', {
-      total: result.items?.length,
-      primeira: result.items?.[0] ? {
-        id: result.items[0].id,
-        nome: result.items[0].nome,
-        capacidade_max_alunos: result.items[0].capacidade_max_alunos,
-        valor_plano_padrao: result.items[0].valor_plano_padrao,
-        qtde_instrutores: result.items[0].qtde_instrutores,
-      } : null,
-    });
-    return result;
+    return this.unidadesService.listar(query, user);
   }
 
   @UseGuards(JwtAuthGuard)
@@ -98,15 +85,7 @@ export class UnidadesController {
   @ApiParam({ name: 'id', type: String })
   async obter(@Param('id') id: string, @Request() req) {
     const user = req.user;
-    const result = await this.unidadesService.obter(id, user);
-    console.log('🔍 [UnidadesController] Retornando unidade:', {
-      id: result.id,
-      nome: result.nome,
-      capacidade_max_alunos: result.capacidade_max_alunos,
-      valor_plano_padrao: result.valor_plano_padrao,
-      qtde_instrutores: result.qtde_instrutores,
-    });
-    return result;
+    return this.unidadesService.obter(id, user);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)

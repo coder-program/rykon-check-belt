@@ -95,20 +95,33 @@ export class PresencaController {
     schema: {
       type: 'object',
       properties: {
-        alunoId: { type: 'string' },
-        aulaId: { type: 'string' },
+        dependenteId: { type: 'string', description: 'ID do dependente' },
+        aulaId: { type: 'string', description: 'ID da aula (opcional se usar QR)' },
+        qrCode: { type: 'string', description: 'QR Code da unidade ou aula (opcional)' },
+        latitude: { type: 'number', description: 'Latitude do responsável' },
+        longitude: { type: 'number', description: 'Longitude do responsável' },
       },
+      required: ['dependenteId'],
     },
   })
   @ApiResponse({ status: 200, description: 'Check-in realizado com sucesso' })
   async checkInDependente(
-    @Body() body: { alunoId: string; aulaId: string },
+    @Body() body: { 
+      dependenteId: string; 
+      aulaId?: string; 
+      qrCode?: string;
+      latitude?: number;
+      longitude?: number;
+    },
     @Request() req,
   ) {
     return this.presencaService.checkInDependente(
-      body.alunoId,
+      body.dependenteId,
       body.aulaId,
       req.user,
+      body.qrCode,
+      body.latitude,
+      body.longitude,
     );
   }
 
@@ -133,6 +146,27 @@ export class PresencaController {
   @ApiResponse({ status: 200, description: 'Lista de check-ins pendentes' })
   async getMinhasPendentes(@Request() req) {
     return this.presencaService.getMinhasPendentes(req.user);
+  }
+
+  @Get('historico-aluno/:alunoId')
+  @ApiOperation({ summary: 'Histórico de presenças de um aluno específico (para responsável)' })
+  @ApiResponse({ status: 200, description: 'Histórico de presenças' })
+  async getHistoricoAluno(
+    @Param('alunoId') alunoId: string,
+    @Request() req,
+    @Query('limit') limit?: number,
+  ) {
+    return this.presencaService.getHistoricoAluno(alunoId, req.user, limit);
+  }
+
+  @Get('estatisticas-aluno/:alunoId')
+  @ApiOperation({ summary: 'Estatísticas de presença de um aluno específico (para responsável)' })
+  @ApiResponse({ status: 200, description: 'Estatísticas de presença' })
+  async getEstatisticasAluno(
+    @Param('alunoId') alunoId: string,
+    @Request() req,
+  ): Promise<EstatisticasPresenca> {
+    return this.presencaService.getEstatisticasAluno(alunoId, req.user);
   }
 
   @Post('check-in-cpf')

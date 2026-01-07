@@ -69,12 +69,14 @@ interface AulaAtiva {
 
 export default function PresencaPage() {
   const { shouldBlock } = useFranqueadoProtection();
-
   const router = useRouter();
   const { user } = useAuth();
   const videoRef = useRef<HTMLVideoElement>(null);
 
-  if (shouldBlock) return null; // Estados existentes
+  // Pegar alunoId da query string (para check-in de dependentes)
+  const [targetAlunoId, setTargetAlunoId] = useState<string | null>(null);
+  
+  // Estados existentes
   const [scanner, setScanner] = useState<Html5QrcodeScanner | null>(null);
   const [scannerActive, setScannerActive] = useState(false);
   const [aulaAtiva, setAulaAtiva] = useState<AulaAtiva | null>(null);
@@ -109,14 +111,22 @@ export default function PresencaPage() {
   const [showResponsavelMode, setShowResponsavelMode] = useState(false);
   const [buscaHistorico, setBuscaHistorico] = useState("");
   const [presencasPendentes, setPresencasPendentes] = useState<any[]>([]);
+  
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const alunoIdParam = params.get('alunoId');
+    setTargetAlunoId(alunoIdParam);
+  }, []);
 
   useEffect(() => {
     loadAulaAtiva();
     loadHistoricoPresenca();
     loadPresencasPendentes();
     loadEstatisticas();
-    loadMeusFilhos();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    if (!targetAlunoId) {
+      loadMeusFilhos();
+    }
+  }, [targetAlunoId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     // Verificar se é responsável e tem filhos cadastrados
@@ -202,15 +212,18 @@ export default function PresencaPage() {
   const loadHistoricoPresenca = async () => {
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/presenca/minha-historico`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
+      
+      // Se targetAlunoId existir, buscar histórico do dependente
+      const endpoint = targetAlunoId
+        ? `${process.env.NEXT_PUBLIC_API_URL}/presenca/historico-aluno/${targetAlunoId}`
+        : `${process.env.NEXT_PUBLIC_API_URL}/presenca/minha-historico`;
+      
+      const response = await fetch(endpoint, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
 
       if (response.ok) {
         const data = await response.json();
@@ -222,6 +235,12 @@ export default function PresencaPage() {
   };
 
   const loadPresencasPendentes = async () => {
+    // Não carregar pendentes quando visualizando dependente
+    if (targetAlunoId) {
+      setPresencasPendentes([]);
+      return;
+    }
+    
     try {
       const token = localStorage.getItem("token");
       const response = await fetch(
@@ -246,15 +265,18 @@ export default function PresencaPage() {
   const loadEstatisticas = async () => {
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/presenca/minhas-estatisticas`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
+      
+      // Se estamos visualizando um dependente, buscar estatísticas dele
+      const endpoint = targetAlunoId
+        ? `${process.env.NEXT_PUBLIC_API_URL}/presenca/estatisticas-aluno/${targetAlunoId}`
+        : `${process.env.NEXT_PUBLIC_API_URL}/presenca/minhas-estatisticas`;
+      
+      const response = await fetch(endpoint, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
 
       if (response.ok) {
         const data = await response.json();
@@ -382,21 +404,33 @@ export default function PresencaPage() {
       }
 
       const token = localStorage.getItem("token");
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/presenca/check-in-qr`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
+      
+      // Se targetAlunoId existir, usa endpoint de dependente
+      const endpoint = targetAlunoId 
+        ? `${process.env.NEXT_PUBLIC_API_URL}/presenca/check-in-dependente`
+        : `${process.env.NEXT_PUBLIC_API_URL}/presenca/check-in-qr`;
+      
+      const body = targetAlunoId
+        ? {
+            qrCode: qrData,
+            dependenteId: targetAlunoId,
+            latitude,
+            longitude,
+          }
+        : {
             qrCode: qrData,
             latitude,
             longitude,
-          }),
-        }
-      );
+          };
+      
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+      });
 
       const result = await response.json();
 
@@ -820,6 +854,9 @@ export default function PresencaPage() {
     });
   };
 
+  // Bloquear acesso de franqueados
+  if (shouldBlock) return null;
+
   return (
     <ProtectedRoute>
       <div className="min-h-screen bg-gray-50 p-6">
@@ -838,11 +875,13 @@ export default function PresencaPage() {
               <div className="flex items-center gap-2 sm:gap-3 mb-2">
                 <Clock className="h-6 w-6 sm:h-8 sm:w-8 text-green-600" />
                 <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900">
-                  Marcar Presença
+                  Marcar Presença{targetAlunoId && " - Dependente"}
                 </h1>
               </div>
               <p className="text-sm sm:text-base text-gray-600">
-                Faça seu check-in nas aulas usando QR Code ou manualmente
+                {targetAlunoId 
+                  ? "Visualizando histórico do dependente" 
+                  : "Faça seu check-in nas aulas usando QR Code ou manualmente"}
               </p>
             </div>
           </div>
@@ -867,9 +906,10 @@ export default function PresencaPage() {
             </div>
           )}
 
-          {/* Stats Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8">
-            <Card className="border-0 shadow-md bg-gradient-to-br from-green-50 to-green-100">
+          {/* Stats Cards - Ocultar quando visualizando dependente */}
+          {!targetAlunoId && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8">
+              <Card className="border-0 shadow-md bg-gradient-to-br from-green-50 to-green-100">
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between mb-4">
                   <div className="p-3 bg-green-500 rounded-xl shadow-lg">
@@ -959,71 +999,168 @@ export default function PresencaPage() {
               </CardContent>
             </Card>
           </div>
+          )}
+
+          {/* Stats do dependente - Mostrar quando visualizando dependente */}
+          {targetAlunoId && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8">
+              <Card className="border-0 shadow-md bg-gradient-to-br from-green-50 to-green-100">
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="p-3 bg-green-500 rounded-xl shadow-lg">
+                    <TrendingUp className="h-6 w-6 text-white" />
+                  </div>
+                  <div className="text-right">
+                    <div className="text-3xl font-bold text-green-700">
+                      {statsLoading ? "..." : `${stats.presencaMensal}%`}
+                    </div>
+                  </div>
+                </div>
+                <h3 className="text-sm font-semibold text-green-900 mb-1">
+                  Presença Mensal
+                </h3>
+                <p className="text-xs text-green-700">
+                  {stats.presencaMensal >= 80
+                    ? "🔥 Excelente!"
+                    : "📈 Pode melhorar"}
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="border-0 shadow-md bg-gradient-to-br from-blue-50 to-blue-100">
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="p-3 bg-blue-500 rounded-xl shadow-lg">
+                    <Calendar className="h-6 w-6 text-white" />
+                  </div>
+                  <div className="text-right">
+                    <div className="text-3xl font-bold text-blue-700">
+                      {statsLoading ? "..." : stats.aulasMes}
+                    </div>
+                  </div>
+                </div>
+                <h3 className="text-sm font-semibold text-blue-900 mb-1">
+                  Aulas Este Mês
+                </h3>
+                <p className="text-xs text-blue-700">Aulas frequentadas</p>
+              </CardContent>
+            </Card>
+
+            <Card className="border-0 shadow-md bg-gradient-to-br from-yellow-50 to-yellow-100">
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="p-3 bg-yellow-500 rounded-xl shadow-lg">
+                    <Trophy className="h-6 w-6 text-white" />
+                  </div>
+                  <div className="text-right">
+                    <div className="text-3xl font-bold text-yellow-700">
+                      {statsLoading ? "..." : stats.sequenciaAtual}
+                    </div>
+                  </div>
+                </div>
+                <h3 className="text-sm font-semibold text-yellow-900 mb-1">
+                  Sequência Atual
+                </h3>
+                <p className="text-xs text-yellow-700">
+                  🔥 {stats.sequenciaAtual} dias consecutivos
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="border-0 shadow-md bg-gradient-to-br from-purple-50 to-purple-100">
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="p-3 bg-purple-500 rounded-xl shadow-lg">
+                    <History className="h-6 w-6 text-white" />
+                  </div>
+                  <div className="text-right">
+                    <div className="text-lg font-bold text-purple-700">
+                      {statsLoading
+                        ? "..."
+                        : stats.ultimaPresenca
+                        ? formatDate(stats.ultimaPresenca).split(" ")[0]
+                        : "---"}
+                    </div>
+                  </div>
+                </div>
+                <h3 className="text-sm font-semibold text-purple-900 mb-1">
+                  Última Presença
+                </h3>
+                <p className="text-xs text-purple-700">
+                  {stats.ultimaPresenca
+                    ? "Último check-in"
+                    : "Nenhum check-in ainda"}
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+          )}
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 md:gap-8">
-            {/* Check-in Section */}
-            <div className="space-y-4 sm:space-y-6">
-              {/* Seletor de Método de Check-in - Apenas para não-alunos */}
-              {aulaAtiva && !user?.perfis?.some(
-                (p: string) => p.toLowerCase() === "aluno"
-              ) && (
-                <Card className="border-2">
-                  <CardHeader className="p-4 sm:p-6">
-                    <CardTitle className="text-base sm:text-lg">
-                      Métodos de Check-in
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-4 sm:p-6">
-                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
-                      <Button
-                        variant={
-                          metodoCheckin === "QR_CODE" ? "default" : "outline"
-                        }
-                        onClick={() => setMetodoCheckin("QR_CODE")}
-                        className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 py-3 sm:py-2 text-xs sm:text-sm"
-                      >
-                        <QrCode className="h-4 w-4" />
-                        <span className="hidden sm:inline">QR Code</span>
-                        <span className="sm:hidden">QR</span>
-                      </Button>
-                      <Button
-                        variant={
-                          metodoCheckin === "CPF" ? "default" : "outline"
-                        }
-                        onClick={() => setMetodoCheckin("CPF")}
-                        className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 py-3 sm:py-2 text-xs sm:text-sm"
-                      >
-                        <CreditCard className="h-4 w-4" />
-                        CPF
-                      </Button>
-                      <Button
-                        variant={
-                          metodoCheckin === "FACIAL" ? "default" : "outline"
-                        }
-                        onClick={() => setMetodoCheckin("FACIAL")}
-                        className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 py-3 sm:py-2 text-xs sm:text-sm"
-                      >
-                        <Camera className="h-4 w-4" />
-                        <span className="hidden sm:inline">Facial</span>
-                        <span className="sm:hidden">Face</span>
-                      </Button>
-                      <Button
-                        variant={
-                          metodoCheckin === "NOME" ? "default" : "outline"
-                        }
-                        onClick={() => setMetodoCheckin("NOME")}
-                        className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 py-3 sm:py-2 text-xs sm:text-sm"
-                      >
-                        <Search className="h-4 w-4" />
-                        Nome
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
+            {/* Check-in Section - Ocultar quando visualizando dependente */}
+            {!targetAlunoId && (
+              <div className="space-y-4 sm:space-y-6">
+                {/* Seletor de Método de Check-in - Apenas para não-alunos */}
+                {aulaAtiva && !user?.perfis?.some(
+                  (p: string) => p.toLowerCase() === "aluno"
+                ) && (
+                  <Card className="border-2">
+                    <CardHeader className="p-4 sm:p-6">
+                      <CardTitle className="text-base sm:text-lg">
+                        Métodos de Check-in
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-4 sm:p-6">
+                      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+                        <Button
+                          variant={
+                            metodoCheckin === "QR_CODE" ? "default" : "outline"
+                          }
+                          onClick={() => setMetodoCheckin("QR_CODE")}
+                          className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 py-3 sm:py-2 text-xs sm:text-sm"
+                        >
+                          <QrCode className="h-4 w-4" />
+                          <span className="hidden sm:inline">QR Code</span>
+                          <span className="sm:hidden">QR</span>
+                        </Button>
+                        <Button
+                          variant={
+                            metodoCheckin === "CPF" ? "default" : "outline"
+                          }
+                          onClick={() => setMetodoCheckin("CPF")}
+                          className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 py-3 sm:py-2 text-xs sm:text-sm"
+                        >
+                          <CreditCard className="h-4 w-4" />
+                          CPF
+                        </Button>
+                        <Button
+                          variant={
+                            metodoCheckin === "FACIAL" ? "default" : "outline"
+                          }
+                          onClick={() => setMetodoCheckin("FACIAL")}
+                          className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 py-3 sm:py-2 text-xs sm:text-sm"
+                        >
+                          <Camera className="h-4 w-4" />
+                          <span className="hidden sm:inline">Facial</span>
+                          <span className="sm:hidden">Face</span>
+                        </Button>
+                        <Button
+                          variant={
+                            metodoCheckin === "NOME" ? "default" : "outline"
+                          }
+                          onClick={() => setMetodoCheckin("NOME")}
+                          className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2 py-3 sm:py-2 text-xs sm:text-sm"
+                        >
+                          <Search className="h-4 w-4" />
+                          Nome
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
 
-              {/* Check-in por QR Code */}
-              {aulaAtiva && metodoCheckin === "QR_CODE" && (
+                {/* Check-in por QR Code */}
+                {aulaAtiva && metodoCheckin === "QR_CODE" && (
                 <Card className="border-2">
                   <CardHeader className="p-4 sm:p-6">
                     <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
@@ -1373,11 +1510,12 @@ export default function PresencaPage() {
                 </Card>
               )}
             </div>
+            )}
 
-            {/* Histórico */}
+            {/* Histórico - Sempre mostrar (incluindo para dependente) */}
             <Card>
               <CardHeader className="p-4 sm:p-6">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
                   <div>
                     <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
                       <History className="h-5 w-5" />

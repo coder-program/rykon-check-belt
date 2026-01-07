@@ -784,7 +784,14 @@ export default function AlunoDashboard({
       title: "Marcar Presença",
       description: "Check-in na aula de hoje",
       icon: Clock,
-      action: () => router.push("/presenca"),
+      action: () => {
+        // Se estiver visualizando um dependente, passa o alunoId como query param
+        if (alunoId) {
+          router.push(`/presenca?alunoId=${alunoId}`);
+        } else {
+          router.push("/presenca");
+        }
+      },
       color: "bg-green-500",
       urgent: true,
     },
@@ -792,14 +799,26 @@ export default function AlunoDashboard({
       title: "Meu Progresso",
       description: "Ver evolução e graduações",
       icon: TrendingUp,
-      action: () => router.push("/meu-progresso"),
+      action: () => {
+        if (alunoId) {
+          router.push(`/meu-progresso?alunoId=${alunoId}`);
+        } else {
+          router.push("/meu-progresso");
+        }
+      },
       color: "bg-blue-500",
     },
     {
       title: "Horários",
       description: "Ver grade de horários",
       icon: Calendar,
-      action: () => router.push("/horarios"),
+      action: () => {
+        if (alunoId) {
+          router.push(`/horarios?alunoId=${alunoId}`);
+        } else {
+          router.push("/horarios");
+        }
+      },
       color: "bg-purple-500",
     },
     {

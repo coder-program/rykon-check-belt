@@ -151,6 +151,7 @@ export class PresencaService {
     const isAluno = perfis.includes('ALUNO');
     const isGerente = perfis.includes('GERENTE_UNIDADE');
     const isRecepcionista = perfis.includes('RECEPCIONISTA');
+    const isTablet = perfis.includes('TABLET_CHECKIN');
     const isMaster = perfis.includes('MASTER') || perfis.includes('ADMIN');
 
     // Se for responsável, buscar unidades dos dependentes
@@ -196,6 +197,19 @@ export class PresencaService {
       );
       if (unidadeResult.length > 0) {
         unidadesPermitidas = [unidadeResult[0].unidade_id];
+      }
+    }
+    // Se for tablet, buscar unidade vinculada na tabela tablet_unidades
+    else if (isTablet) {
+      const unidadeResult = await this.presencaRepository.manager.query(
+        `SELECT unidade_id FROM teamcruz.tablet_unidades WHERE tablet_id = $1 AND ativo = true LIMIT 1`,
+        [user.id],
+      );
+      if (unidadeResult.length > 0) {
+        unidadesPermitidas = [unidadeResult[0].unidade_id];
+        console.log('🖥️ [getAulaAtiva] Tablet detectado, unidade:', unidadeResult[0].unidade_id);
+      } else {
+        console.warn('⚠️ [getAulaAtiva] Tablet sem unidade vinculada!', user.id);
       }
     }
     // Master pode ver todas as aulas
@@ -259,33 +273,95 @@ export class PresencaService {
     latitude?: number,
     longitude?: number,
   ) {
-    // Validar QR Code
-    if (!qrCode || !qrCode.startsWith('QR-AULA-')) {
-      throw new BadRequestException('QR Code inválido');
-    }
+    console.log('🔍 [checkInQR] Iniciando check-in via QR Code:', { qrCode, userId: user.id });
+    
+    let aula;
 
-    // Extrair aula_id do QR Code
-    const qrParts = qrCode.split('-');
-    const aulaId = qrParts.length >= 3 ? qrParts[2] : null;
+    // Validar QR Code e determinar tipo
+    if (qrCode.startsWith('QR-AULA-')) {
+      console.log('✅ [checkInQR] Detectado QR Code de AULA');
+      
+      // QR Code de aula específica
+      // Extrair UUID completo (pode conter hífens)
+      const aulaId = qrCode.replace('QR-AULA-', '');
 
-    if (!aulaId) {
-      throw new BadRequestException('QR Code inválido - não contém ID da aula');
-    }
+      if (!aulaId) {
+        throw new BadRequestException('QR Code inválido - não contém ID da aula');
+      }
 
-    // Verificar se a aula existe e está ativa
-    const aula = await this.aulaRepository.findOne({
-      where: { id: aulaId },
-      relations: ['unidade'],
-    });
+      aula = await this.aulaRepository.findOne({
+        where: { id: aulaId },
+        relations: ['unidade'],
+      });
 
-    if (!aula) {
-      throw new NotFoundException('Aula não encontrada');
-    }
+      if (!aula) {
+        throw new NotFoundException('Aula não encontrada');
+      }
 
-    if (!aula.estaAtiva()) {
-      throw new BadRequestException(
-        'Esta aula não está disponível para check-in no momento',
-      );
+      if (!aula.estaAtiva()) {
+        throw new BadRequestException(
+          'Esta aula não está disponível para check-in no momento',
+        );
+      }
+
+    } else if (qrCode.startsWith('QR-UNIDADE-')) {
+      console.log('✅ [checkInQR] Detectado QR Code de UNIDADE');
+      
+      // QR Code de unidade - buscar aula ativa no momento
+      // Extrair UUID completo (pode conter hífens)
+      const unidadeId = qrCode.replace('QR-UNIDADE-', '');
+
+      console.log('🔍 [checkInQR] Unidade ID extraído:', unidadeId);
+
+      if (!unidadeId) {
+        throw new BadRequestException('QR Code inválido - não contém ID da unidade');
+      }
+
+      // Buscar aula ativa na unidade agora
+      const agora = new Date();
+      const inicioHoje = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate());
+      const fimHoje = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate() + 1);
+      
+      console.log('🔍 [checkInQR] Buscando aulas de hoje:', { 
+        unidadeId, 
+        inicio: inicioHoje.toISOString(), 
+        fim: fimHoje.toISOString() 
+      });
+
+      const aulasAtivas = await this.aulaRepository.find({
+        where: {
+          unidade_id: unidadeId,
+          data_hora_inicio: Between(inicioHoje, fimHoje),
+          ativo: true,
+        },
+        relations: ['unidade'],
+      });
+
+      console.log('🔍 [checkInQR] Aulas encontradas hoje:', aulasAtivas.length);
+      
+      if (aulasAtivas.length === 0) {
+        throw new BadRequestException(
+          'Não há aulas cadastradas hoje nesta unidade.',
+        );
+      }
+
+      // Filtrar aulas que estão ativas no momento
+      const aulaAtiva = aulasAtivas.find(a => a.estaAtiva());
+
+      console.log('🔍 [checkInQR] Aula ativa encontrada:', aulaAtiva ? 'SIM' : 'NÃO');
+
+      if (!aulaAtiva) {
+        throw new BadRequestException(
+          'Não há aula ativa no momento nesta unidade. Por favor, aguarde o horário de início da aula.',
+        );
+      }
+
+      aula = aulaAtiva;
+      console.log('✅ [checkInQR] Usando aula:', { aulaId: aula.id, unidade: aula.unidade.nome });
+
+    } else {
+      console.error('❌ [checkInQR] QR Code com formato inválido:', qrCode);
+      throw new BadRequestException('QR Code inválido - formato não reconhecido');
     }
 
     // Validar localização se as coordenadas foram fornecidas
@@ -326,6 +402,16 @@ export class PresencaService {
     if (presencaHoje) {
       throw new BadRequestException('Você já fez check-in hoje');
     }
+
+    // Log para debug: contar total de presenças aprovadas do aluno
+    const totalPresencas = await this.presencaRepository.count({
+      where: {
+        aluno_id: aluno.id,
+        status_aprovacao: 'APROVADO',
+      },
+    });
+    
+    console.log('🔍 [checkInQR] Total de presenças aprovadas do aluno:', totalPresencas);
 
     // Verificar configuração de aprovação da unidade
     const requerAprovacao = aula.unidade.requer_aprovacao_checkin === true;
@@ -369,9 +455,19 @@ export class PresencaService {
         });
 
         if (alunoFaixaAtiva) {
+          console.log('🔍 [checkInQR] ANTES de incrementar:', {
+            presencas_no_ciclo: alunoFaixaAtiva.presencas_no_ciclo,
+            presencas_total_fx: alunoFaixaAtiva.presencas_total_fx,
+          });
+          
           alunoFaixaAtiva.presencas_no_ciclo += 1;
           alunoFaixaAtiva.presencas_total_fx += 1;
           await this.alunoFaixaRepository.save(alunoFaixaAtiva);
+          
+          console.log('✅ [checkInQR] DEPOIS de incrementar:', {
+            presencas_no_ciclo: alunoFaixaAtiva.presencas_no_ciclo,
+            presencas_total_fx: alunoFaixaAtiva.presencas_total_fx,
+          });
         }
       } catch (error) {
         console.error(
@@ -440,6 +536,7 @@ export class PresencaService {
       where: {
         aluno_id: aluno.id,
         created_at: Between(hoje, amanha),
+        status_aprovacao: In(['APROVADO', 'PENDENTE']),
       },
     });
 
@@ -513,7 +610,14 @@ export class PresencaService {
     };
   }
 
-  async checkInDependente(alunoId: string, aulaId: string, user: any) {
+  async checkInDependente(
+    alunoId: string, 
+    aulaId: string | undefined, 
+    user: any,
+    qrCode?: string,
+    latitude?: number,
+    longitude?: number,
+  ) {
     // Buscar o responsável
     const responsavel = await this.responsavelRepository.findOne({
       where: { usuario_id: user.id },
@@ -537,14 +641,70 @@ export class PresencaService {
       );
     }
 
-    // Buscar aula
-    const aula = await this.aulaRepository.findOne({
-      where: { id: aulaId },
-      relations: ['unidade'],
-    });
+    let aula;
 
-    if (!aula) {
-      throw new NotFoundException('Aula não encontrada');
+    // Se QR Code foi fornecido, processar para obter a aula
+    if (qrCode) {
+      console.log('🔍 [checkInDependente] Processando QR Code:', qrCode);
+      
+      if (qrCode.startsWith('QR-AULA-')) {
+        const aulaIdFromQr = qrCode.replace('QR-AULA-', '');
+        aula = await this.aulaRepository.findOne({
+          where: { id: aulaIdFromQr },
+          relations: ['unidade'],
+        });
+      } else if (qrCode.startsWith('QR-UNIDADE-')) {
+        const unidadeId = qrCode.replace('QR-UNIDADE-', '');
+        
+        const agora = new Date();
+        const inicioHoje = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate());
+        const fimHoje = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate() + 1);
+        
+        const aulasAtivas = await this.aulaRepository.find({
+          where: {
+            unidade_id: unidadeId,
+            data_hora_inicio: Between(inicioHoje, fimHoje),
+            ativo: true,
+          },
+          relations: ['unidade'],
+        });
+        
+        aula = aulasAtivas.find(a => a.estaAtiva());
+        
+        if (!aula) {
+          throw new BadRequestException(
+            'Não há aula ativa no momento nesta unidade.',
+          );
+        }
+      } else {
+        throw new BadRequestException('QR Code com formato inválido');
+      }
+      
+      if (!aula) {
+        throw new NotFoundException('Aula não encontrada via QR Code');
+      }
+      
+    } else if (aulaId) {
+      // Usar aulaId tradicional
+      aula = await this.aulaRepository.findOne({
+        where: { id: aulaId },
+        relations: ['unidade'],
+      });
+      
+      if (!aula) {
+        throw new NotFoundException('Aula não encontrada');
+      }
+    } else {
+      throw new BadRequestException('É necessário fornecer aulaId ou qrCode');
+    }
+
+    // Validar localização se fornecida
+    if (latitude !== undefined && longitude !== undefined) {
+      const validacao = this.validarLocalizacao(aula.unidade, latitude, longitude);
+      if (!validacao.valido) {
+        console.warn('⚠️ Validação de localização falhou:', validacao.mensagem);
+        // Não bloqueia - apenas aviso
+      }
     }
 
     // Buscar configuração da unidade para verificar se requer aprovação
@@ -573,6 +733,7 @@ export class PresencaService {
       where: {
         aluno_id: aluno.id,
         created_at: Between(hoje, amanha),
+        status_aprovacao: In(['APROVADO', 'PENDENTE']),
       },
     });
 
@@ -1006,6 +1167,22 @@ export class PresencaService {
     dataFim?: string,
     unidadeId?: string,
   ) {
+    // Verificar se é gerente ou recepcionista e obter sua unidade automaticamente
+    const perfisNomes = (user?.perfis || []).map((p: any) =>
+      typeof p === 'string' ? p.toUpperCase() : p.nome?.toUpperCase(),
+    );
+    const isGerente = perfisNomes.includes('GERENTE_UNIDADE');
+    const isRecepcionista = perfisNomes.includes('RECEPCIONISTA');
+    
+    // Se for gerente ou recepcionista, forçar filtro pela unidade dele
+    if ((isGerente || isRecepcionista) && !unidadeId) {
+      const unidadeUsuario = await this.getUnidadeUsuario(user);
+      if (unidadeUsuario) {
+        unidadeId = unidadeUsuario;
+        console.log('🔒 [getRelatorioPresencas] Gerente/Recepcionista detectado, forçando unidade:', unidadeId);
+      }
+    }
+    
     // Parse dates correctly to avoid timezone issues
     let inicio: Date;
     let fim: Date;
@@ -1033,6 +1210,7 @@ export class PresencaService {
       inicio: inicio.toISOString(),
       fim: fim.toISOString(),
       unidadeId,
+      isGerente,
     });
 
     const query = this.presencaRepository
@@ -2040,7 +2218,7 @@ export class PresencaService {
       throw new NotFoundException('Unidade não encontrada');
     }
 
-    // Verificar se já existe presença para esta aula hoje
+    // Verificar se já existe presença para este aluno hoje (independente da aula)
     const hoje = new Date();
     hoje.setHours(0, 0, 0, 0);
     const amanha = new Date(hoje);
@@ -2049,17 +2227,15 @@ export class PresencaService {
     const presencaExistente = await this.presencaRepository.findOne({
       where: {
         aluno_id: alunoId,
-        aula_id: aulaId,
-        created_at: Between(hoje, amanha),
+        hora_checkin: Between(hoje, amanha),
+        status_aprovacao: In(['APROVADO', 'PENDENTE']),
       },
     });
 
     if (presencaExistente) {
-      return {
-        message: 'Check-in já registrado para esta aula hoje',
-        presenca: presencaExistente,
-        status: presencaExistente.status_aprovacao || 'PENDENTE',
-      };
+      throw new BadRequestException(
+        'Este aluno já realizou check-in hoje. Apenas 1 check-in por dia é permitido.',
+      );
     }
 
     // Definir status de aprovação baseado na configuração da unidade
@@ -2412,5 +2588,158 @@ export class PresencaService {
       [userId],
     );
     return result[0]?.unidade_id || null;
+  }
+
+  async getHistoricoAluno(alunoId: string, user: any, limit: number = 10) {
+    console.log('🔍 [getHistoricoAluno] Verificando permissões', {
+      alunoId,
+      userId: user.id,
+      perfis: user.perfis?.map((p: any) => p.nome || p),
+    });
+
+    // Verificar se é master ou franqueado
+    const perfisNomes = (user?.perfis || []).map((p: any) =>
+      typeof p === 'string' ? p.toUpperCase() : p.nome?.toUpperCase(),
+    );
+    const isMaster = perfisNomes.includes('MASTER');
+
+    // Buscar o aluno
+    const aluno = await this.alunoRepository.findOne({
+      where: { id: alunoId },
+      relations: ['responsavel'],
+    });
+
+    if (!aluno) {
+      throw new NotFoundException('Aluno não encontrado');
+    }
+
+    // Verificar se é o próprio aluno
+    const isProprioAluno = aluno.usuario_id === user.id;
+
+    // Verificar se é responsável pelo aluno
+    const isResponsavel = aluno.responsavel?.usuario_id === user.id;
+
+    if (!isMaster && !isProprioAluno && !isResponsavel) {
+      console.log('❌ [getHistoricoAluno] Acesso negado', {
+        isMaster,
+        isProprioAluno,
+        isResponsavel,
+        alunoUsuarioId: aluno.usuario_id,
+        responsavelUsuarioId: aluno.responsavel?.usuario_id,
+        userId: user.id,
+      });
+      throw new UnauthorizedException(
+        'Você não tem permissão para visualizar o histórico deste aluno',
+      );
+    }
+
+    console.log('✅ [getHistoricoAluno] Acesso permitido');
+
+    // Buscar apenas presenças APROVADAS
+    const presencas = await this.presencaRepository.find({
+      where: {
+        aluno_id: alunoId,
+        status_aprovacao: 'APROVADO',
+      },
+      relations: ['aula', 'aula.unidade', 'aula.professor'],
+      order: { created_at: 'DESC' },
+      take: limit,
+    });
+
+    // Buscar faixa ativa do aluno
+    const faixaAtiva = await this.alunoFaixaRepository.findOne({
+      where: { aluno_id: alunoId, ativa: true },
+      relations: ['faixaDef'],
+    });
+
+    // Mapear as presenças com informações das aulas
+    const presencasComAulas = presencas.map((p) => {
+      return {
+        id: p.id,
+        data: p.created_at,
+        horario: p.hora_checkin?.toTimeString().slice(0, 5) || '00:00',
+        tipo: 'entrada',
+        faixa: faixaAtiva?.faixaDef?.nome_exibicao || 'Branca',
+        faixaCodigo: faixaAtiva?.faixaDef?.codigo || 'BRANCA',
+        graus: faixaAtiva?.graus_atual || 0,
+        aula: {
+          nome: p.aula?.nome || 'Aula não encontrada',
+          professor: p.aula?.professor?.nome_completo || 'Professor',
+          unidade: p.aula?.unidade?.nome || 'Unidade',
+        },
+      };
+    });
+
+    return presencasComAulas;
+  }
+
+  async getEstatisticasAluno(alunoId: string, user: any): Promise<EstatisticasPresenca> {
+    console.log('🔍 [getEstatisticasAluno] Verificando permissões', {
+      alunoId,
+      userId: user.id,
+    });
+
+    // Verificar se é master ou franqueado
+    const perfisNomes = (user?.perfis || []).map((p: any) =>
+      typeof p === 'string' ? p.toUpperCase() : p.nome?.toUpperCase(),
+    );
+    const isMaster = perfisNomes.includes('MASTER');
+
+    // Buscar o aluno
+    const aluno = await this.alunoRepository.findOne({
+      where: { id: alunoId },
+      relations: ['responsavel'],
+    });
+
+    if (!aluno) {
+      throw new NotFoundException('Aluno não encontrado');
+    }
+
+    // Verificar se é o próprio aluno
+    const isProprioAluno = aluno.usuario_id === user.id;
+
+    // Verificar se é responsável pelo aluno
+    const isResponsavel = aluno.responsavel?.usuario_id === user.id;
+
+    if (!isMaster && !isProprioAluno && !isResponsavel) {
+      console.log('❌ [getEstatisticasAluno] Acesso negado');
+      throw new UnauthorizedException(
+        'Você não tem permissão para visualizar as estatísticas deste aluno',
+      );
+    }
+
+    console.log('✅ [getEstatisticasAluno] Acesso permitido');
+
+    const agora = new Date();
+    const inicioMes = new Date(agora.getFullYear(), agora.getMonth(), 1);
+    const fimMes = new Date(agora.getFullYear(), agora.getMonth() + 1, 0);
+
+    // Presenças do mês atual
+    const presencasMes = await this.presencaRepository.count({
+      where: {
+        aluno_id: alunoId,
+        created_at: Between(inicioMes, fimMes),
+      },
+    });
+
+    // Total de dias úteis no mês (aproximação)
+    const diasUteisMes = 22;
+    const presencaMensal = Math.round((presencasMes / diasUteisMes) * 100);
+
+    // Última presença
+    const ultimaPresenca = await this.presencaRepository.findOne({
+      where: { aluno_id: alunoId },
+      order: { created_at: 'DESC' },
+    });
+
+    // Sequência atual
+    const sequenciaAtual = await this.calcularSequenciaAtual(alunoId);
+
+    return {
+      presencaMensal: Math.min(presencaMensal, 100),
+      aulasMes: presencasMes,
+      sequenciaAtual,
+      ultimaPresenca: ultimaPresenca?.created_at.toISOString() || null,
+    };
   }
 }

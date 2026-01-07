@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { HistoricoGraus } from './entities/historico-graus.entity';
@@ -335,5 +335,132 @@ export class ProgressoService {
     }
 
     return await this.alunoFaixaRepository.save(faixaAluno);
+  }
+
+  async getHistoricoCompletoAluno(
+    alunoId: string,
+    user: any,
+  ): Promise<ProgressoAlunoDto> {
+    console.log('🔍 [getHistoricoCompletoAluno] Buscando histórico para aluno:', alunoId);
+    console.log('🔍 [getHistoricoCompletoAluno] Usuário solicitante:', { userId: user.id, perfis: user.perfis });
+    
+    // Verificar se o usuário tem permissão
+    // Pode ser: responsável do aluno, master, ou o próprio aluno
+    const aluno = await this.alunoRepository.findOne({
+      where: { id: alunoId },
+      relations: ['faixas', 'faixas.faixaDef', 'responsavel'],
+    });
+
+    if (!aluno) {
+      console.error('❌ [getHistoricoCompletoAluno] Aluno não encontrado');
+      throw new NotFoundException('Aluno não encontrado');
+    }
+
+    console.log('✅ [getHistoricoCompletoAluno] Aluno encontrado:', {
+      id: aluno.id,
+      usuario_id: aluno.usuario_id,
+      responsavel_id: aluno.responsavel_id,
+    });
+
+    // Verificar permissões
+    const isMaster = user.perfis?.includes('master');
+    const isProprioAluno = aluno.usuario_id === user.id;
+    const isResponsavel = aluno.responsavel?.usuario_id === user.id;
+
+    console.log('🔍 [getHistoricoCompletoAluno] Verificação de permissões:', {
+      isMaster,
+      isProprioAluno,
+      isResponsavel,
+      responsavelUserId: aluno.responsavel?.usuario_id,
+    });
+
+    if (!isMaster && !isProprioAluno && !isResponsavel) {
+      console.error('❌ [getHistoricoCompletoAluno] Sem permissão');
+      throw new UnauthorizedException(
+        'Você não tem permissão para visualizar este aluno',
+      );
+    }
+
+    // Buscar faixa ativa
+    const faixaAtiva = await this.alunoFaixaRepository.findOne({
+      where: { aluno_id: aluno.id, ativa: true },
+      relations: ['faixaDef'],
+    });
+
+    console.log('🔍 [getHistoricoCompletoAluno] Faixa ativa:', faixaAtiva ? {
+      id: faixaAtiva.id,
+      faixa: faixaAtiva.faixaDef?.nome_exibicao,
+      graus_atual: faixaAtiva.graus_atual,
+    } : 'NENHUMA');
+
+    if (!faixaAtiva) {
+      console.log('⚠️ [getHistoricoCompletoAluno] Retornando dados vazios - sem faixa ativa');
+      return {
+        graduacaoAtual: {
+          faixa: 'Não definida',
+          grau: 0,
+          aulasNaFaixa: 0,
+          aulasParaProximoGrau: 0,
+          progressoPercentual: 0,
+        },
+        historicoGraus: [],
+        historicoFaixas: [],
+      };
+    }
+
+    // Buscar histórico de graus
+    const historicoGraus = await this.historicoGrausRepository.find({
+      where: { aluno_id: aluno.id },
+      relations: ['faixa'],
+      order: { data_concessao: 'DESC' },
+    });
+
+    // Buscar histórico de faixas
+    const historicoFaixas = await this.alunoFaixaRepository
+      .createQueryBuilder('faixa')
+      .leftJoinAndSelect('faixa.faixaDef', 'faixaDef')
+      .where('faixa.aluno_id = :alunoId', { alunoId: aluno.id })
+      .orderBy('faixa.dt_inicio', 'DESC')
+      .getMany();
+
+    return {
+      graduacaoAtual: {
+        faixa: faixaAtiva.faixaDef.nome_exibicao,
+        grau: faixaAtiva.graus_atual,
+        aulasNaFaixa: faixaAtiva.presencas_total_fx,
+        aulasParaProximoGrau:
+          faixaAtiva.faixaDef.aulas_por_grau - faixaAtiva.presencas_no_ciclo,
+        progressoPercentual:
+          (faixaAtiva.presencas_no_ciclo / faixaAtiva.faixaDef.aulas_por_grau) *
+          100,
+      },
+      historicoGraus: historicoGraus.map((grau) => ({
+        id: grau.id,
+        faixa: grau.faixa.nome_exibicao,
+        grau: grau.grau_numero,
+        dataConcessao: grau.data_concessao instanceof Date
+          ? grau.data_concessao.toISOString()
+          : new Date(grau.data_concessao).toISOString(),
+        justificativa: grau.justificativa,
+        origemGrau: grau.origem_grau,
+        aulasAcumuladas: grau.aulas_acumuladas || 0,
+      })),
+      historicoFaixas: historicoFaixas.map((faixa) => ({
+        id: faixa.id,
+        faixaOrigem: undefined,
+        faixaDestino: faixa.faixaDef.nome_exibicao,
+        dataPromocao: faixa.dt_inicio instanceof Date 
+          ? faixa.dt_inicio.toISOString() 
+          : new Date(faixa.dt_inicio).toISOString(),
+        dt_inicio: faixa.dt_inicio instanceof Date 
+          ? faixa.dt_inicio.toISOString() 
+          : new Date(faixa.dt_inicio).toISOString(),
+        dt_fim: faixa.dt_fim 
+          ? (faixa.dt_fim instanceof Date 
+            ? faixa.dt_fim.toISOString() 
+            : new Date(faixa.dt_fim).toISOString())
+          : undefined,
+      })),
+    };
   }
 }

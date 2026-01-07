@@ -12,6 +12,7 @@ import {
   ApiOperation,
   ApiResponse,
   ApiBearerAuth,
+  ApiParam,
 } from '@nestjs/swagger';
 import { ProgressoService } from './progresso.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -78,6 +79,26 @@ export class ProgressoController {
       console.error(' Erro no controller progresso:', error);
       throw error;
     }
+  }
+
+  @Get('historico-aluno/:alunoId')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Busca o histórico de graduações de um aluno específico (para responsáveis)',
+  })
+  @ApiParam({ name: 'alunoId', type: String, description: 'ID do aluno' })
+  @ApiResponse({
+    status: 200,
+    description: 'Histórico de graduações encontrado',
+  })
+  async getHistoricoAluno(
+    @Param('alunoId') alunoId: string,
+    @Request() req: any,
+  ): Promise<ProgressoAlunoDto> {
+    // Verificar se o usuário tem permissão para ver esse aluno
+    // (deve ser responsável do aluno ou ter perfil adequado)
+    return await this.progressoService.getHistoricoCompletoAluno(alunoId, req.user);
   }
 
   @Post('adicionar-grau')

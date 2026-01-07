@@ -41,8 +41,19 @@ export default function RelatorioPresencasPage() {
   const [mesReferencia, setMesReferencia] = useState<string>(
     format(new Date(), "yyyy-MM")
   );
+  
+  // Verificar se é gerente ou recepcionista e pegar unidade específica
+  const isGerente = user?.perfis?.some((p: any) => 
+    (typeof p === 'string' ? p : p.nome)?.toLowerCase() === 'gerente_unidade'
+  );
+  
+  const isRecepcionista = user?.perfis?.some((p: any) => 
+    (typeof p === 'string' ? p : p.nome)?.toLowerCase() === 'recepcionista'
+  );
+  
+  const isUnidadeRestrita = isGerente || isRecepcionista;
 
-  // Query para buscar unidades do franqueado
+  // Query para buscar unidades do franqueado/gerente/recepcionista
   const { data: unidades } = useQuery({
     queryKey: ["unidades"],
     queryFn: async () => {
@@ -63,7 +74,14 @@ export default function RelatorioPresencasPage() {
         }
 
         const data = await response.json();
-        return data.items || [];
+        const unidadesList = data.items || [];
+        
+        // Se é gerente/recepcionista e tem unidades, auto-selecionar a primeira (única dele)
+        if (isUnidadeRestrita && unidadesList.length > 0 && selectedUnidade === "todas") {
+          setSelectedUnidade(unidadesList[0].id);
+        }
+        
+        return unidadesList;
       } catch (error) {
         console.error("Erro ao buscar unidades:", error);
         return [];
@@ -74,17 +92,70 @@ export default function RelatorioPresencasPage() {
   // Query para buscar relatório de presenças
   const { data: relatorio, isLoading } = useQuery({
     queryKey: ["relatorio-presencas", selectedUnidade, mesReferencia],
+    enabled: !isUnidadeRestrita || (isUnidadeRestrita && selectedUnidade !== "todas"), // Só executar quando gerente/recepcionista tiver unidade definida
     queryFn: async () => {
+      const [ano, mes] = mesReferencia.split('-');
+      const dataInicio = `${ano}-${mes}-01`;
+      const ultimoDia = new Date(parseInt(ano), parseInt(mes), 0).getDate();
+      const dataFim = `${ano}-${mes}-${ultimoDia}`;
+      
       const params = new URLSearchParams({
-        mes: mesReferencia,
-        ...(selectedUnidade !== "todas" && { unidade_id: selectedUnidade }),
+        dataInicio,
+        dataFim,
+        ...(selectedUnidade !== "todas" && { unidadeId: selectedUnidade }),
       });
 
-      const res = await fetch(`/api/relatorios/presencas?${params}`, {
-        credentials: "include",
-      });
+      const token = localStorage.getItem("token");
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/presenca/relatorio-presencas?${params}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
       if (!res.ok) throw new Error("Erro ao carregar relatório");
-      return res.json();
+      const data = await res.json();
+      
+      // Processar os dados retornados pelo backend
+      if (Array.isArray(data)) {
+        const presencas = data;
+        const alunosUnicos = new Set(presencas.map((p: any) => p.aluno?.id).filter(Boolean));
+        const diasUnicos = new Set(
+          presencas.map((p: any) => {
+            if (p.data) {
+              return new Date(p.data).toISOString().split('T')[0];
+            }
+            return null;
+          }).filter(Boolean)
+        );
+        
+        return {
+          estatisticas: {
+            total_presencas: presencas.length,
+            total_alunos: alunosUnicos.size,
+            taxa_presenca_media: alunosUnicos.size > 0 
+              ? Math.round((presencas.length / alunosUnicos.size) * 100) / 100 
+              : 0,
+            dias_com_aula: diasUnicos.size,
+          },
+          presencas_recentes: presencas.slice(0, 20).map((p: any) => ({
+            id: p.id,
+            aluno_nome: p.aluno?.nome || 'Aluno',
+            unidade_nome: p.aula?.unidade?.nome || 'Unidade',
+            data_presenca: p.data,
+            horario: p.data ? new Date(p.data).toLocaleTimeString('pt-BR', { 
+              hour: '2-digit', 
+              minute: '2-digit' 
+            }) : '00:00',
+            instrutor_nome: p.aula?.professor?.nome_completo || 'Instrutor',
+          })),
+          por_unidade: [],
+        };
+      }
+      
+      return data;
     },
   });
 
@@ -118,7 +189,9 @@ export default function RelatorioPresencasPage() {
                 Relatório de Presenças
               </h1>
               <p className="text-gray-600 mt-1">
-                Acompanhe as presenças de todas as suas unidades
+                {isUnidadeRestrita 
+                  ? "Acompanhe as presenças da sua unidade"
+                  : "Acompanhe as presenças de todas as suas unidades"}
               </p>
             </div>
 
@@ -143,7 +216,7 @@ export default function RelatorioPresencasPage() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Filtro de Unidade */}
+            {/* Filtro de Unidade - Desabilitado para gerentes/recepcionistas */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Unidade
@@ -151,15 +224,21 @@ export default function RelatorioPresencasPage() {
               <select
                 value={selectedUnidade}
                 onChange={(e) => setSelectedUnidade(e.target.value)}
-                className="select select-bordered w-full"
+                disabled={isUnidadeRestrita}
+                className={`select select-bordered w-full ${isUnidadeRestrita ? 'bg-gray-100 cursor-not-allowed' : ''}`}
               >
-                <option value="todas">Todas as Unidades</option>
+                {!isUnidadeRestrita && <option value="todas">Todas as Unidades</option>}
                 {unidades?.map((unidade: any) => (
                   <option key={unidade.id} value={unidade.id}>
                     {unidade.nome}
                   </option>
                 ))}
               </select>
+              {isUnidadeRestrita && (
+                <p className="text-xs text-gray-500 mt-1">
+                  Mostrando apenas sua unidade
+                </p>
+              )}
             </div>
 
             {/* Filtro de Mês */}

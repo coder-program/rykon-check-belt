@@ -27,6 +27,7 @@ import {
   DollarSign,
   Mail,
   Settings,
+  CheckCircle,
 } from "lucide-react";
 import ConviteModal from "@/components/convites/ConviteModal";
 
@@ -207,6 +208,13 @@ export default function GerenteDashboard() {
       icon: UserCheck,
       action: () => router.push("/checkin/aprovacao"),
       color: "bg-purple-500",
+    },
+    {
+      title: "Relatório de Presenças",
+      description: "Ver relatório completo de presenças",
+      icon: CheckCircle,
+      action: () => router.push("/relatorio-presencas"),
+      color: "bg-green-600",
     },
     // TODO: Implementar funcionalidade de registro de presença
     // {

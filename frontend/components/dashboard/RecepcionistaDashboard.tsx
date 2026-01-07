@@ -30,6 +30,7 @@ import {
   Check,
   DollarSign,
   Mail,
+  BarChart3,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import ConviteModal from "@/components/convites/ConviteModal";
@@ -274,11 +275,25 @@ export default function RecepcionistaDashboard() {
       color: "bg-blue-500",
     },
     {
+      title: "TeamCruz Dashboard",
+      description: "Ver estatísticas e visão geral",
+      icon: BarChart3,
+      action: () => router.push("/teamcruz"),
+      color: "bg-red-600",
+    },
+    {
       title: "Aprovar Check-ins",
       description: "Aprovar check-ins do tablet",
       icon: UserCheck,
       action: () => router.push("/checkin/aprovacao"),
       color: "bg-purple-500",
+    },
+    {
+      title: "Relatório de Presenças",
+      description: "Ver relatório completo de presenças",
+      icon: CheckCircle,
+      action: () => router.push("/relatorio-presencas"),
+      color: "bg-green-600",
     },
     {
       title: "Horários",

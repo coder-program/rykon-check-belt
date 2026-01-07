@@ -212,6 +212,10 @@ export default function TabletCheckinPage() {
           `Check-in registrado para ${aluno.nome}!\nAguardando aprovação.`,
           { duration: 3000 }
         );
+        
+        // Remover aluno da lista após check-in bem-sucedido
+        setAlunos((prev) => prev.filter((a) => a.id !== aluno.id));
+        setAlunosFiltrados((prev) => prev.filter((a) => a.id !== aluno.id));
       } else {
         toast.error(data.message || "Erro ao fazer check-in");
       }
@@ -277,27 +281,26 @@ export default function TabletCheckinPage() {
           </div>
 
           {/* Main Content */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
+          <div className="max-w-4xl mx-auto">
             {/* Lista de Alunos */}
-            <div className="lg:col-span-2 order-2 lg:order-1">
-              <Card>
-                <CardHeader className="pb-3 sm:pb-6">
-                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-                    <div>
-                      <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
-                        <Users className="w-4 h-4 sm:w-5 sm:h-5" />
-                        Alunos da Unidade
-                      </CardTitle>
-                      <CardDescription className="text-xs sm:text-sm">
-                        Toque no aluno para fazer check-in
-                      </CardDescription>
-                    </div>
-                    <Badge variant="outline" className="text-xs sm:text-sm">
-                      {alunosFiltrados.length} alunos
-                    </Badge>
+            <Card>
+              <CardHeader className="pb-3 sm:pb-6">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                  <div>
+                    <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
+                      <Users className="w-4 h-4 sm:w-5 sm:h-5" />
+                      Alunos da Unidade
+                    </CardTitle>
+                    <CardDescription className="text-xs sm:text-sm">
+                      Toque no aluno para fazer check-in
+                    </CardDescription>
                   </div>
-                </CardHeader>
-                <CardContent>
+                  <Badge variant="outline" className="text-xs sm:text-sm">
+                    {alunosFiltrados.length} alunos
+                  </Badge>
+                </div>
+              </CardHeader>
+              <CardContent>
                   {/* Busca */}
                   <div className="relative mb-3 sm:mb-4">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 sm:w-5 sm:h-5" />
@@ -376,66 +379,6 @@ export default function TabletCheckinPage() {
                   )}
                 </CardContent>
               </Card>
-            </div>
-
-            {/* Scanner QR */}
-            <div className="lg:col-span-1 order-1 lg:order-2">
-              <Card className="lg:sticky lg:top-4">
-                <CardHeader className="pb-3 sm:pb-6">
-                  <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
-                    <QrCode className="w-4 h-4 sm:w-5 sm:h-5" />
-                    Scanner QR Code
-                  </CardTitle>
-                  <CardDescription className="text-xs sm:text-sm">
-                    Aluno pode escanear seu QR code
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {!scannerActive ? (
-                    <div className="text-center py-6 sm:py-8">
-                      <div className="w-24 h-24 sm:w-32 sm:h-32 mx-auto mb-3 sm:mb-4 bg-gray-100 rounded-lg flex items-center justify-center">
-                        <QrCode className="w-12 h-12 sm:w-16 sm:h-16 text-gray-400" />
-                      </div>
-                      <Button
-                        onClick={() => setScannerActive(true)}
-                        className="w-full touch-manipulation text-base sm:text-lg h-10 sm:h-12"
-                        size="lg"
-                      >
-                        Ativar Scanner
-                      </Button>
-                    </div>
-                  ) : (
-                    <div>
-                      <div id="qr-reader" className="w-full"></div>
-                      <Button
-                        onClick={() => {
-                          setScannerActive(false);
-                          if (scannerRef.current) {
-                            scannerRef.current.clear().catch(console.error);
-                            scannerRef.current = null;
-                          }
-                        }}
-                        variant="outline"
-                        className="w-full mt-3 sm:mt-4 touch-manipulation h-10 sm:h-11"
-                      >
-                        Cancelar
-                      </Button>
-                    </div>
-                  )}
-
-                  <div className="mt-4 sm:mt-6 p-3 sm:p-4 bg-blue-50 rounded-lg">
-                    <p className="text-xs sm:text-sm text-blue-800 font-semibold mb-2">
-                      ℹ️ Instruções
-                    </p>
-                    <ul className="text-[10px] sm:text-xs text-blue-700 space-y-1">
-                      <li>• Toque no nome do aluno na lista</li>
-                      <li>• Ou ative o scanner para ler QR code</li>
-                      <li>• Check-in será enviado para aprovação</li>
-                    </ul>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
           </div>
         </div>
       </div>

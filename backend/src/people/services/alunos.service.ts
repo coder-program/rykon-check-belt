@@ -1244,8 +1244,26 @@ export class AlunosService {
     });
     query.leftJoinAndSelect('faixas.faixaDef', 'faixaDef');
 
+    // Excluir alunos que já tem presença hoje (APROVADO ou PENDENTE)
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+    const amanha = new Date(hoje);
+    amanha.setDate(amanha.getDate() + 1);
+
     query.where('aluno.unidade_id = :unidadeId', { unidadeId });
     query.andWhere('aluno.status = :status', { status: StatusAluno.ATIVO });
+    
+    // Usar subquery para excluir alunos que já fizeram check-in hoje
+    query.andWhere(
+      `NOT EXISTS (
+        SELECT 1 FROM teamcruz.presencas p 
+        WHERE p.aluno_id = aluno.id 
+        AND p.hora_checkin >= :hoje 
+        AND p.hora_checkin < :amanha 
+        AND p.status_aprovacao IN ('APROVADO', 'PENDENTE')
+      )`,
+      { hoje, amanha },
+    );
 
     if (search) {
       query.andWhere(

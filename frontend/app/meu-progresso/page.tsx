@@ -99,11 +99,20 @@ export default function MeuProgressoPage() {
   const [editingFaixa, setEditingFaixa] = useState<string | null>(null);
   const [editDates, setEditDates] = useState({ dt_inicio: "", dt_fim: "" });
 
-  // Limpar cache quando o usuário mudar
+  // Pegar alunoId da query string (para visualizar progresso de dependentes)
+  const [targetAlunoId, setTargetAlunoId] = useState<string | null>(null);
+  
   useEffect(() => {
-    queryClient.invalidateQueries({ queryKey: ["meu-historico"] });
+    const params = new URLSearchParams(window.location.search);
+    const alunoIdParam = params.get('alunoId');
+    setTargetAlunoId(alunoIdParam);
+  }, []);
+
+  // Limpar cache quando o usuário ou targetAlunoId mudar
+  useEffect(() => {
+    queryClient.invalidateQueries({ queryKey: ["meu-historico", targetAlunoId] });
     queryClient.invalidateQueries({ queryKey: ["faixas-disponiveis"] });
-  }, [user?.id, queryClient]);
+  }, [user?.id, targetAlunoId, queryClient]);
 
   const [grauForm, setGrauForm] = useState<GrauForm>({
     faixaId: "",
@@ -123,19 +132,21 @@ export default function MeuProgressoPage() {
     isFaixaAtual: false,
   }); // Query para buscar histórico
   const { data: historico } = useQuery({
-    queryKey: ["meu-historico"],
+    queryKey: ["meu-historico", targetAlunoId],
     queryFn: async () => {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/progresso/meu-historico`,
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-        }
-      );
+      const endpoint = targetAlunoId
+        ? `${process.env.NEXT_PUBLIC_API_URL}/progresso/historico-aluno/${targetAlunoId}`
+        : `${process.env.NEXT_PUBLIC_API_URL}/progresso/meu-historico`;
+        
+      const response = await fetch(endpoint, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
       if (!response.ok) throw new Error("Erro ao carregar histórico");
       return response.json();
     },
+    enabled: !targetAlunoId || !!targetAlunoId, // Sempre habilitado
   });
 
   // Query para buscar faixas disponíveis

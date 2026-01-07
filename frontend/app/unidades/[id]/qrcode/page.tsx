@@ -43,8 +43,10 @@ export default function QRCodeUnidadePage() {
 
   const generateQRCode = async () => {
     try {
-      // QR Code contém apenas o ID da unidade
-      const url = await QRCode.toDataURL(unidadeId, {
+      // QR Code no formato: QR-UNIDADE-{unidadeId}
+      const qrCodeData = `QR-UNIDADE-${unidadeId}`;
+      
+      const url = await QRCode.toDataURL(qrCodeData, {
         width: 800,
         margin: 2,
         color: {
@@ -150,16 +152,16 @@ export default function QRCodeUnidadePage() {
                   📍 Faça check-in ao chegar na academia
                 </p>
                 <p className="text-sm text-blue-700 mt-2">
-                  O check-in registra sua presença na aula do dia
+                  O sistema identifica automaticamente a aula ativa no momento do check-in
                 </p>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* ID da unidade - apenas para referência */}
-        <div className="mt-4 text-center text-sm text-gray-500 print:hidden">
-          ID da Unidade: {unidadeId}
+        {/* Informação técnica - apenas para referência */}
+        <div className="mt-4 text-center text-xs text-gray-400 print:hidden">
+          QR-UNIDADE-{unidadeId}
         </div>
       </div>
 
