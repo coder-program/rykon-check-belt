@@ -227,161 +227,258 @@ export default function TabletCheckinPage() {
 
   return (
     <ProtectedRoute requiredPerfis={["TABLET_CHECKIN"]}>
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-2 sm:p-4 md:p-6">
-        <div className="max-w-7xl mx-auto">
-          {/* Header */}
-          <div className="mb-4 md:mb-6">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0 mb-2">
-              <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-800">
-                Check-in Tablet
-              </h1>
-              <Badge
-                variant="outline"
-                className="text-base sm:text-lg px-3 sm:px-4 py-1 sm:py-2"
-              >
-                <Clock className="w-4 h-4 mr-2" />
-                {new Date().toLocaleTimeString("pt-BR", {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
-              </Badge>
+      <div className="min-h-screen bg-gradient-to-br from-indigo-600 via-blue-600 to-cyan-500 p-3">
+        <div className="max-w-2xl mx-auto">
+          {/* Header Compacto */}
+          <div className="mb-4">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                  <User className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-xl font-bold text-white">
+                    Check-in
+                  </h1>
+                  <p className="text-xs text-white/80">TeamCruz</p>
+                </div>
+              </div>
+              <div className="bg-white/20 backdrop-blur-sm rounded-full px-4 py-2 flex items-center gap-2">
+                <Clock className="w-4 h-4 text-white" />
+                <span className="text-sm font-semibold text-white">
+                  {new Date().toLocaleTimeString("pt-BR", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </span>
+              </div>
             </div>
 
+            {/* Status da Aula */}
             {aulaAtiva ? (
-              <Card className="bg-green-50 border-green-200">
-                <CardContent className="py-2 sm:py-3">
-                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-                    <div>
-                      <p className="font-semibold text-green-800 text-sm sm:text-base">
-                        {aulaAtiva.nome}
-                      </p>
-                      <p className="text-xs sm:text-sm text-green-600">
-                        Professor: {aulaAtiva.professor} |{" "}
-                        {aulaAtiva.horarioInicio} - {aulaAtiva.horarioFim}
-                      </p>
+              <div className="bg-gradient-to-r from-green-500 to-emerald-600 rounded-2xl p-4 shadow-lg animate-in fade-in slide-in-from-top duration-500">
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+                      <span className="text-xs font-semibold text-white uppercase tracking-wide">
+                        Aula em Andamento
+                      </span>
                     </div>
-                    <Badge className="bg-green-600 text-xs sm:text-sm">
-                      Aula Ativa
-                    </Badge>
-                  </div>
-                </CardContent>
-              </Card>
-            ) : (
-              <Card className="bg-yellow-50 border-yellow-200">
-                <CardContent className="py-2 sm:py-3">
-                  <div className="flex items-center gap-2 text-yellow-800">
-                    <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5" />
-                    <p className="font-semibold text-sm sm:text-base">
-                      Nenhuma aula ativa no momento
+                    <p className="font-bold text-white text-lg mb-1">
+                      {aulaAtiva.nome}
+                    </p>
+                    <p className="text-sm text-white/90">
+                      👨‍🏫 {aulaAtiva.professor}
+                    </p>
+                    <p className="text-xs text-white/80 mt-1">
+                      ⏰ {aulaAtiva.horarioInicio} - {aulaAtiva.horarioFim}
                     </p>
                   </div>
-                </CardContent>
-              </Card>
+                  <div className="w-16 h-16 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                    <CheckCircle className="w-9 h-9 text-white" />
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="bg-gradient-to-r from-yellow-500 to-orange-500 rounded-2xl p-4 shadow-lg">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center flex-shrink-0">
+                    <AlertCircle className="w-7 h-7 text-white" />
+                  </div>
+                  <div>
+                    <p className="font-bold text-white text-base">
+                      Nenhuma aula ativa
+                    </p>
+                    <p className="text-sm text-white/90">
+                      Aguardando início da próxima aula
+                    </p>
+                  </div>
+                </div>
+              </div>
             )}
           </div>
 
-          {/* Main Content */}
-          <div className="max-w-4xl mx-auto">
-            {/* Lista de Alunos */}
-            <Card>
-              <CardHeader className="pb-3 sm:pb-6">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+          {/* Card Principal */}
+          <div className="bg-white rounded-3xl shadow-2xl overflow-hidden">
+            {/* Header do Card */}
+            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-4">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                    <Users className="w-6 h-6 text-white" />
+                  </div>
                   <div>
-                    <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
-                      <Users className="w-4 h-4 sm:w-5 sm:h-5" />
-                      Alunos da Unidade
-                    </CardTitle>
-                    <CardDescription className="text-xs sm:text-sm">
-                      Toque no aluno para fazer check-in
-                    </CardDescription>
+                    <h2 className="text-lg font-bold text-white">
+                      Alunos Disponíveis
+                    </h2>
+                    <p className="text-xs text-white/80">
+                      Toque para registrar presença
+                    </p>
                   </div>
-                  <Badge variant="outline" className="text-xs sm:text-sm">
-                    {alunosFiltrados.length} alunos
-                  </Badge>
                 </div>
-              </CardHeader>
-              <CardContent>
-                  {/* Busca */}
-                  <div className="relative mb-3 sm:mb-4">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 sm:w-5 sm:h-5" />
-                    <Input
-                      type="text"
-                      placeholder="Buscar por nome ou CPF"
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-9 sm:pl-10 text-base sm:text-lg h-10 sm:h-12"
-                    />
+                <div className="bg-white/20 backdrop-blur-sm rounded-full px-3 py-1.5">
+                  <span className="text-sm font-bold text-white">
+                    {alunosFiltrados.length}
+                  </span>
+                </div>
+              </div>
+
+              {/* Busca */}
+              <div className="relative">
+                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-blue-300 w-5 h-5 pointer-events-none" />
+                <input
+                  type="text"
+                  placeholder="Buscar aluno..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-12 pr-4 py-3.5 bg-white/20 backdrop-blur-sm border-2 border-white/30 rounded-2xl text-white placeholder-white/60 text-base focus:outline-none focus:border-white/60 focus:bg-white/30 transition-all"
+                />
+              </div>
+            </div>
+
+            {/* Lista de Alunos */}
+            <div className="p-3">
+              {loading ? (
+                <div className="text-center py-16">
+                  <div className="animate-spin rounded-full h-14 w-14 border-4 border-blue-200 border-t-blue-600 mx-auto mb-4"></div>
+                  <p className="text-gray-500 font-medium">
+                    Carregando alunos...
+                  </p>
+                </div>
+              ) : alunosFiltrados.length === 0 ? (
+                <div className="text-center py-16">
+                  <div className="w-20 h-20 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-4">
+                    <Users className="w-10 h-10 text-gray-300" />
                   </div>
+                  <p className="text-gray-500 font-medium text-base">
+                    Nenhum aluno encontrado
+                  </p>
+                  <p className="text-gray-400 text-sm mt-1">
+                    Todos já fizeram check-in hoje
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-2 max-h-[calc(100vh-380px)] overflow-y-auto pr-1 custom-scrollbar">
+                  {alunosFiltrados.map((aluno, index) => (
+                    <div
+                      key={aluno.id}
+                      className="bg-gradient-to-r from-gray-50 to-blue-50 rounded-2xl p-4 shadow-md hover:shadow-xl active:shadow-2xl transition-all duration-200 cursor-pointer border-2 border-transparent hover:border-blue-400 active:scale-[0.98] touch-manipulation animate-in fade-in slide-in-from-bottom"
+                      style={{ animationDelay: `${index * 30}ms` }}
+                      onClick={() => handleCheckin(aluno, "LISTA")}
+                    >
+                      <div className="flex items-center gap-4">
+                        {/* Avatar */}
+                        <div className="relative flex-shrink-0">
+                          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-2xl shadow-lg ring-4 ring-blue-100">
+                            {aluno.foto ? (
+                              <img
+                                src={aluno.foto}
+                                alt={aluno.nome}
+                                className="w-full h-full rounded-2xl object-cover"
+                              />
+                            ) : (
+                              aluno.nome.charAt(0).toUpperCase()
+                            )}
+                          </div>
+                          <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-green-500 rounded-full border-3 border-white flex items-center justify-center">
+                            <CheckCircle className="w-4 h-4 text-white" />
+                          </div>
+                        </div>
 
-                  {/* Grid de Alunos */}
-                  {loading ? (
-                    <div className="text-center py-8 sm:py-12">
-                      <div className="animate-spin rounded-full h-10 w-10 sm:h-12 sm:w-12 border-b-2 border-blue-600 mx-auto"></div>
-                      <p className="mt-4 text-gray-600 text-sm sm:text-base">
-                        Carregando alunos...
-                      </p>
-                    </div>
-                  ) : alunosFiltrados.length === 0 ? (
-                    <div className="text-center py-8 sm:py-12">
-                      <Users className="w-12 h-12 sm:w-16 sm:h-16 text-gray-300 mx-auto mb-4" />
-                      <p className="text-gray-600 text-sm sm:text-base">
-                        Nenhum aluno encontrado
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 max-h-[400px] sm:max-h-[500px] md:max-h-[600px] overflow-y-auto">
-                      {alunosFiltrados.map((aluno) => (
-                        <Card
-                          key={aluno.id}
-                          className="cursor-pointer hover:shadow-lg active:shadow-xl transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] border-2 hover:border-blue-400 touch-manipulation"
-                          onClick={() => handleCheckin(aluno, "LISTA")}
-                        >
-                          <CardContent className="p-3 sm:p-4">
-                            <div className="flex items-center gap-2 sm:gap-3">
-                              {/* Foto ou Avatar */}
-                              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-bold text-lg sm:text-xl flex-shrink-0">
-                                {aluno.foto ? (
-                                  <img
-                                    src={aluno.foto}
-                                    alt={aluno.nome}
-                                    className="w-full h-full rounded-full object-cover"
-                                  />
-                                ) : (
-                                  aluno.nome.charAt(0).toUpperCase()
-                                )}
-                              </div>
-
-                              {/* Informações */}
-                              <div className="flex-1 min-w-0">
-                                <p className="font-semibold text-gray-800 truncate text-sm sm:text-base">
-                                  {aluno.nome}
-                                </p>
-                                <div className="flex items-center gap-1 sm:gap-2 mt-1">
-                                  <Badge
-                                    style={{ backgroundColor: aluno.corFaixa }}
-                                    className="text-[10px] sm:text-xs text-white px-1 sm:px-2"
-                                  >
-                                    {aluno.faixa}
-                                  </Badge>
-                                  <span className="text-[10px] sm:text-xs text-gray-500 truncate">
-                                    {aluno.numeroMatricula}
-                                  </span>
-                                </div>
-                              </div>
-
-                              {/* Ícone Check-in */}
-                              <CheckCircle className="w-6 h-6 sm:w-8 sm:h-8 text-green-500 flex-shrink-0" />
+                        {/* Informações */}
+                        <div className="flex-1 min-w-0">
+                          <p className="font-bold text-gray-800 text-base mb-1 truncate">
+                            {aluno.nome}
+                          </p>
+                          <div className="flex items-center gap-2 mb-1.5">
+                            <div
+                              style={{ backgroundColor: aluno.corFaixa }}
+                              className="px-3 py-1 rounded-full shadow-sm"
+                            >
+                              <span className="text-xs font-bold text-white">
+                                {aluno.faixa}
+                              </span>
                             </div>
-                          </CardContent>
-                        </Card>
-                      ))}
+                          </div>
+                          <p className="text-xs text-gray-500 font-medium">
+                            📋 {aluno.numeroMatricula}
+                          </p>
+                        </div>
+
+                        {/* Ícone de Ação */}
+                        <div className="flex-shrink-0">
+                          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-green-400 to-emerald-600 flex items-center justify-center shadow-lg animate-pulse">
+                            <CheckCircle className="w-7 h-7 text-white" />
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                  )}
-                </CardContent>
-              </Card>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
+
+      <style jsx global>{`
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 8px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: #f1f5f9;
+          border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: linear-gradient(to bottom, #3b82f6, #6366f1);
+          border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: linear-gradient(to bottom, #2563eb, #4f46e5);
+        }
+        @keyframes fade-in {
+          from {
+            opacity: 0;
+          }
+          to {
+            opacity: 1;
+          }
+        }
+        @keyframes slide-in-from-bottom {
+          from {
+            transform: translateY(10px);
+            opacity: 0;
+          }
+          to {
+            transform: translateY(0);
+            opacity: 1;
+          }
+        }
+        @keyframes slide-in-from-top {
+          from {
+            transform: translateY(-10px);
+            opacity: 0;
+          }
+          to {
+            transform: translateY(0);
+            opacity: 1;
+          }
+        }
+        .animate-in {
+          animation-duration: 0.4s;
+          animation-fill-mode: both;
+        }
+        .fade-in {
+          animation-name: fade-in;
+        }
+        .slide-in-from-bottom {
+          animation-name: slide-in-from-bottom;
+        }
+        .slide-in-from-top {
+          animation-name: slide-in-from-top;
+        }
+      `}</style>
     </ProtectedRoute>
   );
 }
