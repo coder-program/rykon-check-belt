@@ -127,26 +127,30 @@ export class GraduacaoService {
     const proximaFaixa = await this.getProximaFaixa(faixaAtiva.faixaDef.id);
 
     // Calcular tempo na faixa
-    // Prioridade: data_ultima_graduacao > dt_inicio da faixa ativa
+    // Usar dt_inicio da faixa ativa como referência
     const agora = new Date();
-    let dataInicio: Date;
+    const dataInicio =
+      faixaAtiva.dt_inicio instanceof Date
+        ? faixaAtiva.dt_inicio
+        : new Date(faixaAtiva.dt_inicio);
 
-    if (aluno.data_ultima_graduacao) {
-      // Se tem data_ultima_graduacao, usar ela como referência
-      dataInicio =
-        aluno.data_ultima_graduacao instanceof Date
-          ? aluno.data_ultima_graduacao
-          : new Date(aluno.data_ultima_graduacao);
-    } else {
-      // Caso contrário, usar dt_inicio da faixa ativa
-      dataInicio =
-        faixaAtiva.dt_inicio instanceof Date
-          ? faixaAtiva.dt_inicio
-          : new Date(faixaAtiva.dt_inicio);
-    }
+    console.log('📅 [GET STATUS GRADUACAO] Calculando tempo na faixa:', {
+      aluno_id: aluno.id,
+      nome: aluno.nome_completo,
+      faixa_codigo: faixaAtiva.faixaDef.codigo,
+      dt_inicio_raw: faixaAtiva.dt_inicio,
+      dt_inicio_parsed: dataInicio,
+      data_agora: agora,
+      diferenca_ms: agora.getTime() - dataInicio.getTime(),
+    });
 
     const tempoNaFaixa = agora.getTime() - dataInicio.getTime();
     const diasNaFaixa = Math.floor(tempoNaFaixa / (1000 * 60 * 60 * 24));
+
+    console.log('📊 [GET STATUS GRADUACAO] Resultado do cálculo:', {
+      dias_na_faixa: diasNaFaixa,
+      anos: (diasNaFaixa / 365.25).toFixed(2),
+    });
 
     // Buscar tempo mínimo baseado na configuração da unidade do aluno
     const tempoMinimo = await this.getTempoMinimoDiasPorFaixa(
@@ -156,6 +160,15 @@ export class GraduacaoService {
 
     const tempoMinimoAnos = Number((tempoMinimo / 365.25).toFixed(1));
     const diasRestantes = Math.max(0, tempoMinimo - diasNaFaixa);
+
+    console.log('✅ [GET STATUS GRADUACAO] Retornando status:', {
+      faixaAtual: faixaAtiva.faixaDef.nome_exibicao,
+      diasNaFaixa,
+      tempoMinimoAnos,
+      diasRestantes,
+      dataInicio,
+      prontoParaGraduar: prontoParaProximoGrau,
+    });
 
     return {
       faixaAtual: faixaAtiva.faixaDef.nome_exibicao,

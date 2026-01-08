@@ -281,10 +281,22 @@ export class AlunosService {
   async findByUsuarioId(usuarioId: string): Promise<Aluno | null> {
     const aluno = await this.alunoRepository.findOne({
       where: { usuario_id: usuarioId },
-      relations: ['unidade'],
+      relations: ['unidade', 'faixas', 'faixas.faixaDef'],
     });
 
-    return aluno || null;
+    if (!aluno) return null;
+
+    // Encontrar a faixa ativa
+    const faixaAtiva = aluno.faixas?.find(f => f.ativa === true);
+    
+    // Adicionar faixa_atual e graus como propriedades virtuais para compatibilidade com frontend
+    if (faixaAtiva) {
+      (aluno as any).faixa_atual = faixaAtiva.faixaDef?.codigo || null;
+      (aluno as any).graus = faixaAtiva.graus_atual || 0;
+      (aluno as any).data_ultima_graduacao = faixaAtiva.dt_inicio || null;
+    }
+
+    return aluno;
   }
 
   async create(dto: CreateAlunoDto | any): Promise<Aluno> {
@@ -389,8 +401,8 @@ export class AlunosService {
 
         // Vincular perfil ALUNO ao usuário
         await queryRunner.manager.query(
-          `INSERT INTO teamcruz.usuario_perfis (usuario_id, perfil_id, created_at, updated_at)
-           VALUES ($1, $2, NOW(), NOW())`,
+          `INSERT INTO teamcruz.usuario_perfis (usuario_id, perfil_id, created_at)
+           VALUES ($1, $2, NOW())`,
           [usuario_id, perfilAluno[0].id],
         );
       }
@@ -802,14 +814,27 @@ export class AlunosService {
       data_matricula: dto.data_matricula
         ? new Date(dto.data_matricula + 'T12:00:00')
         : aluno.data_matricula,
-      data_ultima_graduacao: dto.data_ultima_graduacao
-        ? new Date(dto.data_ultima_graduacao + 'T12:00:00')
-        : aluno.data_ultima_graduacao,
     };
 
     // Remover campos que não existem mais na entidade Aluno
+    // Mas capturar seus valores para atualizar a faixa ativa depois
+    const faixaAtualParaAtualizar = dto.faixa_atual;
+    const grausParaAtualizar = dto.graus;
+    const dataUltimaGraduacaoParaAtualizar = dto.data_ultima_graduacao;
+    
+    console.log('🔍 [UPDATE GRADUACAO] Valores recebidos no DTO:', {
+      faixa_atual: dto.faixa_atual,
+      graus: dto.graus,
+      data_ultima_graduacao: dto.data_ultima_graduacao,
+      faixaAtualParaAtualizar,
+      grausParaAtualizar,
+      dataUltimaGraduacaoParaAtualizar,
+      condicao_if: !!(faixaAtualParaAtualizar || grausParaAtualizar !== undefined)
+    });
+    
     delete updateData.faixa_atual;
     delete updateData.graus;
+    delete updateData.data_ultima_graduacao;
 
     // Remover campos de endereço que não pertencem à tabela alunos
     // (estes campos vão para a tabela 'enderecos' separada)
@@ -827,6 +852,139 @@ export class AlunosService {
 
     // Fazer UPDATE direto no banco (bypass da relação @ManyToOne)
     await this.alunoRepository.update(id, updateData);
+
+    // Se enviou faixa_atual ou graus ou data_ultima_graduacao, atualizar na tabela aluno_faixa
+    if (faixaAtualParaAtualizar || grausParaAtualizar !== undefined || dataUltimaGraduacaoParaAtualizar) {
+      console.log('🔵 [UPDATE GRADUACAO] Iniciando atualização de graduação:', {
+        aluno_id: id,
+        faixaAtualParaAtualizar,
+        grausParaAtualizar,
+        dataUltimaGraduacaoParaAtualizar
+      });
+      
+      try {
+        // Buscar a faixa ativa atual
+        const faixaAtiva = await this.alunoFaixaRepository.findOne({
+          where: { aluno_id: id, ativa: true },
+          relations: ['faixaDef'],
+        });
+
+        console.log('🔵 [UPDATE GRADUACAO] Faixa ativa encontrada:', {
+          existe: !!faixaAtiva,
+          faixa_codigo: faixaAtiva?.faixaDef?.codigo,
+          graus_atual: faixaAtiva?.graus_atual,
+        });
+
+        if (faixaAtiva) {
+          // Se mudou a faixa, precisa desativar a atual e criar uma nova
+          if (faixaAtualParaAtualizar && faixaAtualParaAtualizar !== faixaAtiva.faixaDef?.codigo) {
+            console.log('🔵 [UPDATE GRADUACAO] Mudança de faixa detectada:', {
+              de: faixaAtiva.faixaDef?.codigo,
+              para: faixaAtualParaAtualizar
+            });
+            
+            // Buscar a nova faixa_def
+            const idade = this.calcularIdade(aluno.data_nascimento);
+            const novaFaixaDef = await this.faixaDefRepository.findOne({
+              where: {
+                codigo: faixaAtualParaAtualizar as any,
+                categoria: idade <= 15 ? CategoriaFaixa.INFANTIL : CategoriaFaixa.ADULTO,
+              },
+            });
+
+            if (novaFaixaDef) {
+              console.log('✅ [UPDATE GRADUACAO] Nova faixa encontrada:', {
+                codigo: novaFaixaDef.codigo,
+                nome: novaFaixaDef.nome_exibicao,
+                id: novaFaixaDef.id
+              });
+
+              // Desativar faixa atual
+              await this.alunoFaixaRepository.update(faixaAtiva.id, { ativa: false });
+              console.log('✅ [UPDATE GRADUACAO] Faixa anterior desativada');
+
+              // Criar nova faixa ativa
+              const novaFaixaSalva = await this.alunoFaixaRepository.save({
+                aluno_id: id,
+                faixa_def_id: novaFaixaDef.id,
+                ativa: true,
+                dt_inicio: dataUltimaGraduacaoParaAtualizar 
+                  ? new Date(dataUltimaGraduacaoParaAtualizar + 'T12:00:00')
+                  : new Date(),
+                graus_atual: grausParaAtualizar ?? 0,
+                presencas_no_ciclo: 0,
+                presencas_total_fx: 0,
+              });
+              console.log('✅ [UPDATE GRADUACAO] Nova faixa criada:', {
+                id: novaFaixaSalva.id,
+                graus: novaFaixaSalva.graus_atual,
+                dt_inicio: novaFaixaSalva.dt_inicio
+              });
+            } else {
+              console.error('❌ [UPDATE GRADUACAO] Nova faixa não encontrada no banco');
+            }
+          } else {
+            // Atualizar os graus e/ou data da faixa atual (sem mudar de faixa)
+            console.log('🔵 [UPDATE GRADUACAO] Atualizando graus/data da faixa atual:', {
+              faixa_id: faixaAtiva.id,
+              graus_antigo: faixaAtiva.graus_atual,
+              graus_novo: grausParaAtualizar !== undefined ? grausParaAtualizar : faixaAtiva.graus_atual,
+              data_antiga: faixaAtiva.dt_inicio,
+              data_nova: dataUltimaGraduacaoParaAtualizar
+            });
+
+            const updateFaixaData: any = {};
+            if (grausParaAtualizar !== undefined) {
+              updateFaixaData.graus_atual = grausParaAtualizar;
+            }
+            if (dataUltimaGraduacaoParaAtualizar) {
+              updateFaixaData.dt_inicio = new Date(dataUltimaGraduacaoParaAtualizar + 'T12:00:00');
+            }
+
+            if (Object.keys(updateFaixaData).length > 0) {
+              await this.alunoFaixaRepository.update(faixaAtiva.id, updateFaixaData);
+              console.log('✅ [UPDATE GRADUACAO] Faixa atualizada com sucesso');
+            }
+          }
+        } else if (faixaAtualParaAtualizar) {
+          // Não tem faixa ativa, criar uma nova
+          console.log('🔵 [UPDATE GRADUACAO] Aluno sem faixa ativa, criando nova');
+          const idade = this.calcularIdade(aluno.data_nascimento);
+          console.log('🔵 [UPDATE GRADUACAO] Idade calculada:', idade);
+
+          const novaFaixaDef = await this.faixaDefRepository.findOne({
+            where: {
+              codigo: faixaAtualParaAtualizar as any,
+              categoria: idade <= 15 ? CategoriaFaixa.INFANTIL : CategoriaFaixa.ADULTO,
+            },
+          });
+
+          if (novaFaixaDef) {
+            console.log('✅ [UPDATE GRADUACAO] Faixa encontrada, criando registro');
+            const novaFaixaSalva = await this.alunoFaixaRepository.save({
+              aluno_id: id,
+              faixa_def_id: novaFaixaDef.id,
+              ativa: true,
+              dt_inicio: dataUltimaGraduacaoParaAtualizar
+                ? new Date(dataUltimaGraduacaoParaAtualizar + 'T12:00:00')
+                : new Date(),
+              graus_atual: grausParaAtualizar ?? 0,
+              presencas_no_ciclo: 0,
+              presencas_total_fx: 0,
+            });
+            console.log('✅ [UPDATE GRADUACAO] Primeira faixa criada:', novaFaixaSalva);
+          } else {
+            console.error('❌ [UPDATE GRADUACAO] Faixa não encontrada no banco');
+          }
+        }
+      } catch (error) {
+        console.error('❌ [UPDATE GRADUACAO] Erro ao atualizar faixa do aluno:', error);
+        console.error('Stack:', error.stack);
+        // Não lançar erro para não quebrar o update do aluno
+      }
+    } else {
+      console.log('⚪ [UPDATE GRADUACAO] Nenhum campo de graduação para atualizar');
+    }
 
     // Buscar novamente do banco para garantir dados atualizados
     const resultado = await this.alunoRepository.findOne({
