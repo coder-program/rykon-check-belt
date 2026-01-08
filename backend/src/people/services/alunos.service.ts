@@ -811,6 +811,20 @@ export class AlunosService {
     delete updateData.faixa_atual;
     delete updateData.graus;
 
+    // Remover campos de endereço que não pertencem à tabela alunos
+    // (estes campos vão para a tabela 'enderecos' separada)
+    delete updateData.cep;
+    delete updateData.logradouro;
+    delete updateData.numero;
+    delete updateData.complemento;
+    delete updateData.bairro;
+    delete updateData.cidade;
+    delete updateData.cidade_nome;
+    delete updateData.estado;
+    delete updateData.uf;
+    delete updateData.pais;
+    delete updateData.endereco; // campo antigo
+
     // Fazer UPDATE direto no banco (bypass da relação @ManyToOne)
     await this.alunoRepository.update(id, updateData);
 
