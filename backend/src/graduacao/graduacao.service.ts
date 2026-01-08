@@ -255,6 +255,10 @@ export class GraduacaoService {
       query = query.andWhere('aluno.unidade_id IN (:...unidades)', {
         unidades: unidadesDoFranqueado,
       });
+    } else if (params.userId) {
+      // Se passou userId (franqueado) mas não tem unidades, retornar vazio
+      console.warn('⚠️ [PROXIMOS GRADUAR] Franqueado sem unidades - retornando vazio');
+      query = query.andWhere('1 = 0'); // Retorna vazio
     }
 
     // Filtrar por categoria se fornecido

@@ -258,4 +258,91 @@ export class EmailService {
       return false;
     }
   }
+
+  /**
+   * Envia email de aprovação de cadastro
+   */
+  async sendApprovalEmail(
+    email: string,
+    nome: string,
+  ): Promise<boolean> {
+    try {
+      const frontendUrl = this.configService.get<string>(
+        'FRONTEND_URL',
+        'http://localhost:3000',
+      );
+      const loginLink = `${frontendUrl}/login`;
+
+      await this.transporter.sendMail({
+        from: `"Team Cruz" <${this.configService.get<string>('SMTP_USER')}>`,
+        to: email,
+        subject: '🎉 Cadastro Aprovado - Team Cruz',
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <div style="background: linear-gradient(135deg, #1a1a1a 0%, #8B0000 100%); padding: 20px; text-align: center;">
+              <h1 style="color: #fff; margin: 0;">Team Cruz Brazilian Jiu-Jitsu</h1>
+              <p style="color: #f0f0f0; margin: 5px 0 0 0;">Bem-vindo à Família!</p>
+            </div>
+
+            <div style="background: #f9f9f9; padding: 30px; border: 1px solid #ddd;">
+              <h2 style="color: #8B0000; margin-top: 0;">🎉 Seu cadastro foi aprovado!</h2>
+
+              <p style="color: #333; font-size: 16px; line-height: 1.6;">
+                Olá <strong>${nome}</strong>,
+              </p>
+
+              <p style="color: #333; line-height: 1.6;">
+                É com grande prazer que informamos que seu cadastro foi <strong>aprovado com sucesso</strong>! 
+                Agora você faz parte da família Team Cruz.
+              </p>
+
+              <div style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%); padding: 20px; border-radius: 10px; margin: 20px 0; text-align: center;">
+                <p style="color: white; font-size: 18px; font-weight: bold; margin: 0;">
+                  ✅ Você já pode acessar o sistema!
+                </p>
+              </div>
+
+              <p style="color: #333; line-height: 1.6;">
+                Clique no botão abaixo para fazer login e começar a usar todas as funcionalidades:
+              </p>
+
+              <div style="text-align: center; margin: 30px 0;">
+                <a href="${loginLink}"
+                   style="display: inline-block; background: linear-gradient(135deg, #8B0000 0%, #DC143C 100%);
+                          color: white; padding: 15px 40px; text-decoration: none; border-radius: 5px;
+                          font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.2);">
+                  Acessar Sistema
+                </a>
+              </div>
+
+              <p style="color: #666; font-size: 14px; line-height: 1.6;">
+                Ou copie e cole este link no seu navegador:
+              </p>
+              <p style="color: #8B0000; font-size: 12px; word-break: break-all; background: #fff; padding: 10px; border: 1px solid #ddd;">
+                ${loginLink}
+              </p>
+
+              <div style="background: #e8f5e9; border: 1px solid #4caf50; padding: 15px; margin-top: 20px; border-radius: 5px;">
+                <p style="margin: 0; color: #2e7d32; font-size: 14px;">
+                  💡 <strong>Dica:</strong> Use suas credenciais de acesso (email e senha) que você cadastrou para fazer login.
+                </p>
+              </div>
+
+              <p style="color: #666; font-size: 12px; margin-top: 30px;">
+                Se você tiver alguma dúvida, entre em contato com nossa equipe de suporte.
+              </p>
+            </div>
+          </div>
+        `,
+      });
+
+      this.logger.log(`Email de aprovação enviado para ${email}`);
+      return true;
+    } catch (error) {
+      this.logger.error(
+        `Erro ao enviar email de aprovação: ${error.message}`,
+      );
+      return false;
+    }
+  }
 }

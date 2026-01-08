@@ -12,6 +12,7 @@ import { Perfil } from '../entities/perfil.entity';
 import { CreateUsuarioDto } from '../dto/create-usuario.dto';
 import { GerenteUnidadesService } from '../../people/services/gerente-unidades.service';
 import { EmailService } from '../../email/email.service';
+import { WhatsAppService } from '../../whatsapp/whatsapp.service';
 
 @Injectable()
 export class UsuariosService {
@@ -23,6 +24,7 @@ export class UsuariosService {
     private dataSource: DataSource,
     private gerenteUnidadesService: GerenteUnidadesService,
     private emailService: EmailService,
+    private whatsappService: WhatsAppService,
   ) {}
 
   /**
@@ -1467,10 +1469,27 @@ export class UsuariosService {
       ativo: true,
     });
 
-    // TODO: Enviar email de confirmação ao usuário
+    // Enviar email de aprovação (não bloqueia se falhar)
+    try {
+      await this.emailService.sendApprovalEmail(usuario.email, usuario.nome);
+    } catch (error) {
+      console.error('Erro ao enviar email de aprovação:', error);
+    }
+
+    // Enviar WhatsApp se telefone estiver cadastrado (não bloqueia se falhar)
+    if (usuario.telefone) {
+      try {
+        await this.whatsappService.sendApprovalMessage(
+          usuario.telefone,
+          usuario.nome,
+        );
+      } catch (error) {
+        console.error('Erro ao enviar WhatsApp de aprovação:', error);
+      }
+    }
 
     return {
-      message: 'Usuário aprovado com sucesso!',
+      message: 'Usuário aprovado com sucesso! Email e WhatsApp enviados.',
     };
   }
 
