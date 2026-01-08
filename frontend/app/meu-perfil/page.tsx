@@ -556,6 +556,13 @@ export default function MeuPerfilPage() {
 
       // Se é aluno e tem dados específicos para atualizar
       if (tipoUsuario === "aluno" && dadosAluno) {
+        console.log("🔍 [FRONTEND] Dados recebidos do formulário:", {
+          faixa_atual: data.faixa_atual,
+          graus_raw: data.graus,
+          graus_tipo: typeof data.graus,
+          data_ultima_graduacao: data.data_ultima_graduacao,
+        });
+
         const dadosAlunoUpdate = {
           nome_completo: data.nome,
           cpf: data.cpf,
@@ -568,6 +575,10 @@ export default function MeuPerfilPage() {
           responsavel_nome: data.responsavel_nome,
           responsavel_cpf: data.responsavel_cpf,
           responsavel_telefone: data.responsavel_telefone,
+          // Dados de graduação
+          faixa_atual: data.faixa_atual,
+          graus: data.graus !== undefined ? Number(data.graus) : undefined,
+          data_ultima_graduacao: data.data_ultima_graduacao,
           // Dados de endereço
           cep: data.cep,
           logradouro: data.logradouro,
@@ -579,6 +590,13 @@ export default function MeuPerfilPage() {
           // Unidade
           unidade_id: data.unidade_id,
         };
+
+        console.log("📤 [FRONTEND] Enviando para backend:", {
+          faixa_atual: dadosAlunoUpdate.faixa_atual,
+          graus: dadosAlunoUpdate.graus,
+          graus_tipo: typeof dadosAlunoUpdate.graus,
+          data_ultima_graduacao: dadosAlunoUpdate.data_ultima_graduacao,
+        });
 
         const alunoResponse = await fetch(
           `${API_URL}/alunos/${dadosAluno.id}`,
@@ -597,33 +615,6 @@ export default function MeuPerfilPage() {
           throw new Error(
             errorData.message || "Erro ao atualizar dados do aluno"
           );
-        }
-
-        // Atualizar faixa se foi modificada
-        if (data.faixa_atual || data.graus !== undefined || data.data_ultima_graduacao) {
-          const dadosFaixa = {
-            faixa_atual: data.faixa_atual,
-            graus: Number(data.graus) || 0,
-            data_ultima_graduacao: data.data_ultima_graduacao,
-          };
-
-          const faixaResponse = await fetch(
-            `${API_URL}/alunos/${dadosAluno.id}/faixa`,
-            {
-              method: "PATCH",
-              headers: {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${localStorage.getItem("token")}`,
-              },
-              body: JSON.stringify(dadosFaixa),
-            }
-          );
-
-          if (!faixaResponse.ok) {
-            const errorData = await faixaResponse.json();
-            console.warn("Aviso ao atualizar faixa:", errorData.message);
-            // Não lançar erro, apenas avisar
-          }
         }
       }
 
@@ -757,7 +748,7 @@ export default function MeuPerfilPage() {
 
       return await userResponse.json();
     },
-    onSuccess: async () => {
+    onSuccess: async (_, variables) => {
       setSuccessMessage("Perfil atualizado com sucesso!");
       setErrors({});
 
@@ -775,6 +766,13 @@ export default function MeuPerfilPage() {
       queryClient.invalidateQueries({
         queryKey: ["franqueado-by-usuario", user?.id],
       });
+      
+      // Recarregar a página se salvou dados de graduação para atualizar dashboard
+      if (variables.faixa_atual || variables.graus !== undefined || variables.data_ultima_graduacao) {
+        setTimeout(() => {
+          window.location.reload();
+        }, 1000);
+      }
 
       // Limpar campos de senha após sucesso
       setFormData((prev) => ({
@@ -1035,6 +1033,8 @@ export default function MeuPerfilPage() {
       dataToSubmit.valor_mensalidade = formData.valor_mensalidade;
       dataToSubmit.desconto_percentual = formData.desconto_percentual;
       // Graduação
+      dataToSubmit.faixa_atual = formData.faixa_atual;
+      dataToSubmit.graus = formData.graus !== undefined ? Number(formData.graus) : undefined;
       dataToSubmit.data_ultima_graduacao = formData.data_ultima_graduacao;
       // Observações e LGPD
       dataToSubmit.observacoes = formData.observacoes;

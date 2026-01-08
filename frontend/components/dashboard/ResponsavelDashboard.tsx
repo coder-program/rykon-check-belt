@@ -304,7 +304,7 @@ export default function ResponsavelDashboard() {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            alunoId: alunoId,
+            dependenteId: alunoId,
             aulaId: aulaAtiva.id,
           }),
         }

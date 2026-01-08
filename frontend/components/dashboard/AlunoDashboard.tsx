@@ -500,7 +500,7 @@ export default function AlunoDashboard({
       const result = await http("/presenca/check-in-dependente", {
         method: "POST",
         body: {
-          alunoId: alunoId,
+          dependenteId: alunoId,
           aulaId: aulaAtiva.id,
         },
         auth: true,
