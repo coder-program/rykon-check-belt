@@ -1167,6 +1167,14 @@ export class PresencaService {
     dataFim?: string,
     unidadeId?: string,
   ) {
+    console.log('🔍 [getRelatorioPresencas] Parâmetros recebidos:', {
+      dataInicio,
+      dataFim,
+      unidadeId,
+      userId: user?.id,
+      userPerfis: user?.perfis,
+    });
+
     // Verificar se é gerente ou recepcionista e obter sua unidade automaticamente
     const perfisNomes = (user?.perfis || []).map((p: any) =>
       typeof p === 'string' ? p.toUpperCase() : p.nome?.toUpperCase(),
@@ -1174,12 +1182,33 @@ export class PresencaService {
     const isGerente = perfisNomes.includes('GERENTE_UNIDADE');
     const isRecepcionista = perfisNomes.includes('RECEPCIONISTA');
     
-    // Se for gerente ou recepcionista, forçar filtro pela unidade dele
-    if ((isGerente || isRecepcionista) && !unidadeId) {
+    console.log('👤 [getRelatorioPresencas] Tipo de usuário:', { 
+      isGerente, 
+      isRecepcionista,
+      perfisNomes,
+    });
+
+    // Se for gerente ou recepcionista, SEMPRE forçar filtro pela unidade dele
+    if (isGerente || isRecepcionista) {
       const unidadeUsuario = await this.getUnidadeUsuario(user);
       if (unidadeUsuario) {
         unidadeId = unidadeUsuario;
-        console.log('🔒 [getRelatorioPresencas] Gerente/Recepcionista detectado, forçando unidade:', unidadeId);
+        console.log('🔒 [getRelatorioPresencas] Gerente/Recepcionista detectado, FORÇANDO unidade:', unidadeId);
+      }
+    }
+
+    // Se for franqueado e não especificou unidade, buscar todas as unidades dele
+    let unidadesFranqueado: string[] = [];
+    const isFranqueado = perfisNomes.includes('FRANQUEADO');
+    if (isFranqueado && !unidadeId) {
+      const franqueadoId = await this.getFranqueadoIdByUser(user.id);
+      if (franqueadoId) {
+        const unidadesResult = await this.unidadeRepository.find({
+          where: { franqueado_id: franqueadoId },
+          select: ['id'],
+        });
+        unidadesFranqueado = unidadesResult.map(u => u.id);
+        console.log('🏢 [getRelatorioPresencas] Franqueado detectado, filtrando por suas unidades:', unidadesFranqueado);
       }
     }
     
@@ -1217,6 +1246,8 @@ export class PresencaService {
       .createQueryBuilder('presenca')
       .innerJoin(Aluno, 'aluno', 'aluno.id = presenca.aluno_id')
       .leftJoinAndSelect('presenca.aula', 'aula')
+      .leftJoinAndSelect('aula.unidade', 'unidade')
+      .leftJoinAndSelect('aula.professor', 'professor')
       .where('presenca.created_at BETWEEN :inicio AND :fim', { inicio, fim });
 
     // Primeiro buscar SEM filtro de unidade para ver se existem presenças
@@ -1240,18 +1271,34 @@ export class PresencaService {
     }
 
     if (unidadeId) {
-      query.andWhere('aluno.unidade_id = :unidadeId', { unidadeId });
+      console.log('🔒 [FILTRO] Aplicando filtro de unidade na aula:', unidadeId);
+      query.andWhere('aula.unidade_id = :unidadeId', { unidadeId });
+    } else if (unidadesFranqueado.length > 0) {
+      console.log('🔒 [FILTRO] Aplicando filtro de unidades do franqueado:', unidadesFranqueado);
+      query.andWhere('aula.unidade_id IN (:...unidadesFranqueado)', { unidadesFranqueado });
+    } else {
+      console.log('⚠️ [FILTRO] NENHUM FILTRO DE UNIDADE APLICADO - Mostrando todas as unidades!');
     }
 
     const presencas = await query
       .addSelect('aluno.nome_completo', 'aluno_nome')
       .addSelect('aluno.id', 'aluno_id_select')
+      .addSelect('unidade.nome', 'unidade_nome')
+      .addSelect('unidade.id', 'unidade_id')
+      .addSelect('professor.nome_completo', 'professor_nome_completo')
+      .addSelect('professor.id', 'professor_id')
       .orderBy('presenca.created_at', 'DESC')
       .getRawMany();
 
-    console.log('✅ [getRelatorioPresencas] Encontradas:', presencas.length, 'presenças (com filtro de unidade)');
+    console.log('✅ [getRelatorioPresencas] Encontradas:', presencas.length, 'presenças');
+    console.log('🏢 [getRelatorioPresencas] Unidades encontradas:', [...new Set(presencas.map(p => p.unidade_nome))]);
     if (presencas.length > 0) {
-      console.log('📅 Primeira presença created_at:', presencas[0].presenca_created_at);
+      console.log('📋 [getRelatorioPresencas] Primeiras 5 presenças:', presencas.slice(0, 5).map(p => ({
+        aluno: p.aluno_nome,
+        unidade: p.unidade_nome,
+        unidade_id: p.unidade_id,
+        data: p.presenca_created_at,
+      })));
     }
 
     return presencas.map((p) => ({
@@ -1264,6 +1311,14 @@ export class PresencaService {
       aula: {
         id: p.aula_id || p.presenca_aula_id,
         nome: p.aula_nome || 'Aula',
+        unidade: p.unidade_nome ? {
+          id: p.unidade_id,
+          nome: p.unidade_nome,
+        } : null,
+        professor: p.professor_nome_completo ? {
+          id: p.professor_id,
+          nome_completo: p.professor_nome_completo,
+        } : null,
       },
       status: p.presenca_status,
       metodo: p.presenca_modo_registro,
@@ -2588,6 +2643,22 @@ export class PresencaService {
       [userId],
     );
     return result[0]?.unidade_id || null;
+  }
+
+  private async getFranqueadoIdByUser(userId: string): Promise<string | null> {
+    if (!userId) {
+      return null;
+    }
+    const result = await this.personRepository.query(
+      `SELECT id FROM teamcruz.franqueados WHERE usuario_id = $1 LIMIT 1`,
+      [userId],
+    );
+    console.log('🔍 [getFranqueadoIdByUser]', {
+      user_id: userId,
+      franqueado_id: result[0]?.id || null,
+      result_count: result.length,
+    });
+    return result[0]?.id || null;
   }
 
   async getHistoricoAluno(alunoId: string, user: any, limit: number = 10) {

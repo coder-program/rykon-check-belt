@@ -13,8 +13,11 @@ import {
   Clock,
   Filter,
   Download,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-react";
-import { format, startOfMonth, endOfMonth } from "date-fns";
+import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, startOfDay, endOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 interface PresencaData {
@@ -38,9 +41,14 @@ export default function RelatorioPresencasPage() {
   const router = useRouter();
   const { user } = useAuth();
   const [selectedUnidade, setSelectedUnidade] = useState<string>("todas");
-  const [mesReferencia, setMesReferencia] = useState<string>(
-    format(new Date(), "yyyy-MM")
+  const [tipoPeriodo, setTipoPeriodo] = useState<"dia" | "semana" | "mes">("mes");
+  const [dataReferencia, setDataReferencia] = useState<string>(
+    format(new Date(), "yyyy-MM-dd")
   );
+  const [sortField, setSortField] = useState<string | null>(null);
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+  const [sortFieldUnidade, setSortFieldUnidade] = useState<string | null>(null);
+  const [sortDirectionUnidade, setSortDirectionUnidade] = useState<"asc" | "desc">("asc");
   
   // Verificar se é gerente ou recepcionista e pegar unidade específica
   const isGerente = user?.perfis?.some((p: any) => 
@@ -91,13 +99,31 @@ export default function RelatorioPresencasPage() {
 
   // Query para buscar relatório de presenças
   const { data: relatorio, isLoading } = useQuery({
-    queryKey: ["relatorio-presencas", selectedUnidade, mesReferencia],
+    queryKey: ["relatorio-presencas", selectedUnidade, dataReferencia, tipoPeriodo],
     enabled: !isUnidadeRestrita || (isUnidadeRestrita && selectedUnidade !== "todas"), // Só executar quando gerente/recepcionista tiver unidade definida
     queryFn: async () => {
-      const [ano, mes] = mesReferencia.split('-');
-      const dataInicio = `${ano}-${mes}-01`;
-      const ultimoDia = new Date(parseInt(ano), parseInt(mes), 0).getDate();
-      const dataFim = `${ano}-${mes}-${ultimoDia}`;
+      // Calcular dataInicio e dataFim baseado no tipo de período
+      let dataInicio: string;
+      let dataFim: string;
+      const dataRef = new Date(dataReferencia + "T12:00:00");
+
+      if (tipoPeriodo === "dia") {
+        const inicio = startOfDay(dataRef);
+        const fim = endOfDay(dataRef);
+        dataInicio = format(inicio, "yyyy-MM-dd");
+        dataFim = format(fim, "yyyy-MM-dd");
+      } else if (tipoPeriodo === "semana") {
+        const inicio = startOfWeek(dataRef, { weekStartsOn: 0 }); // Domingo
+        const fim = endOfWeek(dataRef, { weekStartsOn: 0 });
+        dataInicio = format(inicio, "yyyy-MM-dd");
+        dataFim = format(fim, "yyyy-MM-dd");
+      } else {
+        // mes
+        const [ano, mes] = dataReferencia.split('-');
+        dataInicio = `${ano}-${mes}-01`;
+        const ultimoDia = new Date(parseInt(ano), parseInt(mes), 0).getDate();
+        dataFim = `${ano}-${mes}-${ultimoDia}`;
+      }
       
       const params = new URLSearchParams({
         dataInicio,
@@ -169,6 +195,122 @@ export default function RelatorioPresencasPage() {
   const presencasRecentes: PresencaData[] = relatorio?.presencas_recentes || [];
   const estatisticasPorUnidade: UnidadeStats[] = relatorio?.por_unidade || [];
 
+  // Função para ordenar dados
+  const handleSort = (field: string) => {
+    if (sortField === field) {
+      // Se já está ordenando por esse campo, inverte a direção
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+    } else {
+      // Novo campo, começa com ascendente
+      setSortField(field);
+      setSortDirection("asc");
+    }
+  };
+
+  // Aplicar ordenação nos dados
+  const presencasOrdenadas = React.useMemo(() => {
+    if (!sortField) return presencasRecentes;
+
+    return [...presencasRecentes].sort((a, b) => {
+      let aValue: any;
+      let bValue: any;
+
+      switch (sortField) {
+        case "data":
+          aValue = new Date(a.data_presenca).getTime();
+          bValue = new Date(b.data_presenca).getTime();
+          break;
+        case "aluno":
+          aValue = a.aluno_nome.toLowerCase();
+          bValue = b.aluno_nome.toLowerCase();
+          break;
+        case "unidade":
+          aValue = a.unidade_nome.toLowerCase();
+          bValue = b.unidade_nome.toLowerCase();
+          break;
+        default:
+          return 0;
+      }
+
+      if (sortDirection === "asc") {
+        return aValue > bValue ? 1 : aValue < bValue ? -1 : 0;
+      } else {
+        return aValue < bValue ? 1 : aValue > bValue ? -1 : 0;
+      }
+    });
+  }, [presencasRecentes, sortField, sortDirection]);
+
+  // Função para renderizar ícone de ordenação
+  const renderSortIcon = (field: string) => {
+    if (sortField !== field) {
+      return <ArrowUpDown className="h-4 w-4 text-gray-400" />;
+    }
+    return sortDirection === "asc" ? (
+      <ArrowUp className="h-4 w-4 text-blue-600" />
+    ) : (
+      <ArrowDown className="h-4 w-4 text-blue-600" />
+    );
+  };
+
+  // Função para ordenar tabela de unidades
+  const handleSortUnidade = (field: string) => {
+    if (sortFieldUnidade === field) {
+      setSortDirectionUnidade(sortDirectionUnidade === "asc" ? "desc" : "asc");
+    } else {
+      setSortFieldUnidade(field);
+      setSortDirectionUnidade("asc");
+    }
+  };
+
+  // Aplicar ordenação nas estatísticas por unidade
+  const estatisticasOrdenadas = React.useMemo(() => {
+    if (!sortFieldUnidade) return estatisticasPorUnidade;
+
+    return [...estatisticasPorUnidade].sort((a, b) => {
+      let aValue: any;
+      let bValue: any;
+
+      switch (sortFieldUnidade) {
+        case "unidade":
+          aValue = a.unidade_nome.toLowerCase();
+          bValue = b.unidade_nome.toLowerCase();
+          break;
+        case "presencas":
+          aValue = a.total_presencas;
+          bValue = b.total_presencas;
+          break;
+        case "alunos":
+          aValue = a.alunos_ativos;
+          bValue = b.alunos_ativos;
+          break;
+        case "taxa":
+          aValue = a.taxa_presenca;
+          bValue = b.taxa_presenca;
+          break;
+        default:
+          return 0;
+      }
+
+      if (sortDirectionUnidade === "asc") {
+        return aValue > bValue ? 1 : aValue < bValue ? -1 : 0;
+      } else {
+        return aValue < bValue ? 1 : aValue > bValue ? -1 : 0;
+      }
+    });
+  }, [estatisticasPorUnidade, sortFieldUnidade, sortDirectionUnidade]);
+
+  // Função para renderizar ícone de ordenação (tabela unidades)
+  const renderSortIconUnidade = (field: string) => {
+    if (sortFieldUnidade !== field) {
+      return <ArrowUpDown className="h-4 w-4 text-gray-400" />;
+    }
+    return sortDirectionUnidade === "asc" ? (
+      <ArrowUp className="h-4 w-4 text-blue-600" />
+    ) : (
+      <ArrowDown className="h-4 w-4 text-blue-600" />
+    );
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto">
@@ -215,7 +357,7 @@ export default function RelatorioPresencasPage() {
             <h2 className="text-lg font-semibold text-gray-900">Filtros</h2>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Filtro de Unidade - Desabilitado para gerentes/recepcionistas */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -228,7 +370,7 @@ export default function RelatorioPresencasPage() {
                 className={`select select-bordered w-full ${isUnidadeRestrita ? 'bg-gray-100 cursor-not-allowed' : ''}`}
               >
                 {!isUnidadeRestrita && <option value="todas">Todas as Unidades</option>}
-                {unidades?.map((unidade: any) => (
+                {Array.isArray(unidades) && unidades.map((unidade: any) => (
                   <option key={unidade.id} value={unidade.id}>
                     {unidade.nome}
                   </option>
@@ -241,15 +383,39 @@ export default function RelatorioPresencasPage() {
               )}
             </div>
 
-            {/* Filtro de Mês */}
+            {/* Filtro de Tipo de Período */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Mês de Referência
+                Tipo de Período
+              </label>
+              <select
+                value={tipoPeriodo}
+                onChange={(e) => setTipoPeriodo(e.target.value as "dia" | "semana" | "mes")}
+                className="select select-bordered w-full"
+              >
+                <option value="dia">Dia</option>
+                <option value="semana">Semana</option>
+                <option value="mes">Mês</option>
+              </select>
+            </div>
+
+            {/* Filtro de Data */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                {tipoPeriodo === "dia" && "Data"}
+                {tipoPeriodo === "semana" && "Semana (selecione qualquer dia)"}
+                {tipoPeriodo === "mes" && "Mês"}
               </label>
               <input
-                type="month"
-                value={mesReferencia}
-                onChange={(e) => setMesReferencia(e.target.value)}
+                type={tipoPeriodo === "mes" ? "month" : "date"}
+                value={tipoPeriodo === "mes" ? dataReferencia.slice(0, 7) : dataReferencia}
+                onChange={(e) => {
+                  if (tipoPeriodo === "mes") {
+                    setDataReferencia(e.target.value + "-01");
+                  } else {
+                    setDataReferencia(e.target.value);
+                  }
+                }}
                 className="input input-bordered w-full"
               />
             </div>
@@ -309,14 +475,46 @@ export default function RelatorioPresencasPage() {
               <table className="table w-full">
                 <thead>
                   <tr>
-                    <th>Unidade</th>
-                    <th>Total Presenças</th>
-                    <th>Alunos Ativos</th>
-                    <th>Taxa de Presença</th>
+                    <th 
+                      className="cursor-pointer hover:bg-gray-100 select-none"
+                      onClick={() => handleSortUnidade("unidade")}
+                    >
+                      <div className="flex items-center gap-2">
+                        Unidade
+                        {renderSortIconUnidade("unidade")}
+                      </div>
+                    </th>
+                    <th 
+                      className="cursor-pointer hover:bg-gray-100 select-none"
+                      onClick={() => handleSortUnidade("presencas")}
+                    >
+                      <div className="flex items-center gap-2">
+                        Total Presenças
+                        {renderSortIconUnidade("presencas")}
+                      </div>
+                    </th>
+                    <th 
+                      className="cursor-pointer hover:bg-gray-100 select-none"
+                      onClick={() => handleSortUnidade("alunos")}
+                    >
+                      <div className="flex items-center gap-2">
+                        Alunos Ativos
+                        {renderSortIconUnidade("alunos")}
+                      </div>
+                    </th>
+                    <th 
+                      className="cursor-pointer hover:bg-gray-100 select-none"
+                      onClick={() => handleSortUnidade("taxa")}
+                    >
+                      <div className="flex items-center gap-2">
+                        Taxa de Presença
+                        {renderSortIconUnidade("taxa")}
+                      </div>
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
-                  {estatisticasPorUnidade.map((stat) => (
+                  {Array.isArray(estatisticasOrdenadas) && estatisticasOrdenadas.map((stat) => (
                     <tr key={stat.unidade_id}>
                       <td className="font-medium">{stat.unidade_nome}</td>
                       <td>{stat.total_presencas}</td>
@@ -336,6 +534,13 @@ export default function RelatorioPresencasPage() {
                       </td>
                     </tr>
                   ))}
+                  {(!estatisticasOrdenadas || estatisticasOrdenadas.length === 0) && (
+                    <tr>
+                      <td colSpan={4} className="text-center text-gray-500 py-8">
+                        Nenhum dado disponível para o período selecionado
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
@@ -366,15 +571,39 @@ export default function RelatorioPresencasPage() {
               <table className="table w-full">
                 <thead>
                   <tr>
-                    <th>Data</th>
+                    <th 
+                      className="cursor-pointer hover:bg-gray-100 select-none"
+                      onClick={() => handleSort("data")}
+                    >
+                      <div className="flex items-center gap-2">
+                        Data
+                        {renderSortIcon("data")}
+                      </div>
+                    </th>
                     <th>Horário</th>
-                    <th>Aluno</th>
-                    <th>Unidade</th>
+                    <th 
+                      className="cursor-pointer hover:bg-gray-100 select-none"
+                      onClick={() => handleSort("aluno")}
+                    >
+                      <div className="flex items-center gap-2">
+                        Aluno
+                        {renderSortIcon("aluno")}
+                      </div>
+                    </th>
+                    <th 
+                      className="cursor-pointer hover:bg-gray-100 select-none"
+                      onClick={() => handleSort("unidade")}
+                    >
+                      <div className="flex items-center gap-2">
+                        Unidade
+                        {renderSortIcon("unidade")}
+                      </div>
+                    </th>
                     <th>Instrutor</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {presencasRecentes.map((presenca) => (
+                  {Array.isArray(presencasOrdenadas) && presencasOrdenadas.map((presenca) => (
                     <tr key={presenca.id}>
                       <td>
                         {format(
@@ -391,6 +620,13 @@ export default function RelatorioPresencasPage() {
                       <td>{presenca.instrutor_nome}</td>
                     </tr>
                   ))}
+                  {(!presencasOrdenadas || presencasOrdenadas.length === 0) && (
+                    <tr>
+                      <td colSpan={5} className="text-center text-gray-500 py-8">
+                        Nenhuma presença registrada no período selecionado
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>

@@ -504,7 +504,7 @@ function RegisterPageContent() {
   const getUnidadeNome = (unidadeId: string) => {
     const unidade = unidades.find((u) => u.id === unidadeId);
     if (!unidade) return "";
-    return `${unidade.nome}${
+    return `${unidade.nome.toUpperCase()}${
       unidade.cidade || unidade.bairro
         ? ` - ${unidade.cidade || ""}${
             unidade.cidade && unidade.bairro ? " - " : ""
@@ -1547,7 +1547,7 @@ function RegisterPageContent() {
                             className="px-4 py-3 hover:bg-gray-700 cursor-pointer transition-colors border-b border-gray-700 last:border-b-0"
                           >
                             <div className="flex flex-col">
-                              <span className="font-medium text-white">
+                              <span className="font-medium text-white uppercase">
                                 {unidade.nome}
                               </span>
                               {(unidade.cidade || unidade.bairro) && (
