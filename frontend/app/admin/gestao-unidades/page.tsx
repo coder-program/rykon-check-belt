@@ -547,6 +547,7 @@ export default function GestaoUnidadesPage() {
                 </select>
               </div>
 
+              {/* Filtro Franqueado - COMENTADO
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Franqueado
@@ -568,6 +569,7 @@ export default function GestaoUnidadesPage() {
                   ))}
                 </select>
               </div>
+              */}
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
