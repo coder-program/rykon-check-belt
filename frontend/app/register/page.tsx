@@ -514,9 +514,17 @@ function RegisterPageContent() {
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    
+    // Se for o campo username, remove espaços e converte para minúsculas
+    let processedValue = value;
+    if (name === 'username') {
+      processedValue = value.replace(/\s/g, '').toLowerCase();
+    }
+    
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value,
+      [name]: processedValue,
     });
     if (error) setError("");
   };
@@ -637,8 +645,8 @@ function RegisterPageContent() {
       setError("Username é obrigatório");
       return false;
     }
-    if (!/^[a-zA-Z0-9.]+$/.test(formData.username)) {
-      setError("Username deve conter apenas letras, números e ponto");
+    if (!/^[a-z0-9.]+$/.test(formData.username)) {
+      setError("Username deve conter apenas letras minúsculas, números e ponto (sem espaços)");
       return false;
     }
     if (formData.username.length < 3) {
@@ -678,6 +686,10 @@ function RegisterPageContent() {
     }
     if (!formData.genero) {
       setError("Gênero é obrigatório");
+      return false;
+    }
+    if (!formData.perfil_id) {
+      setError("Seleção do perfil é obrigatória");
       return false;
     }
     if (!formData.unidade_id) {
@@ -752,6 +764,20 @@ function RegisterPageContent() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Validação crítica de perfil ANTES de qualquer outra validação
+    if (!formData.perfil_id || formData.perfil_id.trim() === '') {
+      setError("Você precisa selecionar um perfil para se cadastrar");
+      toast.error("Selecione um perfil antes de continuar");
+      return;
+    }
+
+    // Validação crítica de unidade ANTES de qualquer outra validação
+    if (!formData.unidade_id || formData.unidade_id.trim() === '') {
+      setError("Você precisa selecionar uma unidade para se cadastrar");
+      toast.error("Selecione uma unidade antes de continuar");
+      return;
+    }
 
     if (!validateForm()) {
       return;
@@ -955,12 +981,13 @@ function RegisterPageContent() {
                       value={formData.username}
                       onChange={handleChange}
                       className="h-10 sm:h-11 bg-gray-800/50 border-gray-600 text-white text-sm sm:text-base placeholder-gray-400 focus:border-red-500 focus:ring-red-500"
-                      placeholder="seu.username (letras, números e ponto)"
+                      placeholder="seu.username"
                       minLength={3}
+                      pattern="[a-z0-9.]+"
+                      title="Apenas letras minúsculas, números e ponto. Sem espaços."
                     />
                     <p className="text-[10px] sm:text-xs text-gray-400">
-                      Usado para login. Apenas letras, números e ponto (sem
-                      espaços)
+                      Usado para login. Apenas letras minúsculas, números e ponto (sem espaços)
                     </p>
                   </div>
 
@@ -1012,6 +1039,7 @@ function RegisterPageContent() {
                       }
                     }}
                     disabled={loadingPerfis || !!perfilFromUrl}
+                    required
                   >
                     <SelectTrigger className="h-11 sm:h-12 bg-gray-800/50 border-gray-600 text-white text-sm sm:text-base focus:border-red-500 focus:ring-red-500">
                       <SelectValue placeholder="👤 Selecione seu perfil" />
@@ -1517,6 +1545,7 @@ function RegisterPageContent() {
                     <Input
                       id="unidade"
                       type="text"
+                      required
                       placeholder={
                         loadingUnidades
                           ? "Carregando unidades..."
