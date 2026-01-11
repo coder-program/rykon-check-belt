@@ -53,6 +53,18 @@ export default function MasterDashboard() {
   });
   const [loading, setLoading] = useState(true);
 
+  // Verificar se usuário é MASTER ou SUPER_ADMIN (super admin)
+  const isMaster = user?.perfis?.some((p: any) => {
+    const perfil = (typeof p === 'string' ? p : p.nome)?.toUpperCase();
+    return perfil === 'MASTER' || perfil === 'SUPER_ADMIN';
+  });
+
+  console.log('🔍 [MasterDashboard] Debug:', {
+    user: user?.nome,
+    perfis: user?.perfis,
+    isMaster,
+  });
+
   // Carregar estatísticas do dashboard
   useEffect(() => {
     const loadStats = async () => {
@@ -197,6 +209,7 @@ export default function MasterDashboard() {
       action: () => router.push("/admin/sistema-presenca"),
       color: "bg-green-600",
       badge: "Admin",
+      hideFromMaster: true, // ESCONDIDO de SUPER_ADMIN
     },
     {
       title: "Gestão Financeira",
@@ -205,6 +218,7 @@ export default function MasterDashboard() {
       action: () => router.push("/financeiro/dashboard"),
       color: "bg-emerald-500",
       badge: "Novo!",
+      hideFromMaster: true, // ESCONDIDO de SUPER_ADMIN
     },
     {
       title: "Horários de Aulas",
@@ -221,6 +235,7 @@ export default function MasterDashboard() {
       action: () => router.push("/aulas"),
       color: "bg-amber-500",
       badge: "Admin",
+      hideFromMaster: true, // ESCONDIDO de SUPER_ADMIN
     },
     /* {
       title: "Presença",
@@ -319,7 +334,9 @@ export default function MasterDashboard() {
             Módulos Disponíveis
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {quickActions.map((action, index) => (
+            {quickActions
+              .filter(action => !action.hideFromMaster || !isMaster)
+              .map((action, index) => (
               <Card
                 key={index}
                 className={`cursor-pointer hover:shadow-lg transition-all transform hover:scale-105 ${

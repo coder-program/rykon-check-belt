@@ -132,24 +132,80 @@ export default function ResponsavelDashboard() {
     gcTime: 0,
   });
 
-  const handleEditDependente = (aluno: Aluno) => {
-    setIsEditMode(true);
-    setEditingDependenteId(aluno.id);
-    setFormData({
-      nome_completo: aluno.nome_completo || "",
-      cpf: (aluno as any).cpf || "",
-      data_nascimento: aluno.data_nascimento || "",
-      genero: (aluno as any).genero || "MASCULINO",
-      email: (aluno as any).email || "",
-      telefone: (aluno as any).telefone || "",
-      telefone_emergencia: (aluno as any).telefone_emergencia || "",
-      nome_contato_emergencia: (aluno as any).nome_contato_emergencia || "",
-      unidade_id: (aluno as any).unidade_id || "",
-      observacoes_medicas: (aluno as any).observacoes_medicas || "",
-      alergias: (aluno as any).alergias || "",
-      medicamentos_uso_continuo: (aluno as any).medicamentos_uso_continuo || "",
-    });
-    setShowModal(true);
+  const handleEditDependente = async (aluno: Aluno) => {
+    try {
+      // Buscar dados completos do dependente
+      const dadosCompletos = await http(`/alunos/${aluno.id}`, {
+        auth: true,
+      });
+
+      console.log("📝 Dados completos do dependente:", dadosCompletos);
+
+      // Buscar graduação atual do aluno
+      let faixaValue = "";
+      let grausValue = "0";
+      
+      try {
+        const statusGraduacao = await http(`/graduacao/alunos/${aluno.id}/status`, {
+          auth: true,
+        });
+        console.log("🎓 Status de graduação:", statusGraduacao);
+        
+        // Pegar faixa e graus da graduação ativa
+        if (statusGraduacao?.faixaAtual) {
+          faixaValue = statusGraduacao.faixaAtual.toUpperCase();
+        }
+        if (statusGraduacao?.grausAtuais !== undefined) {
+          grausValue = statusGraduacao.grausAtuais.toString();
+        }
+      } catch (error) {
+        console.warn("⚠️ Não foi possível buscar graduação, usando valores padrão");
+        // Se não conseguir buscar graduação, tenta pegar do alunoUnidades
+        if (dadosCompletos.alunoUnidades && dadosCompletos.alunoUnidades[0]) {
+          const unidadeData = dadosCompletos.alunoUnidades[0];
+          faixaValue = unidadeData.faixa_atual || "";
+          grausValue = unidadeData.graus?.toString() || "0";
+        }
+      }
+
+      setIsEditMode(true);
+      setEditingDependenteId(aluno.id);
+      setFormData({
+        nome_completo: dadosCompletos.nome_completo || "",
+        cpf: dadosCompletos.cpf || "",
+        data_nascimento: dadosCompletos.data_nascimento || "",
+        genero: dadosCompletos.genero || "MASCULINO",
+        email: dadosCompletos.email || "",
+        telefone: dadosCompletos.telefone || "",
+        telefone_emergencia: dadosCompletos.telefone_emergencia || "",
+        nome_contato_emergencia: dadosCompletos.nome_contato_emergencia || "",
+        unidade_id: dadosCompletos.unidade_id || dadosCompletos.unidade?.id || "",
+        numero_matricula: dadosCompletos.numero_matricula || "",
+        data_matricula: dadosCompletos.data_matricula || "",
+        faixa_atual: faixaValue,
+        graus: grausValue,
+        observacoes_medicas: dadosCompletos.observacoes_medicas || "",
+        alergias: dadosCompletos.alergias || "",
+        medicamentos_uso_continuo: dadosCompletos.medicamentos_uso_continuo || "",
+        plano_saude: dadosCompletos.plano_saude || "",
+        atestado_medico_validade: dadosCompletos.atestado_medico_validade || "",
+        restricoes_medicas: dadosCompletos.restricoes_medicas || "",
+        responsavel_nome: dadosCompletos.responsavel_nome || "",
+        responsavel_cpf: dadosCompletos.responsavel_cpf || "",
+        responsavel_telefone: dadosCompletos.responsavel_telefone || "",
+        responsavel_parentesco: dadosCompletos.responsavel_parentesco || "",
+        dia_vencimento: dadosCompletos.dia_vencimento?.toString() || "",
+        valor_mensalidade: dadosCompletos.valor_mensalidade?.toString() || "",
+        desconto_percentual: dadosCompletos.desconto_percentual?.toString() || "",
+        consent_lgpd: dadosCompletos.consent_lgpd?.toString() || "",
+        consent_imagem: dadosCompletos.consent_imagem?.toString() || "",
+        observacoes: dadosCompletos.observacoes || "",
+      });
+      setShowModal(true);
+    } catch (error) {
+      console.error("Erro ao carregar dados do dependente:", error);
+      toast.error("Erro ao carregar dados do dependente");
+    }
   };
 
   const handleAddAluno = () => {
@@ -431,6 +487,54 @@ export default function ResponsavelDashboard() {
                 {alunos?.filter((a) => (a.graus || 0) >= 3).length || 0}
               </div>
               <p className="text-xs opacity-80 mt-1">Elegíveis para avançar</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Ações Rápidas */}
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 mb-4 sm:mb-8">
+          <Card
+            className="cursor-pointer hover:shadow-lg transition-shadow bg-gradient-to-br from-yellow-50 to-yellow-100 border-yellow-200"
+            onClick={() => router.push("/teamcruz")}
+          >
+            <CardContent className="pt-4 sm:pt-6 flex flex-col items-center text-center">
+              <Trophy className="h-8 w-8 sm:h-10 sm:w-10 text-yellow-600 mb-2" />
+              <h3 className="text-sm sm:text-base font-semibold text-gray-900">
+                TeamCruz Jiu-Jitsu
+              </h3>
+              <p className="text-xs text-gray-600 mt-1">
+                Ranking, aulas e check-in
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card
+            className="cursor-pointer hover:shadow-lg transition-shadow bg-gradient-to-br from-green-50 to-green-100 border-green-200"
+            onClick={() => toast.info("Em breve você poderá ver a evolução dos seus dependentes aqui!")}
+          >
+            <CardContent className="pt-4 sm:pt-6 flex flex-col items-center text-center">
+              <TrendingUp className="h-8 w-8 sm:h-10 sm:w-10 text-green-600 mb-2" />
+              <h3 className="text-sm sm:text-base font-semibold text-gray-900">
+                Evolução
+              </h3>
+              <p className="text-xs text-gray-600 mt-1">
+                Progresso dos alunos
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card
+            className="cursor-pointer hover:shadow-lg transition-shadow bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200"
+            onClick={() => toast.info("Em breve você poderá acessar os horários aqui!")}
+          >
+            <CardContent className="pt-4 sm:pt-6 flex flex-col items-center text-center">
+              <Award className="h-8 w-8 sm:h-10 sm:w-10 text-purple-600 mb-2" />
+              <h3 className="text-sm sm:text-base font-semibold text-gray-900">
+                Competições
+              </h3>
+              <p className="text-xs text-gray-600 mt-1">
+                Eventos e campeonatos
+              </p>
             </CardContent>
           </Card>
         </div>

@@ -258,18 +258,11 @@ function RegisterPageContent() {
       } catch (error) {
         console.error("Erro ao carregar unidades:", error);
 
-        // Criar unidade fallback para permitir o cadastro
-        const unidadePadrao = {
-          id: "padrao-unidade",
-          nome: "Unidade Principal (selecione manualmente após cadastro)",
-          cnpj: "",
-          status: "ATIVA" as const,
-        };
-
-        setUnidades([unidadePadrao]);
+        // Não criar unidade fallback - exigir que as unidades sejam carregadas
+        setUnidades([]);
 
         toast.error(
-          "Não foi possível carregar as unidades. Entre em contato com a administração.",
+          "Erro ao carregar unidades. Por favor, tente novamente ou entre em contato com a administração.",
           { duration: 7000 }
         );
       } finally {

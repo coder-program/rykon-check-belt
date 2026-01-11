@@ -123,24 +123,27 @@ export default function DependenteForm({
       const mesNascimento = dataNasc.getMonth();
       const diaNascimento = dataNasc.getDate();
 
-      // Calcular idade exata
-      let idade = anoAtual - anoNascimento;
+      // Calcular idade que fará no ano corrente (idade máxima no ano)
+      const idadeNoAno = anoAtual - anoNascimento;
+
+      // Calcular idade exata atual
+      let idadeAtual = anoAtual - anoNascimento;
       if (
         mesAtual < mesNascimento ||
         (mesAtual === mesNascimento && diaAtual < diaNascimento)
       ) {
-        idade--;
+        idadeAtual--;
       }
 
-      if (idade < 3) {
+      if (idadeAtual < 3) {
         setErroIdade(
-          `Dependentes devem ter no mínimo 3 anos de idade. Idade atual: ${idade} ${
-            idade === 1 ? "ano" : "anos"
+          `Dependentes devem ter no mínimo 3 anos de idade. Idade atual: ${idadeAtual} ${
+            idadeAtual === 1 ? "ano" : "anos"
           }.`
         );
-      } else if (idade > 16) {
+      } else if (idadeNoAno > 15) {
         setErroIdade(
-          `Dependentes devem ter no máximo 16 anos de idade. Idade atual: ${idade} anos.`
+          `Dependentes devem fazer até 15 anos em ${anoAtual}. Nascimento em ${anoNascimento} = ${idadeNoAno} anos no ano.`
         );
       } else {
         setErroIdade("");

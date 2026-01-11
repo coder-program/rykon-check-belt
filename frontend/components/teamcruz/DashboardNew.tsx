@@ -579,6 +579,19 @@ export default function DashboardNew() {
     });
   }, [user]);
 
+  // Verificar se é ALUNO ou RESPONSAVEL (para esconder seletor de unidade)
+  const isAlunoOrResponsavel = React.useMemo(() => {
+    if (!user?.perfis) return false;
+    return user.perfis.some((perfil: any) => {
+      const perfilNome =
+        typeof perfil === "string" ? perfil : perfil.nome || perfil.perfil;
+      return (
+        perfilNome?.toLowerCase() === "aluno" ||
+        perfilNome?.toLowerCase() === "responsavel"
+      );
+    });
+  }, [user]);
+
   // Extrair perfis do usuário
   const perfis = React.useMemo(() => {
     if (!user?.perfis) return [];
@@ -589,7 +602,7 @@ export default function DashboardNew() {
     });
   }, [user]);
 
-  // Buscar unidade do gerente
+  // Buscar unidade do gerente/aluno/responsavel
   const { data: userData, isLoading: isLoadingUserData } = useQuery({
     queryKey: ["user-me"],
     queryFn: async () => {
@@ -607,7 +620,7 @@ export default function DashboardNew() {
       const data = await response.json();
       return data;
     },
-    enabled: !!user && isGerenteUnidade,
+    enabled: !!user && (isGerenteUnidade || isAlunoOrResponsavel),
   });
 
   // Extrair unidade_id e nome do gerente
@@ -687,6 +700,13 @@ export default function DashboardNew() {
       setSelectedUnidade(unidadeDoGerente.id);
     }
   }, [isGerenteUnidade, unidadeDoGerente]);
+
+  // useEffect para forçar unidade do aluno/responsavel
+  React.useEffect(() => {
+    if (isAlunoOrResponsavel && userData?.unidades?.[0]?.id) {
+      setSelectedUnidade(userData.unidades[0].id);
+    }
+  }, [isAlunoOrResponsavel, userData]);
 
   // Estados para filtros (declarar ANTES das queries)
   const [filterCategoria, setFilterCategoria] = React.useState<string>("todos");
@@ -1692,33 +1712,36 @@ export default function DashboardNew() {
 
               {/* Unit Filter e Botão Voltar */}
               <div className="flex items-center gap-3">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-gray-700">
-                    Filtro:
-                  </span>
-                  <select
-                    className="select select-bordered"
-                    value={selectedUnidade}
-                    onChange={(e) => setSelectedUnidade(e.target.value)}
-                    disabled={isGerenteUnidade}
-                  >
-                    {isGerenteUnidade && unidadeDoGerente ? (
-                      <option value={unidadeDoGerente.id}>
-                        {unidadeDoGerente.nome}
-                      </option>
-                    ) : (
-                      <>
-                        <option value="todas">Todas as Unidades</option>
-                        {Array.isArray(unidadesQuery.data) &&
-                          unidadesQuery.data?.map((unidade: any) => (
-                            <option key={unidade.id} value={unidade.id}>
-                              {unidade.nome}
-                            </option>
-                          ))}
-                      </>
-                    )}
-                  </select>
-                </div>
+                {/* Esconder seletor para alunos e responsáveis */}
+                {!isAlunoOrResponsavel && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-gray-700">
+                      Filtro:
+                    </span>
+                    <select
+                      className="select select-bordered"
+                      value={selectedUnidade}
+                      onChange={(e) => setSelectedUnidade(e.target.value)}
+                      disabled={isGerenteUnidade}
+                    >
+                      {isGerenteUnidade && unidadeDoGerente ? (
+                        <option value={unidadeDoGerente.id}>
+                          {unidadeDoGerente.nome}
+                        </option>
+                      ) : (
+                        <>
+                          <option value="todas">Todas as Unidades</option>
+                          {Array.isArray(unidadesQuery.data) &&
+                            unidadesQuery.data?.map((unidade: any) => (
+                              <option key={unidade.id} value={unidade.id}>
+                                {unidade.nome}
+                              </option>
+                            ))}
+                        </>
+                      )}
+                    </select>
+                  </div>
+                )}
 
                 {/* Botão Voltar */}
                 <button
@@ -2092,6 +2115,13 @@ export default function DashboardNew() {
                         <div className="skeleton h-16 w-full mb-2" />
                         <div className="skeleton h-16 w-full" />
                       </div>
+                    ) : selectedUnidade === "todas" ? (
+                      <div className="text-center py-8 text-gray-500">
+                        <Zap className="h-12 w-12 mx-auto mb-2 opacity-30" />
+                        <p className="text-sm">
+                          Selecione uma unidade para ver o ranking
+                        </p>
+                      </div>
                     ) : rankingFiltrado.length > 0 ? (
                       <div className="max-h-96 overflow-y-auto space-y-3 pr-2">
                         {rankingFiltrado.map((aluno, index) => (
@@ -2149,9 +2179,7 @@ export default function DashboardNew() {
                       <div className="text-center py-8 text-gray-500">
                         <Zap className="h-12 w-12 mx-auto mb-2 opacity-30" />
                         <p className="text-sm">
-                          {selectedUnidade === "todas"
-                            ? "Selecione uma unidade para ver o ranking"
-                            : "Nenhuma presença registrada nos últimos 30 dias"}
+                          Nenhuma presença registrada nos últimos 30 dias
                         </p>
                       </div>
                     )}

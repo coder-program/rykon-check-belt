@@ -523,6 +523,35 @@ export default function AlunoDashboard({
         auth: true,
       });
 
+      console.log("📝 Dados completos do dependente:", dadosCompletos);
+
+      // Buscar graduação atual do aluno
+      let faixaValue = "";
+      let grausValue = "0";
+      
+      try {
+        const statusGraduacao = await http(`/graduacao/alunos/${dependente.id}/status`, {
+          auth: true,
+        });
+        console.log("🎓 Status de graduação:", statusGraduacao);
+        
+        // Pegar faixa e graus da graduação ativa
+        if (statusGraduacao?.faixaAtual) {
+          faixaValue = statusGraduacao.faixaAtual.toUpperCase();
+        }
+        if (statusGraduacao?.grausAtuais !== undefined) {
+          grausValue = statusGraduacao.grausAtuais.toString();
+        }
+      } catch (error) {
+        console.warn("⚠️ Não foi possível buscar graduação, usando valores padrão");
+        // Se não conseguir buscar graduação, tenta pegar do alunoUnidades
+        if (dadosCompletos.alunoUnidades && dadosCompletos.alunoUnidades[0]) {
+          const unidadeData = dadosCompletos.alunoUnidades[0];
+          faixaValue = unidadeData.faixa_atual || "";
+          grausValue = unidadeData.graus?.toString() || "0";
+        }
+      }
+
       setIsEditMode(true);
       setEditingDependenteId(dependente.id);
       setFormData({
@@ -538,8 +567,8 @@ export default function AlunoDashboard({
           dadosCompletos.unidade_id || dadosCompletos.unidade?.id || "",
         numero_matricula: dadosCompletos.numero_matricula || "",
         data_matricula: dadosCompletos.data_matricula || "",
-        faixa_atual: dadosCompletos.faixa_atual || "",
-        graus: dadosCompletos.graus?.toString() || "",
+        faixa_atual: faixaValue,
+        graus: grausValue,
         observacoes_medicas: dadosCompletos.observacoes_medicas || "",
         alergias: dadosCompletos.alergias || "",
         medicamentos_uso_continuo:
@@ -820,6 +849,13 @@ export default function AlunoDashboard({
         }
       },
       color: "bg-purple-500",
+    },
+    {
+      title: "TeamCruz Jiu-Jitsu",
+      description: "Ranking, aulas e check-in",
+      icon: Trophy,
+      action: () => router.push("/teamcruz"),
+      color: "bg-yellow-500",
     },
     {
       title: "Competições",
