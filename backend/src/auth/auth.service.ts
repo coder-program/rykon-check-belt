@@ -689,13 +689,11 @@ export class AuthService {
 
     // Se não tem perfil válido, usa "aluno" como padrão
     if (!perfilValido) {
-      let perfilAluno = await this.perfisService.findByName('aluno');
+      const perfilAluno = await this.perfisService.findByName('aluno');
       if (!perfilAluno) {
-        perfilAluno = await this.perfisService.create({
-          nome: 'aluno',
-          descricao: 'Perfil de aluno',
-          permissao_ids: [],
-        } as any);
+        throw new BadRequestException(
+          'Perfil de aluno não encontrado no sistema. Entre em contato com o administrador.',
+        );
       }
       perfilId = perfilAluno.id;
       perfilNome = 'aluno';
