@@ -642,14 +642,50 @@ export class AuthService {
   }
 
   async registerAluno(payload: any) {
+    // ========================================
+    // VALIDAÇÃO CRÍTICA DE UNIDADE
+    // ========================================
+    if (!payload.unidade_id || payload.unidade_id.trim() === '') {
+      throw new BadRequestException(
+        'Você precisa selecionar uma unidade para se cadastrar',
+      );
+    }
+
+    // Validar se unidade_id é um UUID válido
+    const uuidRegex =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    
+    if (!uuidRegex.test(payload.unidade_id)) {
+      throw new BadRequestException(
+        'ID da unidade inválido. Por favor, selecione uma unidade válida da lista.',
+      );
+    }
+
+    // Verificar se a unidade existe e está ativa
+    const unidadeValida = await this.dataSource.query(
+      `SELECT id, nome, status FROM teamcruz.unidades WHERE id = $1`,
+      [payload.unidade_id],
+    );
+
+    if (!unidadeValida || unidadeValida.length === 0) {
+      throw new BadRequestException(
+        'A unidade selecionada não existe. Por favor, selecione uma unidade válida da lista.',
+      );
+    }
+
+    if (unidadeValida[0].status !== 'ATIVA') {
+      throw new BadRequestException(
+        `A unidade "${unidadeValida[0].nome}" não está ativa e não pode receber cadastros no momento. Por favor, selecione outra unidade.`,
+      );
+    }
+
     // Determinar perfil: usa perfil_id se fornecido, caso contrário usa "aluno" por padrão
     let perfilId: string = ''; // Inicializar vazio
     let perfilNome: string = 'aluno'; // Padrão aluno
     let usuarioAtivo = false; // INATIVO até completar cadastro (tanto para aluno quanto outros perfis)
 
     // Validar se perfil_id é um UUID válido (formato: 8-4-4-4-12 caracteres hexadecimais)
-    const uuidRegex =
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    // Reutilizar uuidRegex já declarado acima
 
     let perfilValido = false;
 
@@ -846,7 +882,7 @@ export class AuthService {
     }
 
     // Responsavel: criar registro na tabela responsaveis
-    if (perfilNome === 'responsavel' && payload.unidade_id) {
+    if (perfilNome.toLowerCase() === 'responsavel' && payload.unidade_id) {
       try {
         await this.responsaveisService.create({
           usuario_id: user.id,
@@ -865,7 +901,7 @@ export class AuthService {
     }
 
     // Professor: criar registro na tabela professores e professor_unidades
-    if (perfilNome === 'professor' || perfilNome === 'instrutor') {
+    if (perfilNome.toLowerCase() === 'professor' || perfilNome.toLowerCase() === 'instrutor') {
       try {
         const professor = await this.professoresService.create({
           usuario_id: user.id,
@@ -888,7 +924,7 @@ export class AuthService {
     }
 
     // Recepcionista: criar registro na tabela recepcionista_unidades
-    if (perfilNome === 'recepcionista') {
+    if (perfilNome.toLowerCase() === 'recepcionista') {
       if (payload.unidade_id) {
         try {
           await this.dataSource.query(

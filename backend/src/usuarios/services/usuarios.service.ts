@@ -1209,6 +1209,8 @@ export class UsuariosService {
         );
 
         // Buscar GERENTES, ALUNOS, RECEPCIONISTAS, PROFESSORES e RESPONSAVEIS pendentes das unidades do franqueado
+        console.log(`🔍 [PENDENTES] Iniciando busca para franqueado_id: ${franqueadoId}`);
+        
         const usuariosPendentes = await this.usuarioRepository.query(
           `
           SELECT DISTINCT u.id, u.username, u.email, u.nome, u.cpf, u.telefone,
@@ -1254,8 +1256,18 @@ export class UsuariosService {
           [franqueadoId],
         );
 
+        console.log(`🔍 [PENDENTES] Query retornou ${usuariosPendentes.length} usuários`);
+        console.log(`🔍 [PENDENTES] Primeiros 2 usuários RAW:`, usuariosPendentes.slice(0, 2));
+
         // Buscar perfis e unidade para cada usuário
         for (const usuario of usuariosPendentes) {
+          console.log(`🔍 [PENDENTES] Processando usuário: ${usuario.nome} (ID: ${usuario.id})`);
+          console.log(`🔍 [PENDENTES] Dados RAW:`, JSON.stringify({
+            unidade_id: usuario.unidade_id,
+            unidade_nome: usuario.unidade_nome,
+            unidade_status: usuario.unidade_status
+          }));
+
           const perfisData = await this.usuarioRepository.query(
             `
             SELECT p.*
@@ -1266,9 +1278,11 @@ export class UsuariosService {
             [usuario.id],
           );
           usuario.perfis = perfisData;
+          console.log(`🔍 [PENDENTES] Perfis encontrados:`, perfisData.map((p: any) => p.nome));
 
           // Adicionar informação da unidade se houver (verificar campos individuais)
           if (usuario.unidade_id && usuario.unidade_nome) {
+            console.log(`✅ [PENDENTES] Criando objeto unidade para ${usuario.nome}`);
             usuario.unidade = {
               id: usuario.unidade_id,
               nome: usuario.unidade_nome,
@@ -1278,8 +1292,13 @@ export class UsuariosService {
             delete usuario.unidade_id;
             delete usuario.unidade_nome;
             delete usuario.unidade_status;
+          } else {
+            console.log(`❌ [PENDENTES] ${usuario.nome} SEM UNIDADE - unidade_id: ${usuario.unidade_id}, unidade_nome: ${usuario.unidade_nome}`);
           }
         }
+
+        console.log(`🔍 [PENDENTES] Processamento completo. Total usuários: ${usuariosPendentes.length}`);
+        console.log(`🔍 [PENDENTES] Exemplo de usuário serializado:`, JSON.stringify(usuariosPendentes[0], null, 2));
 
         // Força serialização JSON para garantir que propriedades customizadas sejam preservadas
         // TypeORM remove propriedades que não estão na entidade, então precisamos converter para objeto puro

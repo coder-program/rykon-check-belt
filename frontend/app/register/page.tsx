@@ -771,6 +771,24 @@ function RegisterPageContent() {
       toast.error("Selecione uma unidade antes de continuar");
       return;
     }
+    
+    // Verificar se a unidade_id corresponde a uma unidade válida e ativa
+    const unidadeSelecionada = unidades.find(u => u.id === formData.unidade_id);
+    if (!unidadeSelecionada) {
+      setError("A unidade selecionada não é válida. Por favor, selecione uma unidade da lista.");
+      toast.error("Unidade inválida. Selecione uma unidade da lista.");
+      setFormData({ ...formData, unidade_id: '' });
+      setUnidadeSearchTerm('');
+      return;
+    }
+    
+    if (unidadeSelecionada.status !== 'ATIVA') {
+      setError(`A unidade "${unidadeSelecionada.nome}" não está ativa e não pode receber cadastros no momento.`);
+      toast.error("Unidade inativa. Selecione uma unidade ativa.");
+      setFormData({ ...formData, unidade_id: '' });
+      setUnidadeSearchTerm('');
+      return;
+    }
 
     if (!validateForm()) {
       return;
@@ -1546,10 +1564,35 @@ function RegisterPageContent() {
                       }
                       value={unidadeSearchTerm}
                       onChange={(e) => {
-                        setUnidadeSearchTerm(e.target.value);
+                        const newValue = e.target.value;
+                        setUnidadeSearchTerm(newValue);
                         setShowUnidadeDropdown(true);
+                        
+                        // Se o usuário está digitando, limpar a unidade_id selecionada
+                        // Isso força o usuário a selecionar uma unidade válida da lista
+                        if (formData.unidade_id) {
+                          const unidadeAtual = unidades.find(u => u.id === formData.unidade_id);
+                          const nomeUnidadeAtual = getUnidadeNome(formData.unidade_id);
+                          
+                          // Se o texto não corresponde exatamente à unidade selecionada, limpar
+                          if (newValue !== nomeUnidadeAtual) {
+                            setFormData({
+                              ...formData,
+                              unidade_id: '',
+                            });
+                          }
+                        }
                       }}
                       onFocus={() => setShowUnidadeDropdown(true)}
+                      onBlur={() => {
+                        // Se o usuário saiu do campo sem selecionar uma unidade válida
+                        setTimeout(() => {
+                          if (!formData.unidade_id && unidadeSearchTerm.trim() !== '') {
+                            setUnidadeSearchTerm('');
+                            toast.error('Você precisa selecionar uma unidade da lista');
+                          }
+                        }, 200);
+                      }}
                       disabled={loadingUnidades || !!unidadeFromUrl}
                       className="h-11 bg-gray-800/50 border-gray-600 text-white placeholder-gray-400 focus:border-red-500 focus:ring-red-500"
                     />
@@ -1559,18 +1602,28 @@ function RegisterPageContent() {
                           <div
                             key={unidade.id}
                             onClick={() => {
+                              // Validar se a unidade está ativa antes de permitir seleção
+                              if (unidade.status !== 'ATIVA') {
+                                toast.error(`A unidade "${unidade.nome}" não está ativa e não pode receber cadastros no momento.`);
+                                return;
+                              }
+                              
                               setFormData({
                                 ...formData,
                                 unidade_id: unidade.id,
                               });
                               setUnidadeSearchTerm(getUnidadeNome(unidade.id));
                               setShowUnidadeDropdown(false);
+                              toast.success(`Unidade "${unidade.nome}" selecionada`);
                             }}
                             className="px-4 py-3 hover:bg-gray-700 cursor-pointer transition-colors border-b border-gray-700 last:border-b-0"
                           >
                             <div className="flex flex-col">
-                              <span className="font-medium text-white uppercase">
+                              <span className="font-medium text-white uppercase flex items-center gap-2">
                                 {unidade.nome}
+                                {unidade.status !== 'ATIVA' && (
+                                  <span className="text-xs bg-red-500 text-white px-2 py-0.5 rounded">INATIVA</span>
+                                )}
                               </span>
                               {(unidade.cidade || unidade.bairro) && (
                                 <span className="text-xs text-gray-400">

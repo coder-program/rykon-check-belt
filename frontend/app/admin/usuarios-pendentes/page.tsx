@@ -632,19 +632,43 @@ function AprovacaoUsuariosPage() {
                           )}
                         </div>
 
-                        <div className="mt-2">
-                          <span className="text-xs text-gray-500">
-                            Perfis: {userItem.perfis.join(", ")}
-                            {userItem.unidade && (
-                              <span className="ml-2 text-amber-600 font-medium">
-                                • Unidade: {userItem.unidade.nome}
-                              </span>
+                        <div className="mt-2 space-y-1">
+                          <div className="flex items-center gap-2 text-xs">
+                            <Shield className="h-3 w-3 text-gray-400" />
+                            <span className="text-gray-500">Perfis:</span>
+                            {userItem.perfis && userItem.perfis.length > 0 ? (
+                              <div className="flex flex-wrap gap-1">
+                                {userItem.perfis.map((perfil: string, idx: number) => (
+                                  <span
+                                    key={idx}
+                                    className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs font-medium"
+                                  >
+                                    {perfil}
+                                  </span>
+                                ))}
+                              </div>
+                            ) : (
+                              <span className="text-red-500 font-medium">⚠️ Sem perfil</span>
                             )}
-                            {" • "}Cadastrado em{" "}
+                          </div>
+                          
+                          <div className="flex items-center gap-2 text-xs">
+                            <span className="text-gray-500">📍 Unidade:</span>
+                            {userItem.unidade ? (
+                              <span className="text-amber-600 font-medium">
+                                {userItem.unidade.nome}
+                              </span>
+                            ) : (
+                              <span className="text-red-500 font-medium">⚠️ SEM UNIDADE</span>
+                            )}
+                          </div>
+                          
+                          <div className="text-xs text-gray-500">
+                            Cadastrado em{" "}
                             {new Date(userItem.created_at).toLocaleDateString(
                               "pt-BR"
                             )}
-                          </span>
+                          </div>
                         </div>
                       </div>
                     </div>
