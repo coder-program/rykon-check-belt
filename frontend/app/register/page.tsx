@@ -792,6 +792,19 @@ function RegisterPageContent() {
       return;
     }
 
+    // Validação dos consentimentos LGPD obrigatórios
+    if (!formData.consent_uso_dados_lgpd) {
+      setError("Você precisa autorizar o uso de dados pessoais conforme a LGPD para se cadastrar");
+      toast.error("Consentimento LGPD obrigatório");
+      return;
+    }
+
+    if (!formData.consent_uso_imagem) {
+      setError("Você precisa autorizar o uso de imagem para se cadastrar");
+      toast.error("Consentimento de uso de imagem obrigatório");
+      return;
+    }
+
     if (!validateForm()) {
       return;
     }
@@ -1742,13 +1755,14 @@ function RegisterPageContent() {
                 <div className="space-y-3 bg-gradient-to-r from-blue-900/20 to-purple-900/20 border border-blue-500/30 rounded-lg p-4">
                   <h3 className="text-sm font-semibold text-white flex items-center gap-2">
                     <AlertCircle className="h-4 w-4 text-blue-400" />
-                    Consentimentos LGPD
+                    Consentimentos LGPD <span className="text-red-400">*</span>
                   </h3>
                   
                   <div className="space-y-3">
                     <label className="flex items-start gap-3 cursor-pointer group">
                       <input
                         type="checkbox"
+                        required
                         checked={formData.consent_uso_dados_lgpd}
                         onChange={(e) =>
                           setFormData({
@@ -1759,13 +1773,14 @@ function RegisterPageContent() {
                         className="mt-1 h-4 w-4 rounded border-gray-600 bg-gray-800/50 text-red-600 focus:ring-red-500 focus:ring-offset-0 cursor-pointer"
                       />
                       <span className="text-xs text-gray-300 group-hover:text-white transition-colors">
-                        Autorizo o uso dos meus dados pessoais conforme a LGPD (Lei Geral de Proteção de Dados)
+                        Autorizo o uso dos meus dados pessoais conforme a LGPD (Lei Geral de Proteção de Dados) <span className="text-red-400">*</span>
                       </span>
                     </label>
 
                     <label className="flex items-start gap-3 cursor-pointer group">
                       <input
                         type="checkbox"
+                        required
                         checked={formData.consent_uso_imagem}
                         onChange={(e) =>
                           setFormData({
@@ -1776,13 +1791,13 @@ function RegisterPageContent() {
                         className="mt-1 h-4 w-4 rounded border-gray-600 bg-gray-800/50 text-red-600 focus:ring-red-500 focus:ring-offset-0 cursor-pointer"
                       />
                       <span className="text-xs text-gray-300 group-hover:text-white transition-colors">
-                        Autorizo o uso de minha imagem para divulgação nas redes sociais e materiais de marketing
+                        Autorizo o uso de minha imagem para divulgação nas redes sociais e materiais de marketing <span className="text-red-400">*</span>
                       </span>
                     </label>
                   </div>
 
-                  <p className="text-[10px] text-gray-400 italic">
-                    * Estes consentimentos são opcionais e podem ser alterados posteriormente
+                  <p className="text-[10px] text-red-400 font-medium">
+                    * Estes consentimentos são obrigatórios para o cadastro
                   </p>
                 </div>
 
