@@ -1,4 +1,4 @@
-import apiClient from './apiClient';
+import { api } from '../api';
 
 export interface ContratoUnidade {
   id: string;
@@ -62,7 +62,7 @@ class ContratosService {
     tipo_contrato?: string;
     obrigatorio?: boolean;
   }): Promise<ContratoUnidade> {
-    const response = await apiClient.post('/contratos', data);
+    const response = await api.post('/contratos', data);
     return response.data;
   }
 
@@ -73,18 +73,18 @@ class ContratosService {
     obrigatorio?: boolean;
     ativo?: boolean;
   }): Promise<ContratoUnidade> {
-    const response = await apiClient.put(`/contratos/${id}`, data);
+    const response = await api.put(`/contratos/${id}`, data);
     return response.data;
   }
 
   async buscarContratoPorId(id: string): Promise<ContratoUnidade> {
-    const response = await apiClient.get(`/contratos/${id}`);
+    const response = await api.get(`/contratos/${id}`);
     return response.data;
   }
 
   async buscarContratoAtivoUnidade(unidadeId: string): Promise<ContratoUnidade | null> {
     try {
-      const response = await apiClient.get(`/contratos/unidade/${unidadeId}/ativo`);
+      const response = await api.get(`/contratos/unidade/${unidadeId}/ativo`);
       return response.data;
     } catch (error: any) {
       if (error.response?.status === 404) {
@@ -95,23 +95,23 @@ class ContratosService {
   }
 
   async listarContratosPorUnidade(unidadeId: string): Promise<ContratoUnidade[]> {
-    const response = await apiClient.get(`/contratos/unidade/${unidadeId}`);
+    const response = await api.get(`/contratos/unidade/${unidadeId}`);
     return response.data;
   }
 
   async deletarContrato(id: string): Promise<void> {
-    await apiClient.delete(`/contratos/${id}`);
+    await api.delete(`/contratos/${id}`);
   }
 
   // ========== ASSINATURAS ==========
 
   async verificarStatusAluno(alunoId: string): Promise<StatusAssinaturaAluno> {
-    const response = await apiClient.get(`/contratos/aluno/${alunoId}/status`);
+    const response = await api.get(`/contratos/aluno/${alunoId}/status`);
     return response.data;
   }
 
   async verificarStatusResponsavel(responsavelId: string): Promise<StatusAssinaturaResponsavel> {
-    const response = await apiClient.get(`/contratos/responsavel/${responsavelId}/status`);
+    const response = await api.get(`/contratos/responsavel/${responsavelId}/status`);
     return response.data;
   }
 
@@ -121,7 +121,7 @@ class ContratosService {
       ip_address: data?.ip_address,
       user_agent: data?.user_agent || navigator.userAgent,
     };
-    await apiClient.post(`/contratos/aluno/${alunoId}/assinar`, payload);
+    await api.post(`/contratos/aluno/${alunoId}/assinar`, payload);
   }
 
   async assinarContratoResponsavel(responsavelId: string, data?: AssinarContratoDto): Promise<void> {
@@ -130,18 +130,18 @@ class ContratosService {
       ip_address: data?.ip_address,
       user_agent: data?.user_agent || navigator.userAgent,
     };
-    await apiClient.post(`/contratos/responsavel/${responsavelId}/assinar`, payload);
+    await api.post(`/contratos/responsavel/${responsavelId}/assinar`, payload);
   }
 
   // ========== HISTÓRICO ==========
 
   async buscarHistoricoContrato(contratoId: string): Promise<HistoricoAssinatura[]> {
-    const response = await apiClient.get(`/contratos/${contratoId}/historico`);
+    const response = await api.get(`/contratos/${contratoId}/historico`);
     return response.data;
   }
 
   async buscarHistoricoUnidade(unidadeId: string): Promise<HistoricoAssinatura[]> {
-    const response = await apiClient.get(`/contratos/unidade/${unidadeId}/historico`);
+    const response = await api.get(`/contratos/unidade/${unidadeId}/historico`);
     return response.data;
   }
 }
