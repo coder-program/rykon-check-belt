@@ -747,6 +747,30 @@ export class AlunosService {
       await queryRunner.commitTransaction();
     } catch (error) {
       await queryRunner.rollbackTransaction();
+      
+      // Tratamento específico para erros de constraint de banco de dados
+      if (error.code === '23505') {
+        if (error.constraint === 'usuarios_email_key') {
+          throw new BadRequestException(
+            'Este email já está cadastrado no sistema',
+          );
+        }
+        if (error.constraint === 'usuarios_cpf_key') {
+          throw new BadRequestException(
+            'Este CPF já está cadastrado no sistema',
+          );
+        }
+        if (error.constraint === 'usuarios_username_key') {
+          throw new BadRequestException(
+            'Este nome de usuário já está em uso',
+          );
+        }
+        // Outros erros de constraint
+        throw new BadRequestException(
+          'Já existe um registro com estes dados no sistema',
+        );
+      }
+      
       console.error(' [ALUNO CREATE] Erro ao criar aluno:', error);
       throw error;
     }
