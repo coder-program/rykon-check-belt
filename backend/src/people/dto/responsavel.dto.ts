@@ -6,6 +6,8 @@ import {
   IsNumber,
   IsDateString,
   IsEnum,
+  IsUUID,
+  IsNotEmpty,
   MaxLength,
   MinLength,
 } from 'class-validator';
@@ -120,6 +122,11 @@ export class CreateResponsavelDto {
   @IsOptional()
   @MaxLength(500)
   foto_url?: string;
+
+  // Unidade (obrigatório)
+  @IsUUID()
+  @IsNotEmpty({ message: 'Unidade é obrigatória para cadastro de responsável' })
+  unidade_id: string;
 }
 
 export class UpdateResponsavelDto {

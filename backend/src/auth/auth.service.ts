@@ -562,8 +562,16 @@ export class AuthService {
 
       // Se for RESPONSAVEL, criar registro na tabela responsaveis
       if (perfilPrincipal === 'responsavel') {
+        // Validação obrigatória: unidade_id é obrigatório para responsáveis
+        if (!profileData.unidade_id) {
+          throw new BadRequestException(
+            'Unidade é obrigatória para cadastro de responsável',
+          );
+        }
+
         const responsavelData = {
           usuario_id: userId,
+          unidade_id: profileData.unidade_id, // Obrigatório
           nome_completo: user.nome,
           cpf: user.cpf,
           email: user.email,
@@ -882,7 +890,14 @@ export class AuthService {
     }
 
     // Responsavel: criar registro na tabela responsaveis
-    if (perfilNome.toLowerCase() === 'responsavel' && payload.unidade_id) {
+    if (perfilNome.toLowerCase() === 'responsavel') {
+      // Validação obrigatória: unidade_id é obrigatório para responsáveis
+      if (!payload.unidade_id) {
+        throw new BadRequestException(
+          'Unidade é obrigatória para cadastro de responsável',
+        );
+      }
+
       try {
         await this.responsaveisService.create({
           usuario_id: user.id,
@@ -897,6 +912,7 @@ export class AuthService {
         } as any);
       } catch (error) {
         console.error(' Erro ao criar registro de responsável:', error.message);
+        throw error; // Re-throw para que o erro seja propagado
       }
     }
 

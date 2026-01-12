@@ -1690,36 +1690,37 @@ export default function DashboardNew() {
       <div className="bg-white shadow-sm border-b border-gray-200">
         {/* Navigation Bar - Moved inside header */}
         <div className="border-t border-gray-100">
-          <div className="container mx-auto px-6 py-3">
-            <div className="flex items-center justify-between">
+          <div className="container mx-auto px-3 sm:px-6 py-3">
+            <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-3 lg:justify-between">
               {/* Tabs */}
-              <div className="flex gap-1">
+              <div className="flex gap-1 overflow-x-auto pb-2 lg:pb-0 scrollbar-hide">
                 {tabs.map((tab) => (
                   <button
                     key={tab.id}
                     onClick={() => setSelectedTab(tab.id)}
-                    className={`flex items-center gap-2 px-5 py-2.5 rounded-lg transition-all text-sm font-medium ${
+                    className={`flex items-center gap-2 px-3 sm:px-5 py-2.5 rounded-lg transition-all text-xs sm:text-sm font-medium whitespace-nowrap ${
                       selectedTab === tab.id
                         ? "bg-blue-600 text-white shadow-md shadow-blue-200"
                         : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
                     }`}
                   >
-                    <tab.icon className="h-4 w-4" />
-                    <span>{tab.label}</span>
+                    <tab.icon className="h-4 w-4 flex-shrink-0" />
+                    <span className="hidden sm:inline">{tab.label}</span>
+                    <span className="sm:hidden">{tab.label.split(' ')[0]}</span>
                   </button>
                 ))}
               </div>
 
               {/* Unit Filter e Botão Voltar */}
-              <div className="flex items-center gap-3">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 w-full lg:w-auto">
                 {/* Esconder seletor para alunos e responsáveis */}
                 {!isAlunoOrResponsavel && (
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-gray-700">
+                    <span className="text-xs sm:text-sm font-medium text-gray-700 whitespace-nowrap">
                       Filtro:
                     </span>
                     <select
-                      className="select select-bordered"
+                      className="select select-bordered text-xs sm:text-sm flex-1 sm:flex-initial"
                       value={selectedUnidade}
                       onChange={(e) => setSelectedUnidade(e.target.value)}
                       disabled={isGerenteUnidade}
@@ -1746,7 +1747,7 @@ export default function DashboardNew() {
                 {/* Botão Voltar */}
                 <button
                   onClick={() => window.history.back()}
-                  className="px-3 py-2 text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 hover:text-gray-900 rounded-lg font-medium flex items-center gap-2 transition-colors"
+                  className="px-3 py-2 text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 hover:text-gray-900 rounded-lg font-medium flex items-center justify-center gap-2 transition-colors text-xs sm:text-sm"
                 >
                   <ArrowLeft className="h-4 w-4" />
                   Voltar
@@ -1757,7 +1758,7 @@ export default function DashboardNew() {
         </div>
       </div>
 
-      <div className="container mx-auto p-6">
+      <div className="container mx-auto p-3 sm:p-4 lg:p-6">
         <AnimatePresence mode="wait">
           {selectedTab === "overview" && (
             <motion.div
@@ -1768,7 +1769,7 @@ export default function DashboardNew() {
               className="space-y-6"
             >
               {/* Stats Cards - Grid Responsivo */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
                 {/* Total de Alunos */}
                 <div className="stats shadow-lg bg-gradient-to-br from-blue-500 to-blue-600 hover:shadow-xl transition-shadow">
                   <div className="stat text-white p-4">

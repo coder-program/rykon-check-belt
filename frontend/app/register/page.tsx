@@ -1248,9 +1248,6 @@ function RegisterPageContent() {
                       <SelectItem value="FEMININO" className="text-white">
                         Feminino
                       </SelectItem>
-                      <SelectItem value="OUTRO" className="text-white">
-                        Outro
-                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

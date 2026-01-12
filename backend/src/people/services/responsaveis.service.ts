@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Responsavel } from '../entities/responsavel.entity';
@@ -17,6 +17,13 @@ export class ResponsaveisService {
   async create(
     createResponsavelDto: CreateResponsavelDto,
   ): Promise<Responsavel> {
+    // Validação obrigatória: unidade_id deve estar presente
+    if (!createResponsavelDto.unidade_id) {
+      throw new BadRequestException(
+        'Unidade é obrigatória para cadastro de responsável',
+      );
+    }
+
     const responsavel =
       this.responsaveisRepository.create(createResponsavelDto);
     return await this.responsaveisRepository.save(responsavel);
