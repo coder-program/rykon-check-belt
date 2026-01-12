@@ -1074,10 +1074,13 @@ export class AlunosService {
   /**
    * Calcula a idade baseada na data de nascimento
    */
-  private calcularIdade(dataNascimento: Date): number {
+  private calcularIdade(dataNascimento: Date | string): number {
     const hoje = new Date();
+    const nascimento = typeof dataNascimento === 'string' 
+      ? new Date(dataNascimento) 
+      : dataNascimento;
     // Retorna a idade que vai completar no ano atual (ano atual - ano nascimento)
-    return hoje.getFullYear() - dataNascimento.getFullYear();
+    return hoje.getFullYear() - nascimento.getFullYear();
   }
 
   /**

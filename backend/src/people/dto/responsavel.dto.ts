@@ -127,6 +127,15 @@ export class CreateResponsavelDto {
   @IsUUID()
   @IsNotEmpty({ message: 'Unidade é obrigatória para cadastro de responsável' })
   unidade_id: string;
+
+  // Consentimentos LGPD
+  @IsBoolean()
+  @IsOptional()
+  consent_uso_dados_lgpd?: boolean;
+
+  @IsBoolean()
+  @IsOptional()
+  consent_uso_imagem?: boolean;
 }
 
 export class UpdateResponsavelDto {
@@ -232,4 +241,13 @@ export class UpdateResponsavelDto {
   @IsOptional()
   @MaxLength(500)
   foto_url?: string;
+
+  // Consentimentos LGPD
+  @IsBoolean()
+  @IsOptional()
+  consent_uso_dados_lgpd?: boolean;
+
+  @IsBoolean()
+  @IsOptional()
+  consent_uso_imagem?: boolean;
 }

@@ -99,6 +99,29 @@ export class Responsavel {
   @OneToMany('Aluno', 'responsavel')
   dependentes: any[];
 
+  // Assinatura de Contrato
+  @Column({ type: 'boolean', default: false, nullable: true })
+  contrato_assinado: boolean;
+
+  @Column({ type: 'uuid', nullable: true })
+  contrato_id: string;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  contrato_assinado_em: Date;
+
+  @Column({ type: 'varchar', length: 45, nullable: true })
+  contrato_assinado_ip: string;
+
+  @Column({ type: 'integer', nullable: true })
+  contrato_versao_assinada: number;
+
+  // Consentimentos LGPD
+  @Column({ type: 'boolean', default: false, nullable: true })
+  consent_uso_dados_lgpd: boolean;
+
+  @Column({ type: 'boolean', default: false, nullable: true })
+  consent_uso_imagem: boolean;
+
   // Auditoria
   @CreateDateColumn()
   created_at: Date;

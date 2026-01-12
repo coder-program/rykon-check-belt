@@ -11,6 +11,7 @@ import {
   IsInt,
   Min,
   Max,
+  IsBoolean,
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { IsValidName } from '../../common/decorators/is-valid-name.decorator';
@@ -162,4 +163,22 @@ export class RegisterDto {
   @IsOptional()
   @IsString()
   responsavel_telefone?: string;
+
+  @ApiProperty({
+    example: true,
+    required: false,
+    description: 'Consentimento para uso de dados pessoais conforme LGPD',
+  })
+  @IsOptional()
+  @IsBoolean()
+  consent_uso_dados_lgpd?: boolean;
+
+  @ApiProperty({
+    example: true,
+    required: false,
+    description: 'Consentimento para uso de imagem em divulgações',
+  })
+  @IsOptional()
+  @IsBoolean()
+  consent_uso_imagem?: boolean;
 }

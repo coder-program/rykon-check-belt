@@ -188,6 +188,12 @@ export class Aluno {
   @Column({ type: 'boolean', default: false, nullable: true })
   consent_imagem: boolean;
 
+  @Column({ type: 'boolean', default: false, nullable: true })
+  consent_uso_dados_lgpd: boolean;
+
+  @Column({ type: 'boolean', default: false, nullable: true })
+  consent_uso_imagem: boolean;
+
   // ===== METADADOS =====
   @Column({ type: 'text', nullable: true })
   observacoes: string;
@@ -201,6 +207,22 @@ export class Aluno {
   // ATIVO = aprovado
   // Campos status_aprovacao, aprovado_por_id, aprovado_em, observacao_aprovacao
   // foram removidos pois não existem no banco de dados
+
+  // ===== ASSINATURA DE CONTRATO =====
+  @Column({ type: 'boolean', default: false, nullable: true })
+  contrato_assinado: boolean;
+
+  @Column({ type: 'uuid', nullable: true })
+  contrato_id: string;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  contrato_assinado_em: Date;
+
+  @Column({ type: 'varchar', length: 45, nullable: true })
+  contrato_assinado_ip: string;
+
+  @Column({ type: 'integer', nullable: true })
+  contrato_versao_assinada: number;
 
   @CreateDateColumn()
   created_at: Date;

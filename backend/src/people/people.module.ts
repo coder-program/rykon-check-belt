@@ -7,6 +7,7 @@ import { UnidadesController } from './controllers/unidades.controller';
 import { RecepcionistaUnidadesController } from './controllers/recepcionista-unidades.controller';
 import { GerenteUnidadesController } from './controllers/gerente-unidades.controller';
 import { ConviteCadastroController } from './convite-cadastro.controller';
+import { ContratosController } from './controllers/contratos.controller';
 import { AlunosService } from './services/alunos.service';
 import { ProfessoresService } from './services/professores.service';
 import { FranqueadosService } from './services/franqueados.service';
@@ -15,6 +16,7 @@ import { RecepcionistaUnidadesService } from './services/recepcionista-unidades.
 import { ResponsaveisService } from './services/responsaveis.service';
 import { GerenteUnidadesService } from './services/gerente-unidades.service';
 import { ConviteCadastroService } from './convite-cadastro.service';
+import { ContratosService } from './services/contratos.service';
 import { UsuariosModule } from '../usuarios/usuarios.module';
 import { EnderecosModule } from '../enderecos/enderecos.module';
 import { Franqueado } from './entities/franqueado.entity';
@@ -32,6 +34,8 @@ import { GerenteUnidade } from './entities/gerente-unidade.entity';
 import { AlunoUnidade } from './entities/aluno-unidade.entity';
 import { AlunoModalidade } from './entities/aluno-modalidade.entity';
 import { ConviteCadastro } from './entities/convite-cadastro.entity';
+import { ContratoUnidade } from './entities/contrato-unidade.entity';
+import { ContratoAssinaturaHistorico } from './entities/contrato-assinatura-historico.entity';
 import { AlunoUnidadeService } from './services/aluno-unidade.service';
 import { AlunoModalidadeService } from './services/aluno-modalidade.service';
 import { Modalidade } from '../modalidades/entities/modalidade.entity';
@@ -58,6 +62,8 @@ import { Usuario } from '../usuarios/entities/usuario.entity';
       AlunoModalidade,
       Modalidade,
       ConviteCadastro,
+      ContratoUnidade,
+      ContratoAssinaturaHistorico,
       Endereco,
       Usuario,
     ]),
@@ -71,6 +77,7 @@ import { Usuario } from '../usuarios/entities/usuario.entity';
     RecepcionistaUnidadesController,
     GerenteUnidadesController,
     ConviteCadastroController,
+    ContratosController,
   ],
   providers: [
     AlunosService,
@@ -83,6 +90,7 @@ import { Usuario } from '../usuarios/entities/usuario.entity';
     AlunoUnidadeService,
     AlunoModalidadeService,
     ConviteCadastroService,
+    ContratosService,
   ],
   exports: [
     AlunosService,
@@ -94,6 +102,7 @@ import { Usuario } from '../usuarios/entities/usuario.entity';
     ResponsaveisService,
     AlunoModalidadeService,
     ConviteCadastroService,
+    ContratosService,
   ],
 })
 export class PeopleModule {}

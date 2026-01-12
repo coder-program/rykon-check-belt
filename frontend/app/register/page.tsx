@@ -72,6 +72,8 @@ function RegisterPageContent() {
     responsavel_nome: "", // Nome do responsável (se menor de 18)
     responsavel_cpf: "", // CPF do responsável (se menor de 18)
     responsavel_telefone: "", // Telefone do responsável (se menor de 18)
+    consent_uso_dados_lgpd: false, // Consentimento LGPD
+    consent_uso_imagem: false, // Consentimento uso de imagem
   });
 
   // Mapeamento de cores para cada código de faixa (texto das letras)
@@ -838,6 +840,8 @@ function RegisterPageContent() {
         responsavel_nome?: string;
         responsavel_cpf?: string;
         responsavel_telefone?: string;
+        consent_uso_dados_lgpd?: boolean;
+        consent_uso_imagem?: boolean;
       } = {
         nome: formData.nome,
         username: formData.username,
@@ -851,6 +855,8 @@ function RegisterPageContent() {
         faixa_atual: formData.faixa_atual || "BRANCA", // Incluir faixa atual (padrão BRANCA)
         graus: parseInt(formData.graus) || 0, // Incluir graus (padrão 0)
         data_ultima_graduacao: formData.data_ultima_graduacao || undefined, // Data que recebeu a faixa
+        consent_uso_dados_lgpd: formData.consent_uso_dados_lgpd || false,
+        consent_uso_imagem: formData.consent_uso_imagem || false,
       };
 
       // Se for menor de 18 anos, incluir dados do responsável
@@ -1730,6 +1736,54 @@ function RegisterPageContent() {
                       </button>
                     </div>
                   </div>
+                </div>
+
+                {/* Consentimentos LGPD */}
+                <div className="space-y-3 bg-gradient-to-r from-blue-900/20 to-purple-900/20 border border-blue-500/30 rounded-lg p-4">
+                  <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+                    <AlertCircle className="h-4 w-4 text-blue-400" />
+                    Consentimentos LGPD
+                  </h3>
+                  
+                  <div className="space-y-3">
+                    <label className="flex items-start gap-3 cursor-pointer group">
+                      <input
+                        type="checkbox"
+                        checked={formData.consent_uso_dados_lgpd}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            consent_uso_dados_lgpd: e.target.checked,
+                          })
+                        }
+                        className="mt-1 h-4 w-4 rounded border-gray-600 bg-gray-800/50 text-red-600 focus:ring-red-500 focus:ring-offset-0 cursor-pointer"
+                      />
+                      <span className="text-xs text-gray-300 group-hover:text-white transition-colors">
+                        Autorizo o uso dos meus dados pessoais conforme a LGPD (Lei Geral de Proteção de Dados)
+                      </span>
+                    </label>
+
+                    <label className="flex items-start gap-3 cursor-pointer group">
+                      <input
+                        type="checkbox"
+                        checked={formData.consent_uso_imagem}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            consent_uso_imagem: e.target.checked,
+                          })
+                        }
+                        className="mt-1 h-4 w-4 rounded border-gray-600 bg-gray-800/50 text-red-600 focus:ring-red-500 focus:ring-offset-0 cursor-pointer"
+                      />
+                      <span className="text-xs text-gray-300 group-hover:text-white transition-colors">
+                        Autorizo o uso de minha imagem para divulgação nas redes sociais e materiais de marketing
+                      </span>
+                    </label>
+                  </div>
+
+                  <p className="text-[10px] text-gray-400 italic">
+                    * Estes consentimentos são opcionais e podem ser alterados posteriormente
+                  </p>
                 </div>
 
                 <div className="bg-blue-900/30 border border-blue-600/50 rounded-lg p-3 sm:p-4 mt-2">
