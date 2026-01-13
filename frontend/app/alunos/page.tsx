@@ -892,7 +892,7 @@ function AlunosContent() {
                           >
                             <Edit2 className="h-4 w-4 text-blue-600" />
                           </button>
-                          {!isSuperAdmin && (
+                          {!isSuperAdmin && !isFranqueado && !isGerenteUnidade && (
                             <button
                               onClick={() => {
                                 if (

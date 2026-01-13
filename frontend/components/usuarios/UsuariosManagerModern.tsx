@@ -1015,18 +1015,20 @@ export default function UsuariosManagerNew() {
                             >
                               <Edit className="h-4 w-4" />
                             </button>
-                            {/* Não mostrar botão de exclusão para o próprio usuário logado */}
-                            {user?.id !== usuario.id && (
-                              <button
-                                onClick={() =>
-                                  handleDelete(usuario.id, usuario.nome)
-                                }
-                                className="text-red-600 hover:text-red-900"
-                                title="Excluir usuário"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </button>
-                            )}
+                            {/* Não mostrar botão de exclusão para o próprio usuário logado, franqueados ou gerentes de unidade */}
+                            {user?.id !== usuario.id &&
+                              !isFranqueado &&
+                              !isGerenteUnidade && (
+                                <button
+                                  onClick={() =>
+                                    handleDelete(usuario.id, usuario.nome)
+                                  }
+                                  className="text-red-600 hover:text-red-900"
+                                  title="Excluir usuário"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
+                              )}
                           </div>
                         </td>
                       </tr>
