@@ -869,9 +869,10 @@ export class AuthService {
           };
 
           const alunoCriado = await this.alunosService.create(alunoData as any);
+          console.log('✅ [CREATE ALUNO] Registro de aluno criado com sucesso:', alunoCriado.id);
         } catch (error) {
           console.error(
-            ' [CREATE ALUNO] Erro ao criar registro de aluno:',
+            '❌ [CREATE ALUNO] Erro CRÍTICO ao criar registro de aluno:',
             error.message,
           );
           console.error(' [CREATE ALUNO] Stack completo:', error.stack);
@@ -879,7 +880,16 @@ export class AuthService {
             ' [CREATE ALUNO] Detalhes do erro:',
             JSON.stringify(error, null, 2),
           );
-          throw new Error(`Falha ao criar registro de aluno: ${error.message}`);
+          
+          // ⚠️ IMPORTANTE: Deletar usuário criado se falhar a criação do aluno
+          try {
+            await this.usuariosService.remove(user.id);
+            console.log('🗑️  [CREATE ALUNO] Usuário removido devido a falha no cadastro de aluno');
+          } catch (deleteError) {
+            console.error('❌ [CREATE ALUNO] Erro ao deletar usuário:', deleteError.message);
+          }
+          
+          throw new BadRequestException(`Falha ao criar registro de aluno: ${error.message}`);
         }
       }
     } else if (perfilNome !== 'franqueado' && perfilNome !== 'master') {
