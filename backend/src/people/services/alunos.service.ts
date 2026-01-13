@@ -1718,9 +1718,9 @@ export class AlunosService {
 
     // Criar nova faixa ativa
     await this.dataSource.query(
-      `INSERT INTO teamcruz.aluno_faixa (aluno_id, faixa_def_id, dt_inicio, ativa)
-       VALUES ($1, $2, $3, true)`,
-      [alunoId, faixaDefId, dataInicio],
+      `INSERT INTO teamcruz.aluno_faixa (aluno_id, faixa_def_id, dt_inicio, ativa, graus_atual, presencas_no_ciclo, presencas_total_fx)
+       VALUES ($1, $2, $3, true, $4, 0, 0)`,
+      [alunoId, faixaDefId, dataInicio, graus],
     );
 
     // Adicionar graus se tiver
