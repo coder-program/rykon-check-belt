@@ -3,6 +3,7 @@ import {
   IsEmail,
   IsNotEmpty,
   MinLength,
+  MaxLength,
   IsDateString,
   Matches,
   IsOptional,
@@ -13,6 +14,7 @@ import {
   Max,
   IsBoolean,
 } from 'class-validator';
+import { Transform } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 import { IsValidName } from '../../common/decorators/is-valid-name.decorator';
 import { IsValidCPF } from '../../common/decorators/is-valid-cpf.decorator';
@@ -29,13 +31,15 @@ export class RegisterDto {
   @ApiProperty({
     example: 'joao.silva',
     description:
-      'Username único (letras, números e ponto - sem espaços ou caracteres especiais)',
+      'Username único (letras, números, ponto, underscore e traço - sem espaços ou caracteres especiais). Máximo 50 caracteres.',
   })
   @IsString()
   @IsNotEmpty()
   @MinLength(3)
-  @Matches(/^[a-zA-Z0-9.]+$/, {
-    message: 'Username deve conter apenas letras, números e ponto',
+  @MaxLength(50)
+  @Transform(({ value }) => value?.toLowerCase())
+  @Matches(/^[a-z0-9._-]+$/, {
+    message: 'Username deve conter apenas letras minúsculas, números, ponto, underscore e traço (sem espaços)',
   })
   username: string;
 
