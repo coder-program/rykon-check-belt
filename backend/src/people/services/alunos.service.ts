@@ -1717,19 +1717,22 @@ export class AlunosService {
     );
 
     // Criar nova faixa ativa
-    await this.dataSource.query(
+    const result = await this.dataSource.query(
       `INSERT INTO teamcruz.aluno_faixa (aluno_id, faixa_def_id, dt_inicio, ativa, graus_atual, presencas_no_ciclo, presencas_total_fx)
-       VALUES ($1, $2, $3, true, $4, 0, 0)`,
+       VALUES ($1, $2, $3, true, $4, 0, 0)
+       RETURNING id`,
       [alunoId, faixaDefId, dataInicio, graus],
     );
+
+    const alunoFaixaId = result[0].id;
 
     // Adicionar graus se tiver
     if (graus > 0) {
       for (let i = 1; i <= graus; i++) {
         await this.dataSource.query(
-          `INSERT INTO teamcruz.aluno_faixa_grau (aluno_id, faixa_def_id, dt_grau, grau_numero)
-           VALUES ($1, $2, $3, $4)`,
-          [alunoId, faixaDefId, dataInicio, i],
+          `INSERT INTO teamcruz.aluno_faixa_grau (aluno_faixa_id, grau_num, dt_concessao)
+           VALUES ($1, $2, $3)`,
+          [alunoFaixaId, i, dataInicio],
         );
       }
     }
