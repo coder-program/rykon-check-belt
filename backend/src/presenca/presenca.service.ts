@@ -207,7 +207,6 @@ export class PresencaService {
       );
       if (unidadeResult.length > 0) {
         unidadesPermitidas = [unidadeResult[0].unidade_id];
-        console.log('🖥️ [getAulaAtiva] Tablet detectado, unidade:', unidadeResult[0].unidade_id);
       } else {
         console.warn('⚠️ [getAulaAtiva] Tablet sem unidade vinculada!', user.id);
       }
@@ -273,14 +272,11 @@ export class PresencaService {
     latitude?: number,
     longitude?: number,
   ) {
-    console.log('🔍 [checkInQR] Iniciando check-in via QR Code:', { qrCode, userId: user.id });
     
     let aula;
 
     // Validar QR Code e determinar tipo
     if (qrCode.startsWith('QR-AULA-')) {
-      console.log('✅ [checkInQR] Detectado QR Code de AULA');
-      
       // QR Code de aula específica
       // Extrair UUID completo (pode conter hífens)
       const aulaId = qrCode.replace('QR-AULA-', '');

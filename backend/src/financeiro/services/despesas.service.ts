@@ -91,10 +91,6 @@ export class DespesasService {
 
     // Se foi passado franqueado_id, filtrar pelas unidades desse franqueado
     if (franqueado_id) {
-      console.log(
-        '🔍 [DESPESAS SERVICE] Filtrando por franqueado_id:',
-        franqueado_id,
-      );
       query.andWhere('unidade.franqueado_id = :franqueado_id', {
         franqueado_id,
       });
@@ -153,29 +149,9 @@ export class DespesasService {
     id: string,
     updateDespesaDto: UpdateDespesaDto,
   ): Promise<Despesa> {
-    console.log('📝 [DESPESAS] Atualizando despesa:', id);
-    console.log('📝 [DESPESAS] DTO recebido:', updateDespesaDto);
-    
     const despesa = await this.findOne(id);
-    console.log('📝 [DESPESAS] Despesa antes:', {
-      data_vencimento: despesa.data_vencimento,
-      categoria: despesa.categoria,
-    });
-    
     Object.assign(despesa, updateDespesaDto);
-    
-    console.log('📝 [DESPESAS] Despesa depois do assign:', {
-      data_vencimento: despesa.data_vencimento,
-      categoria: despesa.categoria,
-    });
-    
     const resultado = await this.despesaRepository.save(despesa);
-    
-    console.log('📝 [DESPESAS] Despesa salva:', {
-      data_vencimento: resultado.data_vencimento,
-      categoria: resultado.categoria,
-    });
-    
     return resultado;
   }
 
@@ -195,7 +171,6 @@ export class DespesasService {
     });
 
     if (transacaoExistente) {
-      console.log('⚠️ [DESPESAS] Transação já existe para despesa:', id);
       // Se já existe transação, apenas atualizar status se necessário
       if (despesa.status !== StatusDespesa.PAGA) {
         despesa.status = StatusDespesa.PAGA;
@@ -226,12 +201,6 @@ export class DespesasService {
     const despesaAtualizada = await this.despesaRepository.save(despesa);
 
     // Criar transação de saída
-    console.log('💰 [DESPESAS] Criando transação de saída para despesa:', {
-      despesa_id: despesa.id,
-      unidade_id: despesa.unidade_id,
-      valor: despesa.valor,
-    });
-
     const transacao = this.transacaoRepository.create({
       tipo: TipoTransacao.SAIDA,
       origem: OrigemTransacao.DESPESA,
@@ -245,13 +214,7 @@ export class DespesasService {
       criado_por: user?.id || null,
     });
 
-    const transacaoSalva = await this.transacaoRepository.save(transacao);
-    console.log('✅ [DESPESAS] Transação de saída criada:', {
-      transacao_id: transacaoSalva.id,
-      tipo: transacaoSalva.tipo,
-      unidade_id: transacaoSalva.unidade_id,
-    });
-
+await this.transacaoRepository.save(transacao);
     return despesaAtualizada;
   }
 

@@ -134,23 +134,8 @@ export class GraduacaoService {
         ? faixaAtiva.dt_inicio
         : new Date(faixaAtiva.dt_inicio);
 
-    console.log('📅 [GET STATUS GRADUACAO] Calculando tempo na faixa:', {
-      aluno_id: aluno.id,
-      nome: aluno.nome_completo,
-      faixa_codigo: faixaAtiva.faixaDef.codigo,
-      dt_inicio_raw: faixaAtiva.dt_inicio,
-      dt_inicio_parsed: dataInicio,
-      data_agora: agora,
-      diferenca_ms: agora.getTime() - dataInicio.getTime(),
-    });
-
     const tempoNaFaixa = agora.getTime() - dataInicio.getTime();
     const diasNaFaixa = Math.floor(tempoNaFaixa / (1000 * 60 * 60 * 24));
-
-    console.log('📊 [GET STATUS GRADUACAO] Resultado do cálculo:', {
-      dias_na_faixa: diasNaFaixa,
-      anos: (diasNaFaixa / 365.25).toFixed(2),
-    });
 
     // Buscar tempo mínimo baseado na configuração da unidade do aluno
     const tempoMinimo = await this.getTempoMinimoDiasPorFaixa(
@@ -160,15 +145,6 @@ export class GraduacaoService {
 
     const tempoMinimoAnos = Number((tempoMinimo / 365.25).toFixed(1));
     const diasRestantes = Math.max(0, tempoMinimo - diasNaFaixa);
-
-    console.log('✅ [GET STATUS GRADUACAO] Retornando status:', {
-      faixaAtual: faixaAtiva.faixaDef.nome_exibicao,
-      diasNaFaixa,
-      tempoMinimoAnos,
-      diasRestantes,
-      dataInicio,
-      prontoParaGraduar: prontoParaProximoGrau,
-    });
 
     return {
       faixaAtual: faixaAtiva.faixaDef.nome_exibicao,
@@ -203,10 +179,6 @@ export class GraduacaoService {
     faixa?: string;
     userId?: string;
   }): Promise<ListaProximosGraduarDto> {
-    console.log(
-      '🔍 [PROXIMOS GRADUAR] Params recebidos:',
-      JSON.stringify(params, null, 2),
-    );
 
     const page = params.page || 1;
     const pageSize = params.pageSize || 50;
@@ -234,10 +206,6 @@ export class GraduacaoService {
             where: { franqueado_id: franqueado.id },
           });
           unidadesDoFranqueado = unidades.map((u) => u.id);
-          console.log(
-            '✅ [PROXIMOS GRADUAR] Franqueado tem unidades:',
-            unidadesDoFranqueado,
-          );
         }
       }
     }
@@ -253,18 +221,10 @@ export class GraduacaoService {
 
     // Filtrar por unidade se fornecido
     if (params.unidadeId) {
-      console.log(
-        '✅ [PROXIMOS GRADUAR] Filtrando por unidade:',
-        params.unidadeId,
-      );
       query = query.andWhere('aluno.unidade_id = :unidadeId', {
         unidadeId: params.unidadeId,
       });
     } else if (unidadesDoFranqueado.length > 0) {
-      console.log(
-        '✅ [PROXIMOS GRADUAR] Filtrando por unidades do franqueado:',
-        unidadesDoFranqueado,
-      );
       query = query.andWhere('aluno.unidade_id IN (:...unidades)', {
         unidades: unidadesDoFranqueado,
       });
@@ -277,13 +237,6 @@ export class GraduacaoService {
     // Filtrar por categoria se fornecido
     if (params.categoria && params.categoria !== 'todos') {
       const isKids = params.categoria === 'kids';
-      console.log(
-        '✅ [PROXIMOS GRADUAR] Filtrando por categoria:',
-        params.categoria,
-        '(kids:',
-        isKids,
-        ')',
-      );
       // Filtrar pela categoria da faixa
       if (isKids) {
         query = query.andWhere('faixaDef.categoria = :categoria', {
@@ -298,10 +251,6 @@ export class GraduacaoService {
 
     // Filtrar por faixa específica se fornecido
     if (params.faixa) {
-      console.log(
-        '✅ [PROXIMOS GRADUAR] Filtrando por faixa específica:',
-        params.faixa,
-      );
       query = query.andWhere('faixaDef.codigo = :faixa', {
         faixa: params.faixa,
       });
@@ -314,24 +263,6 @@ export class GraduacaoService {
       .take(pageSize);
 
     const [items, total] = await query.getManyAndCount();
-
-    console.log('📊 [PROXIMOS GRADUAR] Resultado:', {
-      total,
-      items: items.length,
-      categoria: params.categoria,
-      primeiros3: items.slice(0, 3).map((i) => {
-        const hoje = new Date();
-        const nascimento = new Date(i.aluno.data_nascimento);
-        const idade = hoje.getFullYear() - nascimento.getFullYear();
-        return {
-          nome: i.aluno.nome_completo,
-          nascimento: i.aluno.data_nascimento,
-          idade,
-          kids: idade < 16,
-          presencas: i.presencas_no_ciclo,
-        };
-      }),
-    });
 
     // Buscar configurações de graduação de todas as unidades envolvidas
     const unidadesIds = [
@@ -346,20 +277,8 @@ export class GraduacaoService {
 
       configuracoes.forEach((config) => {
         configuracoesMap.set(config.unidade_id, config.config_faixas);
-        console.log(`📋 [CONFIG] Unidade ${config.unidade_id}:`, {
-          faixas: Object.keys(config.config_faixas),
-          exemplo:
-            config.config_faixas[Object.keys(config.config_faixas)[0] || ''],
-        });
       });
 
-      console.log(
-        '⚙️ [PROXIMOS GRADUAR] Configurações carregadas:',
-        configuracoesMap.size,
-        'unidades',
-        '| IDs buscados:',
-        unidadesIds,
-      );
     }
 
     // Mapear para o DTO
@@ -403,16 +322,6 @@ export class GraduacaoService {
           }
         }
 
-        console.log(`🔍 [DEBUG ${af.aluno.nome_completo}]:`, {
-          unidade_id: unidadeId,
-          faixa_codigo: faixaCodigo,
-          tem_config_unidade: !!configUnidade,
-          tem_config_faixa: !!configFaixa,
-          config_faixa: configFaixa,
-          config_unidade_keys: configUnidade ? Object.keys(configUnidade) : [],
-          default_aulas: af.faixaDef?.aulas_por_grau,
-        });
-
         // Usar configuração personalizada se existir, senão usar padrão da faixaDef
         const aulasPorGrau =
           configFaixa?.aulas_por_grau || af.faixaDef?.aulas_por_grau || 40;
@@ -442,28 +351,12 @@ export class GraduacaoService {
             1.0,
           );
 
-          console.log(`🥋 [${af.aluno.nome_completo}] FAIXA PRETA (TEMPO):`, {
-            faixa: faixaCodigo,
-            meses_na_faixa: mesesNaFaixa,
-            tempo_minimo_meses: tempoMinimoRequerido,
-            faltam_meses: faltamAulas,
-            pronto: prontoParaGraduar,
-          });
         } else {
           // Para outras faixas: calcular por aulas
           faltamAulas = Math.max(0, aulasPorGrau - af.presencas_no_ciclo);
           prontoParaGraduar = af.presencas_no_ciclo >= aulasPorGrau;
           progressoPercentual = af.presencas_no_ciclo / aulasPorGrau;
 
-          console.log(`👤 [${af.aluno.nome_completo}] Config:`, {
-            faixa: faixaCodigo,
-            unidade_id: unidadeId,
-            tem_config_custom: !!configFaixa,
-            aulas_por_grau: aulasPorGrau,
-            graus_max: grausMax,
-            presencas_no_ciclo: af.presencas_no_ciclo,
-            faltam: faltamAulas,
-          });
         }
 
         return {
@@ -2028,12 +1921,6 @@ export class GraduacaoService {
     data: any,
     user: any,
   ): Promise<ConfiguracaoGraduacao> {
-    console.log('💾 [salvarConfiguracaoGraduacao]', {
-      unidade_id: data.unidade_id,
-      userId: user?.id,
-      perfis: user?.perfis,
-      configKeys: data.config_faixas ? Object.keys(data.config_faixas) : [],
-    });
 
     // Verificar permissões
     const temPermissao = await this.verificarPermissaoUnidade(
@@ -2046,8 +1933,6 @@ export class GraduacaoService {
         'Você não tem permissão para configurar esta unidade',
       );
     }
-
-    console.log('✅ Permissão concedida');
 
     // Verificar se já existe configuração
     let config = await this.configuracaoGraduacaoRepository.findOne({
@@ -2127,15 +2012,8 @@ export class GraduacaoService {
       typeof p === 'string' ? p : p.nome,
     );
 
-    console.log('🔐 [verificarPermissaoUnidade]', {
-      userId: user?.id,
-      nomesPerfis: nomesPerfis,
-      unidadeId: unidadeId,
-    });
-
     // ADMIN_MASTER tem acesso total
     if (nomesPerfis.includes('ADMIN_MASTER')) {
-      console.log('✅ ADMIN_MASTER - acesso permitido');
       return true;
     }
 
@@ -2145,10 +2023,7 @@ export class GraduacaoService {
         where: { usuario_id: user.id },
       });
 
-      console.log('👤 FRANQUEADO encontrado:', franqueado?.id);
-
       if (!franqueado) {
-        console.log('❌ FRANQUEADO não encontrado');
         return false;
       }
 
@@ -2156,7 +2031,6 @@ export class GraduacaoService {
         where: { id: unidadeId, franqueado_id: franqueado.id },
       });
 
-      console.log('🏢 Unidade pertence ao franqueado?', !!unidade);
       return !!unidade;
     }
 
@@ -2166,18 +2040,13 @@ export class GraduacaoService {
         where: { usuario_id: user.id },
       });
 
-      console.log('👨‍💼 GERENTE encontrado:', gerente?.id);
-
       if (!gerente) {
-        console.log('❌ GERENTE não encontrado');
         return false;
       }
 
-      console.log('🏢 Unidade do gerente:', gerente.unidade_id, '=', unidadeId);
       return gerente.unidade_id === unidadeId;
     }
 
-    console.log('❌ Nenhum perfil válido');
     return false;
   }
 

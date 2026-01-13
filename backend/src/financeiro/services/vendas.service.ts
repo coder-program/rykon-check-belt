@@ -67,10 +67,6 @@ export class VendasService {
 
     // Se foi passado franqueado_id, filtrar pelas unidades desse franqueado
     if (franqueado_id) {
-      console.log(
-        '🔍 [VENDAS SERVICE] Filtrando por franqueado_id:',
-        franqueado_id,
-      );
       query.andWhere('unidade.franqueado_id = :franqueado_id', {
         franqueado_id,
       });
@@ -149,7 +145,6 @@ export class VendasService {
     });
 
     if (transacaoExistente) {
-      console.log('⚠️ [VENDAS] Transação já existe para venda:', id);
       // Se já existe transação, apenas atualizar o status da venda
       venda.status = StatusVenda.PAGO;
       venda.data_pagamento = new Date();
@@ -171,7 +166,6 @@ export class VendasService {
 
     await this.vendasRepository.save(venda);
 
-    console.log('✅ [VENDAS] Criando transação para venda:', id);
     // Criar transação de entrada
     const transacao = this.transacaoRepository.create({
       tipo: TipoTransacao.ENTRADA,
@@ -252,7 +246,6 @@ export class VendasService {
       );
 
       if (!config || !config[0]?.whatsapp_api_url) {
-        console.log('⚠️ [WHATSAPP] API não configurada');
         return;
       }
 
@@ -282,7 +275,6 @@ ${linkPagamento ? `🔗 *Link de Pagamento:*\n${linkPagamento}\n\n` : ''}Qualque
       });
 
       if (response.ok) {
-        console.log('✅ [WHATSAPP] Mensagem enviada para:', telefone);
       } else {
         console.error('❌ [WHATSAPP] Erro ao enviar:', await response.text());
       }
@@ -349,10 +341,6 @@ ${linkPagamento ? `🔗 *Link de Pagamento:*\n${linkPagamento}\n\n` : ''}Qualque
 
     // Se foi passado franqueado_id, filtrar pelas unidades desse franqueado
     if (franqueado_id) {
-      console.log(
-        '🔍 [VENDAS ESTATISTICAS SERVICE] Filtrando por franqueado_id:',
-        franqueado_id,
-      );
       baseQuery.where('unidade.franqueado_id = :franqueado_id', {
         franqueado_id,
       });
@@ -438,17 +426,6 @@ ${linkPagamento ? `🔗 *Link de Pagamento:*\n${linkPagamento}\n\n` : ''}Qualque
       .andWhere('venda.status = :status', { status: StatusVenda.PAGO })
       .getRawOne();
 
-    console.log('📊 [VENDAS ESTATISTICAS SERVICE]', {
-      unidadeId,
-      franqueado_id,
-      totalVendas,
-      vendasPagas,
-      vendasPendentes,
-      vendasFalhas,
-      valorTotal: valorTotal?.total,
-      valorPago: valorPago?.total,
-    });
-
     return {
       totalVendas,
       vendasPagas,
@@ -492,9 +469,6 @@ ${linkPagamento ? `🔗 *Link de Pagamento:*\n${linkPagamento}\n\n` : ''}Qualque
 
     // Deletar a venda
     await this.vendasRepository.remove(venda);
-
-    console.log('🗑️ [VENDAS] Venda excluída:', id);
-
     return {
       message: 'Venda excluída com sucesso',
     };

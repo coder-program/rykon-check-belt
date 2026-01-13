@@ -240,42 +240,24 @@ export class AulaController {
   ) {
     const unidadesDoUsuario = await this.getUnidadeIdsFromUser(req);
 
-    console.log('🔍 [AULAS HOJE] Requisição recebida:', {
-      usuario_id: req?.user?.id,
-      perfis: req?.user?.perfis,
-      unidadesDoUsuario,
-      unidade_id_filtro: unidade_id,
-    });
-
     // FRANQUEADO - pode ver todas as suas unidades ou filtrar por uma específica
     if (Array.isArray(unidadesDoUsuario)) {
       // Franqueado sem unidades - retornar vazio
       if (unidadesDoUsuario.length === 0) {
-        console.log(
-          '⚠️ [AULAS HOJE] Franqueado sem unidades - retornando vazio',
-        );
         return [];
       }
 
       if (unidade_id) {
         // Verifica se a unidade solicitada pertence ao franqueado
         if (!unidadesDoUsuario.includes(unidade_id)) {
-          console.log(
-            '🚫 [AULAS HOJE] ACESSO NEGADO - unidade não pertence ao franqueado',
-          );
           throw new UnauthorizedException(
             'Você não tem permissão para ver aulas desta unidade.',
           );
         }
-        console.log('✅ [AULAS HOJE] Buscando aulas da unidade:', unidade_id);
         const aulas = await this.aulaService.findAulasHoje(unidade_id);
         return aulas;
       } else {
         // Retorna aulas de todas as unidades do franqueado
-        console.log(
-          '✅ [AULAS HOJE] Buscando aulas de todas as unidades:',
-          unidadesDoUsuario,
-        );
         const aulas = await this.aulaService.findAulasHoje(unidadesDoUsuario);
         return aulas;
       }
@@ -283,10 +265,6 @@ export class AulaController {
 
     // GERENTE/PROFESSOR/RECEPCIONISTA - apenas da sua unidade
     if (typeof unidadesDoUsuario === 'string') {
-      console.log(
-        '✅ [AULAS HOJE] Buscando aulas da unidade do usuário:',
-        unidadesDoUsuario,
-      );
       const aulas = await this.aulaService.findAulasHoje(unidadesDoUsuario);
       return aulas;
     }

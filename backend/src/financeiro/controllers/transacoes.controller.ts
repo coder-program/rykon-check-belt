@@ -61,15 +61,6 @@ export class TransacoesController {
       );
     const userUnidadeId = await this.getUnidadeIdFromUser(user);
 
-    console.log('🔍 [TRANSACOES] Requisição recebida:', {
-      usuario_id: user.id,
-      tipo_usuario: user.tipo_usuario,
-      unidade_id_usuario: userUnidadeId,
-      filtro_unidade_id: filtro.unidade_id,
-      perfis: user.perfis?.map((p: any) => p.nome || p),
-      isFranqueado,
-    });
-
     // Buscar franqueado_id se for franqueado
     let franqueadoId: string | null = null;
     if (isFranqueado && user?.id) {
@@ -78,29 +69,17 @@ export class TransacoesController {
         [user.id],
       );
       franqueadoId = franqueadoResult[0]?.id || null;
-      console.log('🔍 [TRANSACOES] Franqueado ID:', franqueadoId);
     }
 
     if (!filtro.unidade_id) {
       if (isFranqueado) {
-        console.log(
-          '✅ [TRANSACOES] Franqueado buscando transações de suas unidades',
-        );
         // Será filtrado no service pelo franqueado_id
       } else if (userUnidadeId) {
-        console.log(
-          '✅ [TRANSACOES] Aplicando unidade do usuário:',
-          userUnidadeId,
-        );
         filtro.unidade_id = userUnidadeId;
       }
     } else {
       if (!isFranqueado && user.tipo_usuario !== 'MASTER') {
         if (userUnidadeId && filtro.unidade_id !== userUnidadeId) {
-          console.log('🚫 [TRANSACOES] ACESSO NEGADO:', {
-            unidade_solicitada: filtro.unidade_id,
-            unidade_usuario: userUnidadeId,
-          });
           return [];
         }
       }
@@ -128,13 +107,6 @@ export class TransacoesController {
       );
     const userUnidadeId = await this.getUnidadeIdFromUser(user);
 
-    console.log('📋 [EXTRATO] Requisição recebida:', {
-      usuario_id: user.id,
-      isFranqueado,
-      unidade_id_usuario: userUnidadeId,
-      filtro_unidade_id: filtro.unidade_id,
-    });
-
     // Buscar franqueado_id se for franqueado
     let franqueadoId: string | null = null;
     if (isFranqueado && user?.id) {
@@ -143,26 +115,17 @@ export class TransacoesController {
         [user.id],
       );
       franqueadoId = franqueadoResult[0]?.id || null;
-      console.log('📋 [EXTRATO] Franqueado ID:', franqueadoId);
     }
 
     if (!filtro.unidade_id) {
       if (isFranqueado) {
-        console.log(
-          '✅ [EXTRATO] Franqueado buscando extrato de suas unidades',
-        );
         // Será filtrado no service pelo franqueado_id
       } else if (userUnidadeId) {
-        console.log(
-          '✅ [EXTRATO] Aplicando unidade do usuário:',
-          userUnidadeId,
-        );
         filtro.unidade_id = userUnidadeId;
       }
     } else {
       if (!isFranqueado && user.tipo_usuario !== 'MASTER') {
         if (userUnidadeId && filtro.unidade_id !== userUnidadeId) {
-          console.log('🚫 [EXTRATO] ACESSO NEGADO');
           return {
             transacoes: [],
             resumo: { entradas: 0, saidas: 0, saldo: 0 },

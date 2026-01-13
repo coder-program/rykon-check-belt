@@ -144,21 +144,6 @@ export class ProgressoService {
         order: { data_concessao: 'DESC' },
       });
 
-      console.log(
-        `📊 [PROGRESSO] Aluno ID: ${aluno.id}, Usuario ID: ${usuarioId}`,
-      );
-      console.log(
-        `📊 [PROGRESSO] Total de graus encontrados: ${historicoGraus.length}`,
-      );
-      if (historicoGraus.length > 0) {
-        console.log(`📊 [PROGRESSO] Primeiro grau:`, {
-          id: historicoGraus[0].id,
-          grau_numero: historicoGraus[0].grau_numero,
-          faixa: historicoGraus[0].faixa?.nome_exibicao,
-          data_concessao: historicoGraus[0].data_concessao,
-        });
-      }
-
       // Buscar histórico de faixas da tabela aluno_faixa
       // Ordena primeiro por faixas atuais (dt_fim null), depois por dt_inicio DESC
       const historicoFaixas = await this.alunoFaixaRepository
@@ -341,9 +326,6 @@ export class ProgressoService {
     alunoId: string,
     user: any,
   ): Promise<ProgressoAlunoDto> {
-    console.log('🔍 [getHistoricoCompletoAluno] Buscando histórico para aluno:', alunoId);
-    console.log('🔍 [getHistoricoCompletoAluno] Usuário solicitante:', { userId: user.id, perfis: user.perfis });
-    
     // Verificar se o usuário tem permissão
     // Pode ser: responsável do aluno, master, ou o próprio aluno
     const aluno = await this.alunoRepository.findOne({
@@ -356,23 +338,10 @@ export class ProgressoService {
       throw new NotFoundException('Aluno não encontrado');
     }
 
-    console.log('✅ [getHistoricoCompletoAluno] Aluno encontrado:', {
-      id: aluno.id,
-      usuario_id: aluno.usuario_id,
-      responsavel_id: aluno.responsavel_id,
-    });
-
     // Verificar permissões
     const isMaster = user.perfis?.includes('master');
     const isProprioAluno = aluno.usuario_id === user.id;
     const isResponsavel = aluno.responsavel?.usuario_id === user.id;
-
-    console.log('🔍 [getHistoricoCompletoAluno] Verificação de permissões:', {
-      isMaster,
-      isProprioAluno,
-      isResponsavel,
-      responsavelUserId: aluno.responsavel?.usuario_id,
-    });
 
     if (!isMaster && !isProprioAluno && !isResponsavel) {
       console.error('❌ [getHistoricoCompletoAluno] Sem permissão');
@@ -387,14 +356,7 @@ export class ProgressoService {
       relations: ['faixaDef'],
     });
 
-    console.log('🔍 [getHistoricoCompletoAluno] Faixa ativa:', faixaAtiva ? {
-      id: faixaAtiva.id,
-      faixa: faixaAtiva.faixaDef?.nome_exibicao,
-      graus_atual: faixaAtiva.graus_atual,
-    } : 'NENHUMA');
-
     if (!faixaAtiva) {
-      console.log('⚠️ [getHistoricoCompletoAluno] Retornando dados vazios - sem faixa ativa');
       return {
         graduacaoAtual: {
           faixa: 'Não definida',

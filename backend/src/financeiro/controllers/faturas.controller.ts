@@ -76,16 +76,6 @@ export class FaturasController {
       );
     const userUnidadeId = await this.getUnidadeIdFromUser(user);
 
-    console.log('🔍 [FATURAS] Requisição recebida:', {
-      usuario_id: user?.id,
-      tipo_usuario: user?.tipo_usuario,
-      unidade_id_usuario: userUnidadeId,
-      filtro_unidade_id: unidade_id,
-      status,
-      mes,
-      isFranqueado,
-    });
-
     // Buscar franqueado_id se for franqueado
     let franqueadoId: string | null = null;
     if (isFranqueado && user?.id) {
@@ -94,26 +84,17 @@ export class FaturasController {
         [user.id],
       );
       franqueadoId = franqueadoResult[0]?.id || null;
-      console.log('🔍 [FATURAS] Franqueado ID:', franqueadoId);
     }
 
     if (!unidade_id) {
       if (isFranqueado) {
-        console.log(
-          '✅ [FATURAS] Franqueado buscando faturas de suas unidades',
-        );
         // Será filtrado no service pelo franqueado_id
       } else if (userUnidadeId) {
-        console.log(
-          '✅ [FATURAS] Aplicando unidade do usuário:',
-          userUnidadeId,
-        );
         unidade_id = userUnidadeId;
       }
     } else {
       if (user && !isFranqueado && user.tipo_usuario !== 'MASTER') {
         if (userUnidadeId && unidade_id !== userUnidadeId) {
-          console.log('🚫 [FATURAS] ACESSO NEGADO');
           return [];
         }
       }

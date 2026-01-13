@@ -46,21 +46,8 @@ export class GraduacaoController {
   private async getUnidadeIdFromUser(user: any): Promise<string | null> {
     if (!user) return null;
 
-    console.log('🔍 [getUnidadeIdFromUser] Verificando usuário:', {
-      id: user.id,
-      nome: user.nome,
-      unidade_id: user.unidade_id,
-      perfis: user?.perfis?.map((p: any) =>
-        typeof p === 'string' ? p : p.nome,
-      ),
-    });
-
     // Tentar pegar direto do user.unidade_id
     if (user.unidade_id) {
-      console.log(
-        '✅ [getUnidadeIdFromUser] Encontrado user.unidade_id:',
-        user.unidade_id,
-      );
       return user.unidade_id;
     }
 
@@ -76,10 +63,6 @@ export class GraduacaoController {
         [user.id],
       );
       if (result && result.length > 0) {
-        console.log(
-          '✅ [getUnidadeIdFromUser] GERENTE_UNIDADE encontrado:',
-          result[0].unidade_id,
-        );
         return result[0].unidade_id;
       }
     }
@@ -91,10 +74,6 @@ export class GraduacaoController {
         [user.id],
       );
       if (result && result.length > 0) {
-        console.log(
-          '✅ [getUnidadeIdFromUser] RECEPCIONISTA encontrado:',
-          result[0].unidade_id,
-        );
         return result[0].unidade_id;
       }
     }
@@ -106,18 +85,10 @@ export class GraduacaoController {
         [user.id],
       );
       if (result && result.length > 0) {
-        console.log(
-          '✅ [getUnidadeIdFromUser] PROFESSOR/INSTRUTOR encontrado:',
-          result[0].unidade_id,
-        );
         return result[0].unidade_id;
       }
-      console.log(
-        '⚠️ [getUnidadeIdFromUser] PROFESSOR/INSTRUTOR não encontrado na tabela professores',
-      );
     }
 
-    console.log('❌ [getUnidadeIdFromUser] Nenhuma unidade encontrada');
     return null;
   }
 
@@ -263,36 +234,18 @@ export class GraduacaoController {
 
     const userUnidadeId = await this.getUnidadeIdFromUser(user);
 
-    console.log('🎓 [PROXIMOS-GRADUAR] Requisição recebida:', {
-      usuario_id: user?.id,
-      tipo_usuario: user?.tipo_usuario,
-      unidade_id_usuario: userUnidadeId,
-      filtro_unidade_id: unidadeId,
-      categoria: categoria,
-      faixa: faixa,
-      isFranqueado,
-    });
-
     // Se não passou unidade_id, aplicar regras de permissão
     if (!unidadeId) {
       if (isFranqueado) {
-        console.log(
-          '✅ [PROXIMOS-GRADUAR] Franqueado buscando de todas suas unidades',
-        );
         // Não passa unidadeId, o service vai buscar de todas as unidades
         // que o franqueado tem acesso
       } else if (userUnidadeId) {
-        console.log(
-          '✅ [PROXIMOS-GRADUAR] Aplicando unidade do usuário:',
-          userUnidadeId,
-        );
         unidadeId = userUnidadeId;
       }
     } else {
       // Se passou unidade_id, validar se o usuário tem acesso
       if (!isFranqueado && user?.tipo_usuario !== 'MASTER') {
         if (userUnidadeId && unidadeId !== userUnidadeId) {
-          console.log('🚫 [PROXIMOS-GRADUAR] ACESSO NEGADO');
           return {
             items: [],
             total: 0,
@@ -389,21 +342,9 @@ export class GraduacaoController {
 
     const userUnidadeId = await this.getUnidadeIdFromUser(user);
 
-    console.log('🎓 [GRADUACAO-HISTORICO] Requisição recebida:', {
-      usuario_id: user?.id,
-      tipo_usuario: user?.tipo_usuario,
-      unidade_id_usuario: userUnidadeId,
-      filtro_unidade_id: unidadeId,
-      isFranqueado,
-      perfis: user?.perfis?.map((p: any) => p.nome || p),
-    });
-
     // Se não passou unidade_id, aplicar regras de permissão
     if (!unidadeId) {
       if (isFranqueado) {
-        console.log(
-          '⚠️ [GRADUACAO-HISTORICO] Franqueado sem unidade_id - retornando vazio (deve selecionar unidade no frontend)',
-        );
         // Franqueado DEVE selecionar uma unidade específica
         return {
           items: [],
@@ -413,17 +354,12 @@ export class GraduacaoController {
           hasNextPage: false,
         };
       } else if (userUnidadeId) {
-        console.log(
-          '✅ [GRADUACAO-HISTORICO] Aplicando unidade do usuário:',
-          userUnidadeId,
-        );
         unidadeId = userUnidadeId;
       }
     } else {
       // Se passou unidade_id, validar se o usuário tem acesso
       if (!isFranqueado && user?.tipo_usuario !== 'MASTER') {
         if (userUnidadeId && unidadeId !== userUnidadeId) {
-          console.log('🚫 [GRADUACAO-HISTORICO] ACESSO NEGADO');
           return {
             items: [],
             total: 0,

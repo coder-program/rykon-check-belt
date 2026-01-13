@@ -292,15 +292,6 @@ export class AulaService {
     const isMaster = perfis.includes('MASTER') || perfis.includes('ADMIN');
     const isGerente = perfis.includes('GERENTE_UNIDADE');
 
-    console.log('🔍 [AULAS POR PROFESSOR] Requisição recebida:', {
-      usuario_id: user?.id,
-      perfis,
-      isFranqueado,
-      isMaster,
-      isGerente,
-      unidadeId,
-    });
-
     if (!unidadeFiltro && user) {
       if (!isMaster) {
         if (isFranqueado) {
@@ -311,24 +302,13 @@ export class AulaService {
             [user.id],
           );
 
-          console.log(
-            '📋 [AULAS POR PROFESSOR] Unidades do franqueado:',
-            unidadesResult,
-          );
-
           // Franqueado sem unidades - retornar vazio
           if (unidadesResult.length === 0) {
-            console.log(
-              '⚠️ [AULAS POR PROFESSOR] Franqueado sem unidades - retornando vazio',
-            );
             return [];
           }
 
           // Se não especificou unidade, não retornar dados agregados
           if (!unidadeId) {
-            console.log(
-              '⚠️ [AULAS POR PROFESSOR] Franqueado deve especificar unidade - retornando vazio',
-            );
             return [];
           }
         } else if (isGerente) {

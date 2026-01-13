@@ -35,11 +35,6 @@ export class ConfiguracoesCobrancaController {
     );
 
     if (isFranqueado) {
-      console.log(
-        '🔒 [ConfigCobranca] Validando acesso para franqueado:',
-        user.id,
-      );
-
       // Buscar franqueado_id
       const franqueadoResult = await this.dataSource.query(
         'SELECT id FROM teamcruz.franqueados WHERE usuario_id = $1 LIMIT 1',
@@ -70,10 +65,6 @@ export class ConfiguracoesCobrancaController {
         throw new UnauthorizedException('Você não tem acesso a esta unidade');
       }
 
-      console.log(
-        '✅ [ConfigCobranca] Acesso autorizado para unidade:',
-        unidade_id,
-      );
     }
 
     return this.configService.findByUnidade(unidade_id);
@@ -94,11 +85,6 @@ export class ConfiguracoesCobrancaController {
     );
 
     if (isFranqueado) {
-      console.log(
-        '🔒 [ConfigCobranca UPDATE] Validando acesso para franqueado:',
-        user.id,
-      );
-
       // Buscar franqueado_id
       const franqueadoResult = await this.dataSource.query(
         'SELECT id FROM teamcruz.franqueados WHERE usuario_id = $1 LIMIT 1',
@@ -129,10 +115,6 @@ export class ConfiguracoesCobrancaController {
         throw new UnauthorizedException('Você não tem acesso a esta unidade');
       }
 
-      console.log(
-        '✅ [ConfigCobranca UPDATE] Acesso autorizado para unidade:',
-        unidade_id,
-      );
     }
     return this.configService.update(unidade_id, updateDto);
   }

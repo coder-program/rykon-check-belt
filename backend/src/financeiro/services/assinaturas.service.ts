@@ -126,13 +126,6 @@ export class AssinaturasService {
     status?: StatusAssinatura,
     user?: any,
   ): Promise<Assinatura[]> {
-    console.log('🔧 [ASSINATURAS-SERVICE] findAll chamado:', {
-      unidade_id,
-      status,
-      user_id: user?.id,
-      tipo_usuario: user?.tipo_usuario,
-      perfis: user?.perfis?.map((p: any) => p.nome || p),
-    });
 
     const query = this.assinaturaRepository
       .createQueryBuilder('assinatura')
@@ -143,10 +136,6 @@ export class AssinaturasService {
 
     // Se unidade_id foi passada, filtrar diretamente por ela
     if (unidade_id) {
-      console.log(
-        '✅ [ASSINATURAS-SERVICE] Filtrando por unidade_id:',
-        unidade_id,
-      );
       query.andWhere('assinatura.unidade_id = :unidade_id', { unidade_id });
     } else if (user) {
       // Verificar se é franqueado
@@ -158,20 +147,13 @@ export class AssinaturasService {
             'FRANQUEADO',
         );
 
-      console.log('🔧 [ASSINATURAS-SERVICE] isFranqueado:', isFranqueado);
-
       if (isFranqueado) {
-        console.log(
-          '🔍 [ASSINATURAS-SERVICE] Buscando assinaturas de todas unidades do franqueado',
-        );
         // Buscar franqueado_id correto
         const franqueadoResult = await this.dataSource.query(
           `SELECT id FROM teamcruz.franqueados WHERE usuario_id = $1 LIMIT 1`,
           [user.id],
         );
         const franqueadoId = franqueadoResult[0]?.id || null;
-        console.log('🔍 [ASSINATURAS-SERVICE] Franqueado ID:', franqueadoId);
-
         if (franqueadoId) {
           // Buscar unidades do franqueado
           const unidades = await this.unidadeRepository.find({
@@ -179,11 +161,6 @@ export class AssinaturasService {
             select: ['id'],
           });
           const unidadeIds = unidades.map((u) => u.id);
-          console.log(
-            `✅ [ASSINATURAS-SERVICE] Encontradas ${unidadeIds.length} unidades:`,
-            unidadeIds,
-          );
-
           if (unidadeIds.length > 0) {
             query.andWhere('assinatura.unidade_id IN (:...unidadeIds)', {
               unidadeIds,
@@ -198,10 +175,6 @@ export class AssinaturasService {
           query.andWhere('1=0');
         }
       } else if (user.unidade_id) {
-        console.log(
-          '✅ [ASSINATURAS-SERVICE] Filtrando por unidade do usuário:',
-          user.unidade_id,
-        );
         query.andWhere('assinatura.unidade_id = :unidade_id', {
           unidade_id: user.unidade_id,
         });
@@ -217,9 +190,6 @@ export class AssinaturasService {
     // Atualizar automaticamente assinaturas expiradas
     await this.atualizarAssinaturasExpiradas(result);
 
-    console.log(
-      `✅ [ASSINATURAS-SERVICE] Retornando ${result.length} assinaturas`,
-    );
     return result;
   }
 
@@ -242,10 +212,6 @@ export class AssinaturasService {
     });
 
     if (assinaturasParaAtualizar.length > 0) {
-      console.log(
-        `⏰ [ASSINATURAS-SERVICE] Atualizando ${assinaturasParaAtualizar.length} assinatura(s) expirada(s)`,
-      );
-
       for (const assinatura of assinaturasParaAtualizar) {
         assinatura.status = StatusAssinatura.EXPIRADA;
         await this.assinaturaRepository.save(assinatura);

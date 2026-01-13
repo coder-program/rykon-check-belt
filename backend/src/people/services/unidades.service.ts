@@ -168,18 +168,10 @@ export class UnidadesService {
     // Se franqueado (não master), filtra por sua franquia
     else if (user && this.isFranqueado(user) && !this.isMaster(user)) {
       const franqueadoId = await this.getFranqueadoIdByUser(user);
-      console.log('🔍 [UNIDADES] Franqueado detectado:', {
-        user_id: user?.id,
-        franqueado_id: franqueadoId,
-      });
       if (franqueadoId) {
         whereConditions.push(`u.franqueado_id = $${paramIndex}`);
         queryParams.push(franqueadoId);
         paramIndex++;
-        console.log(
-          '✅ [UNIDADES] Aplicando filtro de franqueado:',
-          franqueadoId,
-        );
         // Franqueado vendo suas próprias unidades: mostrar TODAS (incluindo inativas)
       } else {
         console.warn('⚠️ [UNIDADES] Franqueado sem franqueado_id!');
@@ -500,11 +492,6 @@ export class UnidadesService {
       [user.id],
     );
     const franqueadoId = res[0]?.id || null;
-    console.log('🔍 [getFranqueadoIdByUser]', {
-      user_id: user.id,
-      franqueado_id: franqueadoId,
-      result_count: res.length,
-    });
     return franqueadoId;
   }
 

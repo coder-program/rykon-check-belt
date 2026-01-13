@@ -78,15 +78,6 @@ export class DespesasController {
       );
     const userUnidadeId = await this.getUnidadeIdFromUser(user);
 
-    console.log('🔍 [DESPESAS] Requisição recebida:', {
-      usuario_id: user?.id,
-      tipo_usuario: user?.tipo_usuario,
-      unidade_id_usuario: userUnidadeId,
-      filtro_unidade_id: unidade_id,
-      status,
-      isFranqueado,
-    });
-
     // Buscar franqueado_id se for franqueado
     let franqueadoId: string | null = null;
     if (isFranqueado && user?.id) {
@@ -95,26 +86,17 @@ export class DespesasController {
         [user.id],
       );
       franqueadoId = franqueadoResult[0]?.id || null;
-      console.log('🔍 [DESPESAS] Franqueado ID:', franqueadoId);
     }
 
     if (!unidade_id) {
       if (isFranqueado) {
-        console.log(
-          '✅ [DESPESAS] Franqueado buscando despesas de suas unidades',
-        );
         // Será filtrado no service pelo franqueado_id
       } else if (userUnidadeId) {
-        console.log(
-          '✅ [DESPESAS] Aplicando unidade do usuário:',
-          userUnidadeId,
-        );
         unidade_id = userUnidadeId;
       }
     } else {
       if (user && !isFranqueado && user.tipo_usuario !== 'MASTER') {
         if (userUnidadeId && unidade_id !== userUnidadeId) {
-          console.log('🚫 [DESPESAS] ACESSO NEGADO');
           return [];
         }
       }

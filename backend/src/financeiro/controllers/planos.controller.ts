@@ -89,15 +89,6 @@ export class PlanosController {
 
     const userUnidadeId = await this.getUnidadeIdFromUser(user);
 
-    console.log('🔍 [PLANOS] Requisição recebida:', {
-      usuario_id: user?.id,
-      tipo_usuario: user?.tipo_usuario,
-      unidade_id_usuario: userUnidadeId,
-      filtro_unidade_id: unidade_id,
-      isFranqueado,
-      perfis: user?.perfis?.map((p: any) => p.nome || p),
-    });
-
     // Buscar franqueado_id se for franqueado
     let franqueadoId: string | null = null;
     if (isFranqueado && user?.id) {
@@ -106,24 +97,17 @@ export class PlanosController {
         [user.id],
       );
       franqueadoId = franqueadoResult[0]?.id || null;
-      console.log('🔍 [PLANOS] Franqueado ID:', franqueadoId);
     }
 
     if (!unidade_id) {
       if (isFranqueado) {
-        console.log('✅ [PLANOS] Franqueado buscando planos das suas unidades');
         // Franqueados veem planos de todas as suas unidades
       } else if (userUnidadeId) {
-        console.log('✅ [PLANOS] Aplicando unidade do usuário:', userUnidadeId);
         unidade_id = userUnidadeId;
       }
     } else {
       if (user && !isFranqueado && user.tipo_usuario !== 'MASTER') {
         if (userUnidadeId && unidade_id !== userUnidadeId) {
-          console.log('🚫 [PLANOS] ACESSO NEGADO:', {
-            solicitada: unidade_id,
-            usuario: userUnidadeId,
-          });
           return [];
         }
       }

@@ -39,10 +39,6 @@ export class TransacoesService {
 
     // Se foi passado franqueado_id, filtrar pelas unidades desse franqueado
     if (franqueado_id) {
-      console.log(
-        '🔍 [TRANSACOES SERVICE] Filtrando por franqueado_id:',
-        franqueado_id,
-      );
       query.andWhere('unidade.franqueado_id = :franqueado_id', {
         franqueado_id,
       });
@@ -91,10 +87,6 @@ export class TransacoesService {
     }
 
     const result = await query.getMany();
-    console.log(
-      `🔍 [TRANSACOES SERVICE] Encontradas ${result.length} transações`,
-    );
-
     return result;
   }
 
@@ -102,12 +94,7 @@ export class TransacoesService {
     filtro: FiltroTransacoesDto,
     franqueado_id?: string | null,
   ): Promise<any> {
-    console.log('📋 [EXTRATO] getExtrato chamado com filtro:', filtro);
-
     const transacoes = await this.findAll(filtro, franqueado_id);
-
-    console.log(`📋 [EXTRATO] Encontradas ${transacoes.length} transações`);
-
     let saldoAnterior = 0;
     let totalEntradas = 0;
     let totalSaidas = 0;

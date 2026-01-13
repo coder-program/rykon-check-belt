@@ -39,10 +39,6 @@ export class PlanosService {
 
     // Se foi passado franqueado_id, filtrar pelas unidades desse franqueado
     if (franqueado_id) {
-      console.log(
-        '🔍 [PLANOS SERVICE] Filtrando por franqueado_id:',
-        franqueado_id,
-      );
       query.andWhere(
         '(unidade.franqueado_id = :franqueado_id OR plano.unidade_id IS NULL)',
         {
@@ -59,7 +55,6 @@ export class PlanosService {
     }
 
     const result = await query.getMany();
-    console.log('📊 [PLANOS SERVICE] Planos encontrados:', result.length);
     return result;
   }
 

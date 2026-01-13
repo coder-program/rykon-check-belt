@@ -788,14 +788,8 @@ export class AuthService {
       // Aluno: criar registro na tabela alunos
       if (perfilNome === 'aluno') {
         try {
-          console.log('[AUTH SERVICE] Dados recebidos no payload:', JSON.stringify(payload, null, 2));
-          console.log('[AUTH SERVICE] user.data_nascimento:', user.data_nascimento);
-          console.log('[AUTH SERVICE] payload.data_nascimento:', payload.data_nascimento);
-          
           // Validar data de nascimento
           const dataNascimento = user.data_nascimento || payload.data_nascimento;
-          console.log('[AUTH SERVICE] dataNascimento escolhida:', dataNascimento);
-          console.log('[AUTH SERVICE] tipo da dataNascimento:', typeof dataNascimento);
           
           // Verificar se a data existe e não é vazia
           if (!dataNascimento || String(dataNascimento).trim() === '') {
@@ -869,7 +863,6 @@ export class AuthService {
           };
 
           const alunoCriado = await this.alunosService.create(alunoData as any);
-          console.log('✅ [CREATE ALUNO] Registro de aluno criado com sucesso:', alunoCriado.id);
         } catch (error) {
           console.error(
             '❌ [CREATE ALUNO] Erro CRÍTICO ao criar registro de aluno:',
@@ -884,7 +877,6 @@ export class AuthService {
           // ⚠️ IMPORTANTE: Deletar usuário criado se falhar a criação do aluno
           try {
             await this.usuariosService.remove(user.id);
-            console.log('🗑️  [CREATE ALUNO] Usuário removido devido a falha no cadastro de aluno');
           } catch (deleteError) {
             console.error('❌ [CREATE ALUNO] Erro ao deletar usuário:', deleteError.message);
           }

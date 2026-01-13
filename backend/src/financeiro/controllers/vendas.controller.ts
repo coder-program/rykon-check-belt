@@ -69,14 +69,6 @@ export class VendasController {
       );
     const userUnidadeId = await this.getUnidadeIdFromUser(user);
 
-    console.log('🔍 [VENDAS] Requisição recebida:', {
-      usuario_id: user.id,
-      tipo_usuario: user.tipo_usuario,
-      unidade_id_usuario: userUnidadeId,
-      filtro_unidade_id: filtro.unidadeId,
-      isFranqueado,
-    });
-
     // Buscar franqueado_id se for franqueado
     let franqueadoId: string | null = null;
     if (isFranqueado && user?.id) {
@@ -85,24 +77,17 @@ export class VendasController {
         [user.id],
       );
       franqueadoId = franqueadoResult[0]?.id || null;
-      console.log('🔍 [VENDAS] Franqueado ID:', franqueadoId);
     }
 
     if (!filtro.unidadeId) {
       if (isFranqueado) {
-        console.log('✅ [VENDAS] Franqueado buscando vendas de suas unidades');
         // Será filtrado no service pelo franqueado_id
       } else if (userUnidadeId) {
-        console.log('✅ [VENDAS] Aplicando unidade do usuário:', userUnidadeId);
         filtro.unidadeId = userUnidadeId;
       }
     } else {
       if (!isFranqueado && user.tipo_usuario !== 'MASTER') {
         if (userUnidadeId && filtro.unidadeId !== userUnidadeId) {
-          console.log('🚫 [VENDAS] ACESSO NEGADO:', {
-            solicitada: filtro.unidadeId,
-            usuario: userUnidadeId,
-          });
           return [];
         }
       }
@@ -134,15 +119,6 @@ export class VendasController {
 
     const userUnidadeId = await this.getUnidadeIdFromUser(user);
 
-    console.log('🔍 [VENDAS ESTATISTICAS] Requisição recebida:', {
-      usuario_id: user?.id,
-      tipo_usuario: user?.tipo_usuario,
-      perfis: user?.perfis,
-      unidade_id_usuario: userUnidadeId,
-      filtro_unidade_id: unidadeId,
-      isFranqueado,
-    });
-
     // Buscar franqueado_id se for franqueado
     let franqueadoId: string | null = null;
     if (isFranqueado && user?.id) {
@@ -151,29 +127,17 @@ export class VendasController {
         [user.id],
       );
       franqueadoId = franqueadoResult[0]?.id || null;
-      console.log('🔍 [VENDAS ESTATISTICAS] Franqueado ID:', franqueadoId);
     }
 
     if (!unidadeId) {
       if (isFranqueado) {
-        console.log(
-          '✅ [VENDAS ESTATISTICAS] Franqueado buscando estatísticas de suas unidades',
-        );
         // Será filtrado no service pelo franqueado_id
       } else if (userUnidadeId) {
-        console.log(
-          '✅ [VENDAS ESTATISTICAS] Aplicando unidade do usuário:',
-          userUnidadeId,
-        );
         unidadeId = userUnidadeId;
       }
     } else {
       if (!isFranqueado && user?.tipo_usuario !== 'MASTER') {
         if (userUnidadeId && unidadeId !== userUnidadeId) {
-          console.log('🚫 [VENDAS ESTATISTICAS] ACESSO NEGADO:', {
-            solicitada: unidadeId,
-            usuario: userUnidadeId,
-          });
           return {
             totalVendas: 0,
             vendasPagas: 0,

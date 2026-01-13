@@ -28,13 +28,6 @@ export class DashboardFinanceiroService {
     mes?: string,
   ): Promise<any> {
     try {
-      console.log('🔧 [DASHBOARD-SERVICE] getDashboard chamado:', {
-        user_id: user.id,
-        tipo_usuario: user.tipo_usuario,
-        perfis: user.perfis?.map((p: any) => p.nome || p),
-        unidade_id_param: unidade_id,
-      });
-
       // Verificar se é franqueado (pode estar em perfis ou tipo_usuario)
       const isFranqueado =
         user.tipo_usuario === 'FRANQUEADO' ||
@@ -44,18 +37,11 @@ export class DashboardFinanceiroService {
             'FRANQUEADO',
         );
 
-      console.log('🔧 [DASHBOARD-SERVICE] isFranqueado:', isFranqueado);
-
       // Se for franqueado e não tem unidade_id, buscar todas as unidades do franqueado
       let unidadeFiltro = unidade_id;
       let unidadesIds: string[] = [];
 
       if (!unidade_id && isFranqueado) {
-        console.log(
-          '🔍 [DASHBOARD-SERVICE] Buscando franqueado_id para usuario_id:',
-          user.id,
-        );
-
         // Buscar franqueado_id na tabela franqueados
         const franqueadoResult = await this.dataSource.query(
           'SELECT id FROM teamcruz.franqueados WHERE usuario_id = $1 LIMIT 1',
@@ -71,19 +57,11 @@ export class DashboardFinanceiroService {
         }
 
         const franqueado_id = franqueadoResult[0].id;
-        console.log(
-          '✅ [DASHBOARD-SERVICE] franqueado_id encontrado:',
-          franqueado_id,
-        );
-
         // Buscar unidades do franqueado
         const unidades = await this.unidadeRepository.find({
           where: { franqueado_id: franqueado_id },
           select: ['id'],
         });
-        console.log(
-          `✅ [DASHBOARD-SERVICE] Encontradas ${unidades.length} unidades`,
-        );
 
         if (unidades.length === 0) {
           console.warn('⚠️ Franqueado sem unidades');
@@ -209,12 +187,6 @@ export class DashboardFinanceiroService {
 
       const receitasTotaisMes = receitasMes + receitasVendas;
 
-      console.log('💰 [DASHBOARD] Receitas do mês:', {
-        faturas: receitasMes,
-        vendas: receitasVendas,
-        total: receitasTotaisMes,
-      });
-
       // Contar vendas pendentes (não pagas)
       const vendasPendentes = vendasMes.filter(
         (v) => v.status === 'PENDENTE' || v.status === 'AGUARDANDO_PAGAMENTO',
@@ -238,7 +210,6 @@ export class DashboardFinanceiroService {
           totalDespesasMes =
             await this.despesasService.somarPendentes(unidadeFiltro);
         }
-        console.log('💰 [DASHBOARD] Total despesas mês:', totalDespesasMes);
       } catch (error) {
         console.warn('⚠️ [DASHBOARD] Erro ao buscar despesas:', error.message);
       }
@@ -262,8 +233,6 @@ export class DashboardFinanceiroService {
           0,
         ),
       };
-
-      console.log('📊 [DASHBOARD] Resultado final:', resultado);
 
       return resultado;
     } catch (error) {
@@ -290,11 +259,6 @@ export class DashboardFinanceiroService {
     unidade_id?: string,
     meses = 6,
   ): Promise<any> {
-    console.log('📈 [EVOLUCAO-RECEITA] Iniciando:', {
-      user_id: user.id,
-      unidade_id_param: unidade_id,
-      meses,
-    });
 
     // Verificar se é franqueado (pode estar em perfis ou tipo_usuario)
     const isFranqueado =
@@ -304,7 +268,6 @@ export class DashboardFinanceiroService {
           (typeof p === 'string' ? p : p.nome)?.toUpperCase() === 'FRANQUEADO',
       );
 
-    console.log('📈 [EVOLUCAO-RECEITA] isFranqueado:', isFranqueado);
 
     // Verificar se é franqueado e buscar suas unidades
     let unidadesIds: string[] = [];
@@ -317,27 +280,18 @@ export class DashboardFinanceiroService {
 
       if (franqueadoResult.length > 0) {
         const franqueado_id = franqueadoResult[0].id;
-        console.log('📈 [EVOLUCAO-RECEITA] franqueado_id:', franqueado_id);
 
         const unidades = await this.unidadeRepository.find({
           where: { franqueado_id: franqueado_id },
           select: ['id'],
         });
         unidadesIds = unidades.map((u) => u.id);
-        console.log(
-          `📈 [EVOLUCAO-RECEITA] Encontradas ${unidadesIds.length} unidades do franqueado:`,
-          unidadesIds,
-        );
       }
     }
 
     // Se não tem unidade_id E não é franqueado E usuário tem unidade, usar unidade do usuário
     if (!unidade_id && !isFranqueado && user.unidade_id) {
       unidade_id = user.unidade_id;
-      console.log(
-        '📈 [EVOLUCAO-RECEITA] Usando unidade do usuário:',
-        unidade_id,
-      );
     }
 
     const dados: Array<{
@@ -358,29 +312,21 @@ export class DashboardFinanceiroService {
         let faturasMes: any[] = [];
         if (unidadesIds.length > 0) {
           // Franqueado: agregar faturas de todas as unidades
-          console.log(
-            `📈 [EVOLUCAO-RECEITA] Buscando faturas do mês ${mesString} para ${unidadesIds.length} unidades`,
-          );
           for (const uid of unidadesIds) {
             const faturas = await this.faturasService.findAll(
               uid,
               undefined,
               mesString,
             );
-            console.log(`  - Unidade ${uid}: ${faturas.length} faturas`);
             faturasMes.push(...faturas);
           }
         } else if (unidade_id) {
           // Gerente ou outro: uma unidade apenas
-          console.log(
-            `📈 [EVOLUCAO-RECEITA] Buscando faturas do mês ${mesString} para unidade ${unidade_id}`,
-          );
           faturasMes = await this.faturasService.findAll(
             unidade_id,
             undefined,
             mesString,
           );
-          console.log(`  - Encontradas ${faturasMes.length} faturas`);
         } else {
           console.warn(
             `⚠️ [EVOLUCAO-RECEITA] Sem unidade_id para buscar faturas do mês ${mesString}`,
@@ -390,10 +336,6 @@ export class DashboardFinanceiroService {
         const receita = faturasMes
           .filter((f) => f.status === 'PAGA')
           .reduce((sum, f) => sum + Number(f.valor_pago || 0), 0);
-
-        console.log(
-          `📈 [EVOLUCAO-RECEITA] Mês ${mesString}: ${faturasMes.length} faturas, receita: R$ ${receita}`,
-        );
 
         dados.push({
           mes: mesString,

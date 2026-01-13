@@ -90,10 +90,6 @@ export class FaturasService {
 
     // Se foi passado franqueado_id, filtrar pelas unidades desse franqueado
     if (franqueado_id) {
-      console.log(
-        '🔍 [FATURAS SERVICE] Filtrando por franqueado_id:',
-        franqueado_id,
-      );
       query.andWhere('unidade.franqueado_id = :franqueado_id', {
         franqueado_id,
       });

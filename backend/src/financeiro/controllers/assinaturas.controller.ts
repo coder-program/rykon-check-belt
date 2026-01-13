@@ -45,23 +45,10 @@ export class AssinaturasController {
           (typeof p === 'string' ? p : p.nome)?.toUpperCase() === 'FRANQUEADO',
       );
 
-    console.log('🔍 [ASSINATURAS] Requisição recebida:', {
-      usuario_id: user?.id,
-      tipo_usuario: user?.tipo_usuario,
-      unidade_id_usuario: user?.unidade_id,
-      filtro_unidade_id: unidade_id,
-      status,
-      isFranqueado,
-    });
-
     const assinaturas = await this.assinaturasService.findAll(
       unidade_id,
       status,
       req.user,
-    );
-
-    console.log(
-      `✅ [ASSINATURAS] Retornando ${assinaturas.length} assinaturas`,
     );
 
     // Mapear para incluir campos derivados
