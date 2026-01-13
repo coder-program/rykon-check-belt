@@ -288,7 +288,14 @@ export class AssinaturasService {
     cancelarDto: CancelarAssinaturaDto,
     user: any,
   ): Promise<Assinatura> {
-    const assinatura = await this.findOne(id);
+    // Buscar sem relações para evitar problema de aluno_id undefined
+    const assinatura = await this.assinaturaRepository.findOne({
+      where: { id },
+    });
+
+    if (!assinatura) {
+      throw new NotFoundException(`Assinatura ${id} não encontrada`);
+    }
 
     assinatura.status = StatusAssinatura.CANCELADA;
     assinatura.cancelado_por = user.id;
@@ -299,7 +306,15 @@ export class AssinaturasService {
   }
 
   async pausar(id: string): Promise<Assinatura> {
-    const assinatura = await this.findOne(id);
+    // Buscar sem relações para evitar problema de aluno_id undefined
+    const assinatura = await this.assinaturaRepository.findOne({
+      where: { id },
+    });
+
+    if (!assinatura) {
+      throw new NotFoundException(`Assinatura ${id} não encontrada`);
+    }
+
     assinatura.status = StatusAssinatura.PAUSADA;
     return await this.assinaturaRepository.save(assinatura);
   }
