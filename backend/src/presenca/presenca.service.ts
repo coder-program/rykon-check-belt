@@ -2542,9 +2542,10 @@ export class PresencaService {
       );
     }
 
+    // Query sem relations para evitar que aluno_id seja undefined no save
     const presenca = await this.presencaRepository.findOne({
       where: { id },
-      relations: ['aula', 'aula.unidade', 'aluno'],
+      relations: ['aula', 'aula.unidade'],
     });
 
     if (!presenca) {
