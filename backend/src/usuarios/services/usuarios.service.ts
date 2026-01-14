@@ -896,7 +896,7 @@ export class UsuariosService {
         try {
           // Verificar se já existe registro
           const existing = await this.usuarioRepository.query(
-            `SELECT id FROM teamcruz.tablet_unidades WHERE usuario_id = $1`,
+            `SELECT id FROM teamcruz.tablet_unidades WHERE tablet_id = $1`,
             [id],
           );
 
@@ -905,7 +905,7 @@ export class UsuariosService {
             await this.usuarioRepository.query(
               `UPDATE teamcruz.tablet_unidades
                SET unidade_id = $1, updated_at = NOW()
-               WHERE usuario_id = $2`,
+               WHERE tablet_id = $2`,
               [updateData.unidade_id, id],
             );
           } else {

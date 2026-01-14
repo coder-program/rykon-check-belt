@@ -2289,12 +2289,10 @@ export class PresencaService {
       );
     }
 
-    // Definir status de aprovação baseado na configuração da unidade
-    const statusAprovacao = unidade.requer_aprovacao_checkin
-      ? 'PENDENTE'
-      : 'APROVADO';
+    // Check-in via tablet sempre é aprovado automaticamente
+    const statusAprovacao = 'APROVADO';
 
-    // Criar presença com status baseado na configuração da unidade
+    // Criar presença já aprovada (tablet sempre aprova automaticamente)
     const presenca = this.presencaRepository.create({
       aluno_id: alunoId,
       aula_id: aulaId,
@@ -2302,20 +2300,14 @@ export class PresencaService {
       status: PresencaStatus.PRESENTE,
       status_aprovacao: statusAprovacao,
       data_presenca: new Date(),
-      // Se for aprovação automática, já preencher campos de aprovação
-      ...(statusAprovacao === 'APROVADO' && {
-        aprovado_por_id: user.id,
-        aprovado_em: new Date(),
-        observacao_aprovacao:
-          'Aprovado automaticamente (unidade não requer aprovação)',
-      }),
+      aprovado_por_id: user.id,
+      aprovado_em: new Date(),
+      observacao_aprovacao: 'Aprovado automaticamente via tablet',
     });
 
     await this.presencaRepository.save(presenca);
 
-    const mensagem = unidade.requer_aprovacao_checkin
-      ? 'Check-in registrado com sucesso. Aguardando aprovação.'
-      : 'Check-in registrado e aprovado automaticamente!';
+    const mensagem = 'Check-in registrado e aprovado automaticamente!';
 
     return {
       message: mensagem,
@@ -2703,11 +2695,11 @@ export class PresencaService {
 
     console.log('✅ [getHistoricoAluno] Acesso permitido');
 
-    // Buscar apenas presenças APROVADAS
+    // Buscar presenças APROVADAS e PENDENTES (não mostrar apenas as REJEITADAS)
     const presencas = await this.presencaRepository.find({
       where: {
         aluno_id: alunoId,
-        status_aprovacao: 'APROVADO',
+        status_aprovacao: In(['APROVADO', 'PENDENTE']),
       },
       relations: ['aula', 'aula.unidade', 'aula.professor'],
       order: { created_at: 'DESC' },
@@ -2730,6 +2722,7 @@ export class PresencaService {
         faixa: faixaAtiva?.faixaDef?.nome_exibicao || 'Branca',
         faixaCodigo: faixaAtiva?.faixaDef?.codigo || 'BRANCA',
         graus: faixaAtiva?.graus_atual || 0,
+        statusAprovacao: p.status_aprovacao, // Adicionar status de aprovação
         aula: {
           nome: p.aula?.nome || 'Aula não encontrada',
           professor: p.aula?.professor?.nome_completo || 'Professor',
@@ -2782,11 +2775,12 @@ export class PresencaService {
     const inicioMes = new Date(agora.getFullYear(), agora.getMonth(), 1);
     const fimMes = new Date(agora.getFullYear(), agora.getMonth() + 1, 0);
 
-    // Presenças do mês atual
+    // Presenças do mês atual (apenas aprovadas para estatísticas)
     const presencasMes = await this.presencaRepository.count({
       where: {
         aluno_id: alunoId,
         created_at: Between(inicioMes, fimMes),
+        status_aprovacao: 'APROVADO', // Apenas presenças aprovadas para estatísticas
       },
     });
 
@@ -2794,9 +2788,12 @@ export class PresencaService {
     const diasUteisMes = 22;
     const presencaMensal = Math.round((presencasMes / diasUteisMes) * 100);
 
-    // Última presença
+    // Última presença (considerando aprovadas e pendentes)
     const ultimaPresenca = await this.presencaRepository.findOne({
-      where: { aluno_id: alunoId },
+      where: {
+        aluno_id: alunoId,
+        status_aprovacao: In(['APROVADO', 'PENDENTE']),
+      },
       order: { created_at: 'DESC' },
     });
 

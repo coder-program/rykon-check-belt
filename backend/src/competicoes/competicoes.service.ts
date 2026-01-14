@@ -393,11 +393,6 @@ export class CompeticoesService {
 
   // Buscar histórico de um aluno específico (para responsáveis)
   async historicoCompeticoesAluno(alunoId: string, user: any) {
-    console.log('🏆 [historicoCompeticoesAluno] Buscando histórico', {
-      alunoId,
-      userId: user.id,
-    });
-
     // Buscar o aluno
     const aluno = await this.alunoRepository.findOne({
       where: { id: alunoId },
@@ -417,13 +412,11 @@ export class CompeticoesService {
     const isResponsavel = aluno.responsavel?.usuario_id === user.id;
 
     if (!isMaster && !isProprioAluno && !isResponsavel) {
-      console.log('❌ [historicoCompeticoesAluno] Acesso negado');
       throw new UnauthorizedException(
         'Você não tem permissão para visualizar o histórico deste aluno',
       );
     }
 
-    console.log('✅ [historicoCompeticoesAluno] Acesso permitido');
     return this.buscarHistoricoAluno(alunoId);
   }
 }

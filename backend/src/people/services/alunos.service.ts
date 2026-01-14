@@ -1440,8 +1440,6 @@ export class AlunosService {
 
     // Se não existe, criar automaticamente
     if (!responsavelData || responsavelData.length === 0) {
-      console.log('🔧 [GET MEUS DEPENDENTES] Criando registro de responsável automaticamente');
-      
       // Buscar dados do usuário e unidade do aluno vinculado
       const usuarioData = await this.dataSource.query(
         `SELECT u.nome, u.email, u.cpf, u.telefone, a.unidade_id
@@ -1485,7 +1483,6 @@ export class AlunosService {
           ],
         );
         
-        console.log('✅ [GET MEUS DEPENDENTES] Responsável criado com sucesso');
       } else {
         console.warn('⚠️ [GET MEUS DEPENDENTES] Usuário não encontrado');
         return [];
