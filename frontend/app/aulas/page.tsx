@@ -66,6 +66,7 @@ export default function AulasPage() {
     []
   );
   const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [editingAula, setEditingAula] = useState<Aula | null>(null);
 
@@ -126,6 +127,13 @@ export default function AulasPage() {
       setProfessoresFiltrados([]);
     }
   }, [formData.unidade_id]);
+
+  // Scroll para o topo quando abrir o formulário
+  useEffect(() => {
+    if (showForm) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, [showForm]);
 
   const loadData = async () => {
     try {
@@ -239,20 +247,24 @@ export default function AulasPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSubmitting(true);
 
     // Validações de frontend
     if (formData.nome.length < 3) {
       alert("Nome da aula deve ter pelo menos 3 caracteres");
+      setSubmitting(false);
       return;
     }
 
     if (formData.nome.length > 80) {
       alert("Nome da aula deve ter no máximo 80 caracteres");
+      setSubmitting(false);
       return;
     }
 
     if (formData.descricao.length > 500) {
       alert("Descrição deve ter no máximo 500 caracteres");
+      setSubmitting(false);
       return;
     }
 
@@ -262,6 +274,7 @@ export default function AulasPage() {
       alert(
         "Nome da aula contém caracteres não permitidos. Use apenas letras, números, espaços, hífens e parênteses."
       );
+      setSubmitting(false);
       return;
     }
 
@@ -272,6 +285,7 @@ export default function AulasPage() {
       alert(
         "Descrição contém caracteres não permitidos. Use apenas letras, números, espaços e pontuação básica."
       );
+      setSubmitting(false);
       return;
     }
 
@@ -335,6 +349,8 @@ export default function AulasPage() {
     } catch (error) {
       console.error("Erro ao salvar aula:", error);
       alert("Erro ao salvar aula");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -367,6 +383,12 @@ export default function AulasPage() {
       capacidade_maxima: aula.capacidade_maxima,
       ativo: aula.ativo,
     });
+    
+    // Carregar professores da unidade
+    if (aula.unidade_id) {
+      loadProfessoresDaUnidade(aula.unidade_id);
+    }
+    
     setShowForm(true);
   };
 
@@ -399,6 +421,7 @@ export default function AulasPage() {
   const handleCancel = () => {
     setShowForm(false);
     setEditingAula(null);
+    setProfessoresFiltrados([]);
     setFormData({
       nome: "",
       descricao: "",
@@ -722,9 +745,10 @@ export default function AulasPage() {
                   <Button
                     type="submit"
                     className="bg-blue-600 hover:bg-blue-700"
+                    disabled={submitting}
                   >
                     <Save className="h-4 w-4 mr-2" />
-                    {editingAula ? "Atualizar" : "Cadastrar"}
+                    {submitting ? "Salvando..." : editingAula ? "Atualizar" : "Cadastrar"}
                   </Button>
                 </div>
               </form>
