@@ -963,6 +963,14 @@ export class UsuariosService {
           if (professor && professor.length > 0) {
             const professorId = professor[0].id;
 
+            // Atualizar unidade do professor
+            await this.usuarioRepository.query(
+              `UPDATE teamcruz.professores
+               SET unidade_id = $1, updated_at = NOW()
+               WHERE id = $2`,
+              [updateData.unidade_id, professorId],
+            );
+
             // Desativar vínculos anteriores
             await this.usuarioRepository.query(
               `UPDATE teamcruz.professor_unidades
@@ -989,40 +997,42 @@ export class UsuariosService {
             } else {
               // Criar novo vínculo
               await this.usuarioRepository.query(
-                `INSERT INTO teamcruz.professor_unidades (professor_id, unidade_id, ativo, created_at, updated_at)
-                 VALUES ($1, $2, true, NOW(), NOW())`,
-                [professorId, updateData.unidade_id],
+                `INSERT INTO teamcruz.professor_unidades (professor_id, unidade_id, usuario_id, ativo, created_at, updated_at)
+                 VALUES ($1, $2, $3, true, NOW(), NOW())`,
+                [professorId, updateData.unidade_id, id],
               );
             }
           } else {
-            // Se não tem professor_id, vincular via usuario_id (usuário pendente)
+            // CRIAR PROFESSOR SE NÃO EXISTIR
+            console.log(` [UPDATE] Criando professor para usuário ${id}`);
+            
+            const professorResult = await this.usuarioRepository.query(
+              `INSERT INTO teamcruz.professores
+               (usuario_id, tipo_cadastro, nome_completo, cpf, telefone_whatsapp, email, unidade_id, 
+                status, cadastro_completo, created_at, updated_at)
+               VALUES ($1, 'PROFESSOR', $2, $3, $4, $5, $6, 'ATIVO', true, NOW(), NOW())
+               RETURNING id`,
+              [
+                id,
+                usuario.nome,
+                usuario.cpf || null,
+                usuario.telefone || null,
+                usuario.email,
+                updateData.unidade_id,
+              ],
+            );
+
+            const professorId = professorResult[0].id;
+
+            // Criar vínculo na professor_unidades
             await this.usuarioRepository.query(
-              `UPDATE teamcruz.professor_unidades
-               SET ativo = false, updated_at = NOW()
-               WHERE usuario_id = $1`,
-              [id],
+              `INSERT INTO teamcruz.professor_unidades
+               (professor_id, unidade_id, usuario_id, ativo, created_at, updated_at)
+               VALUES ($1, $2, $3, true, NOW(), NOW())`,
+              [professorId, updateData.unidade_id, id],
             );
 
-            const existingUsuario = await this.usuarioRepository.query(
-              `SELECT id FROM teamcruz.professor_unidades
-               WHERE usuario_id = $1 AND unidade_id = $2`,
-              [id, updateData.unidade_id],
-            );
-
-            if (existingUsuario && existingUsuario.length > 0) {
-              await this.usuarioRepository.query(
-                `UPDATE teamcruz.professor_unidades
-                 SET ativo = true, updated_at = NOW()
-                 WHERE usuario_id = $1 AND unidade_id = $2`,
-                [id, updateData.unidade_id],
-              );
-            } else {
-              await this.usuarioRepository.query(
-                `INSERT INTO teamcruz.professor_unidades (usuario_id, unidade_id, ativo, created_at, updated_at)
-                 VALUES ($1, $2, true, NOW(), NOW())`,
-                [id, updateData.unidade_id],
-              );
-            }
+            console.log(` [UPDATE] Professor criado com ID ${professorId}`);
           }
         } catch (error) {
           console.error(' [UPDATE] Erro ao vincular professor:', error.message);
