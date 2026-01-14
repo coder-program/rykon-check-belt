@@ -58,6 +58,15 @@ export class CompeticoesController {
     return this.competicoesService.meuHistoricoCompeticoes(req.user.id);
   }
 
+  @Get('historico-aluno/:alunoId')
+  @ApiOperation({
+    summary: 'Buscar histórico de competições de um aluno específico',
+  })
+  @ApiResponse({ status: 200, description: 'Histórico do aluno' })
+  async historicoAluno(@Param('alunoId') alunoId: string, @Request() req) {
+    return this.competicoesService.historicoCompeticoesAluno(alunoId, req.user);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Buscar competição por ID' })
   @ApiResponse({ status: 200, description: 'Detalhes da competição' })

@@ -375,8 +375,11 @@ export default function AlunoDashboard({
         // 1. Status de Graduação - USAR realAlunoId (ID do aluno, não do usuário)
         getStatusGraduacao(realAlunoId),
 
-        // 2. Estatísticas de Presença
-        http("/presenca/minhas-estatisticas", { auth: true }),
+        // 2. Estatísticas de Presença - usar endpoint específico quando visualizando dependente
+        http(
+          alunoId ? `/presenca/estatisticas-aluno/${realAlunoId}` : "/presenca/minhas-estatisticas",
+          { auth: true }
+        ),
 
         // 3. Próximas Aulas Disponíveis
         http("/presenca/aulas-disponiveis", { auth: true }),
@@ -389,8 +392,11 @@ export default function AlunoDashboard({
           { auth: true }
         ),
 
-        // 5. Histórico de Competições
-        http("/competicoes/meu-historico", { auth: true }),
+        // 5. Histórico de Competições - usar endpoint específico quando visualizando dependente
+        http(
+          alunoId ? `/competicoes/historico-aluno/${realAlunoId}` : "/competicoes/meu-historico",
+          { auth: true }
+        ),
 
         // 6. Dados do Aluno (inclui unidade)
         // Usar realAlunoId que já foi resolvido

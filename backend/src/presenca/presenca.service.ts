@@ -2802,11 +2802,15 @@ export class PresencaService {
     // Sequência atual
     const sequenciaAtual = await this.calcularSequenciaAtual(alunoId);
 
-    return {
+    const resultado = {
       presencaMensal: Math.min(presencaMensal, 100),
       aulasMes: presencasMes,
       sequenciaAtual,
       ultimaPresenca: ultimaPresenca?.created_at.toISOString() || null,
     };
+
+    console.log('📊 [getEstatisticasAluno] Retornando estatísticas:', resultado);
+
+    return resultado;
   }
 }

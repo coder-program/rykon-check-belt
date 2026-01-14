@@ -1433,16 +1433,63 @@ export class AlunosService {
     }
 
     // Buscar responsável na tabela responsaveis
-    const responsavelData = await this.dataSource.query(
+    let responsavelData = await this.dataSource.query(
       `SELECT id FROM teamcruz.responsaveis WHERE usuario_id = $1 LIMIT 1`,
       [user.id],
     );
 
+    // Se não existe, criar automaticamente
     if (!responsavelData || responsavelData.length === 0) {
-      console.warn(
-        '⚠️ [GET MEUS DEPENDENTES] Responsável não encontrado na tabela responsaveis',
+      console.log('🔧 [GET MEUS DEPENDENTES] Criando registro de responsável automaticamente');
+      
+      // Buscar dados do usuário e unidade do aluno vinculado
+      const usuarioData = await this.dataSource.query(
+        `SELECT u.nome, u.email, u.cpf, u.telefone, a.unidade_id
+         FROM teamcruz.usuarios u
+         LEFT JOIN teamcruz.alunos a ON a.usuario_id = u.id
+         WHERE u.id = $1
+         LIMIT 1`,
+        [user.id],
       );
-      return [];
+
+      if (usuarioData && usuarioData.length > 0) {
+        const usuario = usuarioData[0];
+        
+        // Se não tem unidade do aluno, buscar a primeira unidade ativa
+        let unidadeId = usuario.unidade_id;
+        if (!unidadeId) {
+          const unidadeData = await this.dataSource.query(
+            `SELECT id FROM teamcruz.unidades WHERE status = 'ATIVA' LIMIT 1`,
+          );
+          unidadeId = unidadeData && unidadeData.length > 0 ? unidadeData[0].id : null;
+        }
+        
+        if (!unidadeId) {
+          console.warn('⚠️ [GET MEUS DEPENDENTES] Nenhuma unidade encontrada');
+          return [];
+        }
+        
+        // Criar responsável com dados do usuário
+        responsavelData = await this.dataSource.query(
+          `INSERT INTO teamcruz.responsaveis
+           (usuario_id, nome_completo, email, cpf, telefone, unidade_id)
+           VALUES ($1, $2, $3, $4, $5, $6)
+           RETURNING id`,
+          [
+            user.id,
+            usuario.nome || 'Responsável',
+            usuario.email || `resp${user.id}@temp.local`,
+            usuario.cpf || '00000000000',
+            usuario.telefone || '00000000000',
+            unidadeId,
+          ],
+        );
+        
+        console.log('✅ [GET MEUS DEPENDENTES] Responsável criado com sucesso');
+      } else {
+        console.warn('⚠️ [GET MEUS DEPENDENTES] Usuário não encontrado');
+        return [];
+      }
     }
 
     const responsavelId = responsavelData[0].id;

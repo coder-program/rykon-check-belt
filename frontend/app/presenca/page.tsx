@@ -75,6 +75,7 @@ export default function PresencaPage() {
 
   // Pegar alunoId da query string (para check-in de dependentes)
   const [targetAlunoId, setTargetAlunoId] = useState<string | null>(null);
+  const [isInitialized, setIsInitialized] = useState(false);
   
   // Estados existentes
   const [scanner, setScanner] = useState<Html5QrcodeScanner | null>(null);
@@ -115,10 +116,19 @@ export default function PresencaPage() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const alunoIdParam = params.get('alunoId');
+    console.log('🎯 [PRESENCA PAGE] Detectando alunoId da URL:', alunoIdParam);
     setTargetAlunoId(alunoIdParam);
+    setIsInitialized(true);
   }, []);
 
   useEffect(() => {
+    // Só carregar dados depois que inicializar
+    if (!isInitialized) {
+      console.log('⏳ [PRESENCA PAGE] Aguardando inicialização...');
+      return;
+    }
+    
+    console.log('🔄 [PRESENCA PAGE] Carregando dados com targetAlunoId:', targetAlunoId);
     loadAulaAtiva();
     loadHistoricoPresenca();
     loadPresencasPendentes();
@@ -126,7 +136,7 @@ export default function PresencaPage() {
     if (!targetAlunoId) {
       loadMeusFilhos();
     }
-  }, [targetAlunoId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [targetAlunoId, isInitialized]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     // Verificar se é responsável e tem filhos cadastrados
@@ -218,6 +228,10 @@ export default function PresencaPage() {
         ? `${process.env.NEXT_PUBLIC_API_URL}/presenca/historico-aluno/${targetAlunoId}`
         : `${process.env.NEXT_PUBLIC_API_URL}/presenca/minha-historico`;
       
+      console.log('📜 [PRESENCA PAGE] Carregando histórico');
+      console.log('   targetAlunoId:', targetAlunoId);
+      console.log('   endpoint:', endpoint);
+      
       const response = await fetch(endpoint, {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -227,10 +241,13 @@ export default function PresencaPage() {
 
       if (response.ok) {
         const data = await response.json();
+        console.log('✅ [PRESENCA PAGE] Histórico recebido:', data.length, 'registros');
         setPresencas(data.slice(0, 10)); // Últimas 10 presenças
+      } else {
+        console.error('❌ [PRESENCA PAGE] Erro ao carregar histórico:', response.status);
       }
     } catch (error) {
-      console.error("Erro ao carregar histórico:", error);
+      console.error("❌ [PRESENCA PAGE] Erro ao carregar histórico:", error);
     }
   };
 
@@ -271,6 +288,10 @@ export default function PresencaPage() {
         ? `${process.env.NEXT_PUBLIC_API_URL}/presenca/estatisticas-aluno/${targetAlunoId}`
         : `${process.env.NEXT_PUBLIC_API_URL}/presenca/minhas-estatisticas`;
       
+      console.log('📊 [PRESENCA PAGE] Carregando estatísticas');
+      console.log('   targetAlunoId:', targetAlunoId);
+      console.log('   endpoint:', endpoint);
+      
       const response = await fetch(endpoint, {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -280,10 +301,13 @@ export default function PresencaPage() {
 
       if (response.ok) {
         const data = await response.json();
+        console.log('✅ [PRESENCA PAGE] Estatísticas recebidas:', data);
         setStats(data);
+      } else {
+        console.error('❌ [PRESENCA PAGE] Erro na resposta:', response.status, response.statusText);
       }
     } catch (error) {
-      console.error("Erro ao carregar estatísticas:", error);
+      console.error("❌ [PRESENCA PAGE] Erro ao carregar estatísticas:", error);
     } finally {
       setStatsLoading(false);
     }

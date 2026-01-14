@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, MoreThanOrEqual, Between, Like } from 'typeorm';
@@ -388,5 +389,41 @@ export class CompeticoesService {
     }
 
     return this.buscarHistoricoAluno(aluno.id);
+  }
+
+  // Buscar histórico de um aluno específico (para responsáveis)
+  async historicoCompeticoesAluno(alunoId: string, user: any) {
+    console.log('🏆 [historicoCompeticoesAluno] Buscando histórico', {
+      alunoId,
+      userId: user.id,
+    });
+
+    // Buscar o aluno
+    const aluno = await this.alunoRepository.findOne({
+      where: { id: alunoId },
+      relations: ['responsavel'],
+    });
+
+    if (!aluno) {
+      throw new NotFoundException('Aluno não encontrado');
+    }
+
+    // Verificar permissões
+    const perfisNomes = (user?.perfis || []).map((p: any) =>
+      typeof p === 'string' ? p.toUpperCase() : p.nome?.toUpperCase(),
+    );
+    const isMaster = perfisNomes.includes('MASTER');
+    const isProprioAluno = aluno.usuario_id === user.id;
+    const isResponsavel = aluno.responsavel?.usuario_id === user.id;
+
+    if (!isMaster && !isProprioAluno && !isResponsavel) {
+      console.log('❌ [historicoCompeticoesAluno] Acesso negado');
+      throw new UnauthorizedException(
+        'Você não tem permissão para visualizar o histórico deste aluno',
+      );
+    }
+
+    console.log('✅ [historicoCompeticoesAluno] Acesso permitido');
+    return this.buscarHistoricoAluno(alunoId);
   }
 }
