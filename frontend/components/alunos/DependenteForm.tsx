@@ -23,6 +23,7 @@ interface DependenteFormData {
   cpf?: string;
   data_nascimento: string;
   genero: Genero;
+  foto?: string;
   email?: string;
   telefone?: string;
   telefone_emergencia?: string;
@@ -321,6 +322,75 @@ export default function DependenteForm({
                   </SelectContent>
                 </Select>
               </div>
+            </div>
+
+            {/* Foto de Perfil */}
+            <div>
+              <Label className="text-xs sm:text-sm block mb-2">
+                Foto de Perfil
+              </Label>
+              <div className="flex items-center gap-3 sm:gap-4">
+                {/* Preview da Foto */}
+                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white font-bold text-lg sm:text-2xl overflow-hidden flex-shrink-0">
+                  {formData.foto ? (
+                    <img
+                      src={formData.foto}
+                      alt="Preview"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    formData.nome_completo.charAt(0).toUpperCase() || "?"
+                  )}
+                </div>
+
+                {/* Input de Foto */}
+                <div className="flex-1">
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/jpg,image/webp"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        // Validar tamanho (máx 2MB)
+                        if (file.size > 2 * 1024 * 1024) {
+                          alert("A foto deve ter no máximo 2MB");
+                          return;
+                        }
+
+                        // Converter para base64
+                        const reader = new FileReader();
+                        reader.onloadend = () => {
+                          handleChange("foto", reader.result as string);
+                        };
+                        reader.readAsDataURL(file);
+                      }
+                    }}
+                    className="hidden"
+                    id="foto-dependente-input"
+                  />
+                  <label
+                    htmlFor="foto-dependente-input"
+                    className="inline-flex items-center px-3 py-2 sm:px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 cursor-pointer transition-colors text-xs sm:text-sm"
+                  >
+                    Escolher Foto
+                  </label>
+                  {formData.foto && (
+                    <button
+                      type="button"
+                      onClick={() => handleChange("foto", "")}
+                      className="ml-2 inline-flex items-center px-3 py-2 sm:px-4 bg-red-600 text-white rounded-lg hover:bg-red-700 cursor-pointer transition-colors text-xs sm:text-sm"
+                    >
+                      Remover
+                    </button>
+                  )}
+                  <p className="text-[10px] sm:text-xs text-gray-500 mt-1.5 sm:mt-2">
+                    JPG, PNG ou WEBP. Máximo 2MB.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
 
               <div>
                 <Label htmlFor="unidade_id" className="text-xs sm:text-sm">

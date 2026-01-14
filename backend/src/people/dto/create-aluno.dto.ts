@@ -252,7 +252,6 @@ export class CreateAlunoDto {
 
   @IsString()
   @IsOptional()
-  @Length(1, 500)
   foto_url?: string;
 }
 

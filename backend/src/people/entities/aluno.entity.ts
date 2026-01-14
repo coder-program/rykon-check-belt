@@ -11,6 +11,7 @@ import {
   DeleteDateColumn,
 } from 'typeorm';
 import { Unidade } from './unidade.entity';
+import { Usuario } from '../../usuarios/entities/usuario.entity';
 import { AlunoFaixa } from '../../graduacao/entities/aluno-faixa.entity';
 import { AlunoGraduacao } from '../../graduacao/entities/aluno-graduacao.entity';
 import { AlunoUnidade } from './aluno-unidade.entity';
@@ -198,7 +199,7 @@ export class Aluno {
   @Column({ type: 'text', nullable: true })
   observacoes: string;
 
-  @Column({ type: 'varchar', length: 500, nullable: true })
+  @Column({ type: 'text', nullable: true })
   foto_url: string;
 
   // ===== APROVAÇÃO DE CADASTRO =====
@@ -237,6 +238,10 @@ export class Aluno {
   @ManyToOne(() => Unidade, { eager: false })
   @JoinColumn({ name: 'unidade_id' })
   unidade: Unidade;
+
+  @ManyToOne(() => Usuario, { eager: false })
+  @JoinColumn({ name: 'usuario_id' })
+  usuario: Usuario;
 
   // Many-to-Many com Modalidades via tabela intermediária
   @OneToMany(() => AlunoModalidade, (alunoModalidade) => alunoModalidade.aluno)

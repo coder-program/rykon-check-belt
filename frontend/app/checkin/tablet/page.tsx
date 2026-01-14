@@ -63,8 +63,13 @@ export default function TabletCheckinPage() {
         );
 
         if (response.ok) {
-          const data = await response.json();
-          setAulaAtiva(data);
+          const text = await response.text();
+          if (text) {
+            const data = JSON.parse(text);
+            setAulaAtiva(data);
+          } else {
+            setAulaAtiva(null);
+          }
         }
       } catch (error) {
         console.error("Erro ao buscar aula ativa:", error);

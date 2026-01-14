@@ -256,12 +256,20 @@ export class AlunosService {
   async findById(id: string, user?: any): Promise<Aluno> {
     const aluno = await this.alunoRepository.findOne({
       where: { id },
-      relations: ['unidade', 'alunoUnidades', 'alunoUnidades.unidade'],
+      relations: ['unidade', 'alunoUnidades', 'alunoUnidades.unidade', 'usuario'],
     });
 
     if (!aluno) {
       throw new NotFoundException(`Aluno com ID ${id} não encontrado`);
     }
+
+    console.log('✅ [findById] Aluno encontrado:', {
+      id: aluno.id,
+      nome: aluno.nome_completo,
+      tem_usuario: !!aluno.usuario,
+      foto_url: aluno.foto_url,
+      usuario_foto: aluno.usuario?.foto?.substring(0, 50)
+    });
 
     // Se franqueado (não master), verifica se aluno pertence às suas unidades
     if (user && this.isFranqueado(user) && !this.isMaster(user)) {
@@ -1379,6 +1387,8 @@ export class AlunosService {
       ativa: true,
     });
     query.leftJoinAndSelect('faixas.faixaDef', 'faixaDef');
+    query.leftJoin('aluno.usuario', 'usuario'); // Join com usuario para pegar foto
+    query.addSelect(['usuario.id', 'usuario.foto']); // Selecionar apenas id e foto
 
     // Excluir alunos que já tem presença hoje (APROVADO ou PENDENTE)
     const hoje = new Date();
@@ -1412,16 +1422,38 @@ export class AlunosService {
 
     const alunos = await query.getMany();
 
-    return alunos.map((aluno) => ({
-      id: aluno.id,
-      nome: aluno.nome_completo,
-      cpf: aluno.cpf,
-      foto: aluno.foto_url,
-      faixa: aluno.faixas?.[0]?.faixaDef?.nome_exibicao || 'Sem faixa',
-      corFaixa: aluno.faixas?.[0]?.faixaDef?.cor_hex || '#CCCCCC',
-      numeroMatricula: aluno.numero_matricula,
-      unidade: aluno.unidade?.nome,
-    }));
+    // Construir URL completa para as fotos
+    // Usar a URL pública da API (backend)
+    const baseUrl = process.env.API_URL || process.env.PUBLIC_API_URL || 'http://localhost:3000';
+
+    const resultado = alunos.map((aluno) => {
+      // USAR A FOTO DA TABELA USUARIOS em vez de alunos.foto_url
+      const fotoUsuario = aluno.usuario?.foto;
+      
+      // Se foto já é data URI (base64) ou URL absoluta, usar direto
+      // Se é caminho relativo (começa com /), concatenar baseUrl
+      let fotoUrl: string | null = null;
+      if (fotoUsuario) {
+        if (fotoUsuario.startsWith('data:') || fotoUsuario.startsWith('http')) {
+          fotoUrl = fotoUsuario; // Data URI ou URL absoluta
+        } else {
+          fotoUrl = `${baseUrl}${fotoUsuario}`; // Caminho relativo
+        }
+      }
+      
+      return {
+        id: aluno.id,
+        nome: aluno.nome_completo,
+        cpf: aluno.cpf,
+        foto: fotoUrl, // Agora usa usuario.foto corretamente
+        faixa: aluno.faixas?.[0]?.faixaDef?.nome_exibicao || 'Sem faixa',
+        corFaixa: aluno.faixas?.[0]?.faixaDef?.cor_hex || '#CCCCCC',
+        numeroMatricula: aluno.numero_matricula,
+        unidade: aluno.unidade?.nome,
+      };
+    });
+
+    return resultado;
   }
 
   /**

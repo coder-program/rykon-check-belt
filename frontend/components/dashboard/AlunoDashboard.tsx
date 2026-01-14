@@ -39,6 +39,7 @@ interface DependenteFormData {
   cpf?: string;
   data_nascimento: string;
   genero: Genero;
+  foto?: string;
   email?: string;
   telefone?: string;
   telefone_emergencia?: string;
@@ -247,6 +248,7 @@ export default function AlunoDashboard({
     nome: string;
   } | null>(null);
   const [alunoNome, setAlunoNome] = useState<string | null>(null);
+  const [alunoFoto, setAlunoFoto] = useState<string | null>(null);
   const [canAccess, setCanAccess] = useState(false);
   const [dependentes, setDependentes] = useState<Dependente[]>([]);
   const [showModal, setShowModal] = useState(false);
@@ -266,6 +268,7 @@ export default function AlunoDashboard({
     cpf: "",
     data_nascimento: "",
     genero: "MASCULINO",
+    foto: "",
     email: "",
     telefone: "",
     telefone_emergencia: "",
@@ -447,9 +450,15 @@ export default function AlunoDashboard({
       if (alunoData.status === "fulfilled") {
         const aluno = alunoData.value;
 
-        // Se estamos visualizando um dependente (alunoId passado como prop), pegar o nome
+        // Se estamos visualizando um dependente (alunoId passado como prop), pegar o nome e foto
         if (alunoId && aluno.nome_completo) {
           setAlunoNome(aluno.nome_completo);
+          // Buscar a foto do dependente (pode estar em foto_url ou através do usuario)
+          if (aluno.foto_url) {
+            setAlunoFoto(aluno.foto_url);
+          } else if (aluno.usuario?.foto) {
+            setAlunoFoto(aluno.usuario.foto);
+          }
         }
 
         if (aluno.unidade) {
@@ -565,6 +574,7 @@ export default function AlunoDashboard({
         cpf: dadosCompletos.cpf || "",
         data_nascimento: dadosCompletos.data_nascimento || "",
         genero: dadosCompletos.genero || "MASCULINO",
+        foto: dadosCompletos.foto_url || dadosCompletos.usuario?.foto || "",
         email: dadosCompletos.email || "",
         telefone: dadosCompletos.telefone || "",
         telefone_emergencia: dadosCompletos.telefone_emergencia || "",
@@ -636,7 +646,26 @@ export default function AlunoDashboard({
                 if (cpfLimpo.length > 0) {
                   acc[key] = cpfLimpo;
                 }
-              } else {
+              }
+              // Converter campos numéricos inteiros
+              else if (key === "graus" || key === "dia_vencimento") {
+                const numValue = parseInt(String(value));
+                if (!isNaN(numValue)) {
+                  acc[key] = numValue;
+                }
+              }
+              // Converter campos numéricos decimais
+              else if (key === "valor_mensalidade" || key === "desconto_percentual") {
+                const numValue = parseFloat(String(value));
+                if (!isNaN(numValue)) {
+                  acc[key] = numValue;
+                }
+              }
+              // Renomear foto para foto_url (campo correto na entidade Aluno)
+              else if (key === "foto") {
+                acc["foto_url"] = value;
+              }
+              else {
                 acc[key] = value;
               }
             }
@@ -644,6 +673,8 @@ export default function AlunoDashboard({
           },
           {} as Record<string, unknown>
         );
+
+        console.log("📤 Payload de atualização:", dataToSend);
 
         const response = await http(`/alunos/${editingDependenteId}`, {
           method: "PATCH",
@@ -679,6 +710,7 @@ export default function AlunoDashboard({
         cpf: "",
         data_nascimento: "",
         genero: "MASCULINO",
+        foto: "",
         email: "",
         telefone: "",
         telefone_emergencia: "",
@@ -903,9 +935,9 @@ export default function AlunoDashboard({
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 sm:mb-4">
             <div className="flex items-center gap-2 sm:gap-4">
               {/* Foto de Perfil */}
-              {user?.foto ? (
+              {(alunoId ? alunoFoto : user?.foto) ? (
                 <img
-                  src={user.foto}
+                  src={alunoId ? alunoFoto! : user!.foto}
                   alt={alunoNome || user?.nome || "Aluno"}
                   className="h-12 w-12 sm:h-16 sm:w-16 rounded-full object-cover border-2 sm:border-4 border-blue-500 shadow-lg"
                 />
@@ -1632,6 +1664,7 @@ export default function AlunoDashboard({
               cpf: "",
               data_nascimento: "",
               genero: "MASCULINO",
+              foto: "",
               email: "",
               telefone: "",
               telefone_emergencia: "",

@@ -260,20 +260,29 @@ export class AlunosController {
 
   @Get(':id')
   @ApiOperation({ summary: 'Obter aluno por ID' })
-  get(@Param('id') id: string, @Request() req) {
-    const user = req?.user || null;
-    return this.service.findById(id, user);
+  async get(@Param('id') id: string, @Request() req) {
+    try {
+      const user = req?.user || null;
+      const result = await this.service.findById(id, user);
+      return result;
+    } catch (error) {
+      console.error('❌ [GET /alunos/:id] Erro:', error.message);
+      throw error;
+    }
   }
 
   @Patch(':id')
   @ApiOperation({ summary: 'Atualizar aluno' })
   update(
     @Param('id') id: string,
-    @Body(ValidationPipe) dto: UpdateAlunoDto,
+    @Body() bodyRaw: any,
     @Request() req,
   ) {
+    // Validar manualmente
+    const validationPipe = new ValidationPipe({ transform: true, whitelist: true });
+    
     const user = req?.user || null;
-    return this.service.update(id, dto, user);
+    return this.service.update(id, bodyRaw, user);
   }
 
   @UseGuards(JwtAuthGuard, PermissionsGuard)

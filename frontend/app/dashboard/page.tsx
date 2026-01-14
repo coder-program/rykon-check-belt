@@ -16,6 +16,13 @@ export default function DashboardPage() {
   const { user, logout, loading, isAuthenticated } = useAuth();
   const router = useRouter();
 
+  console.log('========= DASHBOARD PAGE =========')
+  console.log('Loading:', loading)
+  console.log('IsAuthenticated:', isAuthenticated)
+  console.log('User:', user)
+  console.log('User Perfis:', user?.perfis)
+  console.log('====================================')
+
   const hasPerfil = useCallback(
     (p: string) => {
       if (!user?.perfis || !Array.isArray(user.perfis)) return false;
@@ -39,6 +46,7 @@ export default function DashboardPage() {
   // VERIFICAR SE RECEPCIONISTA PRECISA COMPLETAR CADASTRO
   useEffect(() => {
     if (user && hasPerfil("recepcionista") && !user.cadastro_completo) {
+      console.log('[DASHBOARD] Recepcionista precisa completar cadastro, redirecionando...')
       router.push("/onboarding/recepcionista");
     }
   }, [user, router, hasPerfil]);
@@ -46,6 +54,7 @@ export default function DashboardPage() {
   // Redirecionamento inteligente - impede dashboard genérico
   useEffect(() => {
     if (!loading && !isAuthenticated) {
+      console.log('[DASHBOARD] Usuário não autenticado, redirecionando para login')
       router.push("/login");
       return;
     }
@@ -57,6 +66,7 @@ export default function DashboardPage() {
         !Array.isArray(user.perfis) ||
         user.perfis.length === 0
       ) {
+        console.log('[DASHBOARD] Usuário sem perfis válidos, fazendo logout')
         logout();
         router.push("/login");
         return;
@@ -86,18 +96,22 @@ export default function DashboardPage() {
 
   // Renderizar dashboard específico por perfil
   if (hasPerfil("master")) {
+    console.log('[DASHBOARD] Renderizando MasterDashboard')
     return <MasterDashboard />;
   }
 
   if (hasPerfil("franqueado")) {
+    console.log('[DASHBOARD] Renderizando FranqueadoDashboard')
     return <FranqueadoDashboard />;
   }
 
   if (hasPerfil("gerente_unidade")) {
+    console.log('[DASHBOARD] Renderizando GerenteDashboard')
     return <GerenteDashboard />;
   }
 
   if (hasPerfil("recepcionista")) {
+    console.log('[DASHBOARD] Renderizando RecepcionistaDashboard')
     // Se cadastro incompleto, não renderiza (vai redirecionar)
     if (!user?.cadastro_completo) {
       return (
@@ -115,19 +129,24 @@ export default function DashboardPage() {
   }
 
   if (hasPerfil("aluno")) {
+    console.log('[DASHBOARD] Renderizando AlunoDashboard')
     return <AlunoDashboard />;
   }
 
   if (hasPerfil("instrutor") || hasPerfil("professor")) {
+    console.log('[DASHBOARD] Renderizando InstrutorDashboard')
     return <InstrutorDashboard />;
   }
 
   if (hasPerfil("responsavel")) {
+    console.log('[DASHBOARD] Renderizando ResponsavelDashboard')
     // Responsável tem dashboard próprio para gerenciar filhos
     return <ResponsavelDashboard />;
   }
 
   // Se chegou até aqui, o usuário tem perfis não reconhecidos
+  console.log('[DASHBOARD] Perfil não reconhecido, fazendo logout')
+  console.log('[DASHBOARD] Perfis disponíveis:', user?.perfis)
   setTimeout(() => {
     logout();
     router.push("/login");
