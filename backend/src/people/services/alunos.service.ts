@@ -1421,14 +1421,14 @@ export class AlunosService {
     query.orderBy('aluno.nome_completo', 'ASC');
 
     const alunos = await query.getMany();
-
+    
     // Construir URL completa para as fotos
     // Usar a URL pública da API (backend)
     const baseUrl = process.env.API_URL || process.env.PUBLIC_API_URL || 'http://localhost:3000';
 
     const resultado = alunos.map((aluno) => {
-      // USAR A FOTO DA TABELA USUARIOS em vez de alunos.foto_url
-      const fotoUsuario = aluno.usuario?.foto;
+      // PRIORIDADE: usuario.foto > aluno.foto_url
+      const fotoUsuario = aluno.usuario?.foto || aluno.foto_url;
       
       // Se foto já é data URI (base64) ou URL absoluta, usar direto
       // Se é caminho relativo (começa com /), concatenar baseUrl
