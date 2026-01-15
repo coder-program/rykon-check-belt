@@ -342,6 +342,13 @@ export default function FranqueadoDashboard() {
       color: "bg-orange-500",
     },
     {
+      title: "Aprovar Check-ins",
+      description: "Aprovar check-ins do tablet",
+      icon: CheckCircle,
+      action: () => router.push("/admin/aprovar-checkins"),
+      color: "bg-cyan-500",
+    },
+    {
       title: "Relatório de Presenças",
       description: "Ver relatório completo de presenças",
       icon: CheckCircle,
