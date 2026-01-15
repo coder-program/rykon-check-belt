@@ -1253,14 +1253,7 @@ function RegisterPageContent() {
                                     className="hover:bg-gray-700 focus:bg-gray-700"
                                   >
                                     <div className="flex flex-col">
-                                      <span
-                                        className="font-medium"
-                                        style={{
-                                          color:
-                                            faixaColors[faixa.codigo]?.text ||
-                                            "#FFFFFF",
-                                        }}
-                                      >
+                                      <span className="font-medium text-white">
                                         {faixa.nome_exibicao}
                                       </span>
                                       <span className="text-xs text-gray-400">
