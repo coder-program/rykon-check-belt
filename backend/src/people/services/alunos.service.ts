@@ -833,13 +833,24 @@ export class AlunosService {
     // Preparar dados para atualização
     const updateData: any = {
       ...dto,
-      data_nascimento: dto.data_nascimento
-        ? new Date(dto.data_nascimento + 'T12:00:00')
-        : aluno.data_nascimento,
-      data_matricula: dto.data_matricula
-        ? new Date(dto.data_matricula + 'T12:00:00')
-        : aluno.data_matricula,
     };
+
+    // Converter datas apenas se não estiverem vazias
+    if (dto.data_nascimento && String(dto.data_nascimento).trim() !== '') {
+      updateData.data_nascimento = new Date(dto.data_nascimento + 'T12:00:00');
+    } else if (dto.data_nascimento === '') {
+      updateData.data_nascimento = null;
+    } else {
+      updateData.data_nascimento = aluno.data_nascimento;
+    }
+
+    if (dto.data_matricula && String(dto.data_matricula).trim() !== '') {
+      updateData.data_matricula = new Date(dto.data_matricula + 'T12:00:00');
+    } else if (dto.data_matricula === '') {
+      updateData.data_matricula = null;
+    } else {
+      updateData.data_matricula = aluno.data_matricula;
+    }
 
     // Remover campos que não existem mais na entidade Aluno
     // Mas capturar seus valores para atualizar a faixa ativa depois
