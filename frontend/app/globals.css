@@ -1,6 +1,15 @@
 @import "tailwindcss";
 @plugin "daisyui";
 
+/* Forçar esquema de cores light para prevenir modo escuro do navegador */
+:root {
+  color-scheme: light only;
+}
+
+html {
+  color-scheme: light;
+}
+
 :root {
   /* Tema claro - Base branca e azul */
   --background: 0 0% 100%; /* Branco puro */
@@ -124,6 +133,24 @@
     @apply bg-background text-foreground;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    color-scheme: light;
+  }
+
+  /* Forçar cores dos inputs para prevenir inversão do modo escuro */
+  input,
+  textarea,
+  select {
+    color-scheme: light;
+    background-color: white !important;
+    color: #1e293b !important;
+  }
+
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus,
+  input:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 30px white inset !important;
+    -webkit-text-fill-color: #1e293b !important;
   }
 }
 
