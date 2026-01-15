@@ -384,8 +384,13 @@ export default function AlunoDashboard({
           { auth: true }
         ),
 
-        // 3. Próximas Aulas Disponíveis
-        http("/presenca/aulas-disponiveis", { auth: true }),
+        // 3. Próximas Aulas Disponíveis - passar alunoId se estiver visualizando dependente
+        http(
+          `/presenca/aulas-disponiveis${
+            realAlunoId ? `?alunoId=${realAlunoId}` : ""
+          }`,
+          { auth: true }
+        ),
 
         // 4. Ranking da Unidade - passar alunoId se estiver visualizando dependente
         http(

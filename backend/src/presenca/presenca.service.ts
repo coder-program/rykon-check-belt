@@ -1826,26 +1826,38 @@ export class PresencaService {
     }));
   }
 
-  async getAulasDisponiveis(user: any, data?: string) {
+  async getAulasDisponiveis(user: any, data?: string, alunoId?: string) {
     const hoje = data ? new Date(data) : new Date();
     const diaSemana = hoje.getDay();
 
-    console.log(`🔍 [getAulasDisponiveis] Buscando aulas para usuário: ${user.id}`);
+    console.log(`🔍 [getAulasDisponiveis] Buscando aulas para usuário: ${user.id}, alunoId: ${alunoId}`);
     console.log(`📅 [getAulasDisponiveis] Data: ${hoje.toISOString()}, Dia da semana: ${diaSemana}`);
 
     try {
       // Buscar unidade do aluno ou franqueado
       let unidadeId: string | null = null;
 
-      // Tentar como aluno primeiro
-      const aluno = await this.alunoRepository.findOne({
-        where: { usuario_id: user.id },
-        relations: ['unidade'],
-      });
+      // Se foi passado alunoId, buscar a unidade desse aluno específico (dependente)
+      let aluno: any = null;
+      if (alunoId) {
+        aluno = await this.alunoRepository.findOne({
+          where: { id: alunoId },
+          relations: ['unidade'],
+        });
+        console.log(`👶 [getAulasDisponiveis] Buscando aulas para dependente: ${aluno?.nome_completo}`);
+      } else {
+        // Tentar como aluno do próprio usuário logado
+        aluno = await this.alunoRepository.findOne({
+          where: { usuario_id: user.id },
+          relations: ['unidade'],
+        });
+      }
 
       if (aluno?.unidade_id) {
         unidadeId = aluno.unidade_id;
+        console.log(`✅ [getAulasDisponiveis] Unidade encontrada: ${unidadeId}`);
       } else {
+        console.log(`⚠️ [getAulasDisponiveis] Aluno sem unidade, tentando franqueado...`);
         // Se não é aluno, tentar buscar como franqueado
         const franqueado = await this.dataSource.query(
           `SELECT u.id FROM teamcruz.unidades u 
@@ -1856,8 +1868,11 @@ export class PresencaService {
 
         if (franqueado.length > 0) {
           unidadeId = franqueado[0].id;
+          console.log(`✅ [getAulasDisponiveis] Unidade franqueado: ${unidadeId}`);
         }
       }
+
+      console.log(`🏢 [getAulasDisponiveis] unidadeId final: ${unidadeId}`);
 
       // Buscar aulas ativas da unidade do aluno/franqueado ou todas se não tiver unidade
       const whereConditions: any = {
@@ -1869,6 +1884,8 @@ export class PresencaService {
         whereConditions.unidade_id = unidadeId;
       }
 
+      console.log(`🔎 [getAulasDisponiveis] Buscando aulas com:`, whereConditions);
+
       const aulas = await this.aulaRepository.find({
         where: whereConditions,
         relations: ['unidade', 'professor'],
@@ -1877,14 +1894,34 @@ export class PresencaService {
         },
       });
 
-      // Filtrar aulas que ainda não começaram ou estão em andamento
-      const agora = hoje.getTime();
+      console.log(`📚 [getAulasDisponiveis] Aulas encontradas: ${aulas.length}`);
+
+      console.log(`📚 [getAulasDisponiveis] Aulas encontradas: ${aulas.length}`);
+
+      // IMPORTANTE: Para aulas recorrentes (com dia_semana), NÃO usar data_hora_fim
+      // porque são timestamps antigos. Apenas retornar todas as aulas do dia.
       const aulasDisponiveis = aulas.filter((aula) => {
-        if (aula.data_hora_fim) {
-          return aula.data_hora_fim.getTime() > agora;
+        // Se é aula recorrente (tem dia_semana), sempre disponível
+        if (aula.dia_semana !== null && aula.dia_semana !== undefined) {
+          console.log(`⏰ ${aula.nome}: aula recorrente, sempre disponível`);
+          return true;
         }
+        
+        // Se for aula única (sem dia_semana), usar data_hora_fim
+        if (aula.data_hora_fim) {
+          const agora = hoje.getTime();
+          const fimTime = aula.data_hora_fim.getTime();
+          const disponivel = fimTime > agora;
+          console.log(`⏰ ${aula.nome}: aula única, fim=${aula.data_hora_fim.toISOString()}, agora=${hoje.toISOString()}, disponivel=${disponivel}`);
+          return disponivel;
+        }
+        
+        // Sem data_hora_fim e sem dia_semana, sempre disponível
+        console.log(`⏰ ${aula.nome}: sem filtro de data, sempre disponível`);
         return true;
       });
+
+      console.log(`✅ [getAulasDisponiveis] Aulas disponíveis após filtro: ${aulasDisponiveis.length}`);
 
       // Formatar resposta
       const aulasFormatadas = aulasDisponiveis.map((aula) => {

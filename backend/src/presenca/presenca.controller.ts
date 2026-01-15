@@ -339,8 +339,12 @@ export class PresencaController {
   @Get('aulas-disponiveis')
   @ApiOperation({ summary: 'Aulas disponíveis para check-in' })
   @ApiResponse({ status: 200, description: 'Lista de aulas disponíveis' })
-  async getAulasDisponiveis(@Request() req, @Query('data') data?: string) {
-    return this.presencaService.getAulasDisponiveis(req.user, data);
+  async getAulasDisponiveis(
+    @Request() req, 
+    @Query('data') data?: string,
+    @Query('alunoId') alunoId?: string
+  ) {
+    return this.presencaService.getAulasDisponiveis(req.user, data, alunoId);
   }
 
   @Post('check-in-facial')
