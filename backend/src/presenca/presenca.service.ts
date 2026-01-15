@@ -64,6 +64,7 @@ export class PresencaService {
     @InjectRepository(Unidade)
     private readonly unidadeRepository: Repository<Unidade>,
     private readonly graduacaoService: GraduacaoService,
+    private readonly dataSource: DataSource,
   ) {}
 
   /**
@@ -147,6 +148,8 @@ export class PresencaService {
         (typeof p === 'string' ? p : p.nome)?.toUpperCase(),
       ) || [];
 
+    console.log(`👤 [getAulaAtiva] Perfis do usuário:`, perfis);
+
     const isResponsavel = perfis.includes('RESPONSAVEL');
     const isAluno = perfis.includes('ALUNO');
     const isGerente = perfis.includes('GERENTE_UNIDADE');
@@ -169,6 +172,8 @@ export class PresencaService {
           dependentesData.map((d: any) => d.unidade_id).filter(Boolean),
         ),
       ] as string[];
+      
+      console.log(`👨‍👩‍👧 [getAulaAtiva] Responsável - Unidades dos dependentes:`, unidadesPermitidas);
     }
     // Se for aluno, buscar sua própria unidade
     else if (isAluno) {
@@ -177,6 +182,9 @@ export class PresencaService {
       });
       if (aluno?.unidade_id) {
         unidadesPermitidas = [aluno.unidade_id];
+        console.log(`🎓 [getAulaAtiva] Aluno - Unidade:`, aluno.unidade_id);
+      } else {
+        console.warn(`⚠️ [getAulaAtiva] Aluno sem unidade vinculada!`, user.id);
       }
     }
     // Se for gerente, buscar unidade que gerencia
@@ -187,6 +195,7 @@ export class PresencaService {
       );
       if (unidadeResult.length > 0) {
         unidadesPermitidas = [unidadeResult[0].unidade_id];
+        console.log(`💼 [getAulaAtiva] Gerente - Unidade:`, unidadeResult[0].unidade_id);
       }
     }
     // Se for recepcionista, buscar unidade vinculada
@@ -197,6 +206,7 @@ export class PresencaService {
       );
       if (unidadeResult.length > 0) {
         unidadesPermitidas = [unidadeResult[0].unidade_id];
+        console.log(`🏢 [getAulaAtiva] Recepcionista - Unidade:`, unidadeResult[0].unidade_id);
       }
     }
     // Se for tablet, buscar unidade vinculada na tabela tablet_unidades
@@ -207,6 +217,7 @@ export class PresencaService {
       );
       if (unidadeResult.length > 0) {
         unidadesPermitidas = [unidadeResult[0].unidade_id];
+        console.log(`📱 [getAulaAtiva] Tablet - Unidade:`, unidadeResult[0].unidade_id);
       } else {
         console.warn('⚠️ [getAulaAtiva] Tablet sem unidade vinculada!', user.id);
       }
@@ -214,6 +225,7 @@ export class PresencaService {
     // Master pode ver todas as aulas
     else if (isMaster) {
       unidadesPermitidas = []; // Vazio = todas
+      console.log(`👑 [getAulaAtiva] Master - Todas as unidades`);
     }
 
     // Buscar aulas ativas no banco
@@ -231,14 +243,20 @@ export class PresencaService {
       });
     } else if (!isMaster) {
       // Se não tem unidades permitidas e não é master, não retornar nada
+      console.log(`❌ [getAulaAtiva] Sem unidades permitidas e não é master - Retornando null`);
       return null;
     }
 
     const aulas = await queryBuilder.getMany();
+    console.log(`📚 [getAulaAtiva] Aulas encontradas no dia ${diaHoje}:`, aulas.length);
 
     // Filtrar aulas que estão acontecendo agora
     for (const aula of aulas) {
+      console.log(`⏰ [getAulaAtiva] Verificando aula: ${aula.nome} (${aula.hora_inicio} - ${aula.hora_fim})`);
+      
       if (aula.estaAtiva()) {
+        console.log(`✅ [getAulaAtiva] Aula ATIVA encontrada: ${aula.nome}`);
+        
         // Gerar QR Code se ainda não tiver ou se for antigo (mais de 1 hora)
         const precisaNovoQR =
           !aula.qr_code ||
@@ -263,6 +281,7 @@ export class PresencaService {
       }
     }
 
+    console.log(`❌ [getAulaAtiva] Nenhuma aula ativa no momento`);
     return null;
   }
 
@@ -1811,10 +1830,14 @@ export class PresencaService {
     const hoje = data ? new Date(data) : new Date();
     const diaSemana = hoje.getDay();
 
+    console.log(`🔍 [getAulasDisponiveis] Buscando aulas para usuário: ${user.id}`);
+    console.log(`📅 [getAulasDisponiveis] Data: ${hoje.toISOString()}, Dia da semana: ${diaSemana}`);
+
     try {
-      // Buscar unidade do aluno
+      // Buscar unidade do aluno ou franqueado
       let unidadeId: string | null = null;
 
+      // Tentar como aluno primeiro
       const aluno = await this.alunoRepository.findOne({
         where: { usuario_id: user.id },
         relations: ['unidade'],
@@ -1822,9 +1845,21 @@ export class PresencaService {
 
       if (aluno?.unidade_id) {
         unidadeId = aluno.unidade_id;
+      } else {
+        // Se não é aluno, tentar buscar como franqueado
+        const franqueado = await this.dataSource.query(
+          `SELECT u.id FROM teamcruz.unidades u 
+           INNER JOIN teamcruz.franqueados f ON f.id = u.franqueado_id
+           WHERE f.usuario_id = $1 LIMIT 1`,
+          [user.id],
+        );
+
+        if (franqueado.length > 0) {
+          unidadeId = franqueado[0].id;
+        }
       }
 
-      // Buscar aulas ativas da unidade do aluno ou todas se não tiver unidade
+      // Buscar aulas ativas da unidade do aluno/franqueado ou todas se não tiver unidade
       const whereConditions: any = {
         ativo: true,
         dia_semana: diaSemana,
@@ -2649,11 +2684,6 @@ export class PresencaService {
       `SELECT id FROM teamcruz.franqueados WHERE usuario_id = $1 LIMIT 1`,
       [userId],
     );
-    console.log('🔍 [getFranqueadoIdByUser]', {
-      user_id: userId,
-      franqueado_id: result[0]?.id || null,
-      result_count: result.length,
-    });
     return result[0]?.id || null;
   }
 

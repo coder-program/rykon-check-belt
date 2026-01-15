@@ -428,7 +428,10 @@ export default function AlunoDashboard({
       }
 
       if (aulasData.status === "fulfilled") {
+        console.log("🎓 [ALUNO DASHBOARD] Aulas disponíveis recebidas:", aulasData.value);
         setProximasAulas(Array.isArray(aulasData.value) ? aulasData.value : []);
+      } else {
+        console.error("❌ [ALUNO DASHBOARD] Erro ao carregar aulas:", aulasData.reason);
       }
 
       if (rankingDataResult.status === "fulfilled") {

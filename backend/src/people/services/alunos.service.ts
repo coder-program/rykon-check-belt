@@ -1534,15 +1534,6 @@ export class AlunosService {
 
     const responsavelId = responsavelData[0].id;
 
-    // Primeiro, buscar TODOS os alunos vinculados ao responsavel_id (sem filtro)
-    const todosAlunos = await this.dataSource.query(
-      `SELECT id, nome_completo, usuario_id, responsavel_id
-       FROM teamcruz.alunos
-       WHERE responsavel_id = $1
-       ORDER BY nome_completo ASC`,
-      [responsavelId],
-    );
-
     // Buscar alunos vinculados ao responsável (exceto o próprio responsável)
     const query = this.alunoRepository.createQueryBuilder('aluno');
 
@@ -1565,9 +1556,6 @@ export class AlunosService {
     query.cache(false);
 
     const alunos = await query.getMany();
-
-    // 🔍 DEBUG: Log detalhado de cada dependente
-    alunos.forEach((aluno, index) => {});
 
     const resultado = alunos.map((aluno) => {
       // Buscar faixa ativa da relação aluno_faixas

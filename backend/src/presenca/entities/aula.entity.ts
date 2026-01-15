@@ -125,8 +125,46 @@ export class Aula {
 
     const agora = new Date();
 
-    // Se tiver data_hora_inicio e data_hora_fim, usar timestamps completos
+    // PRIORIZAR dia_semana para aulas recorrentes
+    if (this.dia_semana !== null && this.dia_semana !== undefined) {
+      const diaHoje = agora.getDay();
+      const horaAgora = agora.getHours() * 60 + agora.getMinutes();
+
+      console.log(`    ⏱️  [estaAtiva] ${this.nome}: horaAgora=${horaAgora}min (${Math.floor(horaAgora/60)}:${horaAgora%60})`);
+
+      if (diaHoje !== this.dia_semana) {
+        console.log(`    ❌ Dia diferente: hoje=${diaHoje}, aula=${this.dia_semana}`);
+        return false;
+      }
+
+      const [horaInicio, minInicio] = this.hora_inicio.split(':').map(Number);
+      const [horaFim, minFim] = this.hora_fim.split(':').map(Number);
+
+      const minutosInicio = horaInicio * 60 + minInicio;
+      const minutosFim = horaFim * 60 + minFim;
+
+      const margemAntes =
+        this.configuracoes?.permite_checkin_antecipado_minutos || 15;
+      const margemDepois =
+        this.configuracoes?.permite_checkin_atrasado_minutos || 30;
+
+      console.log(`    📊 minutosInicio=${minutosInicio}, minutosFim=${minutosFim}`);
+      console.log(`    📊 margemAntes=${margemAntes}min, margemDepois=${margemDepois}min`);
+      console.log(`    📊 Janela: ${minutosInicio - margemAntes} a ${minutosFim + margemDepois}`);
+      
+      const ativa = horaAgora >= minutosInicio - margemAntes && horaAgora <= minutosFim + margemDepois;
+      console.log(`    ${ativa ? '✅ ATIVA' : '❌ NÃO ATIVA'}`);
+
+      return ativa;
+    }
+
+    // Fallback: Se tiver data_hora_inicio e data_hora_fim, usar timestamps completos (aulas únicas)
     if (this.data_hora_inicio && this.data_hora_fim) {
+      console.log(`    📅 [estaAtiva] ${this.nome} usa timestamps completos (aula única)`);
+      console.log(`    🕐 data_hora_inicio: ${this.data_hora_inicio.toISOString()}`);
+      console.log(`    🕐 data_hora_fim: ${this.data_hora_fim.toISOString()}`);
+      console.log(`    🕐 agora: ${agora.toISOString()}`);
+      
       const margemAntes =
         (this.configuracoes?.permite_checkin_antecipado_minutos || 15) *
         60 *
@@ -143,31 +181,12 @@ export class Aula {
         this.data_hora_fim.getTime() + margemDepois,
       );
 
-      return agora >= inicioComMargem && agora <= fimComMargem;
-    }
+      console.log(`    📊 Janela: ${inicioComMargem.toISOString()} a ${fimComMargem.toISOString()}`);
+      
+      const ativa = agora >= inicioComMargem && agora <= fimComMargem;
+      console.log(`    ${ativa ? '✅ ATIVA' : '❌ NÃO ATIVA'}`);
 
-    // Fallback: usar dia_semana se estiver preenchido
-    if (this.dia_semana !== null && this.dia_semana !== undefined) {
-      const diaHoje = agora.getDay();
-      const horaAgora = agora.getHours() * 60 + agora.getMinutes();
-
-      if (diaHoje !== this.dia_semana) return false;
-
-      const [horaInicio, minInicio] = this.hora_inicio.split(':').map(Number);
-      const [horaFim, minFim] = this.hora_fim.split(':').map(Number);
-
-      const minutosInicio = horaInicio * 60 + minInicio;
-      const minutosFim = horaFim * 60 + minFim;
-
-      const margemAntes =
-        this.configuracoes?.permite_checkin_antecipado_minutos || 15;
-      const margemDepois =
-        this.configuracoes?.permite_checkin_atrasado_minutos || 30;
-
-      return (
-        horaAgora >= minutosInicio - margemAntes &&
-        horaAgora <= minutosInicio + margemDepois
-      );
+      return ativa;
     }
 
     return false;
