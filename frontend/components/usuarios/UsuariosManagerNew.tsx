@@ -141,28 +141,6 @@ const UsuariosManagerNew = () => {
     setModalOpen(true);
   };
 
-  const handleCreateProfile = () => {
-    setModalType("profile");
-    setEditingItem(null);
-    setFormData({
-      nome: "",
-      descricao: "",
-      ativo: true,
-      permissao_ids: [],
-    });
-    setModalOpen(true);
-  };
-
-  const handleEditProfile = (profile: any) => {
-    setModalType("profile");
-    setEditingItem(profile);
-    setFormData({
-      ...profile,
-      permissao_ids: profile.permissoes?.map((p: any) => p.id) || [],
-    });
-    setModalOpen(true);
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 

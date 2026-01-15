@@ -19,20 +19,17 @@ import {
   Hash,
   MoreVertical,
   Bookmark,
-  Flag,
   UserPlus,
   X,
-  Upload,
   Smile,
   Gift,
   Sparkles,
   Flame,
-  Target,
   Award,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
-import { format, formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 interface Post {
@@ -228,7 +225,6 @@ const unidades = [
 
 export default function RedeSocialTeam() {
   const [posts, setPosts] = useState<Post[]>(mockPosts);
-  const [stories, setStories] = useState<Story[]>(mockStories);
   const [showNewPost, setShowNewPost] = useState(false);
   const [showStoryViewer, setShowStoryViewer] = useState(false);
   const [selectedStory, setSelectedStory] = useState<Story | null>(null);
@@ -237,7 +233,6 @@ export default function RedeSocialTeam() {
   const [tipoFeed, setTipoFeed] = useState<"todos" | "unidade" | "seguindo">(
     "todos",
   );
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Estado do novo post
   const [novoPost, setNovoPost] = useState({

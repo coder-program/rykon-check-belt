@@ -16,7 +16,7 @@ export const authService = {
     return data;
   },
 
-  async validateToken(_token: string) {
+  async validateToken() {
     // backend valida via guard, apenas chama o profile
     const user = await http("/auth/profile", { auth: true });
     return user;

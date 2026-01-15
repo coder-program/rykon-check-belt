@@ -465,7 +465,7 @@ export default function DependenteForm({
           {/* Informações de Contato */}
           <div className="space-y-3 sm:space-y-4">
             <h3 className="text-base sm:text-lg font-semibold text-gray-900 border-b pb-2">
-              Informações de Contato
+              Informações de Contato (Opcional)
             </h3>
 
             <div>

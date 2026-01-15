@@ -433,8 +433,7 @@ export async function listarFaixas(categoria?: string): Promise<any[]> {
 
 // Listar faixas válidas para graduação baseado na faixa atual do aluno
 export async function listarFaixasValidasParaGraduacao(
-  alunoId: string,
-  categoria?: string
+  alunoId: string
 ): Promise<any[]> {
   const token = localStorage.getItem("token");
 
@@ -463,8 +462,7 @@ export async function listarFaixasValidasParaGraduacao(
 
 // Listar faixas válidas para graduação MANUAL (sem validar graus)
 export async function listarFaixasValidasParaGraduacaoManual(
-  alunoId: string,
-  categoria?: string
+  alunoId: string
 ): Promise<any[]> {
   const token = localStorage.getItem("token");
 

@@ -72,7 +72,6 @@ export async function getAulas(params?: {
  */
 export async function getAulasHoje(unidade_id?: string): Promise<AulaHoje[]> {
   const token = localStorage.getItem("token");
-  const dataHoje = new Date().toLocaleDateString("pt-BR");
 
   const queryParams = new URLSearchParams();
   if (unidade_id) queryParams.append("unidade_id", unidade_id);

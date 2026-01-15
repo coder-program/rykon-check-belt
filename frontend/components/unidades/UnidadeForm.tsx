@@ -245,15 +245,6 @@ export default function UnidadeForm({
       .replace(/(\d{4})(\d)/, "$1-$2");
   };
 
-  const formatCPF = (value: string) => {
-    return value
-      .replace(/\D/g, "")
-      .replace(/(\d{3})(\d)/, "$1.$2")
-      .replace(/(\d{3})(\d)/, "$1.$2")
-      .replace(/(\d{3})(\d)/, "$1-$2")
-      .slice(0, 14);
-  };
-
   const formatNumericOnly = (value: string, maxLength: number = 20) => {
     return value
       .replace(/\D/g, "") // Remove tudo que não é dígito

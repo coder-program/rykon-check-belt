@@ -7,7 +7,6 @@ import { useAuth } from "@/app/auth/AuthContext";
 import {
   getUsuarios,
   getPerfis,
-  getPermissoes,
   updateUsuario,
   deleteUsuario,
   createUsuario,
@@ -381,13 +380,6 @@ export default function UsuariosManagerNew() {
   const isInstrutorSelecionado = formData.perfil_ids.includes(
     perfilInstrutorId || ""
   );
-
-  // Verificar se algum perfil que precisa de cadastro completo está selecionado
-  const precisaCadastroCompleto =
-    isFranqueadoSelecionado ||
-    isGerenteUnidadeSelecionado ||
-    isRecepcionistaSelecionado ||
-    isInstrutorSelecionado;
 
   // Auto-preencher unidade_id quando gerente está criando usuário
   useEffect(() => {

@@ -2307,6 +2307,13 @@ export class PresencaService {
 
     await this.presencaRepository.save(presenca);
 
+    // Incrementar contador de graduação do aluno
+    try {
+      await this.graduacaoService.incrementarPresenca(alunoId);
+    } catch (error) {
+      console.error('[checkInTablet] Erro ao incrementar presença:', error);
+    }
+
     const mensagem = 'Check-in registrado e aprovado automaticamente!';
 
     return {
