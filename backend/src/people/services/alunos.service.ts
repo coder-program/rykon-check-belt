@@ -1398,8 +1398,7 @@ export class AlunosService {
       ativa: true,
     });
     query.leftJoinAndSelect('faixas.faixaDef', 'faixaDef');
-    query.leftJoin('aluno.usuario', 'usuario'); // Join com usuario para pegar foto
-    query.addSelect(['usuario.id', 'usuario.foto']); // Selecionar apenas id e foto
+    query.leftJoinAndSelect('aluno.usuario', 'usuario'); // Join com usuario para pegar foto
 
     // Excluir alunos que já tem presença hoje (APROVADO ou PENDENTE)
     const hoje = new Date();

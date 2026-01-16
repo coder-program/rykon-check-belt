@@ -218,6 +218,7 @@ export default function AprovacaoCheckinPage() {
         "PROFESSOR",
         "INSTRUTOR",
         "GERENTE_UNIDADE",
+        "FRANQUEADO",
       ]}
     >
       <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-100 p-2 sm:p-4 md:p-6">

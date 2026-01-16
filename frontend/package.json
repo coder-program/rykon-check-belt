@@ -9,7 +9,7 @@
     "lint": "eslint"
   },
   "engines": {
-    "node": ">=18.17 <23"
+    "node": ">=18.17"
   },
   "dependencies": {
     "@babel/runtime": "^7.28.4",

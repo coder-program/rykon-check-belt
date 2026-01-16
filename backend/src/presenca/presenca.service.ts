@@ -2073,13 +2073,14 @@ export class PresencaService {
     // Por enquanto, retornamos uma lista mockada
     // TODO: Implementar relacionamento responsável-aluno na base de dados
 
-    // Buscar alunos que este usuário pode fazer check-in (simulado)
+    // OTIMIZAÇÃO: Limitar resultados e evitar sobrecarga
     const alunos = await this.personRepository.find({
       where: {
         tipo_cadastro: TipoCadastro.ALUNO,
         // TODO: Adicionar filtro por relacionamento responsável-aluno
       },
-      take: 10,
+      take: 20, // Limite de 20 filhos por responsável
+      select: ['id', 'nome_completo'], // Buscar apenas campos necessários
     });
 
     // Verificar quais já fizeram check-in hoje
@@ -2088,11 +2089,16 @@ export class PresencaService {
     const amanha = new Date(hoje);
     amanha.setDate(amanha.getDate() + 1);
 
+    if (alunos.length === 0) {
+      return [];
+    }
+
     const presencasHoje = await this.presencaRepository.find({
       where: {
         aluno_id: In(alunos.map((a) => a.id)),
         created_at: Between(hoje, amanha),
       },
+      select: ['aluno_id'], // Buscar apenas o ID
     });
 
     const idsComPresenca = new Set(presencasHoje.map((p) => p.aluno_id));
@@ -2137,83 +2143,85 @@ export class PresencaService {
       const primeiroDia = new Date(anoRef, mesRef - 1, 1);
       const ultimoDia = new Date(anoRef, mesRef, 0, 23, 59, 59);
 
-      // Buscar todos os alunos ativos da mesma unidade
-      const alunosDaUnidade = await this.alunoRepository.find({
-        where: {
-          unidade_id: aluno.unidade_id,
-          status: StatusAluno.ATIVO,
-        },
-        relations: ['faixas', 'faixas.faixaDef'],
-      });
-
       // Determinar categoria do aluno atual (INFANTIL: até 15 anos no ano atual, ADULTO: 16+)
       const anoNascimentoAluno = new Date(aluno.data_nascimento).getFullYear();
       const idadeNoAnoAtual = anoRef - anoNascimentoAluno;
       const categoriaAluno = idadeNoAnoAtual <= 15 ? 'INFANTIL' : 'ADULTO';
 
-      // Filtrar alunos da mesma categoria
-      const alunosMesmaCategoria = alunosDaUnidade.filter((alunoItem) => {
-        const anoNascimento = new Date(alunoItem.data_nascimento).getFullYear();
-        const idade = anoRef - anoNascimento;
-        const categoria = idade <= 15 ? 'INFANTIL' : 'ADULTO';
-        return categoria === categoriaAluno;
-      });
+      // OTIMIZAÇÃO: Usar query SQL para calcular ranking direto no banco
+      const query = `
+        WITH alunos_filtrados AS (
+          SELECT 
+            a.id,
+            a.nome_completo,
+            EXTRACT(YEAR FROM AGE(CAST($4 AS DATE), a.data_nascimento)) as idade
+          FROM teamcruz.alunos a
+          WHERE a.unidade_id = $1
+            AND a.status = 'ATIVO'
+            AND CASE 
+              WHEN $5 = 'INFANTIL' THEN EXTRACT(YEAR FROM AGE(CAST($4 AS DATE), a.data_nascimento)) <= 15
+              ELSE EXTRACT(YEAR FROM AGE(CAST($4 AS DATE), a.data_nascimento)) > 15
+            END
+        ),
+        presencas_mes AS (
+          SELECT 
+            p.aluno_id,
+            COUNT(*) as total_presencas
+          FROM teamcruz.presencas p
+          WHERE p.aluno_id IN (SELECT id FROM alunos_filtrados)
+            AND p.created_at >= $2
+            AND p.created_at <= $3
+          GROUP BY p.aluno_id
+        )
+        SELECT 
+          af.id as aluno_id,
+          af.nome_completo as nome,
+          COALESCE(fd.nome_exibicao, 'Sem faixa') as faixa,
+          COALESCE(f.graus_atual, 0) as graus,
+          COALESCE(pm.total_presencas, 0) as presencas,
+          ROW_NUMBER() OVER (ORDER BY COALESCE(pm.total_presencas, 0) DESC) as posicao
+        FROM alunos_filtrados af
+        LEFT JOIN presencas_mes pm ON pm.aluno_id = af.id
+        LEFT JOIN teamcruz.faixas f ON f.aluno_id = af.id AND f.ativa = true
+        LEFT JOIN teamcruz.faixas_definicoes fd ON fd.id = f.faixa_definicao_id
+        ORDER BY COALESCE(pm.total_presencas, 0) DESC
+        LIMIT 100
+      `;
 
-      // Buscar presenças do mês para todos os alunos da mesma categoria
-      const presencas = await this.presencaRepository
-        .createQueryBuilder('presenca')
-        .where('presenca.aluno_id IN (:...alunosIds)', {
-          alunosIds: alunosMesmaCategoria.map((a) => a.id),
-        })
-        .andWhere('presenca.created_at >= :inicio', { inicio: primeiroDia })
-        .andWhere('presenca.created_at <= :fim', { fim: ultimoDia })
-        .getMany();
-
-      // Contar presenças por aluno
-      const presencasPorAluno = new Map<string, number>();
-
-      for (const presenca of presencas) {
-        const count = presencasPorAluno.get(presenca.aluno_id) || 0;
-        presencasPorAluno.set(presenca.aluno_id, count + 1);
-      }
-
-      // Criar ranking com informações dos alunos
-      const rankingComDetalhes = alunosMesmaCategoria.map((alunoItem) => {
-        const faixaAtiva = alunoItem.faixas?.find((f) => f.ativa);
-        return {
-          alunoId: alunoItem.id,
-          nome: alunoItem.nome_completo,
-          faixa: faixaAtiva?.faixaDef?.nome_exibicao || 'Sem faixa',
-          graus: faixaAtiva?.graus_atual || 0,
-          presencas: presencasPorAluno.get(alunoItem.id) || 0,
-        };
-      });
-
-      // Ordenar por número de presenças (descendente)
-      rankingComDetalhes.sort((a, b) => b.presencas - a.presencas);
-
-      // Encontrar posição do aluno atual
-      const posicaoAluno = rankingComDetalhes.findIndex(
-        (item) => item.alunoId === aluno.id,
+      const rankingComDetalhes = await this.presencaRepository.manager.query(
+        query,
+        [
+          aluno.unidade_id,
+          primeiroDia,
+          ultimoDia,
+          `${anoRef}-01-01`,
+          categoriaAluno,
+        ],
       );
 
-      const posicao = posicaoAluno >= 0 ? posicaoAluno + 1 : null;
-      const presencasDoAluno = presencasPorAluno.get(aluno.id) || 0;
+      // Encontrar posição do aluno atual
+      const alunoNoRanking = rankingComDetalhes.find(
+        (item: any) => item.aluno_id === aluno.id,
+      );
+      const posicao = alunoNoRanking ? parseInt(alunoNoRanking.posicao) : null;
+      const presencasDoAluno = alunoNoRanking
+        ? parseInt(alunoNoRanking.presencas)
+        : 0;
 
       // Retornar apenas o top 10 no ranking completo
-      const top10 = rankingComDetalhes.slice(0, 10).map((item, index) => ({
+      const top10 = rankingComDetalhes.slice(0, 10).map((item: any, index) => ({
         posicao: index + 1,
         nome: item.nome,
         faixa: item.faixa,
-        graus: item.graus,
-        presencas: item.presencas,
-        isUsuarioAtual: item.alunoId === aluno.id,
+        graus: parseInt(item.graus),
+        presencas: parseInt(item.presencas),
+        isUsuarioAtual: item.aluno_id === aluno.id,
       }));
 
       return {
         posicao,
         presencas: presencasDoAluno,
-        totalAlunos: alunosMesmaCategoria.length,
+        totalAlunos: rankingComDetalhes.length,
         mes: mesRef,
         ano: anoRef,
         categoria: categoriaAluno,
@@ -2231,42 +2239,36 @@ export class PresencaService {
   }
 
   private async calcularSequenciaAtual(pessoaId: string): Promise<number> {
-    // Buscar presenças dos últimos 30 dias em ordem decrescente
-    const trintaDiasAtras = new Date();
-    trintaDiasAtras.setDate(trintaDiasAtras.getDate() - 30);
+    // OTIMIZAÇÃO: Usar query SQL mais eficiente para calcular sequência
+    const query = `
+      WITH dias_unicos AS (
+        SELECT DISTINCT DATE(created_at) as data
+        FROM teamcruz.presencas
+        WHERE aluno_id = $1
+          AND created_at >= CURRENT_DATE - INTERVAL '30 days'
+        ORDER BY DATE(created_at) DESC
+      ),
+      sequencia AS (
+        SELECT 
+          data,
+          data - LAG(data, 1, data + 1) OVER (ORDER BY data DESC) as dias_diff
+        FROM dias_unicos
+      )
+      SELECT COUNT(*) as total
+      FROM sequencia
+      WHERE dias_diff >= -1
+        AND data >= (
+          SELECT MIN(data) 
+          FROM sequencia 
+          WHERE dias_diff < -1
+        );
+    `;
 
-    const presencas = await this.presencaRepository.find({
-      where: {
-        aluno_id: pessoaId,
-        created_at: Between(trintaDiasAtras, new Date()),
-      },
-      order: { created_at: 'DESC' },
-    });
+    const resultado = await this.presencaRepository.manager.query(query, [
+      pessoaId,
+    ]);
 
-    if (presencas.length === 0) return 0;
-
-    // Calcular sequência de dias consecutivos
-    let sequencia = 0;
-    let dataAtual = new Date();
-    dataAtual.setHours(0, 0, 0, 0);
-
-    for (const presenca of presencas) {
-      const dataPresenca = new Date(presenca.created_at);
-      dataPresenca.setHours(0, 0, 0, 0);
-
-      if (dataPresenca.getTime() === dataAtual.getTime()) {
-        sequencia++;
-        dataAtual.setDate(dataAtual.getDate() - 1);
-      } else if (
-        dataPresenca.getTime() <
-        dataAtual.getTime() - 24 * 60 * 60 * 1000
-      ) {
-        // Quebrou a sequência
-        break;
-      }
-    }
-
-    return sequencia;
+    return parseInt(resultado[0]?.total || '0');
   }
 
   // ========== TABLET CHECK-IN METHODS ==========
