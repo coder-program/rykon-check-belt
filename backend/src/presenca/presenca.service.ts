@@ -2182,8 +2182,8 @@ export class PresencaService {
           ROW_NUMBER() OVER (ORDER BY COALESCE(pm.total_presencas, 0) DESC) as posicao
         FROM alunos_filtrados af
         LEFT JOIN presencas_mes pm ON pm.aluno_id = af.id
-        LEFT JOIN teamcruz.faixas f ON f.aluno_id = af.id AND f.ativa = true
-        LEFT JOIN teamcruz.faixas_definicoes fd ON fd.id = f.faixa_definicao_id
+        LEFT JOIN teamcruz.aluno_faixa f ON f.aluno_id = af.id AND f.ativa = true
+        LEFT JOIN teamcruz.faixa_def fd ON fd.id = f.faixa_def_id
         ORDER BY COALESCE(pm.total_presencas, 0) DESC
         LIMIT 100
       `;
