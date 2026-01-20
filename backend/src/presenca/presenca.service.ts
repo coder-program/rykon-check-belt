@@ -458,35 +458,13 @@ export class PresencaService {
 
     const presencaSalva = await this.presencaRepository.save(presenca);
 
-    // Incrementar contador de graduação - buscar aluno_faixa ativa
-    // Apenas incrementar se aprovado automaticamente
+    // Incrementar contador de graduação apenas se aprovado automaticamente
     if (statusAprovacao === 'APROVADO') {
       try {
-        const alunoFaixaAtiva = await this.alunoFaixaRepository.findOne({
-          where: {
-            aluno_id: aluno.id,
-            ativa: true,
-          },
-        });
-
-        if (alunoFaixaAtiva) {
-          console.log('🔍 [checkInQR] ANTES de incrementar:', {
-            presencas_no_ciclo: alunoFaixaAtiva.presencas_no_ciclo,
-            presencas_total_fx: alunoFaixaAtiva.presencas_total_fx,
-          });
-          
-          alunoFaixaAtiva.presencas_no_ciclo += 1;
-          alunoFaixaAtiva.presencas_total_fx += 1;
-          await this.alunoFaixaRepository.save(alunoFaixaAtiva);
-          
-          console.log('✅ [checkInQR] DEPOIS de incrementar:', {
-            presencas_no_ciclo: alunoFaixaAtiva.presencas_no_ciclo,
-            presencas_total_fx: alunoFaixaAtiva.presencas_total_fx,
-          });
-        }
+        await this.graduacaoService.incrementarPresenca(aluno.id);
       } catch (error) {
         console.error(
-          ' [checkInQR] Erro ao incrementar graduação:',
+          '❌ [checkInQR] Erro ao incrementar graduação:',
           error.message,
         );
       }
@@ -594,21 +572,10 @@ export class PresencaService {
     // Incrementar contador de graduação apenas se aprovado automaticamente
     if (statusAprovacao === 'APROVADO') {
       try {
-        const alunoFaixaAtiva = await this.alunoFaixaRepository.findOne({
-          where: {
-            aluno_id: aluno.id,
-            ativa: true,
-          },
-        });
-
-        if (alunoFaixaAtiva) {
-          alunoFaixaAtiva.presencas_no_ciclo += 1;
-          alunoFaixaAtiva.presencas_total_fx += 1;
-          await this.alunoFaixaRepository.save(alunoFaixaAtiva);
-        }
+        await this.graduacaoService.incrementarPresenca(aluno.id);
       } catch (error) {
         console.error(
-          ' [checkInManual] Erro ao incrementar graduação:',
+          '❌ [checkInManual] Erro ao incrementar graduação:',
           error.message,
         );
       }
@@ -793,21 +760,10 @@ export class PresencaService {
     // Incrementar contador de graduação apenas se aprovado automaticamente
     if (statusAprovacao === 'APROVADO') {
       try {
-        const alunoFaixaAtiva = await this.alunoFaixaRepository.findOne({
-          where: {
-            aluno_id: aluno.id,
-            ativa: true,
-          },
-        });
-
-        if (alunoFaixaAtiva) {
-          alunoFaixaAtiva.presencas_no_ciclo += 1;
-          alunoFaixaAtiva.presencas_total_fx += 1;
-          await this.alunoFaixaRepository.save(alunoFaixaAtiva);
-        }
+        await this.graduacaoService.incrementarPresenca(aluno.id);
       } catch (error) {
         console.error(
-          ' [checkInDependente] Erro ao incrementar graduação:',
+          '❌ [checkInDependente] Erro ao incrementar graduação:',
           error.message,
         );
       }
