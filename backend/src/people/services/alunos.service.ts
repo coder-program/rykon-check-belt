@@ -830,27 +830,52 @@ export class AlunosService {
       }
     }
 
+
     // Preparar dados para atualização
     const updateData: any = {
       ...dto,
     };
 
-    // Converter datas apenas se não estiverem vazias
-    if (dto.data_nascimento && String(dto.data_nascimento).trim() !== '') {
-      updateData.data_nascimento = new Date(dto.data_nascimento + 'T12:00:00');
-    } else if (dto.data_nascimento === '') {
-      updateData.data_nascimento = null;
-    } else {
-      updateData.data_nascimento = aluno.data_nascimento;
+    // Helper to handle date fields
+    function parseDateField(val: any, fallback: any = null) {
+      if (val === undefined) return fallback;
+      if (val === null || String(val).trim() === '') return null;
+      return new Date(val + 'T12:00:00');
     }
 
-    if (dto.data_matricula && String(dto.data_matricula).trim() !== '') {
-      updateData.data_matricula = new Date(dto.data_matricula + 'T12:00:00');
-    } else if (dto.data_matricula === '') {
-      updateData.data_matricula = null;
-    } else {
-      updateData.data_matricula = aluno.data_matricula;
+    updateData.data_nascimento = parseDateField(dto.data_nascimento, aluno.data_nascimento);
+    updateData.data_matricula = parseDateField(dto.data_matricula, aluno.data_matricula);
+    updateData.data_ultima_graduacao = parseDateField(dto.data_ultima_graduacao, aluno.data_ultima_graduacao);
+    // Handle atestado_medico_validade: always null if empty string or not present
+    if ('atestado_medico_validade' in dto) {
+      if (dto.atestado_medico_validade === undefined || dto.atestado_medico_validade === null || String(dto.atestado_medico_validade).trim() === '') {
+        updateData.atestado_medico_validade = null;
+      } else {
+        updateData.atestado_medico_validade = new Date(dto.atestado_medico_validade + 'T12:00:00');
+      }
     }
+    // Do NOT set atestado_medico_validade here, as it's not in the DTO and may cause empty string errors
+
+    // Remove empty string for optional text fields (if needed)
+    if (updateData.cpf !== undefined && String(updateData.cpf).trim() === '') updateData.cpf = null;
+    if (updateData.telefone !== undefined && String(updateData.telefone).trim() === '') updateData.telefone = null;
+    if (updateData.telefone_emergencia !== undefined && String(updateData.telefone_emergencia).trim() === '') updateData.telefone_emergencia = null;
+    if (updateData.nome_contato_emergencia !== undefined && String(updateData.nome_contato_emergencia).trim() === '') updateData.nome_contato_emergencia = null;
+    if (updateData.observacoes_medicas !== undefined && String(updateData.observacoes_medicas).trim() === '') updateData.observacoes_medicas = null;
+    if (updateData.alergias !== undefined && String(updateData.alergias).trim() === '') updateData.alergias = null;
+    if (updateData.medicamentos_uso_continuo !== undefined && String(updateData.medicamentos_uso_continuo).trim() === '') updateData.medicamentos_uso_continuo = null;
+    if (updateData.plano_saude !== undefined && String(updateData.plano_saude).trim() === '') updateData.plano_saude = null;
+    if (updateData.restricoes_medicas !== undefined && String(updateData.restricoes_medicas).trim() === '') updateData.restricoes_medicas = null;
+    if (updateData.responsavel_nome !== undefined && String(updateData.responsavel_nome).trim() === '') updateData.responsavel_nome = null;
+    if (updateData.responsavel_cpf !== undefined && String(updateData.responsavel_cpf).trim() === '') updateData.responsavel_cpf = null;
+    if (updateData.responsavel_telefone !== undefined && String(updateData.responsavel_telefone).trim() === '') updateData.responsavel_telefone = null;
+    if (updateData.responsavel_parentesco !== undefined && String(updateData.responsavel_parentesco).trim() === '') updateData.responsavel_parentesco = null;
+    if (updateData.observacoes !== undefined && String(updateData.observacoes).trim() === '') updateData.observacoes = null;
+
+    // Numeric fields
+    if (updateData.dia_vencimento !== undefined && String(updateData.dia_vencimento).trim() === '') updateData.dia_vencimento = null;
+    if (updateData.valor_mensalidade !== undefined && String(updateData.valor_mensalidade).trim() === '') updateData.valor_mensalidade = null;
+    if (updateData.desconto_percentual !== undefined && String(updateData.desconto_percentual).trim() === '') updateData.desconto_percentual = 0;
 
     // Remover campos que não existem mais na entidade Aluno
     // Mas capturar seus valores para atualizar a faixa ativa depois
