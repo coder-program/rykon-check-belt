@@ -89,7 +89,7 @@ export async function http(path: string, opts: HttpOptions = {}) {
         msgLower.includes("entre em contato com o administrador")
       ) {
         throw new Error(
-          "⚠️ Usuário inativo – acesso negado. Entre em contato com o administrador."
+          "⚠️ Usuário inativo – agora é só aguardar. A gestão da sua unidade irá aprovar seu acesso em breve."
         );
       }
 
