@@ -27,6 +27,10 @@ interface PresencaData {
   data_presenca: string;
   horario: string;
   instrutor_nome: string;
+  aluno?: {
+    categoria?: string;
+    isKids?: boolean;
+  };
 }
 
 interface UnidadeStats {
@@ -176,6 +180,10 @@ export default function RelatorioPresencasPage() {
               minute: '2-digit' 
             }) : '00:00',
             instrutor_nome: p.aula?.professor?.nome_completo || 'Instrutor',
+            aluno: {
+              categoria: p.aluno?.categoria,
+              isKids: p.aluno?.isKids,
+            },
           })),
           por_unidade: [],
         };
@@ -590,6 +598,7 @@ export default function RelatorioPresencasPage() {
                         {renderSortIcon("aluno")}
                       </div>
                     </th>
+                    <th>Categoria</th>
                     <th 
                       className="cursor-pointer hover:bg-gray-100 select-none"
                       onClick={() => handleSort("unidade")}
@@ -616,13 +625,20 @@ export default function RelatorioPresencasPage() {
                       </td>
                       <td>{presenca.horario}</td>
                       <td className="font-medium">{presenca.aluno_nome}</td>
+                      <td>
+                        {presenca.aluno?.isKids ? (
+                          <span className="badge badge-primary badge-sm">KIDS</span>
+                        ) : (
+                          <span className="badge badge-ghost badge-sm">ADULTO</span>
+                        )}
+                      </td>
                       <td>{presenca.unidade_nome}</td>
                       <td>{presenca.instrutor_nome}</td>
                     </tr>
                   ))}
                   {(!presencasOrdenadas || presencasOrdenadas.length === 0) && (
                     <tr>
-                      <td colSpan={5} className="text-center text-gray-500 py-8">
+                      <td colSpan={6} className="text-center text-gray-500 py-8">
                         Nenhuma presença registrada no período selecionado
                       </td>
                     </tr>

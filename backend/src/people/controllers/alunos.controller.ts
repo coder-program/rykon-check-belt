@@ -400,6 +400,8 @@ export class AlunosController {
       perfis.includes('ADMIN') || perfis.includes('SUPER_ADMIN');
     const isProfessor =
       perfis.includes('PROFESSOR') || perfis.includes('INSTRUTOR');
+    const isGerenteUnidade = perfis.includes('GERENTE_UNIDADE');
+    const isRecepcionista = perfis.includes('RECEPCIONISTA');
 
     // Verificar se é franqueado do aluno
     let isFranqueadoDoAluno = false;
@@ -425,12 +427,36 @@ export class AlunosController {
       }
     }
 
+    // Verificar se gerente/recepcionista é da mesma unidade do aluno
+    let isMesmaUnidade = false;
+    if (isGerenteUnidade || isRecepcionista) {
+      // Buscar em gerente_unidades (para gerentes) ou professor_unidades (para recepcionistas/professores)
+      let usuarioUnidades: any[] = [];
+      
+      if (isGerenteUnidade) {
+        usuarioUnidades = await this.dataSource.query(
+          `SELECT unidade_id FROM teamcruz.gerente_unidades WHERE usuario_id = $1 AND ativo = true LIMIT 1`,
+          [req.user.id],
+        );
+      } else if (isRecepcionista) {
+        usuarioUnidades = await this.dataSource.query(
+          `SELECT unidade_id FROM teamcruz.professor_unidades WHERE usuario_id = $1 AND ativo = true LIMIT 1`,
+          [req.user.id],
+        );
+      }
+      
+      if (usuarioUnidades && usuarioUnidades.length > 0) {
+        isMesmaUnidade = usuarioUnidades[0].unidade_id === aluno.unidade_id;
+      }
+    }
+
     // Verificar se tem permissão
     if (
       !isProprioAluno &&
       !isAdmin &&
       !isProfessor &&
-      !isFranqueadoDoAluno
+      !isFranqueadoDoAluno &&
+      !isMesmaUnidade
     ) {
       throw new NotFoundException(
         'Você não tem permissão para atualizar a faixa deste aluno',

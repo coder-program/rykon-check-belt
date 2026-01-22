@@ -17,6 +17,7 @@ import { RequiredLabel } from "../ui/required-label";
 type Genero = "MASCULINO" | "FEMININO" | "OUTRO";
 type StatusAluno = "ATIVO" | "INATIVO" | "SUSPENSO" | "CANCELADO";
 type FaixaEnum =
+  | "BRANCA_INFANTIL"
   | "BRANCA"
   | "CINZA_BRANCA"
   | "CINZA"
@@ -119,7 +120,8 @@ interface AlunoFormProps {
 }
 
 const faixas: { value: FaixaEnum; label: string; color: string }[] = [
-  { value: "BRANCA", label: "Branca", color: "#FFFFFF" },
+  { value: "BRANCA_INFANTIL", label: "Branca (Kids)", color: "#FFFFFF" },
+  { value: "BRANCA", label: "Branca (Adulto)", color: "#FFFFFF" },
   { value: "CINZA_BRANCA", label: "Cinza-Branca", color: "#808080" },
   { value: "CINZA", label: "Cinza", color: "#696969" },
   { value: "CINZA_PRETA", label: "Cinza-Preta", color: "#404040" },
