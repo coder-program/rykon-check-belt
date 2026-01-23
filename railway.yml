@@ -1,0 +1,11 @@
+# Railway - Apenas Backend
+apps:
+  - name: "teamcruz-backend"
+    build:
+      commands:
+        - cd backend && npm install
+        - cd backend && npm run build
+    start: "cd backend && npm run start:prod"
+    env:
+      NODE_ENV: production
+      PORT: 3000

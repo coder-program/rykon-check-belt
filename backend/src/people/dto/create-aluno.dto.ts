@@ -390,4 +390,14 @@ export class CreateDependenteDto {
   @IsOptional()
   @Length(1, 500)
   foto_url?: string;
+
+  // ===== CONSENTIMENTOS LGPD =====
+  // Campos para consentimento do usuário conforme LGPD
+  @IsOptional()
+  @IsBoolean()
+  consent_lgpd?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  consent_imagem?: boolean;
 }

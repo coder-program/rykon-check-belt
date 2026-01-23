@@ -1,0 +1,11 @@
+# Railway Build Configuration - APENAS BACKEND
+[build]
+  builder = "nixpacks"
+  buildCommand = "cd backend && npm install && npm run build"
+
+[deploy]
+  startCommand = "cd backend && npm run start:prod"
+  
+[environment]
+  NODE_ENV = "production"
+  PORT = "3000"

@@ -1,7 +1,8 @@
 import { PartialType } from '@nestjs/mapped-types';
 import { CreateAlunoDto } from './create-aluno.dto';
-import { IsOptional, IsString, IsNumber } from 'class-validator';
+import { IsOptional, IsString, IsNumber, IsBoolean } from 'class-validator';
 
+// DTO para atualização de aluno - herda todos os campos do CreateAlunoDto como opcionais
 export class UpdateAlunoDto extends PartialType(CreateAlunoDto) {
   // Campos de graduação (compatibilidade com frontend antigo)
   @IsOptional()
@@ -49,10 +50,12 @@ export class UpdateAlunoDto extends PartialType(CreateAlunoDto) {
   @IsString()
   estado?: string;
 
-  // Campos de consentimento LGPD
+  // ===== CONSENTIMENTOS LGPD =====
   @IsOptional()
+  @IsBoolean()
   consent_lgpd?: boolean;
 
   @IsOptional()
+  @IsBoolean()
   consent_imagem?: boolean;
 }

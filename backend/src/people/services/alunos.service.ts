@@ -939,8 +939,7 @@ export class AlunosService {
         // Não lançar erro para não quebrar o update do aluno
       }
     }
-
-    // Fazer UPDATE direto no banco (bypass da relação @ManyToOne)
+    
     await this.alunoRepository.update(id, updateData);
 
     // Se enviou faixa_atual ou graus ou data_ultima_graduacao, atualizar na tabela aluno_faixa

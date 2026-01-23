@@ -1066,15 +1066,18 @@ export default function MeuPerfilPage() {
       dataToSubmit.uf = formData.uf;
     }
 
-    // Remover campos vazios (exceto foto e campos booleanos)
     Object.keys(dataToSubmit).forEach((key) => {
       const value = dataToSubmit[key as keyof ProfileData];
       // Não remover: foto (para permitir remoção), campos booleanos (false é um valor válido)
       const isBooleanField = key === 'consent_lgpd' || key === 'consent_imagem';
       if (key !== "foto" && !isBooleanField && (!value || value === "")) {
         delete dataToSubmit[key as keyof ProfileData];
+      } else if (isBooleanField) {
       }
     });
+    
+    // DELAY TEMPORÁRIO PARA DEBUG - REMOVER DEPOIS
+    await new Promise(resolve => setTimeout(resolve, 5000));
     
     updateProfileMutation.mutate(dataToSubmit);
   };
@@ -1945,7 +1948,6 @@ export default function MeuPerfilPage() {
                         name="consent_lgpd"
                         checked={formData.consent_lgpd || false}
                         onChange={(e) => {
-                          console.log('☑️ [CHECKBOX] consent_lgpd alterado para:', e.target.checked);
                           setFormData({
                             ...formData,
                             consent_lgpd: e.target.checked,
@@ -1969,7 +1971,6 @@ export default function MeuPerfilPage() {
                         name="consent_imagem"
                         checked={formData.consent_imagem || false}
                         onChange={(e) => {
-                          console.log('☑️ [CHECKBOX] consent_imagem alterado para:', e.target.checked);
                           setFormData({
                             ...formData,
                             consent_imagem: e.target.checked,
