@@ -32,7 +32,9 @@ export class AnexosService {
     @InjectRepository(Despesa)
     private despesasRepository: Repository<Despesa>,
   ) {
-    this.uploadDir = path.join(process.cwd(), 'uploads', 'financeiro');
+    // Use /tmp directory in production (Railway compatible) or local uploads in development
+    const uploadBase = process.env.NODE_ENV === 'production' ? '/tmp' : process.cwd();
+    this.uploadDir = path.join(uploadBase, 'uploads', 'financeiro');
     this.garantirDiretorioExiste();
   }
 

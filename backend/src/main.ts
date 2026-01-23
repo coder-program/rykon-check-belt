@@ -207,6 +207,17 @@ async function bootstrap() {
     `,
   });
 
+  // Health endpoint for Railway (before global prefix)
+  const router = app.getHttpAdapter().getInstance();
+  router.get('/health', (req: any, res: any) => {
+    res.json({
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+      service: 'teamcruz-backend',
+      environment: process.env.NODE_ENV || 'development',
+    });
+  });
+
   // Adiciona prefixo global /api
   app.setGlobalPrefix('api');
 
