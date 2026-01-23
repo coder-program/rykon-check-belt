@@ -52,6 +52,25 @@ export class PerfisService {
     });
   }
 
+  async findPublicos(): Promise<Perfil[]> {
+    // Query otimizada: busca apenas 2 perfis SEM relations
+    return await this.perfilRepository
+      .createQueryBuilder('perfil')
+      .where('LOWER(perfil.nome) IN (:...nomes)', {
+        nomes: ['aluno', 'responsavel'],
+      })
+      .andWhere('perfil.ativo = :ativo', { ativo: true })
+      .select([
+        'perfil.id',
+        'perfil.nome',
+        'perfil.descricao',
+        'perfil.ativo',
+        'perfil.created_at',
+        'perfil.updated_at',
+      ])
+      .getMany();
+  }
+
   async findOne(id: string): Promise<Perfil> {
     const perfil = await this.perfilRepository.findOne({
       where: { id },

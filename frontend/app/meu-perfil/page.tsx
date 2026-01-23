@@ -330,11 +330,17 @@ export default function MeuPerfilPage() {
 
   // Determinar tipo de usuário e preencher formulário
   useEffect(() => {
-    if (user) {
-      let dadosCompletos: ProfileData = {
-        nome: user.nome || "",
-        email: user.email || "",
-        telefone: user.telefone || "",
+    if (!user) return;
+    
+    // Não fazer nada se estivermos esperando dados carregarem
+    if (user?.perfis?.includes("ALUNO") && loadingAluno) return;
+    if (user?.perfis?.includes("PROFESSOR") && !dadosProfessor) return;
+    if (user?.perfis?.includes("FRANQUEADO") && !dadosFranqueado) return;
+    
+    let dadosCompletos: ProfileData = {
+      nome: user.nome || "",
+      email: user.email || "",
+      telefone: user.telefone || "",
         cpf: user.cpf || "",
         foto: user.foto || "",
       };
@@ -373,6 +379,14 @@ export default function MeuPerfilPage() {
           dia_vencimento: dadosAluno.dia_vencimento || undefined,
           valor_mensalidade: dadosAluno.valor_mensalidade || undefined,
           desconto_percentual: dadosAluno.desconto_percentual || 0,
+          // Dados de endereço
+          cep: dadosAluno.endereco?.cep || "",
+          logradouro: dadosAluno.endereco?.logradouro || "",
+          numero: dadosAluno.endereco?.numero || "",
+          complemento: dadosAluno.endereco?.complemento || "",
+          bairro: dadosAluno.endereco?.bairro || "",
+          cidade: dadosAluno.endereco?.cidade || "",
+          uf: dadosAluno.endereco?.estado || "",
           // Graduação
           data_ultima_graduacao: formatDateForInput(
             dadosAluno.data_ultima_graduacao
@@ -382,6 +396,7 @@ export default function MeuPerfilPage() {
           consent_lgpd: dadosAluno.consent_lgpd || false,
           consent_imagem: dadosAluno.consent_imagem || false,
         };
+        
       }
       // Se é professor, usar dados da entidade professor
       else if (dadosProfessor) {
@@ -444,43 +459,18 @@ export default function MeuPerfilPage() {
         dadosCompletos.data_nascimento = formatDateForInput(
           user.data_nascimento
         );
-      } // Adicionar dados de endereço e unidade se existirem
+      }
+      
+      // Definir unidade original para detectar mudanças (só para aluno/professor)
       if (dadosAluno || dadosProfessor) {
         const entidadeData = dadosAluno || dadosProfessor;
-        dadosCompletos = {
-          ...dadosCompletos,
-          cep: entidadeData.cep || "",
-          logradouro: entidadeData.logradouro || "",
-          numero: entidadeData.numero || "",
-          complemento: entidadeData.complemento || "",
-          bairro: entidadeData.bairro || "",
-          cidade: entidadeData.cidade || "",
-          uf: entidadeData.uf || "",
-          unidade_id: entidadeData.unidade_id || "",
-          unidade_nome: entidadeData.unidade?.nome || "",
-        };
-
-        // Definir unidade original para detectar mudanças
+        dadosCompletos.unidade_id = entidadeData.unidade_id || "";
+        dadosCompletos.unidade_nome = entidadeData.unidade?.nome || "";
         setUnidadeOriginal(entidadeData.unidade_id || "");
       }
 
-      // Adicionar endereço do franqueado se existir
-      if (dadosFranqueado && dadosFranqueado.endereco) {
-        dadosCompletos = {
-          ...dadosCompletos,
-          cep: dadosFranqueado.endereco.cep || "",
-          logradouro: dadosFranqueado.endereco.logradouro || "",
-          numero: dadosFranqueado.endereco.numero || "",
-          complemento: dadosFranqueado.endereco.complemento || "",
-          bairro: dadosFranqueado.endereco.bairro || "",
-          cidade: dadosFranqueado.endereco.cidade || "",
-          uf: dadosFranqueado.endereco.uf || "",
-        };
-      }
-
       setFormData(dadosCompletos);
-    }
-  }, [user, dadosAluno, dadosProfessor, dadosFranqueado, enderecoFranqueado]);
+  }, [user, dadosAluno, dadosProfessor, dadosFranqueado, enderecoFranqueado, loadingAluno]);
 
   // Função para detectar mudança de unidade
   const handleUnidadeChange = (novaUnidadeId: string) => {
@@ -556,13 +546,6 @@ export default function MeuPerfilPage() {
 
       // Se é aluno e tem dados específicos para atualizar
       if (tipoUsuario === "aluno" && dadosAluno) {
-        console.log("🔍 [FRONTEND] Dados recebidos do formulário:", {
-          faixa_atual: data.faixa_atual,
-          graus_raw: data.graus,
-          graus_tipo: typeof data.graus,
-          data_ultima_graduacao: data.data_ultima_graduacao,
-        });
-
         const dadosAlunoUpdate = {
           nome_completo: data.nome,
           cpf: data.cpf,
@@ -590,13 +573,6 @@ export default function MeuPerfilPage() {
           // Unidade
           unidade_id: data.unidade_id,
         };
-
-        console.log("📤 [FRONTEND] Enviando para backend:", {
-          faixa_atual: dadosAlunoUpdate.faixa_atual,
-          graus: dadosAlunoUpdate.graus,
-          graus_tipo: typeof dadosAlunoUpdate.graus,
-          data_ultima_graduacao: dadosAlunoUpdate.data_ultima_graduacao,
-        });
 
         const alunoResponse = await fetch(
           `${API_URL}/alunos/${dadosAluno.id}`,
@@ -1040,6 +1016,7 @@ export default function MeuPerfilPage() {
       dataToSubmit.observacoes = formData.observacoes;
       dataToSubmit.consent_lgpd = formData.consent_lgpd;
       dataToSubmit.consent_imagem = formData.consent_imagem;
+      
       // Dados de endereço
       dataToSubmit.cep = formData.cep ? formData.cep.replace(/\D/g, "") : "";
       dataToSubmit.logradouro = formData.logradouro;
@@ -1089,15 +1066,16 @@ export default function MeuPerfilPage() {
       dataToSubmit.uf = formData.uf;
     }
 
-    // Remover campos vazios (exceto foto que pode ser base64 grande)
+    // Remover campos vazios (exceto foto e campos booleanos)
     Object.keys(dataToSubmit).forEach((key) => {
       const value = dataToSubmit[key as keyof ProfileData];
-      // Não remover o campo foto mesmo se estiver vazio (para permitir remoção de foto)
-      if (key !== "foto" && (!value || value === "")) {
+      // Não remover: foto (para permitir remoção), campos booleanos (false é um valor válido)
+      const isBooleanField = key === 'consent_lgpd' || key === 'consent_imagem';
+      if (key !== "foto" && !isBooleanField && (!value || value === "")) {
         delete dataToSubmit[key as keyof ProfileData];
       }
     });
-
+    
     updateProfileMutation.mutate(dataToSubmit);
   };
 
@@ -1863,8 +1841,8 @@ export default function MeuPerfilPage() {
                   </div>
                 </div>
 
-                {/* Dados Financeiros */}
-                <div className="mt-6 bg-green-50 p-4 rounded-lg">
+                {/* Dados Financeiros - ESCONDIDO TEMPORARIAMENTE */}
+                {/* <div className="mt-6 bg-green-50 p-4 rounded-lg">
                   <h4 className="text-md font-medium text-gray-900 mb-3">
                     💰 Dados Financeiros
                   </h4>
@@ -1933,7 +1911,7 @@ export default function MeuPerfilPage() {
                       />
                     </div>
                   </div>
-                </div>
+                </div> */}
 
                 {/* Observações Gerais */}
                 <div className="mt-6">
@@ -1966,12 +1944,13 @@ export default function MeuPerfilPage() {
                         id="consent_lgpd"
                         name="consent_lgpd"
                         checked={formData.consent_lgpd || false}
-                        onChange={(e) =>
+                        onChange={(e) => {
+                          console.log('☑️ [CHECKBOX] consent_lgpd alterado para:', e.target.checked);
                           setFormData({
                             ...formData,
                             consent_lgpd: e.target.checked,
-                          })
-                        }
+                          });
+                        }}
                         className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                       />
                       <label
@@ -1989,12 +1968,13 @@ export default function MeuPerfilPage() {
                         id="consent_imagem"
                         name="consent_imagem"
                         checked={formData.consent_imagem || false}
-                        onChange={(e) =>
+                        onChange={(e) => {
+                          console.log('☑️ [CHECKBOX] consent_imagem alterado para:', e.target.checked);
                           setFormData({
                             ...formData,
                             consent_imagem: e.target.checked,
-                          })
-                        }
+                          });
+                        }}
                         className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                       />
                       <label

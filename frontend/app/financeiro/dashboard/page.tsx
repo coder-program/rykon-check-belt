@@ -155,7 +155,6 @@ function DashboardFinanceiro() {
 
       if (resumoRes.ok) {
         const resumoData = await resumoRes.json();
-        console.log("📊 [DASHBOARD-FRONTEND] Resumo recebido:", resumoData);
         setResumo(resumoData);
       } else {
         console.error(" Erro ao carregar resumo:", resumoRes.statusText);

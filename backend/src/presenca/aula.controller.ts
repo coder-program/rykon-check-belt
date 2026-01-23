@@ -308,7 +308,9 @@ export class AulaController {
     @Request() req,
   ) {
     // TODO: Verificar permissão de admin/professor
-    return this.aulaService.update(id, updateAulaDto);
+    const resultado = await this.aulaService.update(id, updateAulaDto);
+    
+    return resultado;
   }
 
   @Delete(':id')

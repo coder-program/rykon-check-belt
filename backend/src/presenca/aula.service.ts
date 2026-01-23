@@ -153,8 +153,14 @@ export class AulaService {
 
   async update(id: string, updateAulaDto: UpdateAulaDto): Promise<Aula> {
     const aula = await this.findOne(id);
+    const dadosAntes = {
+      professor_id: aula.professor_id,
+      nome: aula.nome,
+      dia_semana: aula.dia_semana,
+    };
 
-    Object.assign(aula, {
+    // Preparar dados para atualização
+    const updateData: any = {
       ...updateAulaDto,
       data_hora_inicio: updateAulaDto.data_hora_inicio
         ? new Date(updateAulaDto.data_hora_inicio)
@@ -162,11 +168,24 @@ export class AulaService {
       data_hora_fim: updateAulaDto.data_hora_fim
         ? new Date(updateAulaDto.data_hora_fim)
         : aula.data_hora_fim,
-    });
+    };
 
-    await this.aulaRepository.save(aula);
+    // Usar update() ao invés de save() para forçar UPDATE no banco
+    const updateResult = await this.aulaRepository.update(id, updateData);
+    
+    // 🔍 QUERY RAW para verificar o que REALMENTE está no banco
+    const queryRaw = await this.aulaRepository.manager.query(
+      `SELECT id, nome, professor_id, dia_semana, updated_at 
+       FROM teamcruz.aulas 
+       WHERE id = $1`,
+      [id]
+    );
+    // Limpar cache do TypeORM e recarregar
+    await this.aulaRepository.manager.connection.queryResultCache?.remove(['aula_' + id]);
+    
+    const aulaAtualizada = await this.findOne(id);
 
-    return this.findOne(id);
+    return aulaAtualizada;
   }
 
   async remove(id: string): Promise<void> {

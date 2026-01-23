@@ -132,6 +132,11 @@ export const getPerfis = async (): Promise<Perfil[]> => {
   return response;
 };
 
+export const getPerfisPublicos = async (): Promise<Perfil[]> => {
+  const response = await api("/perfis/publicos/registro");
+  return response;
+};
+
 export const getPerfil = async (id: string): Promise<Perfil> => {
   const response = await api(`/perfis/${id}`);
   return response;

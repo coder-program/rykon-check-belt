@@ -162,7 +162,6 @@ export default function ContasAPagar() {
 
       if (response.ok) {
         const data = await response.json();
-        console.log("📊 Despesas carregadas:", data);
         setDespesas(data);
       }
       setLoading(false);
@@ -228,7 +227,6 @@ export default function ContasAPagar() {
     e.preventDefault();
 
     if (isSubmitting) {
-      console.log("⚠️ Já está processando uma requisição...");
       return;
     }
 
@@ -274,8 +272,6 @@ export default function ContasAPagar() {
         valor: parseFloat(formData.valor),
         unidade_id: formData.unidade_id || user.unidade_id,
       };
-
-      console.log("📤 Payload enviado:", payload);
 
       const response = await fetch(url, {
         method: editingDespesa ? "PUT" : "POST",
@@ -349,7 +345,6 @@ export default function ContasAPagar() {
       "Deseja realmente excluir esta despesa?",
       async () => {
         if (isDeleting) {
-          console.log("⚠️ Já está processando uma exclusão...");
           return;
         }
 
@@ -367,7 +362,6 @@ export default function ContasAPagar() {
           );
 
           if (response.ok) {
-            console.log("✅ Despesa excluída com sucesso");
             await carregarDespesas();
             mostrarMensagem("Sucesso!", "Despesa excluída!", "sucesso");
           } else {
@@ -389,7 +383,6 @@ export default function ContasAPagar() {
     if (!despesaBaixa) return;
 
     if (isBaixando) {
-      console.log("⚠️ Já está processando o pagamento...");
       return;
     }
 

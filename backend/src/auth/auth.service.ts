@@ -856,10 +856,10 @@ export class AuthService {
             responsavel_telefone: payload.responsavel_telefone || null,
             responsavel_parentesco: payload.responsavel_parentesco || null,
 
-            // LGPD
-            consent_lgpd: payload.consent_lgpd || false,
-            consent_imagem: payload.consent_imagem || false,
-            consent_lgpd_date: payload.consent_lgpd ? new Date() : null,
+            // LGPD - aceitar ambos os nomes de campos (frontend envia consent_uso_*)
+            consent_lgpd: payload.consent_uso_dados_lgpd ?? payload.consent_lgpd ?? false,
+            consent_imagem: payload.consent_uso_imagem ?? payload.consent_imagem ?? false,
+            consent_lgpd_date: (payload.consent_uso_dados_lgpd || payload.consent_lgpd) ? new Date() : null,
           };
 
           const alunoCriado = await this.alunosService.create(alunoData as any);

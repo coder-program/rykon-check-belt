@@ -433,7 +433,6 @@ export default function AlunoDashboard({
       }
 
       if (aulasData.status === "fulfilled") {
-        console.log("🎓 [ALUNO DASHBOARD] Aulas disponíveis recebidas:", aulasData.value);
         setProximasAulas(Array.isArray(aulasData.value) ? aulasData.value : []);
       } else {
         console.error("❌ [ALUNO DASHBOARD] Erro ao carregar aulas:", aulasData.reason);
@@ -546,8 +545,6 @@ export default function AlunoDashboard({
         auth: true,
       });
 
-      console.log("📝 Dados completos do dependente:", dadosCompletos);
-
       // Buscar graduação atual do aluno
       let faixaValue = "";
       let grausValue = "0";
@@ -556,8 +553,6 @@ export default function AlunoDashboard({
         const statusGraduacao = await http(`/graduacao/alunos/${dependente.id}/status`, {
           auth: true,
         });
-        console.log("🎓 Status de graduação:", statusGraduacao);
-        
         // Pegar faixa e graus da graduação ativa
         if (statusGraduacao?.faixaAtual) {
           faixaValue = statusGraduacao.faixaAtual.toUpperCase();
@@ -681,8 +676,6 @@ export default function AlunoDashboard({
           },
           {} as Record<string, unknown>
         );
-
-        console.log("📤 Payload de atualização:", dataToSend);
 
         const response = await http(`/alunos/${editingDependenteId}`, {
           method: "PATCH",

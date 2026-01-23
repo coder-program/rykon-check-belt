@@ -150,12 +150,10 @@ export default function RecepcionistaDashboard() {
       }
       
       const data = await response.json();
-      console.log("Check-ins recebidos:", data);
       
       // O backend agora retorna um array diretamente
       const checkIns = Array.isArray(data) ? data : [];
       const total = checkIns.length;
-      console.log("Total de check-ins hoje:", total);
       
       return { total, checkIns };
     },

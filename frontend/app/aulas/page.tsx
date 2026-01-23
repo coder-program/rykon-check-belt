@@ -236,11 +236,11 @@ export default function AulasPage() {
         const professoresList = Array.isArray(data) ? data : data.items || [];
         setProfessoresFiltrados(professoresList);
       } else {
-        console.warn("Nenhum professor encontrado para esta unidade");
+        console.warn("⚠️ [LOAD PROFS] Nenhum professor encontrado para esta unidade");
         setProfessoresFiltrados([]);
       }
     } catch (error) {
-      console.error("Erro ao carregar professores da unidade:", error);
+      console.error("❌ [LOAD PROFS] Erro ao carregar professores da unidade:", error);
       setProfessoresFiltrados([]);
     }
   };
@@ -326,6 +326,8 @@ export default function AulasPage() {
       ativo: formData.ativo,
     };
 
+    if (editingAula) {
+    }
     try {
       const url = editingAula
         ? `${process.env.NEXT_PUBLIC_API_URL}/aulas/${editingAula.id}`
@@ -340,14 +342,16 @@ export default function AulasPage() {
       });
 
       if (response.ok) {
+        await response.json();
         await loadData();
         handleCancel();
       } else {
         const error = await response.json();
+        console.error('❌ [FRONTEND] Erro na resposta:', error);
         alert(`Erro: ${error.message || "Erro ao salvar aula"}`);
       }
     } catch (error) {
-      console.error("Erro ao salvar aula:", error);
+      console.error("❌ [FRONTEND] Erro ao salvar aula:", error);
       alert("Erro ao salvar aula");
     } finally {
       setSubmitting(false);
@@ -363,7 +367,7 @@ export default function AulasPage() {
       : null;
     const fim = aula.data_hora_fim ? new Date(aula.data_hora_fim) : null;
 
-    setFormData({
+    const novoFormData = {
       nome: aula.nome,
       descricao: aula.descricao || "",
       unidade_id: aula.unidade_id,
@@ -382,7 +386,9 @@ export default function AulasPage() {
         : "20:30",
       capacidade_maxima: aula.capacidade_maxima,
       ativo: aula.ativo,
-    });
+    };
+
+    setFormData(novoFormData);
     
     // Carregar professores da unidade
     if (aula.unidade_id) {
@@ -566,6 +572,9 @@ export default function AulasPage() {
                           unidade_id: newUnidadeId,
                           professor_id: "", // Limpa professor ao mudar unidade
                         });
+                        if (newUnidadeId) {
+                          loadProfessoresDaUnidade(newUnidadeId);
+                        }
                       }}
                       className="w-full px-3 py-2 border rounded-lg"
                     >
@@ -585,12 +594,16 @@ export default function AulasPage() {
                     </label>
                     <select
                       value={formData.professor_id}
-                      onChange={(e) =>
+                      onChange={(e) => {
+                        const novoProfessorId = e.target.value;
+                        professoresFiltrados.find(
+                          (p) => p.id === novoProfessorId
+                        );
                         setFormData({
                           ...formData,
-                          professor_id: e.target.value,
-                        })
-                      }
+                          professor_id: novoProfessorId,
+                        });
+                      }}
                       className="w-full px-3 py-2 border rounded-lg"
                       disabled={!formData.unidade_id}
                     >

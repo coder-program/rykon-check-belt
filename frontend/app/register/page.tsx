@@ -42,6 +42,7 @@ import { toast } from "react-hot-toast";
 import { authService } from "@/lib/services/authService";
 import {
   getPerfis,
+  getPerfisPublicos,
   type Perfil,
   getUnidadesAtivas,
   type Unidade,
@@ -314,7 +315,8 @@ function RegisterPageContent() {
   useEffect(() => {
     const loadPerfis = async () => {
       try {
-        const data = await getPerfis();
+        // Usar endpoint otimizado que já retorna apenas perfis públicos
+        const data = await getPerfisPublicos();
 
         // Validar se data é um array
         if (!data || !Array.isArray(data)) {
@@ -322,30 +324,23 @@ function RegisterPageContent() {
           throw new Error("Formato de resposta inválido");
         }
 
-        // Filtrar apenas perfis públicos (aluno, responsavel)
-        // Se for menor de idade (<=15), remove o perfil RESPONSAVEL
-        let perfisPublicos = data.filter(
-          (p) =>
-            p.nome.toLowerCase() === "aluno" ||
-            p.nome.toLowerCase() === "responsavel"
-        );
-
         // Se for menor de idade, filtrar para mostrar apenas ALUNO
+        let perfisDisponiveis = data;
         if (isMenorDeIdade) {
-          perfisPublicos = perfisPublicos.filter(
+          perfisDisponiveis = data.filter(
             (p) => p.nome.toLowerCase() === "aluno"
           );
         }
 
-        if (perfisPublicos.length === 0) {
+        if (perfisDisponiveis.length === 0) {
           console.warn("Nenhum perfil público encontrado");
           throw new Error("Nenhum perfil disponível");
         }
 
-        setPerfis(perfisPublicos);
+        setPerfis(perfisDisponiveis);
 
         // Definir "aluno" como padrão
-        const perfilAluno = perfisPublicos.find(
+        const perfilAluno = perfisDisponiveis.find(
           (p) => p.nome.toLowerCase() === "aluno"
         );
         if (perfilAluno) {
@@ -354,7 +349,7 @@ function RegisterPageContent() {
           console.warn(
             "Perfil 'aluno' não encontrado, usando primeiro perfil disponível"
           );
-          setFormData((prev) => ({ ...prev, perfil_id: perfisPublicos[0].id }));
+          setFormData((prev) => ({ ...prev, perfil_id: perfisDisponiveis[0].id }));
         }
       } catch (error) {
         console.error("Erro ao carregar perfis:", error);
@@ -744,10 +739,6 @@ function RegisterPageContent() {
     setError("");
 
     try {
-      console.log('[REGISTER] FormData completo:', formData);
-      console.log('[REGISTER] Data de nascimento:', formData.data_nascimento);
-      console.log('[REGISTER] Tipo da data:', typeof formData.data_nascimento);
-      
       // Validar data de nascimento antes de enviar
       if (!formData.data_nascimento || formData.data_nascimento.trim() === '') {
         console.error('[REGISTER] Data de nascimento vazia');

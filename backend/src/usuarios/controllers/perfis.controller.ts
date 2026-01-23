@@ -24,6 +24,13 @@ export class PerfisController {
     return this.perfisService.findAll();
   }
 
+  @Get('publicos/registro')
+  async findPublicos() {
+    // Retorna apenas perfis públicos para cadastro (aluno e responsavel)
+    // Query otimizada no service - apenas 2 registros sem relations
+    return this.perfisService.findPublicos();
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.perfisService.findOne(id);

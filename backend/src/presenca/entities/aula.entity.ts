@@ -130,10 +130,7 @@ export class Aula {
       const diaHoje = agora.getDay();
       const horaAgora = agora.getHours() * 60 + agora.getMinutes();
 
-      console.log(`    ⏱️  [estaAtiva] ${this.nome}: horaAgora=${horaAgora}min (${Math.floor(horaAgora/60)}:${horaAgora%60})`);
-
       if (diaHoje !== this.dia_semana) {
-        console.log(`    ❌ Dia diferente: hoje=${diaHoje}, aula=${this.dia_semana}`);
         return false;
       }
 
@@ -148,23 +145,12 @@ export class Aula {
       const margemDepois =
         this.configuracoes?.permite_checkin_atrasado_minutos || 30;
 
-      console.log(`    📊 minutosInicio=${minutosInicio}, minutosFim=${minutosFim}`);
-      console.log(`    📊 margemAntes=${margemAntes}min, margemDepois=${margemDepois}min`);
-      console.log(`    📊 Janela: ${minutosInicio - margemAntes} a ${minutosFim + margemDepois}`);
-      
       const ativa = horaAgora >= minutosInicio - margemAntes && horaAgora <= minutosFim + margemDepois;
-      console.log(`    ${ativa ? '✅ ATIVA' : '❌ NÃO ATIVA'}`);
-
       return ativa;
     }
 
     // Fallback: Se tiver data_hora_inicio e data_hora_fim, usar timestamps completos (aulas únicas)
     if (this.data_hora_inicio && this.data_hora_fim) {
-      console.log(`    📅 [estaAtiva] ${this.nome} usa timestamps completos (aula única)`);
-      console.log(`    🕐 data_hora_inicio: ${this.data_hora_inicio.toISOString()}`);
-      console.log(`    🕐 data_hora_fim: ${this.data_hora_fim.toISOString()}`);
-      console.log(`    🕐 agora: ${agora.toISOString()}`);
-      
       const margemAntes =
         (this.configuracoes?.permite_checkin_antecipado_minutos || 15) *
         60 *
@@ -181,11 +167,7 @@ export class Aula {
         this.data_hora_fim.getTime() + margemDepois,
       );
 
-      console.log(`    📊 Janela: ${inicioComMargem.toISOString()} a ${fimComMargem.toISOString()}`);
-      
       const ativa = agora >= inicioComMargem && agora <= fimComMargem;
-      console.log(`    ${ativa ? '✅ ATIVA' : '❌ NÃO ATIVA'}`);
-
       return ativa;
     }
 

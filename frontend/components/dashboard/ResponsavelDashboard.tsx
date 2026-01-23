@@ -139,8 +139,6 @@ export default function ResponsavelDashboard() {
         auth: true,
       });
 
-      console.log("📝 Dados completos do dependente:", dadosCompletos);
-
       // Buscar graduação atual do aluno
       let faixaValue = "";
       let grausValue = "0";
@@ -149,7 +147,6 @@ export default function ResponsavelDashboard() {
         const statusGraduacao = await http(`/graduacao/alunos/${aluno.id}/status`, {
           auth: true,
         });
-        console.log("🎓 Status de graduação:", statusGraduacao);
         
         // Pegar faixa e graus da graduação ativa
         if (statusGraduacao?.faixaAtual) {

@@ -549,7 +549,6 @@ export class GraduacaoService {
     grauConcedido: boolean;
     statusAtualizado: StatusGraduacaoDto;
   }> {
-    console.log('🎯 [INCREMENTAR PRESENCA] Iniciando para aluno:', alunoId);
     
     const faixaAtiva = await this.getFaixaAtivaAluno(alunoId);
 
@@ -557,15 +556,6 @@ export class GraduacaoService {
       console.error('❌ [INCREMENTAR PRESENCA] Aluno não possui faixa ativa');
       throw new NotFoundException('Aluno não possui faixa ativa');
     }
-
-    console.log('📊 [INCREMENTAR PRESENCA] Faixa ativa encontrada:', {
-      faixaId: faixaAtiva.id,
-      faixaCodigo: faixaAtiva.faixaDef.codigo,
-      grausAtual: faixaAtiva.graus_atual,
-      grausMax: faixaAtiva.faixaDef.graus_max,
-      presencasNoCiclo: faixaAtiva.presencas_no_ciclo,
-      aulasPorGrauPadrao: faixaAtiva.faixaDef.aulas_por_grau,
-    });
 
     // Buscar aluno para obter unidade_id
     const aluno = await this.alunoRepository.findOne({
@@ -578,22 +568,12 @@ export class GraduacaoService {
       throw new NotFoundException('Aluno não encontrado');
     }
 
-    console.log('🏫 [INCREMENTAR PRESENCA] Unidade do aluno:', aluno.unidade_id);
-
     // Buscar configuração da unidade para obter aulas_por_grau correto
     const config = await this.getConfiguracaoGraduacao(aluno.unidade_id);
     const faixaConfig = config.config_faixas[faixaAtiva.faixaDef.codigo];
     
-    console.log('⚙️ [INCREMENTAR PRESENCA] Configuração da faixa:', {
-      faixaCodigo: faixaAtiva.faixaDef.codigo,
-      configEncontrada: !!faixaConfig,
-      aulasPorGrauConfig: faixaConfig?.aulas_por_grau,
-    });
-    
     // Usar aulas_por_grau da configuração da unidade, ou fallback para faixaDef
     const aulasPorGrau = faixaConfig?.aulas_por_grau ?? faixaAtiva.faixaDef.aulas_por_grau;
-
-    console.log('🎓 [INCREMENTAR PRESENCA] Aulas por grau final:', aulasPorGrau);
 
     let grauConcedido = false;
 
@@ -603,39 +583,16 @@ export class GraduacaoService {
       faixaAtiva.presencas_no_ciclo += 1;
       faixaAtiva.presencas_total_fx += 1;
 
-      console.log('➕ [INCREMENTAR PRESENCA] Contadores incrementados:', {
-        presencasAntesIncremento,
-        presencasDepoisIncremento: faixaAtiva.presencas_no_ciclo,
-        presencasTotalFaixa: faixaAtiva.presencas_total_fx,
-      });
-
       // Verificar se pode conceder grau automaticamente usando configuração da unidade
       const podeReceberGrau = 
         faixaAtiva.graus_atual < faixaAtiva.faixaDef.graus_max &&
         faixaAtiva.presencas_no_ciclo >= aulasPorGrau;
 
-      console.log('🔍 [INCREMENTAR PRESENCA] Verificação de grau:', {
-        grausAtual: faixaAtiva.graus_atual,
-        grausMax: faixaAtiva.faixaDef.graus_max,
-        temEspacoParaGrau: faixaAtiva.graus_atual < faixaAtiva.faixaDef.graus_max,
-        presencasNoCiclo: faixaAtiva.presencas_no_ciclo,
-        aulasPorGrau: aulasPorGrau,
-        atingiuAulas: faixaAtiva.presencas_no_ciclo >= aulasPorGrau,
-        podeReceberGrau,
-      });
-
       if (podeReceberGrau) {
-        console.log('🎉 [INCREMENTAR PRESENCA] CONCEDENDO GRAU AUTOMATICAMENTE!');
-        
         // Incrementar grau e zerar contador do ciclo (mesmo padrão da concederGrau manual)
         faixaAtiva.graus_atual += 1;
         faixaAtiva.presencas_no_ciclo = 0;
         await manager.save(faixaAtiva);
-
-        console.log('✅ [INCREMENTAR PRESENCA] Faixa atualizada:', {
-          grauNovo: faixaAtiva.graus_atual,
-          presencasZeradas: faixaAtiva.presencas_no_ciclo,
-        });
 
         // Registrar no histórico (mesmo padrão da concederGrau manual)
         const grau = manager.create(AlunoFaixaGrau, {
@@ -647,23 +604,13 @@ export class GraduacaoService {
 
         await manager.save(grau);
 
-        console.log('💾 [INCREMENTAR PRESENCA] Grau salvo no histórico:', {
-          grauId: grau.id,
-          grauNum: grau.grau_num,
-        });
-
         grauConcedido = true;
       } else {
-        console.log('⏳ [INCREMENTAR PRESENCA] Ainda não atingiu o número de aulas necessárias');
-        
         // Salvar faixaAtiva apenas com presencas incrementadas
         await manager.save(faixaAtiva);
       }
 
-      console.log('💾 [INCREMENTAR PRESENCA] Faixa ativa salva no banco');
     });
-
-    console.log('✅ [INCREMENTAR PRESENCA] Transação concluída com sucesso');
 
     const statusAtualizado = await this.getStatusGraduacao(alunoId);
 

@@ -59,12 +59,6 @@ export default function MasterDashboard() {
     return perfil === 'MASTER' || perfil === 'SUPER_ADMIN';
   });
 
-  console.log('🔍 [MasterDashboard] Debug:', {
-    user: user?.nome,
-    perfis: user?.perfis,
-    isMaster,
-  });
-
   // Carregar estatísticas do dashboard
   useEffect(() => {
     const loadStats = async () => {

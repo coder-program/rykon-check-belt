@@ -1193,12 +1193,6 @@ export default function DashboardNew() {
           params.append("unidadeId", selectedUnidade);
         }
 
-        console.log(
-          "🔍 [FRONTEND] Chamando API com params:",
-          params.toString(),
-          { selectedUnidade, overviewFilterCategoria, overviewFilterFaixa }
-        );
-
         const response = await fetch(
           `${
             process.env.NEXT_PUBLIC_API_URL
@@ -1216,14 +1210,6 @@ export default function DashboardNew() {
         }
 
         const data = await response.json();
-
-        console.log("✅ [FRONTEND] Dados recebidos:", {
-          total: data.total,
-          items: data.items?.length,
-          filtroCategoria: overviewFilterCategoria,
-          filtroFaixa: overviewFilterFaixa,
-          primeiros3: data.items?.slice(0, 3),
-        });
 
         // Os dados já vêm no formato correto do backend
         const items = data.items.map((item: any) => ({

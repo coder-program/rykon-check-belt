@@ -1004,8 +1004,6 @@ export class UsuariosService {
             }
           } else {
             // CRIAR PROFESSOR SE NÃO EXISTIR
-            console.log(` [UPDATE] Criando professor para usuário ${id}`);
-            
             const professorResult = await this.usuarioRepository.query(
               `INSERT INTO teamcruz.professores
                (usuario_id, tipo_cadastro, nome_completo, cpf, telefone_whatsapp, email, unidade_id, 
@@ -1032,7 +1030,6 @@ export class UsuariosService {
               [professorId, updateData.unidade_id, id],
             );
 
-            console.log(` [UPDATE] Professor criado com ID ${professorId}`);
           }
         } catch (error) {
           console.error(' [UPDATE] Erro ao vincular professor:', error.message);

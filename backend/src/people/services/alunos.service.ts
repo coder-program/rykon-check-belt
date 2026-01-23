@@ -22,6 +22,7 @@ import {
 import { UsuariosService } from '../../usuarios/services/usuarios.service';
 import { AlunoUnidadeService } from './aluno-unidade.service';
 import { AlunoUnidade } from '../entities/aluno-unidade.entity';
+import { EnderecosService } from '../../enderecos/enderecos.service';
 
 interface ListAlunosParams {
   page?: number;
@@ -51,6 +52,7 @@ export class AlunosService {
     private dataSource: DataSource,
     private readonly usuariosService: UsuariosService,
     private readonly alunoUnidadeService: AlunoUnidadeService,
+    private readonly enderecosService: EnderecosService,
   ) {}
 
   async list(params: ListAlunosParams, user?: any) {
@@ -256,20 +258,12 @@ export class AlunosService {
   async findById(id: string, user?: any): Promise<Aluno> {
     const aluno = await this.alunoRepository.findOne({
       where: { id },
-      relations: ['unidade', 'alunoUnidades', 'alunoUnidades.unidade', 'usuario'],
+      relations: ['unidade', 'alunoUnidades', 'alunoUnidades.unidade', 'usuario', 'endereco'],
     });
 
     if (!aluno) {
       throw new NotFoundException(`Aluno com ID ${id} não encontrado`);
     }
-
-    console.log('✅ [findById] Aluno encontrado:', {
-      id: aluno.id,
-      nome: aluno.nome_completo,
-      tem_usuario: !!aluno.usuario,
-      foto_url: aluno.foto_url,
-      usuario_foto: aluno.usuario?.foto?.substring(0, 50)
-    });
 
     // Se franqueado (não master), verifica se aluno pertence às suas unidades
     if (user && this.isFranqueado(user) && !this.isMaster(user)) {
@@ -289,10 +283,12 @@ export class AlunosService {
   async findByUsuarioId(usuarioId: string): Promise<Aluno | null> {
     const aluno = await this.alunoRepository.findOne({
       where: { usuario_id: usuarioId },
-      relations: ['unidade', 'faixas', 'faixas.faixaDef'],
+      relations: ['unidade', 'faixas', 'faixas.faixaDef', 'endereco'],
     });
 
-    if (!aluno) return null;
+    if (!aluno) {
+      return null;
+    }
 
     // Encontrar a faixa ativa
     const faixaAtiva = aluno.faixas?.find(f => f.ativa === true);
@@ -887,6 +883,19 @@ export class AlunosService {
     delete updateData.graus;
     delete updateData.data_ultima_graduacao;
 
+    // Capturar campos de endereço antes de deletar (só os que foram enviados)
+    const enderecoData: any = {};
+    if (dto.cep !== undefined) enderecoData.cep = dto.cep;
+    if (dto.logradouro !== undefined) enderecoData.logradouro = dto.logradouro;
+    if (dto.numero !== undefined) enderecoData.numero = dto.numero;
+    if (dto.complemento !== undefined) enderecoData.complemento = dto.complemento;
+    if (dto.bairro !== undefined) enderecoData.bairro = dto.bairro;
+    if (dto.cidade !== undefined) enderecoData.cidade = dto.cidade;
+    if (dto.uf !== undefined || dto.estado !== undefined) {
+      enderecoData.estado = dto.uf || dto.estado;
+    }
+    const temDadosEndereco = Object.keys(enderecoData).length > 0;
+
     // Remover campos de endereço que não pertencem à tabela alunos
     // (estes campos vão para a tabela 'enderecos' separada)
     delete updateData.cep;
@@ -900,6 +909,36 @@ export class AlunosService {
     delete updateData.uf;
     delete updateData.pais;
     delete updateData.endereco; // campo antigo
+
+    // Salvar ou atualizar endereço se houver dados
+    if (temDadosEndereco) {
+      try {
+        if (aluno.endereco_id) {
+          // Atualizar endereço existente
+          await this.enderecosService.atualizarEndereco(aluno.endereco_id, enderecoData);
+        } else {
+          // Criar novo endereço - garantir campos obrigatórios
+          if (dto.cep && dto.logradouro && dto.numero) {
+            const createEnderecoDto = {
+              cep: dto.cep,
+              logradouro: dto.logradouro,
+              numero: dto.numero,
+              complemento: dto.complemento || null,
+              bairro: dto.bairro || null,
+              cidade: dto.cidade || null,
+              estado: dto.uf || dto.estado || null,
+            };
+            const novoEndereco = await this.enderecosService.criarEndereco(createEnderecoDto);
+            // Atualizar aluno com o ID do novo endereço
+            updateData.endereco_id = novoEndereco.id;
+          } else {
+          }
+        }
+      } catch (error) {
+        console.error('❌ Erro ao salvar endereço:', error);
+        // Não lançar erro para não quebrar o update do aluno
+      }
+    }
 
     // Fazer UPDATE direto no banco (bypass da relação @ManyToOne)
     await this.alunoRepository.update(id, updateData);

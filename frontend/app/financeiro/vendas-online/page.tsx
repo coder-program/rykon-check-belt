@@ -285,12 +285,6 @@ export default function VendasOnline() {
   };
 
   const carregarDados = async (unidadeId: string) => {
-    console.log("🔄 [VENDAS] Carregando dados...", {
-      unidadeId,
-      filtroStatus,
-      filtroMetodo,
-    });
-
     const timeoutId = setTimeout(() => {
       console.warn("⏰ Timeout: A requisição está demorando muito (>10s)");
     }, 10000);
@@ -345,12 +339,6 @@ export default function VendasOnline() {
 
       const dataVendas = await resVendas.json();
       const dataStats = await resStats.json();
-
-      console.log("📊 [VENDAS] Dados carregados:", {
-        vendas: dataVendas.length,
-        stats: dataStats,
-        unidadeId,
-      });
 
       setVendas(dataVendas);
       setEstatisticas(dataStats);

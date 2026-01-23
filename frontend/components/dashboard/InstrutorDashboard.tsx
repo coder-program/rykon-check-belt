@@ -63,11 +63,8 @@ export default function InstrutorDashboard() {
   const router = useRouter();
   const [conviteModalOpen, setConviteModalOpen] = useState(false);
 
-  console.log('[InstrutorDashboard] Renderizando - conviteModalOpen:', conviteModalOpen);
-  console.log('[InstrutorDashboard] User:', user);
-
   // Buscar unidade do professor
-  const { data: unidadeData, isLoading: loadingUnidade } = useQuery({
+  const { data: unidadeData } = useQuery({
     queryKey: ["unidade-professor", user?.id],
     queryFn: async () => {
       const response = await fetch(
