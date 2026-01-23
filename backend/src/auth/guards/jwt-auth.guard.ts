@@ -27,8 +27,15 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
   }
 
   handleRequest(err, user, info) {
+    // Log erro mas não deixar derrubar servidor
     if (err || !user) {
-      console.error(' [JwtAuthGuard] REJEITADO - err:', err, 'info:', info);
+      // Log silencioso para tokens malformados (muito comum)
+      if (info?.name === 'JsonWebTokenError' && info?.message?.includes('malformed')) {
+        // Token malformado é comum - não precisa logar como error
+        return null; // Retorna null em vez de throw para não derrubar
+      }
+      
+      console.warn(' [JwtAuthGuard] Token rejeitado:', info?.message || 'Token inválido');
       throw err || new UnauthorizedException(info?.message || 'Token inválido');
     }
     return user;

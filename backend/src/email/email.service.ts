@@ -12,10 +12,17 @@ export class EmailService {
       host: this.configService.get<string>('SMTP_HOST', 'smtp.gmail.com'),
       port: this.configService.get<number>('SMTP_PORT', 587),
       secure: false, // true for 465, false for other ports
+      connectionTimeout: 10000, // 10 segundos
+      greetingTimeout: 5000, // 5 segundos
+      socketTimeout: 15000, // 15 segundos
       auth: {
         user: this.configService.get<string>('SMTP_USER'),
         pass: this.configService.get<string>('SMTP_PASS'),
       },
+      // Configuração de retry e tolerância a falhas
+      pool: true,
+      maxConnections: 3,
+      maxMessages: 100,
     });
   }
 
@@ -86,7 +93,8 @@ export class EmailService {
       );
       const resetLink = `${frontendUrl}/reset-password?token=${resetToken}`;
 
-      await this.transporter.sendMail({
+      // Timeout wrapper para prevenir crash
+      const sendMailPromise = this.transporter.sendMail({
         from: `"Team Cruz" <${this.configService.get<string>('SMTP_USER')}>`,
         to: email,
         subject: 'Recuperação de Senha - Team Cruz',
@@ -138,12 +146,21 @@ export class EmailService {
         `,
       });
 
+      // Aplicar timeout de 20 segundos para evitar crash
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Email timeout')), 20000)
+      );
+
+      await Promise.race([sendMailPromise, timeoutPromise]);
+
       this.logger.log(`Email de recuperação de senha enviado para ${email}`);
       return true;
     } catch (error) {
+      // LOG apenas - NUNCA deixar derrubar o servidor
       this.logger.error(
         `Erro ao enviar email de recuperação: ${error.message}`,
       );
+      this.logger.warn('Email falhou mas sistema continua funcionando');
       return false;
     }
   }

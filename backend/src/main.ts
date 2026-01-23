@@ -3,6 +3,7 @@ import { AppModule } from './app.module';
 import * as dotenv from 'dotenv';
 import * as cookieParser from 'cookie-parser';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
 
 // Polyfill para crypto (Node.js < 20)
 if (!globalThis.crypto) {
@@ -22,6 +23,9 @@ async function bootstrap() {
   app.use(require('express').urlencoded({ limit: '10mb', extended: true }));
 
   app.use(cookieParser());
+
+  // Filtro global para evitar crashes
+  app.useGlobalFilters(new GlobalExceptionFilter());
 
   // Configuração CORS para produção - Vercel + Domínio customizado
   const allowedOrigins = [
