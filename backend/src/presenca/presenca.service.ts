@@ -136,6 +136,12 @@ export class PresencaService {
   }
 
   async getAulaAtiva(user: any): Promise<AulaAtiva | null> {
+    // Validar se user existe (proteção contra JWT inválidos)
+    if (!user || !user.id) {
+      this.logger.warn('Tentativa de acessar aula ativa sem usuário válido');
+      return null;
+    }
+
     const agora = new Date();
     const diaHoje = agora.getDay();
     const horaAgora = agora.toTimeString().slice(0, 5); // HH:MM
@@ -725,6 +731,17 @@ export class PresencaService {
   }
 
   async getMinhasEstatisticas(user: any): Promise<EstatisticasPresenca> {
+    // Validar se user existe (proteção contra JWT inválidos)
+    if (!user || !user.id) {
+      this.logger.warn('Tentativa de acessar estatísticas sem usuário válido');
+      return {
+        presencaMensal: 0,
+        aulasMes: 0,
+        sequenciaAtual: 0,
+        ultimaPresenca: null,
+      };
+    }
+
     // Buscar aluno pelo usuario_id
     const aluno = await this.alunoRepository.findOne({
       where: { usuario_id: user.id },
@@ -773,6 +790,12 @@ export class PresencaService {
   }
 
   async getMinhaHistorico(user: any, limit: number = 10) {
+    // Validar se user existe (proteção contra JWT inválidos)
+    if (!user || !user.id) {
+      this.logger.warn('Tentativa de acessar histórico sem usuário válido');
+      return [];
+    }
+
     // Buscar aluno pelo usuario_id
     const aluno = await this.alunoRepository.findOne({
       where: { usuario_id: user.id },
@@ -821,6 +844,12 @@ export class PresencaService {
   }
 
   async getMinhasPendentes(user: any) {
+    // Validar se user existe (proteção contra JWT inválidos)
+    if (!user || !user.id) {
+      this.logger.warn('Tentativa de acessar pendentes sem usuário válido');
+      return [];
+    }
+
     // Buscar aluno pelo usuario_id
     const aluno = await this.alunoRepository.findOne({
       where: { usuario_id: user.id },
@@ -1619,6 +1648,12 @@ export class PresencaService {
   }
 
   async buscarAlunos(termo: string, user: any) {
+    // Validar se user existe (proteção contra JWT inválidos)
+    if (!user || !user.id) {
+      this.logger.warn('Tentativa de buscar alunos sem usuário válido');
+      return [];
+    }
+
     const query = this.personRepository
       .createQueryBuilder('pessoa')
       .where('pessoa.tipo_cadastro = :tipo', { tipo: TipoCadastro.ALUNO })
@@ -1865,6 +1900,12 @@ export class PresencaService {
   }
 
   async getMeusFilhos(responsavelUser: any) {
+    // Validar se user existe (proteção contra JWT inválidos)
+    if (!responsavelUser || !responsavelUser.id) {
+      this.logger.warn('Tentativa de acessar filhos sem usuário válido');
+      return [];
+    }
+
     // Por enquanto, retornamos uma lista mockada
     // TODO: Implementar relacionamento responsável-aluno na base de dados
 
