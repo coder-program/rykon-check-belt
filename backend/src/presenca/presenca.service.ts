@@ -4,6 +4,7 @@ import {
   BadRequestException,
   ForbiddenException,
   UnauthorizedException,
+  Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import {
@@ -48,6 +49,8 @@ export interface EstatisticasPresenca {
 
 @Injectable()
 export class PresencaService {
+  private readonly logger = new Logger(PresencaService.name);
+
   constructor(
     @InjectRepository(Person)
     private readonly personRepository: Repository<Person>,
