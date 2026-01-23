@@ -1,4 +1,5 @@
 # Railway Build Configuration - APENAS BACKEND
+# Last updated: 2026-01-23 22:15 - Restart forced
 [build]
   builder = "nixpacks"
   buildCommand = "cd backend && npm install && npm run build"
