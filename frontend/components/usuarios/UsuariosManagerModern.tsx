@@ -896,16 +896,16 @@ export default function UsuariosManagerNew() {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Status
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    {/* <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Ações
-                    </th>
+                    </th> */}
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {usuariosFiltrados.length === 0 ? (
                     <tr>
                       <td
-                        colSpan={6}
+                        colSpan={5}
                         className="px-6 py-4 text-center text-gray-500"
                       >
                         Nenhum usuário encontrado
@@ -998,7 +998,7 @@ export default function UsuariosManagerNew() {
                             {usuario.ativo ? "Ativo" : "Inativo"}
                           </span>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        {/* <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                           <div className="flex items-center gap-2">
                             <button
                               onClick={() => handleOpenModal(usuario)}
@@ -1007,7 +1007,6 @@ export default function UsuariosManagerNew() {
                             >
                               <Edit className="h-4 w-4" />
                             </button>
-                            {/* Não mostrar botão de exclusão para o próprio usuário logado, franqueados ou gerentes de unidade */}
                             {user?.id !== usuario.id &&
                               !isFranqueado &&
                               !isGerenteUnidade && (
@@ -1022,7 +1021,7 @@ export default function UsuariosManagerNew() {
                                 </button>
                               )}
                           </div>
-                        </td>
+                        </td> */}
                       </tr>
                     ))
                   )}

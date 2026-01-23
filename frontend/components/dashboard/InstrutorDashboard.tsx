@@ -201,6 +201,13 @@ export default function InstrutorDashboard() {
       action: () => router.push("/horarios"),
       color: "bg-purple-500",
     },
+    {
+      title: "Relatório de Presenças",
+      description: "Visualizar histórico de presenças",
+      icon: BookOpen,
+      action: () => router.push("/relatorio-presencas"),
+      color: "bg-teal-500",
+    },
   ];
 
   return (
