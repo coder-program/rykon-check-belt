@@ -1,5 +1,10 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## Backend Migration to Railway ✅
+
+Backend agora roda no Railway para maior estabilidade:
+- Produção: https://rykon-check-belt-production.up.railway.app/api
+
 ## Getting Started
 
 First, run the development server:
