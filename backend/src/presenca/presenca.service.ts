@@ -2246,17 +2246,34 @@ export class PresencaService {
   }
 
   async getPresencasPendentes(user: any, data?: string, aulaId?: string) {
+    // Verificar se o usuário está definido
+    if (!user) {
+      console.error(' [getPresencasPendentes] Usuário não definido');
+      throw new UnauthorizedException('Usuário não autenticado');
+    }
+
+    // Log para debug
+    console.log(' [getPresencasPendentes] Usuário:', {
+      id: user.id,
+      email: user.email,
+      perfis: user.perfis,
+    });
+
     // Verificar permissão
     const perfisPermitidos = [
       'RECEPCIONISTA',
       'PROFESSOR',
       'GERENTE_UNIDADE',
       'INSTRUTOR',
+      'GERENTE', // Adicionar também GERENTE
     ];
 
     const perfisNomes = (user?.perfis || []).map((p: any) =>
       typeof p === 'string' ? p.toUpperCase() : p.nome?.toUpperCase(),
     );
+
+    console.log(' [getPresencasPendentes] Perfis do usuário:', perfisNomes);
+    console.log(' [getPresencasPendentes] Perfis permitidos:', perfisPermitidos);
 
     const temPermissao = perfisNomes.some((p) => perfisPermitidos.includes(p));
 

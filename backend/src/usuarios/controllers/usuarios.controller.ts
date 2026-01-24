@@ -9,6 +9,7 @@ import {
   UseGuards,
   Query,
   Request,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { UsuariosService } from '../services/usuarios.service';
 import { CreateUsuarioDto } from '../dto/create-usuario.dto';
@@ -113,6 +114,9 @@ export class UsuariosController {
   })
   @ApiResponse({ status: 401, description: ' Token inválido ou expirado' })
   async getMe(@Request() req) {
+    if (!req.user || !req.user.id) {
+      throw new UnauthorizedException('Usuário não autenticado');
+    }
     return this.usuariosService.findOne(req.user.id);
   }
 

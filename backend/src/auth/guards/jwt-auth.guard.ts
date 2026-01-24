@@ -32,7 +32,7 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
       // Log silencioso para tokens malformados (muito comum)
       if (info?.name === 'JsonWebTokenError' && info?.message?.includes('malformed')) {
         // Token malformado é comum - não precisa logar como error
-        return null; // Retorna null em vez de throw para não derrubar
+        throw new UnauthorizedException('Token malformado');
       }
       
       console.warn(' [JwtAuthGuard] Token rejeitado:', info?.message || 'Token inválido');
