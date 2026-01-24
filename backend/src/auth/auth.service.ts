@@ -704,9 +704,6 @@ export class AuthService {
     let perfilNome: string = 'aluno'; // Padrão aluno
     let usuarioAtivo = false; // INATIVO até completar cadastro (tanto para aluno quanto outros perfis)
 
-    // Validar se perfil_id é um UUID válido (formato: 8-4-4-4-12 caracteres hexadecimais)
-    // Reutilizar uuidRegex já declarado acima
-
     let perfilValido = false;
 
     // Tentar usar o perfil_id fornecido se for um UUID válido
@@ -756,48 +753,33 @@ export class AuthService {
       usuarioAtivo = false; // INATIVO até completar cadastro
     }
 
-    // Cria usuário com perfil selecionado
-    const user = await this.usuariosService.create({
-      username: payload.username,
-      email: payload.email,
-      nome: payload.nome,
-      password: payload.password,
-      cpf: payload.cpf, // Adicionar CPF ao usuário
-      telefone: payload.telefone, // Adicionar telefone ao usuário
-      data_nascimento: payload.data_nascimento, // Adicionar data de nascimento ao usuário
-      ativo: usuarioAtivo, // Ativo apenas se perfil não requer aprovação
-      perfil_ids: [perfilId],
-      cadastro_completo: true, // ✅ ALUNO já vai com cadastro completo, não precisa logar 2x
-    } as any);
+    // ========================================
+    // TRANSAÇÃO ATÔMICA PARA GARANTIR CONSISTÊNCIA
+    // ========================================
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
 
-    // VINCULAR USUÁRIO À UNIDADE conforme perfil
+    try {
+      // Cria usuário com perfil selecionado
+      const user = await this.usuariosService.create({
+        username: payload.username,
+        email: payload.email,
+        nome: payload.nome,
+        password: payload.password,
+        cpf: payload.cpf, // Adicionar CPF ao usuário
+        telefone: payload.telefone, // Adicionar telefone ao usuário
+        data_nascimento: payload.data_nascimento, // Adicionar data de nascimento ao usuário
+        ativo: usuarioAtivo, // Ativo apenas se perfil não requer aprovação
+        perfil_ids: [perfilId],
+        cadastro_completo: true, // ✅ ALUNO já vai com cadastro completo, não precisa logar 2x
+      } as any);
 
-    if (payload.unidade_id) {
-      // Gerente: vincular via tabela gerente_unidades
-      if (perfilNome === 'gerente_unidade') {
-        try {
-          // Desvincular gerente de qualquer unidade anterior
-          await this.dataSource.query(
-            `UPDATE teamcruz.gerente_unidades
-             SET ativo = false, updated_at = NOW()
-             WHERE usuario_id = $1`,
-            [user.id],
-          );
+      // ========================================
+      // LÓGICA OBRIGATÓRIA POR PERFIL
+      // ========================================
 
-          // Vincular gerente à nova unidade
-          await this.dataSource.query(
-            `INSERT INTO teamcruz.gerente_unidades (usuario_id, unidade_id, ativo, data_vinculo)
-             VALUES ($1, $2, true, NOW())
-             ON CONFLICT (usuario_id) DO UPDATE
-             SET unidade_id = $2, ativo = true, updated_at = NOW()`,
-            [user.id, payload.unidade_id],
-          );
-        } catch (error) {
-          console.error(' Erro ao vincular gerente à unidade:', error.message);
-        }
-      }
-
-      // Aluno: criar registro na tabela alunos
+      // 🔴 CRÍTICO: Se perfil é ALUNO, OBRIGATORIAMENTE criar registro na tabela alunos
       if (perfilNome === 'aluno') {
         try {
           // Validar data de nascimento
@@ -806,7 +788,7 @@ export class AuthService {
           // Verificar se a data existe e não é vazia
           if (!dataNascimento || String(dataNascimento).trim() === '') {
             console.error('[AUTH SERVICE] Data de nascimento vazia ou undefined');
-            throw new BadRequestException('Data de nascimento é obrigatória');
+            throw new BadRequestException('Data de nascimento é obrigatória para alunos');
           }
 
           // Converter para string para validação
@@ -816,13 +798,13 @@ export class AuthService {
           
           // Rejeitar strings com NaN ou formato inválido
           if (dataNascimentoStr.includes('NaN') || dataNascimentoStr.includes('undefined') || dataNascimentoStr.includes('null')) {
-            throw new BadRequestException('Data de nascimento inválida');
+            throw new BadRequestException('Data de nascimento inválida para aluno');
           }
 
           // Verificar se a data é válida
           const testDate = new Date(dataNascimento);
           if (isNaN(testDate.getTime())) {
-            throw new BadRequestException('Data de nascimento em formato inválido');
+            throw new BadRequestException('Data de nascimento em formato inválido para aluno');
           }
 
           // Usar dados do usuário + dados adicionais do payload
@@ -875,103 +857,136 @@ export class AuthService {
           };
 
           const alunoCriado = await this.alunosService.create(alunoData as any);
+          
         } catch (error) {
-          console.error(
-            '❌ [CREATE ALUNO] Erro CRÍTICO ao criar registro de aluno:',
-            error.message,
-          );
-          console.error(' [CREATE ALUNO] Stack completo:', error.stack);
-          console.error(
-            ' [CREATE ALUNO] Detalhes do erro:',
-            JSON.stringify(error, null, 2),
-          );
+          console.error('❌ [REGISTER ALUNO] ERRO CRÍTICO ao criar aluno:', error.message);
+          console.error('📊 [REGISTER ALUNO] Dados do payload:', JSON.stringify(payload, null, 2));
           
-          // ⚠️ IMPORTANTE: Deletar usuário criado se falhar a criação do aluno
-          try {
-            await this.usuariosService.remove(user.id);
-          } catch (deleteError) {
-            console.error('❌ [CREATE ALUNO] Erro ao deletar usuário:', deleteError.message);
-          }
-          
-          throw new BadRequestException(`Falha ao criar registro de aluno: ${error.message}`);
+          // ⚠️ ROLLBACK TOTAL: Se falhar criar aluno, reverter TODA a operação
+          await queryRunner.rollbackTransaction();
+          throw new BadRequestException(`FALHA CRÍTICA: Não foi possível criar registro de aluno. ${error.message}`);
         }
       }
-    } else if (perfilNome !== 'franqueado' && perfilNome !== 'master') {
-      console.warn(
-        '⚠️ [CREATE USER] unidade_id não informado para perfil',
-        perfilNome,
-      );
-    }
 
-    // Responsavel: criar registro na tabela responsaveis
-    if (perfilNome.toLowerCase() === 'responsavel') {
-      // Validação obrigatória: unidade_id é obrigatório para responsáveis
-      if (!payload.unidade_id) {
-        throw new BadRequestException(
-          'Unidade é obrigatória para cadastro de responsável',
-        );
-      }
-
-      try {
-        await this.responsaveisService.create({
-          usuario_id: user.id,
-          unidade_id: payload.unidade_id, // Vincular à unidade selecionada
-          nome_completo: user.nome,
-          cpf: user.cpf,
-          email: user.email,
-          telefone: user.telefone,
-          data_nascimento: payload.data_nascimento,
-          genero: payload.genero || 'MASCULINO',
-          ativo: false, // Aguarda aprovação da unidade
-        } as any);
-      } catch (error) {
-        console.error(' Erro ao criar registro de responsável:', error.message);
-        throw error; // Re-throw para que o erro seja propagado
-      }
-    }
-
-    // Professor: criar registro na tabela professores e professor_unidades
-    if (perfilNome.toLowerCase() === 'professor' || perfilNome.toLowerCase() === 'instrutor') {
-      try {
-        const professor = await this.professoresService.create({
-          usuario_id: user.id,
-          especialidade: payload.especialidade || null,
-          anos_experiencia: payload.anos_experiencia || null,
-          certificacoes: payload.certificacoes || null,
-        } as any);
-
-        // Vincular professor à unidade
-        if (payload.unidade_id) {
-          await this.dataSource.query(
-            `INSERT INTO teamcruz.professor_unidades (professor_id, unidade_id, created_at, updated_at)
-             VALUES ($1, $2, NOW(), NOW())`,
-            [professor.id, payload.unidade_id],
-          );
-        }
-      } catch (error) {
-        console.error(' Erro ao criar registro de professor:', error.message);
-      }
-    }
-
-    // Recepcionista: criar registro na tabela recepcionista_unidades
-    if (perfilNome.toLowerCase() === 'recepcionista') {
-      if (payload.unidade_id) {
+      // Gerente: vincular via tabela gerente_unidades
+      if (perfilNome === 'gerente_unidade') {
         try {
-          await this.dataSource.query(
-            `INSERT INTO teamcruz.recepcionista_unidades (usuario_id, unidade_id, ativo, created_at, updated_at)
-             VALUES ($1, $2, true, NOW(), NOW())`,
+          // Desvincular gerente de qualquer unidade anterior
+          await queryRunner.query(
+            `UPDATE teamcruz.gerente_unidades
+             SET ativo = false, updated_at = NOW()
+             WHERE usuario_id = $1`,
+            [user.id],
+          );
+
+          // Vincular gerente à nova unidade
+          await queryRunner.query(
+            `INSERT INTO teamcruz.gerente_unidades (usuario_id, unidade_id, ativo, data_vinculo)
+             VALUES ($1, $2, true, NOW())
+             ON CONFLICT (usuario_id) DO UPDATE
+             SET unidade_id = $2, ativo = true, updated_at = NOW()`,
             [user.id, payload.unidade_id],
           );
+          
         } catch (error) {
-          console.error(
-            ' Erro ao criar registro de recepcionista:',
-            error.message,
-          );
+          console.error('❌ [REGISTER GERENTE] Erro ao vincular gerente:', error.message);
+          await queryRunner.rollbackTransaction();
+          throw new BadRequestException(`Falha ao vincular gerente à unidade: ${error.message}`);
         }
       }
-    }
 
-    return user;
+      // Responsavel: criar registro na tabela responsaveis
+      if (perfilNome.toLowerCase() === 'responsavel') {
+        if (!payload.unidade_id) {
+          await queryRunner.rollbackTransaction();
+          throw new BadRequestException('Unidade é obrigatória para cadastro de responsável');
+        }
+
+        try {
+          await this.responsaveisService.create({
+            usuario_id: user.id,
+            unidade_id: payload.unidade_id,
+            nome_completo: user.nome,
+            cpf: user.cpf,
+            email: user.email,
+            telefone: user.telefone,
+            data_nascimento: payload.data_nascimento,
+            genero: payload.genero || 'MASCULINO',
+            ativo: false, // Aguarda aprovação da unidade
+          } as any);
+          
+        } catch (error) {
+          console.error('❌ [REGISTER RESPONSAVEL] Erro ao criar responsável:', error.message);
+          await queryRunner.rollbackTransaction();
+          throw new BadRequestException(`Falha ao criar registro de responsável: ${error.message}`);
+        }
+      }
+
+      // Professor/Instrutor: criar registro na tabela professores
+      if (perfilNome.toLowerCase() === 'professor' || perfilNome.toLowerCase() === 'instrutor') {
+        try {
+          const professor = await this.professoresService.create({
+            usuario_id: user.id,
+            especialidade: payload.especialidade || null,
+            anos_experiencia: payload.anos_experiencia || null,
+            certificacoes: payload.certificacoes || null,
+          } as any);
+
+          // Vincular professor à unidade
+          if (payload.unidade_id) {
+            await queryRunner.query(
+              `INSERT INTO teamcruz.professor_unidades (professor_id, unidade_id, created_at, updated_at)
+               VALUES ($1, $2, NOW(), NOW())`,
+              [professor.id, payload.unidade_id],
+            );
+          }
+          
+        } catch (error) {
+          console.error('❌ [REGISTER PROFESSOR] Erro ao criar professor:', error.message);
+          await queryRunner.rollbackTransaction();
+          throw new BadRequestException(`Falha ao criar registro de professor: ${error.message}`);
+        }
+      }
+
+      // Recepcionista: criar registro na tabela recepcionista_unidades
+      if (perfilNome.toLowerCase() === 'recepcionista') {
+        if (payload.unidade_id) {
+          try {
+            await queryRunner.query(
+              `INSERT INTO teamcruz.recepcionista_unidades (usuario_id, unidade_id, ativo, created_at, updated_at)
+               VALUES ($1, $2, true, NOW(), NOW())`,
+              [user.id, payload.unidade_id],
+            );
+            
+          } catch (error) {
+            console.error('❌ [REGISTER RECEPCIONISTA] Erro ao vincular recepcionista:', error.message);
+            await queryRunner.rollbackTransaction();
+            throw new BadRequestException(`Falha ao vincular recepcionista: ${error.message}`);
+          }
+        }
+      }
+
+      // ✅ COMMIT: Se chegou até aqui, tudo deu certo
+      await queryRunner.commitTransaction();
+      
+      return user;
+
+    } catch (error) {
+      // ❌ ROLLBACK: Em caso de qualquer erro, reverter toda a transação
+      console.error('❌ [REGISTER] ERRO na transação, fazendo rollback:', error.message);
+      
+      try {
+        await queryRunner.rollbackTransaction();
+      } catch (rollbackError) {
+        console.error('❌ [REGISTER] Erro crítico no rollback:', rollbackError.message);
+      }
+      
+      // Re-throw do erro original
+      throw error;
+    } finally {
+      // 🔧 CLEANUP: Sempre liberar conexão
+      await queryRunner.release();
+    }
   }
 
   async findOrCreateOAuthUser(oauth: {

@@ -406,25 +406,13 @@ function RegisterPageContent() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Filtrar unidades baseado no termo de busca
-  // Filtrar unidades baseado no termo de busca
-  // Se não houver termo de busca, mostra todas as unidades
-  const unidadesFiltradas =
-    unidadeSearchTerm.trim() === ""
-      ? unidades
-      : unidades.filter((unidade) => {
-          const searchLower = unidadeSearchTerm.toLowerCase();
-          return (
-            unidade.nome.toLowerCase().includes(searchLower) ||
-            unidade.cidade?.toLowerCase().includes(searchLower) ||
-            unidade.bairro?.toLowerCase().includes(searchLower)
-          );
-        });
-
   // Obter nome da unidade selecionada
   const getUnidadeNome = (unidadeId: string) => {
+    if (!unidadeId || !unidades || unidades.length === 0) return "";
+    
     const unidade = unidades.find((u) => u.id === unidadeId);
     if (!unidade) return "";
+    
     return `${unidade.nome.toUpperCase()}${
       unidade.cidade || unidade.bairro
         ? ` - ${unidade.cidade || ""}${
@@ -433,6 +421,25 @@ function RegisterPageContent() {
         : ""
     }`;
   };
+
+  // Filtrar unidades baseado no termo de busca
+  const unidadesFiltradas = unidades.filter((unidade) => {
+    // Se não há termo de busca, mostrar todas
+    if (!unidadeSearchTerm || unidadeSearchTerm.trim() === '') {
+      return true;
+    }
+    
+    const searchLower = unidadeSearchTerm.toLowerCase().trim();
+    const nomeCompleto = getUnidadeNome(unidade.id).toLowerCase();
+    
+    // Buscar em nome, cidade e bairro individualmente
+    return (
+      unidade.nome.toLowerCase().includes(searchLower) ||
+      (unidade.cidade && unidade.cidade.toLowerCase().includes(searchLower)) ||
+      (unidade.bairro && unidade.bairro.toLowerCase().includes(searchLower)) ||
+      nomeCompleto.includes(searchLower)
+    );
+  });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -1499,28 +1506,22 @@ function RegisterPageContent() {
                         setUnidadeSearchTerm(newValue);
                         setShowUnidadeDropdown(true);
                         
-                        // Se o usuário está digitando, limpar a unidade_id selecionada
-                        // Isso força o usuário a selecionar uma unidade válida da lista
-                        if (formData.unidade_id) {
-                          const unidadeAtual = unidades.find(u => u.id === formData.unidade_id);
-                          const nomeUnidadeAtual = getUnidadeNome(formData.unidade_id);
-                          
-                          // Se o texto não corresponde exatamente à unidade selecionada, limpar
-                          if (newValue !== nomeUnidadeAtual) {
-                            setFormData({
-                              ...formData,
-                              unidade_id: '',
-                            });
-                          }
+                        // Limpar unidade selecionada quando usuário está digitando
+                        if (formData.unidade_id && newValue.trim() !== getUnidadeNome(formData.unidade_id)) {
+                          setFormData(prev => ({ ...prev, unidade_id: '' }));
                         }
                       }}
-                      onFocus={() => setShowUnidadeDropdown(true)}
+                      onFocus={() => {
+                        setShowUnidadeDropdown(true);
+                      }}
                       onBlur={() => {
-                        // Se o usuário saiu do campo sem selecionar uma unidade válida
+                        // Fechar dropdown após um delay para permitir clique nas opções
                         setTimeout(() => {
-                          if (!formData.unidade_id && unidadeSearchTerm.trim() !== '') {
-                            setUnidadeSearchTerm('');
-                            toast.error('Você precisa selecionar uma unidade da lista');
+                          setShowUnidadeDropdown(false);
+                          
+                          // Se tem unidade selecionada, mostrar seu nome completo
+                          if (formData.unidade_id) {
+                            setUnidadeSearchTerm(getUnidadeNome(formData.unidade_id));
                           }
                         }, 200);
                       }}
