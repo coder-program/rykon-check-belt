@@ -7,6 +7,7 @@ import {
   UseGuards,
   Request,
   Param,
+  BadRequestException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBody } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -235,7 +236,7 @@ export class PresencaController {
     if (!aulaId) {
       const aulaAtiva = await this.presencaService.getAulaAtiva(req.user);
       if (!aulaAtiva) {
-        throw new Error('Nenhuma aula ativa no momento');
+        throw new BadRequestException('Nenhuma aula ativa no momento');
       }
       aulaId = aulaAtiva.id;
     }

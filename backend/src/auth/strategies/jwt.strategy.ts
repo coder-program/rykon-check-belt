@@ -20,18 +20,36 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: JwtPayload) {
-    const user = await this.authService.validateToken(payload);
+    try {
+      // Verificar se payload tem dados mínimos necessários
+      if (!payload || !payload.sub) {
+        console.error(' [JwtStrategy.validate] Payload inválido ou sem sub');
+        throw new UnauthorizedException('Token inválido');
+      }
 
-    if (!user) {
-      console.error(
-        ' [JwtStrategy.validate] Usuário não encontrado para payload',
-      );
-      throw new UnauthorizedException();
+      const user = await this.authService.validateToken(payload);
+
+      if (!user) {
+        console.error(
+          ' [JwtStrategy.validate] Usuário não encontrado para payload',
+        );
+        throw new UnauthorizedException('Usuário não encontrado');
+      }
+
+      return {
+        ...user,
+        permissions: payload.permissions || [],
+      };
+    } catch (error) {
+      // Garantir que qualquer erro aqui não derrube o sistema
+      console.error(' [JwtStrategy.validate] Erro durante validação:', error.message);
+      
+      if (error instanceof UnauthorizedException) {
+        throw error;
+      }
+      
+      // Qualquer outro erro é tratado como unauthorized
+      throw new UnauthorizedException('Erro na validação do token');
     }
-
-    return {
-      ...user,
-      permissions: payload.permissions,
-    };
   }
 }

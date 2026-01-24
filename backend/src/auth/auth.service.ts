@@ -264,38 +264,45 @@ export class AuthService {
     payload: JwtPayload,
     allowInactive = false,
   ): Promise<any | null> {
-    const user = await this.usuariosService.findOne(payload.sub);
-
-    if (!user) {
-      console.error(' [validateToken] Usuário não encontrado');
-      return null;
-    }
-
-    // Se allowInactive = false (padrão), rejeita usuários inativos
-    if (!allowInactive && !user.ativo) {
-      console.error(' [validateToken] Usuário inativo e allowInactive = false');
-      return null;
-    }
-
-    // Incluir dados do aluno se existir
-    let aluno: any = null;
     try {
-      aluno = await this.alunosService.findByUsuarioId(user.id);
-    } catch (error) {}
+      // Verificar se payload é válido
+      if (!payload || !payload.sub) {
+        console.error(' [validateToken] Payload inválido');
+        return null;
+      }
 
-    // Incluir dados do professor se existir
-    let professor: any = null;
-    try {
-      professor = await this.professoresService.findByUsuarioId(user.id);
-    } catch (error) {}
+      const user = await this.usuariosService.findOne(payload.sub);
 
-    // Incluir dados do gerente_unidade se existir
-    let gerente_unidade: any = null;
-    try {
-      gerente_unidade = await this.gerenteUnidadesService.buscarPorUsuario(
-        user.id,
-      );
-    } catch (error) {}
+      if (!user) {
+        console.error(' [validateToken] Usuário não encontrado');
+        return null;
+      }
+
+      // Se allowInactive = false (padrão), rejeita usuários inativos
+      if (!allowInactive && !user.ativo) {
+        console.error(' [validateToken] Usuário inativo e allowInactive = false');
+        return null;
+      }
+
+      // Incluir dados do aluno se existir
+      let aluno: any = null;
+      try {
+        aluno = await this.alunosService.findByUsuarioId(user.id);
+      } catch (error) {}
+
+      // Incluir dados do professor se existir
+      let professor: any = null;
+      try {
+        professor = await this.professoresService.findByUsuarioId(user.id);
+      } catch (error) {}
+
+      // Incluir dados do gerente_unidade se existir
+      let gerente_unidade: any = null;
+      try {
+        gerente_unidade = await this.gerenteUnidadesService.buscarPorUsuario(
+          user.id,
+        );
+      } catch (error) {}
 
     // Incluir dados do recepcionista se existir
     let recepcionista_unidades: any = null;
@@ -375,6 +382,11 @@ export class AuthService {
     const { password, ...userDataWithoutPassword } = userData;
 
     return userDataWithoutPassword;
+    } catch (error) {
+      // Proteção total: qualquer erro no validateToken não pode derrubar o sistema
+      console.error(' [validateToken] Erro crítico durante validação:', error.message);
+      return null;
+    }
   }
 
   async refreshToken(user: Usuario): Promise<LoginResponse> {

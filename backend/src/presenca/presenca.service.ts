@@ -2246,46 +2246,47 @@ export class PresencaService {
   }
 
   async getPresencasPendentes(user: any, data?: string, aulaId?: string) {
-    // Verificar se o usuário está definido
-    if (!user) {
-      console.error(' [getPresencasPendentes] Usuário não definido');
-      throw new UnauthorizedException('Usuário não autenticado');
-    }
+    try {
+      // Verificar se o usuário está definido
+      if (!user) {
+        console.error(' [getPresencasPendentes] Usuário não definido');
+        throw new UnauthorizedException('Usuário não autenticado');
+      }
 
-    // Log para debug
-    console.log(' [getPresencasPendentes] Usuário:', {
-      id: user.id,
-      email: user.email,
-      perfis: user.perfis,
-    });
+      // Log para debug
+      console.log(' [getPresencasPendentes] Usuário:', {
+        id: user.id,
+        email: user.email,
+        perfis: user.perfis,
+      });
 
-    // Verificar permissão
-    const perfisPermitidos = [
-      'RECEPCIONISTA',
-      'PROFESSOR',
-      'GERENTE_UNIDADE',
-      'INSTRUTOR',
-      'GERENTE', // Adicionar também GERENTE
-    ];
+      // Verificar permissão
+      const perfisPermitidos = [
+        'RECEPCIONISTA',
+        'PROFESSOR',
+        'GERENTE_UNIDADE',
+        'INSTRUTOR',
+        'GERENTE', // Adicionar também GERENTE
+      ];
 
-    const perfisNomes = (user?.perfis || []).map((p: any) =>
-      typeof p === 'string' ? p.toUpperCase() : p.nome?.toUpperCase(),
-    );
-
-    console.log(' [getPresencasPendentes] Perfis do usuário:', perfisNomes);
-    console.log(' [getPresencasPendentes] Perfis permitidos:', perfisPermitidos);
-
-    const temPermissao = perfisNomes.some((p) => perfisPermitidos.includes(p));
-
-    if (!temPermissao) {
-      console.error(
-        ' [getPresencasPendentes] Usuário sem permissão:',
-        perfisNomes,
+      const perfisNomes = (user?.perfis || []).map((p: any) =>
+        typeof p === 'string' ? p.toUpperCase() : p.nome?.toUpperCase(),
       );
-      throw new ForbiddenException(
-        'Apenas RECEPCIONISTA, PROFESSOR ou GERENTE pode visualizar presenças pendentes',
-      );
-    }
+
+      console.log(' [getPresencasPendentes] Perfis do usuário:', perfisNomes);
+      console.log(' [getPresencasPendentes] Perfis permitidos:', perfisPermitidos);
+
+      const temPermissao = perfisNomes.some((p) => perfisPermitidos.includes(p));
+
+      if (!temPermissao) {
+        console.error(
+          ' [getPresencasPendentes] Usuário sem permissão:',
+          perfisNomes,
+        );
+        throw new ForbiddenException(
+          'Apenas RECEPCIONISTA, PROFESSOR ou GERENTE pode visualizar presenças pendentes',
+        );
+      }
 
     // Determinar unidade do usuário
     const unidadeId = await this.getUnidadeUsuario(user);
@@ -2358,6 +2359,17 @@ export class PresencaService {
         status: p.status_aprovacao,
       };
     });
+    } catch (error) {
+      // Proteção total: nunca derrubar o sistema por erro em getPresencasPendentes
+      console.error(' [getPresencasPendentes] Erro crítico:', error.message);
+      
+      if (error instanceof ForbiddenException || error instanceof UnauthorizedException) {
+        throw error;
+      }
+      
+      // Qualquer outro erro retorna lista vazia
+      return [];
+    }
   }
 
   async aprovarPresenca(id: string, user: any, observacao?: string) {
