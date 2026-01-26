@@ -51,6 +51,16 @@ import { FinanceiroModule } from './financeiro/financeiro.module';
           entities: ['dist/**/*.entity.js'],
           migrations: ['dist/src/migrations/*.js'],
           migrationsTableName: 'migrations',
+          // Pool de conexões para evitar esgotamento
+          pool: {
+            max: 20,          // Máximo 20 conexões
+            min: 5,           // Mínimo 5 conexões
+            acquire: 30000,   // Timeout para adquirir conexão (30s)
+            idle: 10000,      // Tempo de vida de conexão idle (10s)
+          },
+          // Timeouts para evitar travamentos
+          connectTimeoutMS: 60000,    // 60s timeout para conectar
+          socketTimeoutMS: 60000,     // 60s timeout para socket
           // SSL apenas para conexões remotas, não para localhost
           ssl: isLocalhost ? false : true,
           extra: isLocalhost

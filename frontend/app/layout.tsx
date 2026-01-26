@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+// import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "./auth/AuthContext";
 import React from "react";
@@ -9,15 +9,18 @@ import { ProfileCompletionGuard } from "@/components/auth/ProfileCompletionGuard
 import { TokenExpirationChecker } from "@/components/auth/TokenExpirationChecker";
 import LayoutContent from "@/components/layout/LayoutContent";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
+// Usar fontes do sistema como fallback
+const fontVariables = "font-sans";
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+// const geistSans = Geist({
+//   variable: "--font-geist-sans",
+//   subsets: ["latin"],
+// });
+
+// const geistMono = Geist_Mono({
+//   variable: "--font-geist-mono",
+//   subsets: ["latin"],
+// });
 
 export const metadata: Metadata = {
   title: "TeamCruz Jiu-Jitsu - Sistema de Gestão",
@@ -54,7 +57,7 @@ export default function RootLayout({
         <meta name="theme-color" content="#dc2626" />
       </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased flex flex-col min-h-screen`}
+        className={`${fontVariables} antialiased flex flex-col min-h-screen`}
       >
         <QueryProvider>
           <AuthProvider>

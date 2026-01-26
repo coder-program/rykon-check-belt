@@ -1,8 +1,8 @@
 "use client";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+ 
+ 
 
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";

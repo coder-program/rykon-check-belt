@@ -45,8 +45,8 @@ function AprovacaoUsuariosPage() {
   const router = useRouter();
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("pendentes"); // pendentes, todos, aprovados
-  const [editingUser, setEditingUser] = useState<any>(null);
-  const [editingPerson, setEditingPerson] = useState<any>(null);
+  const [editingUser, setEditingUser] = useState<{ id: number; nome: string; email: string; cpf?: string; telefone?: string; status: string } | null>(null);
+  const [editingPerson, setEditingPerson] = useState<{ id: number; nome: string; email: string; cpf?: string; telefone?: string } | null>(null);
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
   const [isPersonModalOpen, setIsPersonModalOpen] = useState(false);
   const [confirmModal, setConfirmModal] = useState({
@@ -99,7 +99,7 @@ function AprovacaoUsuariosPage() {
       }
 
       const data = await response.json();
-      const stats = data.map((user: any) => ({
+      const stats = data.map((user: { id: number; ativo: boolean }) => ({
         id: user.id,
         ativo: user.ativo,
       }));
@@ -159,13 +159,22 @@ function AprovacaoUsuariosPage() {
       const data = await response.json();
 
       // Transformar dados para o formato esperado
-      let allUsers = data.map((user: any) => ({
+      const allUsers = data.map((user: {
+        id: number;
+        nome: string;
+        email: string;
+        telefone?: string;
+        data_nascimento?: string;
+        perfis?: Array<{ nome: string } | string>;
+        ativo: boolean;
+        created_at: string;
+      }) => ({
         id: user.id,
         nome: user.nome,
         email: user.email,
         telefone: user.telefone,
         data_nascimento: user.data_nascimento,
-        perfis: user.perfis?.map((p: any) => p.nome || p) || [],
+        perfis: user.perfis?.map((p: { nome: string } | string) => (typeof p === 'string' ? p : p.nome)) || [],
         ativo: user.ativo,
         created_at: user.created_at,
         unidade: user.unidade, // Incluir dados da unidade
@@ -174,18 +183,18 @@ function AprovacaoUsuariosPage() {
       // Filtrar baseado no estado
       let filtered = allUsers;
       if (filter === "pendentes") {
-        filtered = allUsers.filter((u: any) => {
+        filtered = allUsers.filter((u: { ativo: boolean }) => {
           return !u.ativo;
         });
       } else if (filter === "aprovados") {
-        filtered = allUsers.filter((u: any) => u.ativo);
+        filtered = allUsers.filter((u: { ativo: boolean }) => u.ativo);
       }
       // Se filter === "todos", não filtra por status
 
       // Filtrar por busca
       if (search) {
         filtered = filtered.filter(
-          (u: any) =>
+          (u: { nome: string; email: string }) =>
             u.nome.toLowerCase().includes(search.toLowerCase()) ||
             u.email.toLowerCase().includes(search.toLowerCase())
         );
@@ -1169,7 +1178,7 @@ function AprovacaoUsuariosPage() {
                           {(() => {
                             const unidade = Array.isArray(unidades)
                               ? unidades.find(
-                                  (u: any) => u.id === editingPerson?.unidade_id
+                                  (u: { id: number; nome: string }) => u.id === editingPerson?.unidade_id
                                 )
                               : null;
                             return (

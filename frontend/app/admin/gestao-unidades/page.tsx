@@ -205,7 +205,7 @@ export default function GestaoUnidadesPage() {
         duration: 3000,
       });
     },
-    onError: (error: any) => {
+    onError: (error: { message?: string }) => {
       toast.error(error?.message || "Erro ao aprovar unidade");
     },
   });
@@ -232,7 +232,7 @@ export default function GestaoUnidadesPage() {
         duration: 3000,
       });
     },
-    onError: (error: any) => {
+    onError: (error: { message?: string }) => {
       toast.error(error?.message || "Erro ao reprovar unidade");
     },
   });

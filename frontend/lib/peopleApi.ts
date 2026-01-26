@@ -8,7 +8,30 @@ export type PageResp<T> = {
   hasNextPage: boolean;
 };
 
-export async function listAlunos(params: any): Promise<PageResp<any>> {
+interface ListAlunosParams {
+  page?: number;
+  pageSize?: number;
+  search?: string;
+  unidadeId?: number;
+  status?: string;
+  ativo?: boolean;
+  perfil_id?: number;
+}
+
+interface Aluno {
+  id: number;
+  nome: string;
+  nome_completo?: string;
+  email: string;
+  cpf?: string;
+  telefone?: string;
+  data_nascimento?: string;
+  ativo: boolean;
+  unidade?: { id: number; nome: string };
+  perfis?: Array<{ nome: string }>;
+}
+
+export async function listAlunos(params: ListAlunosParams): Promise<PageResp<Aluno>> {
   // Filtrar valores undefined/null antes de criar URLSearchParams
   const filteredParams = Object.fromEntries(
     Object.entries(params).filter(
@@ -28,7 +51,16 @@ export async function approveAluno(id: string, professor_id: string) {
     auth: true,
   });
 }
-export async function createAluno(data: any) {
+export async function createAluno(data: {
+  nome: string;
+  email: string;
+  cpf?: string;
+  telefone?: string;
+  data_nascimento?: string;
+  unidade_id?: number;
+  perfil_id?: number;
+  ativo?: boolean;
+}) {
   // Garantir que tipo_cadastro seja ALUNO
   const alunoData = {
     ...data,
@@ -37,7 +69,15 @@ export async function createAluno(data: any) {
   return http("/alunos", { method: "POST", body: alunoData, auth: true });
 }
 
-export async function updateAluno(id: string, data: any) {
+export async function updateAluno(id: string, data: {
+  nome?: string;
+  email?: string;
+  cpf?: string;
+  telefone?: string;
+  data_nascimento?: string;
+  unidade_id?: number;
+  ativo?: boolean;
+}) {
   return http(`/alunos/${id}`, {
     method: "PATCH",
     body: data,
@@ -45,7 +85,27 @@ export async function updateAluno(id: string, data: any) {
   });
 }
 
-export async function listProfessores(params: any): Promise<PageResp<any>> {
+interface Professor {
+  id: number;
+  nome: string;
+  email: string;
+  cpf?: string;
+  telefone?: string;
+  especialidades?: string[];
+  unidade_id?: number;
+  ativo: boolean;
+}
+
+interface ListProfessoresParams {
+  page?: number;
+  pageSize?: number;
+  search?: string;
+  unidadeId?: number;
+  status?: string;
+  ativo?: boolean;
+}
+
+export async function listProfessores(params: ListProfessoresParams): Promise<PageResp<Professor>> {
   // Filtrar valores undefined/null antes de criar URLSearchParams
   const filteredParams = Object.fromEntries(
     Object.entries(params).filter(
@@ -57,7 +117,15 @@ export async function listProfessores(params: any): Promise<PageResp<any>> {
   ).toString();
   return http(`/professores?${qs}`, { auth: true });
 }
-export async function createProfessor(data: any) {
+export async function createProfessor(data: {
+  nome: string;
+  email: string;
+  cpf?: string;
+  telefone?: string;
+  especialidades?: string[];
+  unidade_id?: number;
+  ativo?: boolean;
+}) {
   // Garantir que tipo_cadastro seja PROFESSOR
   const professorData = {
     ...data,
@@ -70,7 +138,15 @@ export async function createProfessor(data: any) {
   });
 }
 
-export async function updateProfessor(id: string, data: any) {
+export async function updateProfessor(id: string, data: {
+  nome?: string;
+  email?: string;
+  cpf?: string;
+  telefone?: string;
+  especialidades?: string[];
+  unidade_id?: number;
+  ativo?: boolean;
+}) {
   return http(`/professores/${id}`, {
     method: "PATCH",
     body: data,

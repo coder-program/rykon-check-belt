@@ -841,6 +841,25 @@ export class UsuariosService {
     return usuarioEnriquecido;
   }
 
+  // Método otimizado que carrega tudo de uma vez para getUserProfile
+  async findOneWithPermissions(id: string): Promise<any> {
+    const usuario = await this.usuarioRepository.findOne({
+      where: { id },
+      relations: [
+        'perfis', 
+        'perfis.permissoes', 
+        'perfis.permissoes.tipo', 
+        'perfis.permissoes.nivel'
+      ],
+    });
+
+    if (!usuario) {
+      return null;
+    }
+
+    return usuario;
+  }
+
   async update(
     id: string,
     updateData: Partial<CreateUsuarioDto>,
@@ -1082,6 +1101,21 @@ export class UsuariosService {
     });
   }
 
+  // Métodos otimizados para login - SEM carregar relações pesadas
+  async findByEmailForAuth(email: string): Promise<Usuario | null> {
+    return await this.usuarioRepository.findOne({
+      where: { email },
+      // Apenas campos essenciais para autenticação
+    });
+  }
+
+  async findByUsernameForAuth(username: string): Promise<Usuario | null> {
+    return await this.usuarioRepository.findOne({
+      where: { username },
+      // Apenas campos essenciais para autenticação
+    });
+  }
+
   async findByEmailOrUsername(
     emailOrUsername: string,
   ): Promise<Usuario | null> {
@@ -1092,6 +1126,19 @@ export class UsuariosService {
       return await this.findByEmail(emailOrUsername);
     } else {
       return await this.findByUsername(emailOrUsername);
+    }
+  }
+
+  // Método otimizado para autenticação
+  async findByEmailOrUsernameForAuth(
+    emailOrUsername: string,
+  ): Promise<Usuario | null> {
+    const isEmail = emailOrUsername.includes('@');
+
+    if (isEmail) {
+      return await this.findByEmailForAuth(emailOrUsername);
+    } else {
+      return await this.findByUsernameForAuth(emailOrUsername);
     }
   }
 
@@ -1554,14 +1601,62 @@ export class UsuariosService {
       throw new NotFoundException('Usuário não encontrado');
     }
 
-    // Remover o usuário do sistema
-    await this.usuarioRepository.remove(usuario);
+    // Usar transação para garantir exclusão atômica
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
 
-    // TODO: Enviar email informando sobre a rejeição
+    try {
+      // 1. Excluir da tabela alunos (se existir)
+      await queryRunner.query(
+        `DELETE FROM teamcruz.alunos WHERE usuario_id = $1`,
+        [userId]
+      );
 
-    return {
-      message: 'Cadastro rejeitado e usuário removido do sistema.',
-    };
+      // 2. Excluir da tabela usuario_perfis
+      await queryRunner.query(
+        `DELETE FROM teamcruz.usuario_perfis WHERE usuario_id = $1`,
+        [userId]
+      );
+
+      // 3. Excluir outras relações que possam existir
+      await queryRunner.query(
+        `DELETE FROM teamcruz.responsaveis WHERE usuario_id = $1`,
+        [userId]
+      );
+
+      await queryRunner.query(
+        `DELETE FROM teamcruz.professores WHERE usuario_id = $1`,
+        [userId]
+      );
+
+      await queryRunner.query(
+        `DELETE FROM teamcruz.gerente_unidades WHERE usuario_id = $1`,
+        [userId]
+      );
+
+      // 4. Por último, excluir da tabela usuarios
+      await queryRunner.query(
+        `DELETE FROM teamcruz.usuarios WHERE id = $1`,
+        [userId]
+      );
+
+      await queryRunner.commitTransaction();
+
+      console.log(`✅ Usuário ${userId} rejeitado e removido fisicamente do banco`);
+
+      // TODO: Enviar email informando sobre a rejeição
+
+      return {
+        message: 'Cadastro rejeitado e usuário removido completamente do sistema.',
+      };
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      console.error('❌ Erro ao rejeitar usuário:', error);
+      throw new BadRequestException(`Erro ao remover usuário: ${error.message}`);
+    } finally {
+      await queryRunner.release();
+    }
   }
 
   async findMyResponsavel(usuarioId: string): Promise<any> {

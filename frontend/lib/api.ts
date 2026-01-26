@@ -46,7 +46,7 @@ export async function http(path: string, opts: HttpOptions = {}) {
 
   if (!res.ok) {
     let message = `HTTP ${res.status}`;
-    let data: any = {};
+    let data: { message?: string; error?: string } = {};
 
     try {
       data = await res.json();

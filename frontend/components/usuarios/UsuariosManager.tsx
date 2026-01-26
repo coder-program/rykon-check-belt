@@ -698,8 +698,6 @@ const UsuariosManager = () => {
                 <label style={{ display: "block", marginBottom: "5px", fontWeight: "bold" }}>
                   Descrição
                 </label>
-                            </>
-          )}
               </div>
 
               {permissoes && permissoes.length > 0 && (
@@ -755,6 +753,14 @@ const UsuariosManager = () => {
               )}
             </>
           )}
+          
+          <div style={{ marginBottom: "15px" }}>
+            <label style={{ display: "block", marginBottom: "5px", fontWeight: "bold" }}>
+              Descrição
+            </label>
+            <textarea
+              value={formData.descricao}
+              onChange={(e) =>
                 setFormData({ ...formData, descricao: e.target.value })
               }
               style={{

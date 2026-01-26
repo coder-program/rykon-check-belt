@@ -586,8 +586,8 @@ export default function DependenteForm({
                       </SelectItem>
                     ) : faixas && faixas.length > 0 ? (
                       faixas
-                        .sort((a: any, b: any) => a.ordem - b.ordem)
-                        .map((faixa: any) => (
+                        .sort((a: { ordem: number }, b: { ordem: number }) => a.ordem - b.ordem)
+                        .map((faixa: { codigo: string; nome_exibicao: string }) => (
                           <SelectItem key={faixa.codigo} value={faixa.codigo}>
                             {faixa.nome_exibicao}
                           </SelectItem>

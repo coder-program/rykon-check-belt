@@ -102,7 +102,7 @@ export default function SistemaPresencaPage() {
             ?.nome_completo || "",
         dataHora: new Date(),
         unidadeId: user?.unidade_id || "unidade-1",
-        metodoCheckin: metodo as any,
+        metodoCheckin: metodo as "qr" | "manual",
       };
 
       // Adicionar ao localStorage para persistir durante a sessão

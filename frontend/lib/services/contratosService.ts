@@ -1,4 +1,4 @@
-import { api } from '../api';
+import { http } from '../api';
 
 export interface ContratoUnidade {
   id: string;
@@ -62,8 +62,8 @@ class ContratosService {
     tipo_contrato?: string;
     obrigatorio?: boolean;
   }): Promise<ContratoUnidade> {
-    const response = await api.post('/contratos', data);
-    return response.data;
+    const response = await http('/contratos', { method: 'POST', body: data, auth: true });
+    return response;
   }
 
   async editarContrato(id: string, data: {
@@ -73,20 +73,20 @@ class ContratosService {
     obrigatorio?: boolean;
     ativo?: boolean;
   }): Promise<ContratoUnidade> {
-    const response = await api.put(`/contratos/${id}`, data);
-    return response.data;
+    const response = await http(`/contratos/${id}`, { method: 'PUT', body: data, auth: true });
+    return response;
   }
 
   async buscarContratoPorId(id: string): Promise<ContratoUnidade> {
-    const response = await api.get(`/contratos/${id}`);
-    return response.data;
+    const response = await http(`/contratos/${id}`, { auth: true });
+    return response;
   }
 
   async buscarContratoAtivoUnidade(unidadeId: string): Promise<ContratoUnidade | null> {
     try {
-      const response = await api.get(`/contratos/unidade/${unidadeId}/ativo`);
-      return response.data;
-    } catch (error: any) {
+      const response = await http(`/contratos/unidade/${unidadeId}/ativo`, { auth: true });
+      return response;
+    } catch (error: { response?: { status?: number } }) {
       if (error.response?.status === 404) {
         return null;
       }
@@ -95,24 +95,24 @@ class ContratosService {
   }
 
   async listarContratosPorUnidade(unidadeId: string): Promise<ContratoUnidade[]> {
-    const response = await api.get(`/contratos/unidade/${unidadeId}`);
-    return response.data;
+    const response = await http(`/contratos/unidade/${unidadeId}`, { auth: true });
+    return response;
   }
 
   async deletarContrato(id: string): Promise<void> {
-    await api.delete(`/contratos/${id}`);
+    await http(`/contratos/${id}`, { method: 'DELETE', auth: true });
   }
 
   // ========== ASSINATURAS ==========
 
   async verificarStatusAluno(alunoId: string): Promise<StatusAssinaturaAluno> {
-    const response = await api.get(`/contratos/aluno/${alunoId}/status`);
-    return response.data;
+    const response = await http(`/contratos/aluno/${alunoId}/status`, { auth: true });
+    return response;
   }
 
   async verificarStatusResponsavel(responsavelId: string): Promise<StatusAssinaturaResponsavel> {
-    const response = await api.get(`/contratos/responsavel/${responsavelId}/status`);
-    return response.data;
+    const response = await http(`/contratos/responsavel/${responsavelId}/status`, { auth: true });
+    return response;
   }
 
   async assinarContratoAluno(alunoId: string, data?: AssinarContratoDto): Promise<void> {
@@ -121,7 +121,7 @@ class ContratosService {
       ip_address: data?.ip_address,
       user_agent: data?.user_agent || navigator.userAgent,
     };
-    await api.post(`/contratos/aluno/${alunoId}/assinar`, payload);
+    await http(`/contratos/aluno/${alunoId}/assinar`, { method: 'POST', body: payload, auth: true });
   }
 
   async assinarContratoResponsavel(responsavelId: string, data?: AssinarContratoDto): Promise<void> {
@@ -130,19 +130,19 @@ class ContratosService {
       ip_address: data?.ip_address,
       user_agent: data?.user_agent || navigator.userAgent,
     };
-    await api.post(`/contratos/responsavel/${responsavelId}/assinar`, payload);
+    await http(`/contratos/responsavel/${responsavelId}/assinar`, { method: 'POST', body: payload, auth: true });
   }
 
   // ========== HISTÓRICO ==========
 
   async buscarHistoricoContrato(contratoId: string): Promise<HistoricoAssinatura[]> {
-    const response = await api.get(`/contratos/${contratoId}/historico`);
-    return response.data;
+    const response = await http(`/contratos/${contratoId}/historico`, { auth: true });
+    return response;
   }
 
   async buscarHistoricoUnidade(unidadeId: string): Promise<HistoricoAssinatura[]> {
-    const response = await api.get(`/contratos/unidade/${unidadeId}/historico`);
-    return response.data;
+    const response = await http(`/contratos/unidade/${unidadeId}/historico`, { auth: true });
+    return response;
   }
 }
 

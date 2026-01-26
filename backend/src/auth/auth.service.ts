@@ -96,9 +96,9 @@ export class AuthService {
     { user: Usuario; error?: string } | { user: null; error: string }
   > {
     try {
-      // Usa findByEmailOrUsername - aceita email OU username
+      // Usa método otimizado para autenticação - SEM carregar perfis pesados
       const user =
-        await this.usuariosService.findByEmailOrUsername(emailOrUsername);
+        await this.usuariosService.findByEmailOrUsernameForAuth(emailOrUsername);
 
       if (!user) {
         return {
@@ -153,10 +153,22 @@ export class AuthService {
     ipAddress?: string,
     userAgent?: string,
   ): Promise<LoginResponse> {
-    const permissions = await this.usuariosService.getUserPermissions(user.id);
-    const permissionsDetail =
-      await this.usuariosService.getUserPermissionsDetail(user.id);
-    const perfis = await this.usuariosService.getUserPerfis(user.id);
+    // Buscar dados completos do usuário UMA VEZ
+    const userWithPermissions = await this.usuariosService.findOneWithPermissions(user.id);
+    if (!userWithPermissions) {
+      throw new NotFoundException('Usuário não encontrado');
+    }
+
+    // Extrair permissions dos dados já carregados
+    const permissions = userWithPermissions.perfis?.flatMap(perfil => 
+      perfil.permissoes?.map(p => p.codigo) || []
+    ) || [];
+    
+    const permissionsDetail = userWithPermissions.perfis?.flatMap(perfil => 
+      perfil.permissoes || []
+    ) || [];
+    
+    const perfis = userWithPermissions.perfis?.map(p => p.nome) || [];
 
     const payload: JwtPayload = {
       sub: user.id,
@@ -170,9 +182,7 @@ export class AuthService {
 
     // Verificar se é franqueado e se está em homologação
     const isFranqueado = perfis.some(
-      (p: any) =>
-        (typeof p === 'string' && p.toLowerCase() === 'franqueado') ||
-        (typeof p === 'object' && p?.nome?.toLowerCase() === 'franqueado'),
+      (p: string) => p.toLowerCase() === 'franqueado',
     );
 
     if (isFranqueado) {
@@ -405,27 +415,33 @@ export class AuthService {
   }
 
   async getUserProfile(userId: string) {
-    const user = await this.usuariosService.findOne(userId);
+    // Uma query otimizada para buscar usuário com perfis e permissões
+    const user = await this.usuariosService.findOneWithPermissions(userId);
 
     if (!user) {
       throw new NotFoundException('Usuário não encontrado');
     }
 
-    const permissions = await this.usuariosService.getUserPermissions(userId);
-    const permissionsDetail =
-      await this.usuariosService.getUserPermissionsDetail(userId);
-    const perfis = await this.usuariosService.getUserPerfis(userId);
+    // Extrair dados já carregados pelas relações
+    const permissions = user.perfis?.flatMap(perfil => 
+      perfil.permissoes?.map(p => p.codigo) || []
+    ) || [];
+    
+    const permissionsDetail = user.perfis?.flatMap(perfil => 
+      perfil.permissoes || []
+    ) || [];
+    
+    const perfis = user.perfis?.map(p => p.nome) || [];
 
-    // Buscar unidade do usuário (se for gerente ou tiver unidade vinculada)
+    // Buscar unidade apenas se for gerente
     let unidade: any = null;
-    try {
-      // Verificar se é gerente através dos perfis
-      const isGerenteUnidade = perfis.some(
-        (p: string) => p.toLowerCase() === 'gerente_unidade',
-      );
+    const isGerenteUnidade = perfis.some(
+      (p: string) => p.toLowerCase() === 'gerente_unidade',
+    );
 
-      if (user.id && isGerenteUnidade) {
-        // Buscar unidade do gerente via tabela gerente_unidades
+    if (user.id && isGerenteUnidade) {
+      try {
+        // Query otimizada para unidade
         const query = `
           SELECT u.id, u.nome, u.cnpj, u.status
           FROM teamcruz.gerente_unidades gu
@@ -439,8 +455,10 @@ export class AuthService {
         if (result && result.length > 0) {
           unidade = result[0];
         }
+      } catch (error: any) {
+        console.error('Erro ao buscar unidade do gerente:', error);
       }
-    } catch (error: any) {}
+    }
 
     // Remover senha do retorno
     const { password, ...userWithoutPassword } = user;

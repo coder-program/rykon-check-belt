@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "lint:permissive": "eslint -c .eslintrc.override.json"
   },
   "engines": {
     "node": ">=18.17"

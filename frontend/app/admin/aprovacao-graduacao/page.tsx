@@ -115,7 +115,7 @@ export default function AprovacaoGraduacaoPage() {
     queryFn: async () => {
       // Se for franqueado, buscar alunos de todas as unidades
       // Se for gerente/professor, buscar apenas da unidade dele
-      const params: any = { pageSize: 1000, status: "ATIVO" };
+      const params: { pageSize: number; status: string; unidadeId?: number } = { pageSize: 1000, status: "ATIVO" };
 
       // Não aplicar filtro de unidade se for franqueado (verá todas as unidades)
       // O backend já filtra automaticamente baseado no perfil

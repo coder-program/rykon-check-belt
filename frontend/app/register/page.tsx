@@ -3,6 +3,7 @@
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import {
   Card,
   CardContent,
@@ -259,7 +260,7 @@ function RegisterPageContent() {
         setFaixas(data);
 
         // Definir BRANCA como padrão se disponível
-        const faixaBranca = data.find((f: any) => f.codigo === "BRANCA");
+        const faixaBranca = data.find((f: { codigo: string; nome: string }) => f.codigo === "BRANCA");
         if (faixaBranca) {
           setFormData((prev) => ({ ...prev, faixa_atual: faixaBranca.codigo }));
         }

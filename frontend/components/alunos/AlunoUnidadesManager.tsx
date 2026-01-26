@@ -12,7 +12,7 @@ import {
   MapPin,
 } from "lucide-react";
 import toast from "react-hot-toast";
-import { peopleApi } from "@/lib/peopleApi";
+import { apiClient } from "@/lib/peopleApi";
 
 interface AlunoUnidade {
   id: string;
@@ -58,7 +58,7 @@ export default function AlunoUnidadesManager({
   const { data: unidadesAluno = [], isLoading } = useQuery({
     queryKey: ["aluno-unidades", alunoId],
     queryFn: () =>
-      peopleApi.get(`/alunos/${alunoId}/unidades`).then((res) => res.data),
+      apiClient.get(`/alunos/${alunoId}/unidades`).then((res: { data: unknown }) => res.data),
     enabled: !!alunoId,
   });
 
@@ -66,7 +66,7 @@ export default function AlunoUnidadesManager({
   const { data: todasUnidades = [] } = useQuery({
     queryKey: ["unidades"],
     queryFn: () =>
-      peopleApi.get("/unidades").then((res) => res.data.data || []),
+      apiClient.get("/unidades").then((res: { data: { data?: unknown } }) => res.data.data || []),
   });
 
   // Mutation para adicionar unidade
@@ -84,7 +84,7 @@ export default function AlunoUnidadesManager({
         observacoes: "",
       });
     },
-    onError: (error: any) => {
+    onError: (error: { response?: { data?: { message?: string } } }) => {
       toast.error(error.response?.data?.message || "Erro ao adicionar unidade");
     },
   });
@@ -97,7 +97,7 @@ export default function AlunoUnidadesManager({
       queryClient.invalidateQueries({ queryKey: ["aluno-unidades", alunoId] });
       toast.success("Unidade removida com sucesso!");
     },
-    onError: (error: any) => {
+    onError: (error: { response?: { data?: { message?: string } } }) => {
       toast.error(error.response?.data?.message || "Erro ao remover unidade");
     },
   });
@@ -110,7 +110,7 @@ export default function AlunoUnidadesManager({
       queryClient.invalidateQueries({ queryKey: ["aluno-unidades", alunoId] });
       toast.success("Unidade principal alterada!");
     },
-    onError: (error: any) => {
+    onError: (error: { response?: { data?: { message?: string } } }) => {
       toast.error(
         error.response?.data?.message || "Erro ao alterar unidade principal"
       );
@@ -169,7 +169,7 @@ export default function AlunoUnidadesManager({
   };
 
   const unidadesDisponiveis = todasUnidades.filter(
-    (unidade: any) =>
+    (unidade: { id: number; nome: string }) =>
       !unidadesAluno.some((au: AlunoUnidade) => au.unidade_id === unidade.id)
   );
 
@@ -231,7 +231,7 @@ export default function AlunoUnidadesManager({
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
                 <option value="">Selecione uma unidade</option>
-                {unidadesDisponiveis.map((unidade: any) => (
+                {unidadesDisponiveis.map((unidade: { id: number; nome: string }) => (
                   <option key={unidade.id} value={unidade.id}>
                     {unidade.nome}
                   </option>
@@ -411,7 +411,7 @@ export default function AlunoUnidadesManager({
         <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
           <p className="text-sm text-blue-800">
             💡 <strong>Dica:</strong> Um aluno pode estar matriculado em
-            múltiplas unidades. Clique em "Adicionar Unidade" para matriculá-lo
+            múltiplas unidades. Clique em &quot;Adicionar Unidade&quot; para matriculá-lo
             em outras academias.
           </p>
         </div>

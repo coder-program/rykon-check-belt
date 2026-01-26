@@ -23,10 +23,16 @@ export default function UnidadesPendentesPage() {
   const { user } = useAuth();
   const router = useRouter();
   const queryClient = useQueryClient();
-  const [selectedUnidade, setSelectedUnidade] = useState<any>(null);
+  const [selectedUnidade, setSelectedUnidade] = useState<{ 
+    id: number; 
+    nome: string; 
+    status: string; 
+    endereco?: string;
+    franqueado?: { nome: string };
+  } | null>(null);
 
   // Verificar se é MASTER
-  const isMaster = user?.perfis?.some((perfil: any) => {
+  const isMaster = user?.perfis?.some((perfil: { nome?: string; perfil?: string } | string) => {
     const perfilNome =
       typeof perfil === "string" ? perfil : perfil.nome || perfil.perfil;
     return perfilNome?.toUpperCase() === "MASTER";
@@ -143,7 +149,13 @@ export default function UnidadesPendentesPage() {
                   </p>
                 </div>
               ) : (
-                unidades.map((unidade: any) => (
+                unidades.map((unidade: { 
+                  id: number; 
+                  nome: string; 
+                  endereco?: string; 
+                  franqueado?: { nome: string }; 
+                  status: string 
+                }) => (
                   <div
                     key={unidade.id}
                     className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow"

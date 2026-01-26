@@ -133,7 +133,16 @@ export default function ConfiguracaoGraduacaoPage() {
   }, [configAtual]);
 
   const salvarMutation = useMutation({
-    mutationFn: async (data: any) => {
+    mutationFn: async (data: {
+      percentual_frequencia_minima: number;
+      config_faixas: Array<{
+        faixa: string;
+        ordem: number;
+        cor_hex: string;
+        tempo_minimo_dias: number;
+        ativa: boolean;
+      }>;
+    }) => {
       const token = localStorage.getItem("token");
       const response = await axios.post(
         `${API_URL}/graduacao/configuracao`,
@@ -150,7 +159,7 @@ export default function ConfiguracaoGraduacaoPage() {
       });
       alert("Configuração salva com sucesso!");
     },
-    onError: (error: any) => {
+    onError: (error: { response?: { data?: { message?: string } }; message?: string }) => {
       alert(
         `Erro ao salvar: ${error.response?.data?.message || error.message}`
       );
@@ -174,7 +183,7 @@ export default function ConfiguracaoGraduacaoPage() {
   const handleChangeFaixa = (
     faixaCodigo: string,
     campo: keyof ConfigFaixa,
-    valor: any
+    valor: string | number | boolean
   ) => {
     setConfigFaixas((prev) => {
       const faixaAtual = prev[faixaCodigo] || {

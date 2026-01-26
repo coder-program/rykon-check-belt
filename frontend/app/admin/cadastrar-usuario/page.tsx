@@ -85,7 +85,7 @@ export default function CadastrarUsuarioPage() {
   });
 
   // Verificar se é franqueado
-  const isFranqueado = user?.perfis?.some((perfil: any) => {
+  const isFranqueado = user?.perfis?.some((perfil: { nome?: string; perfil?: string } | string) => {
     const perfilNome =
       typeof perfil === "string" ? perfil : perfil.nome || perfil.perfil;
     return perfilNome?.toLowerCase() === "franqueado";
@@ -99,7 +99,7 @@ export default function CadastrarUsuarioPage() {
   }, [isFranqueado, franqueado, router]);
 
   // Verificar se usuário logado é gerente de unidade
-  const isGerenteUnidade = user?.perfis?.some((perfil: any) => {
+  const isGerenteUnidade = user?.perfis?.some((perfil: { nome?: string; perfil?: string } | string) => {
     const perfilNome =
       typeof perfil === "string" ? perfil : perfil.nome || perfil.perfil;
     return (
@@ -143,7 +143,7 @@ export default function CadastrarUsuarioPage() {
   }, [isGerenteUnidade, minhaUnidade, formData.unidade_id]);
 
   // Filtrar apenas perfis que o usuário pode cadastrar
-  const perfisDisponiveis = perfisData?.filter((perfil: any) => {
+  const perfisDisponiveis = perfisData?.filter((perfil: { nome: string }) => {
     // Gerente de unidade pode cadastrar: ALUNO, PROFESSOR, INSTRUTOR, RECEPCIONISTA, GERENTE_UNIDADE
     if (isGerenteUnidade) {
       return [
@@ -166,7 +166,7 @@ export default function CadastrarUsuarioPage() {
 
   // Detectar o perfil selecionado
   const perfilSelecionado = perfisDisponiveis?.find(
-    (p: any) => p.id === formData.perfil_id
+    (p: { id: number; nome: string }) => p.id === formData.perfil_id
   );
   const perfilNome = perfilSelecionado?.nome || "";
   const isProfessor = ["PROFESSOR", "INSTRUTOR"].includes(perfilNome);
@@ -268,7 +268,24 @@ export default function CadastrarUsuarioPage() {
     const telefoneSemFormatacao = formData.telefone.replace(/\D/g, "");
 
     // Preparar payload com campos condicionais
-    const payload: any = {
+    const payload: {
+      username: string;
+      nome: string;
+      email: string;
+      cpf: string;
+      telefone: string;
+      password: string;
+      perfil_ids: number[];
+      unidade_id: number;
+      ativo: boolean;
+      endereco?: string;
+      observacoes?: string;
+      data_nascimento?: string;
+      data_graduacao?: string;
+      especialidades?: string[];
+      plano_id?: number;
+      carga_horaria?: number;
+    } = {
       username,
       nome: formData.nome,
       email: formData.email,
@@ -430,7 +447,7 @@ export default function CadastrarUsuarioPage() {
                       <SelectValue placeholder="Selecione o perfil" />
                     </SelectTrigger>
                     <SelectContent>
-                      {perfisDisponiveis?.map((perfil: any) => (
+                      {perfisDisponiveis?.map((perfil: { id: number; nome: string }) => (
                         <SelectItem key={perfil.id} value={perfil.id}>
                           {perfil.nome.replace("_", " ")}
                         </SelectItem>
@@ -460,7 +477,7 @@ export default function CadastrarUsuarioPage() {
                         <SelectValue placeholder="Selecione a unidade" />
                       </SelectTrigger>
                       <SelectContent>
-                        {unidades.map((unidade: any) => (
+                        {unidades.map((unidade: { id: number; nome: string }) => (
                           <SelectItem key={unidade.id} value={unidade.id}>
                             {unidade.nome}
                           </SelectItem>

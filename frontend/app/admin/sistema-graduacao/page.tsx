@@ -226,14 +226,14 @@ export default function SistemaGraduacaoPage() {
   const stats = {
     totalProximos: proximos.length,
     prontosPraGrau: proximos.filter(
-      (a: any) => a.prontoParaGraduar && a.grausAtual < a.grausMax
+      (a: { prontoParaGraduar: boolean; grausAtual: number; grausMax: number }) => a.prontoParaGraduar && a.grausAtual < a.grausMax
     ).length,
     prontosPraFaixa: proximos.filter(
-      (a: any) => a.prontoParaGraduar && a.grausAtual >= a.grausMax
+      (a: { prontoParaGraduar: boolean; grausAtual: number; grausMax: number }) => a.prontoParaGraduar && a.grausAtual >= a.grausMax
     ).length,
-    categoriasAdulto: proximos.filter((a: any) => !a.kids).length,
-    categoriasKids: proximos.filter((a: any) => a.kids).length,
-    historicoMes: historico.filter((h: any) => {
+    categoriasAdulto: proximos.filter((a: { kids: boolean }) => !a.kids).length,
+    categoriasKids: proximos.filter((a: { kids: boolean }) => a.kids).length,
+    historicoMes: historico.filter((h: { dataGraduacao: string }) => {
       const dataGrad = new Date(h.dataGraduacao);
       const agora = new Date();
       return (
@@ -591,7 +591,14 @@ export default function SistemaGraduacaoPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {historico.map((item: any) => (
+                {historico.map((item: { 
+                  id: number; 
+                  aluno: { nome: string }; 
+                  faixaAnterior: string; 
+                  faixaAtual: string; 
+                  dataGraduacao: string; 
+                  tipo: string 
+                }) => (
                   <div
                     key={item.id}
                     className="flex items-center justify-between p-4 bg-gray-50 rounded-lg"

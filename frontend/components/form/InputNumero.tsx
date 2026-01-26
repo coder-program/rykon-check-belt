@@ -18,7 +18,7 @@ export function InputNumero({
   placeholder,
 }: InputNumeroProps) {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let v = e.target.value.replace(/\D/g, "");
+    const v = e.target.value.replace(/\D/g, "");
     onChange(v ? parseInt(v) : 0);
   };
   return (

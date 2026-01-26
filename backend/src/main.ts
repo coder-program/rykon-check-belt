@@ -226,6 +226,16 @@ async function bootstrap() {
   app.setGlobalPrefix('api');
 
   const port = process.env.PORT || 8080;
-  await app.listen(port, '0.0.0.0');
+  const server = await app.listen(port, '0.0.0.0');
+  
+  // CONFIGURAÇÕES DE TIMEOUT PARA EVITAR TRAVAMENTOS
+  server.timeout = 60000;        // 60 segundos timeout geral
+  server.keepAliveTimeout = 65000; // Keep-alive timeout  
+  server.headersTimeout = 66000;   // Headers timeout
+
+  console.log(`🚀 Aplicação rodando na porta ${port}`);
+  console.log(`📖 Swagger disponível em: http://localhost:${port}/api/docs`);
+  console.log(`❤️ Health check: http://localhost:${port}/health`);
+  console.log(`⏰ Timeout configurado: 60s`);
 }
 bootstrap();
