@@ -150,11 +150,26 @@ export class AulaController {
 
   @Get('horarios')
   @ApiOperation({ summary: 'Listar horários disponíveis' })
-  @ApiResponse({ status: 200, description: 'Horários disponíveis' })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Horários disponíveis',
+    headers: {
+      'Cache-Control': { description: 'no-cache, no-store, must-revalidate' },
+      'Pragma': { description: 'no-cache' },
+      'Expires': { description: '0' }
+    }
+  })
   async findHorarios(
     @Query('unidade_id') unidade_id?: string,
     @Request() req?: any,
   ) {
+    // 🔥 Forçar no-cache para evitar problemas no celular
+    if (req?.res) {
+      req.res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      req.res.setHeader('Pragma', 'no-cache');
+      req.res.setHeader('Expires', '0');
+    }
+
     const unidadesDoUsuario = await this.getUnidadeIdsFromUser(req);
 
     // Se for aluno, buscar a unidade dele automaticamente
