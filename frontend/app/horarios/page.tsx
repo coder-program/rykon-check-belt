@@ -28,6 +28,7 @@ import {
 interface HorarioAula {
   id: string;
   nome: string;
+  descricao?: string;
   professor: string;
   unidade: string;
   diaSemana: string;
@@ -380,6 +381,11 @@ export default function HorariosPage() {
                                 <User className="h-3 w-3" />
                                 Prof. {horario.professor}
                               </CardDescription>
+                              {horario.descricao && (
+                                <CardDescription className="mt-2 text-gray-600">
+                                  {horario.descricao}
+                                </CardDescription>
+                              )}
                             </div>
                             {horario.inscrito && (
                               <Star className="h-5 w-5 text-yellow-500 fill-current" />
