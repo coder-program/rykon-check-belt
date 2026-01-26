@@ -269,6 +269,22 @@ export class DashboardService {
         }
       }
 
+      // Buscar estatísticas complementares
+      const aulasHoje = await this.getAulasHoje(unidadeId, unidadesDoFranqueado);
+      const proximosGraduaveis = await this.getProximosGraduaveis(unidadeId, unidadesDoFranqueado);
+      const presencasHoje = await this.getPresencasHoje(unidadeId, unidadesDoFranqueado);
+
+      console.log('📊 [DASHBOARD STATS]', {
+        userId,
+        unidadeId,
+        isFranqueado,
+        unidadesDoFranqueado,
+        totalAlunos,
+        aulasHoje,
+        proximosGraduaveis,
+        presencasHoje,
+      });
+
       const stats = {
         totalUsuarios,
         usuariosPendentes,
@@ -280,9 +296,9 @@ export class DashboardService {
         taxaRetencao,
         totalProfessores,
         totalUnidades,
-        aulasHoje: 0, // TODO: implementar
-        proximosGraduaveis: 0, // TODO: implementar
-        presencasHoje: 0, // TODO: implementar
+        aulasHoje,
+        proximosGraduaveis,
+        presencasHoje,
       };
       return stats;
     } catch (error) {
@@ -298,6 +314,109 @@ export class DashboardService {
         proximosGraduaveis: 0,
         presencasHoje: 0,
       };
+    }
+  }
+
+  private async getAulasHoje(unidadeId?: string, unidadesDoFranqueado?: string[]): Promise<number> {
+    try {
+      const hoje = new Date();
+      const diaSemanaHoje = hoje.getDay();
+
+      let query = `
+        SELECT COUNT(*) as total
+        FROM teamcruz.aulas
+        WHERE ativo = true
+          AND dia_semana = $1
+      `;
+
+      const params: any[] = [diaSemanaHoje];
+
+      if (unidadeId) {
+        query += ` AND unidade_id = $2`;
+        params.push(unidadeId);
+      } else if (unidadesDoFranqueado && unidadesDoFranqueado.length > 0) {
+        query += ` AND unidade_id = ANY($2::uuid[])`;
+        params.push(unidadesDoFranqueado);
+      }
+
+      console.log('📅 [AULAS HOJE]', { diaSemanaHoje, unidadeId, unidadesDoFranqueado, query, params });
+
+      const result = await this.dataSource.query(query, params);
+      const total = parseInt(result[0]?.total || '0');
+      
+      console.log('✅ [AULAS HOJE] Total:', total);
+      return total;
+    } catch (error) {
+      console.error('❌ [AULAS HOJE] Erro:', error);
+      return 0;
+    }
+  }
+
+  private async getPresencasHoje(unidadeId?: string, unidadesDoFranqueado?: string[]): Promise<number> {
+    try {
+      const hoje = new Date();
+      const hojeStr = hoje.toISOString().split('T')[0];
+
+      let query = `
+        SELECT COUNT(*) as total
+        FROM teamcruz.presencas p
+        INNER JOIN teamcruz.aulas a ON p.aula_id = a.id
+        WHERE p.status = 'presente'
+          AND DATE(p.hora_checkin) = $1
+      `;
+
+      const params: any[] = [hojeStr];
+
+      if (unidadeId) {
+        query += ` AND a.unidade_id = $2`;
+        params.push(unidadeId);
+      } else if (unidadesDoFranqueado && unidadesDoFranqueado.length > 0) {
+        query += ` AND a.unidade_id = ANY($2::uuid[])`;
+        params.push(unidadesDoFranqueado);
+      }
+
+      console.log('✅ [PRESENÇAS HOJE]', { hojeStr, unidadeId, unidadesDoFranqueado });
+
+      const result = await this.dataSource.query(query, params);
+      const total = parseInt(result[0]?.total || '0');
+      
+      console.log('✅ [PRESENÇAS HOJE] Total:', total);
+      return total;
+    } catch (error) {
+      console.error('❌ [PRESENÇAS HOJE] Erro:', error);
+      return 0;
+    }
+  }
+
+  private async getProximosGraduaveis(unidadeId?: string, unidadesDoFranqueado?: string[]): Promise<number> {
+    try {
+      // Buscar alunos próximos a completar requisitos de graduação
+      let query = `
+        SELECT COUNT(*) as total
+        FROM teamcruz.alunos a
+        INNER JOIN teamcruz.aluno_faixa fa ON a.id = fa.aluno_id
+        WHERE a.status = 'ATIVO'
+          AND fa.ativa = true
+      `;
+
+      const params: any[] = [];
+
+      if (unidadeId) {
+        query += ` AND a.unidade_id = $1`;
+        params.push(unidadeId);
+      } else if (unidadesDoFranqueado && unidadesDoFranqueado.length > 0) {
+        query += ` AND a.unidade_id = ANY($1::uuid[])`;
+        params.push(unidadesDoFranqueado);
+      }
+
+      const result = await this.dataSource.query(query, params);
+      const total = parseInt(result[0]?.total || '0');
+      
+      console.log('🎓 [PRÓXIMOS GRADUÁVEIS] Total:', total);
+      return total;
+    } catch (error) {
+      console.error('❌ [PRÓXIMOS GRADUÁVEIS] Erro:', error);
+      return 0;
     }
   }
 }
