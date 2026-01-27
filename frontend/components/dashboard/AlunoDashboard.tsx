@@ -830,13 +830,23 @@ export default function AlunoDashboard({
     ? statusGraduacao.progressoPercentual * 100
     : 0;
 
-  const proximasAulasFormatadas = proximasAulas.map((aula) => ({
-    data: new Date(aula.data).toLocaleDateString("pt-BR"),
-    horario: `${aula.horarioInicio} - ${aula.horarioFim}`,
-    tipo: aula.nome,
-    professor: aula.professor,
-    local: aula.unidade,
-  }));
+  const proximasAulasFormatadas = proximasAulas.map((aula) => {
+    console.log('[ALUNO DASHBOARD] Formatando aula:', {
+      nome: aula.nome,
+      horarioInicio: aula.horarioInicio,
+      horarioFim: aula.horarioFim,
+      data: aula.data,
+      dataFormatada: new Date(aula.data).toLocaleDateString("pt-BR")
+    });
+    
+    return {
+      data: new Date(aula.data).toLocaleDateString("pt-BR"),
+      horario: `${aula.horarioInicio} - ${aula.horarioFim}`,
+      tipo: aula.nome,
+      professor: aula.professor,
+      local: aula.unidade,
+    };
+  });
 
   // Conquistas baseadas em dados reais
   const conquistas = [];

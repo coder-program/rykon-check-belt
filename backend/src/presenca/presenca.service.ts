@@ -149,8 +149,8 @@ export class PresencaService {
     // Converter corretamente: pegar UTC e ajustar para São Paulo
     const agora = new Date();
     const agoraSaoPaulo = new Date(agora.getTime() - 3 * 60 * 60 * 1000); // UTC - 3 horas
-    const diaHoje = agoraSaoPaulo.getUTCDay(); // Usar getUTCDay pois já ajustamos o timestamp
-    const horaAgora = `${String(agoraSaoPaulo.getUTCHours()).padStart(2, '0')}:${String(agoraSaoPaulo.getUTCMinutes()).padStart(2, '0')}`; // HH:MM
+    const diaHoje = agoraSaoPaulo.getDay(); // getDay() interpreta o timestamp ajustado corretamente
+    const horaAgora = `${String(agoraSaoPaulo.getHours()).padStart(2, '0')}:${String(agoraSaoPaulo.getMinutes()).padStart(2, '0')}`; // HH:MM
     
     console.log('\n========================================');
     console.log('🌎 [SERVICE getAulaAtiva] Hora UTC:', agora.toISOString());
@@ -285,7 +285,7 @@ export class PresencaService {
 
     // Filtrar aulas que estão acontecendo agora e priorizar por relevância
     const aulasAtivas: Array<{ aula: any; priority: number }> = [];
-    const horaAtualMinutos = agoraSaoPaulo.getUTCHours() * 60 + agoraSaoPaulo.getUTCMinutes();
+    const horaAtualMinutos = agoraSaoPaulo.getHours() * 60 + agoraSaoPaulo.getMinutes();
 
     console.log(`\n🕐 [SERVICE] Hora atual em minutos: ${horaAtualMinutos}`);
     console.log(`📊 [SERVICE] Iniciando análise de ${aulas.length} aulas...`);
@@ -920,10 +920,19 @@ export class PresencaService {
 
     // Mapear as presenças com informações das aulas
     const presencasComAulas = presencas.map((p) => {
+      // Converter hora_checkin para horário de São Paulo
+      let horarioSaoPaulo = '00:00';
+      if (p.hora_checkin) {
+        const horaCheckinSP = new Date(p.hora_checkin.getTime() - 3 * 60 * 60 * 1000);
+        const horas = String(horaCheckinSP.getHours()).padStart(2, '0');
+        const minutos = String(horaCheckinSP.getMinutes()).padStart(2, '0');
+        horarioSaoPaulo = `${horas}:${minutos}`;
+      }
+
       return {
         id: p.id,
         data: p.created_at,
-        horario: p.hora_checkin?.toTimeString().slice(0, 5) || '00:00',
+        horario: horarioSaoPaulo,
         tipo: 'entrada',
         faixa: faixaAtiva?.faixaDef?.nome_exibicao || 'Branca',
         faixaCodigo: faixaAtiva?.faixaDef?.codigo || 'BRANCA',
@@ -2795,10 +2804,19 @@ export class PresencaService {
 
     // Mapear as presenças com informações das aulas
     const presencasComAulas = presencas.map((p) => {
+      // Converter hora_checkin para horário de São Paulo
+      let horarioSaoPaulo = '00:00';
+      if (p.hora_checkin) {
+        const horaCheckinSP = new Date(p.hora_checkin.getTime() - 3 * 60 * 60 * 1000);
+        const horas = String(horaCheckinSP.getHours()).padStart(2, '0');
+        const minutos = String(horaCheckinSP.getMinutes()).padStart(2, '0');
+        horarioSaoPaulo = `${horas}:${minutos}`;
+      }
+
       return {
         id: p.id,
         data: p.created_at,
-        horario: p.hora_checkin?.toTimeString().slice(0, 5) || '00:00',
+        horario: horarioSaoPaulo,
         tipo: 'entrada',
         faixa: faixaAtiva?.faixaDef?.nome_exibicao || 'Branca',
         faixaCodigo: faixaAtiva?.faixaDef?.codigo || 'BRANCA',
