@@ -311,6 +311,14 @@ export default function AlunoDashboard({
   const loadDashboardData = async () => {
     if (!targetAlunoId) return;
 
+    console.log('\n========================================');
+    console.log('🔍 [ALUNO DASHBOARD] Carregando dados do dashboard');
+    console.log('========================================');
+    console.log('👤 Target Aluno ID:', targetAlunoId);
+    console.log('👤 Aluno ID (prop):', alunoId);
+    console.log('👤 User ID:', user?.id);
+    console.log('========================================\n');
+
     try {
       setLoading(true);
       setError(null);
@@ -320,15 +328,17 @@ export default function AlunoDashboard({
 
       // Se não foi passado alunoId, precisamos buscar pelo usuario_id
       if (!realAlunoId) {
+        console.log('🔍 [ALUNO DASHBOARD] Buscando aluno pelo usuario_id...');
         try {
           const alunoByUsuario = await http(
             `/alunos/usuario/${targetAlunoId}`,
             { auth: true }
           );
           realAlunoId = alunoByUsuario.id; // Usar o ID do aluno, não do usuário
+          console.log('✅ [ALUNO DASHBOARD] Real Aluno ID encontrado:', realAlunoId);
         } catch (err) {
           console.error(
-            " [ALUNO DASHBOARD] Erro ao buscar aluno por usuario_id:",
+            "❌ [ALUNO DASHBOARD] Erro ao buscar aluno por usuario_id:",
             err
           );
           setError("Não foi possível carregar os dados do aluno.");
@@ -364,6 +374,10 @@ export default function AlunoDashboard({
       } else {
         setCanAccess(true);
       }
+
+      console.log('\n📦 [ALUNO DASHBOARD] Carregando dados em paralelo...');
+      console.log('   - Real Aluno ID:', realAlunoId);
+      console.log('   - User Perfis:', user?.perfis);
 
       // Carregar dados em paralelo - USAR realAlunoId para graduação
       const [
@@ -414,12 +428,22 @@ export default function AlunoDashboard({
         http("/alunos/meus-dependentes", { auth: true }),
       ]);
 
+      console.log('\n📊 [ALUNO DASHBOARD] Resultados das chamadas:');
+      console.log('   1. Graduação:', graduacaoData.status);
+      console.log('   2. Presença:', presencaData.status);
+      console.log('   3. Aulas:', aulasData.status);
+      console.log('   4. Ranking:', rankingDataResult.status);
+      console.log('   5. Competições:', competicoesData.status);
+      console.log('   6. Dados Aluno:', alunoData.status);
+      console.log('   7. Dependentes:', dependentesData.status);
+
       // Processar resultados
       if (graduacaoData.status === "fulfilled") {
         setStatusGraduacao(graduacaoData.value);
+        console.log('✅ [ALUNO DASHBOARD] Graduação carregada:', graduacaoData.value);
       } else {
         console.error(
-          " Erro ao carregar status de graduação:",
+          "❌ [ALUNO DASHBOARD] Erro ao carregar status de graduação:",
           graduacaoData.reason
         );
         // Se não tem faixa ativa, abrir modal para cadastrar
@@ -430,10 +454,13 @@ export default function AlunoDashboard({
 
       if (presencaData.status === "fulfilled") {
         setEstatisticasPresenca(presencaData.value);
+        console.log('✅ [ALUNO DASHBOARD] Estatísticas de presença carregadas:', presencaData.value);
       }
 
       if (aulasData.status === "fulfilled") {
         setProximasAulas(Array.isArray(aulasData.value) ? aulasData.value : []);
+        console.log('✅ [ALUNO DASHBOARD] Aulas disponíveis:', aulasData.value?.length || 0);
+        console.log('📚 [ALUNO DASHBOARD] Aulas:', JSON.stringify(aulasData.value, null, 2));
       } else {
         console.error("❌ [ALUNO DASHBOARD] Erro ao carregar aulas:", aulasData.reason);
       }

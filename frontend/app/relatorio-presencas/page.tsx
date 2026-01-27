@@ -45,7 +45,7 @@ export default function RelatorioPresencasPage() {
   const router = useRouter();
   const { user } = useAuth();
   const [selectedUnidade, setSelectedUnidade] = useState<string>("todas");
-  const [tipoPeriodo, setTipoPeriodo] = useState<"dia" | "semana" | "mes">("mes");
+  const [tipoPeriodo, setTipoPeriodo] = useState<"dia" | "semana" | "mes">("dia");
   const [dataReferencia, setDataReferencia] = useState<string>(
     format(new Date(), "yyyy-MM-dd")
   );

@@ -151,7 +151,12 @@ export class PresencaService {
     const diaHoje = agoraSaoPaulo.getDay();
     const horaAgora = agoraSaoPaulo.toTimeString().slice(0, 5); // HH:MM
     
-    console.log(`🌎 [getAulaAtiva] Hora São Paulo: ${agoraSaoPaulo.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })} | Dia: ${diaHoje}`);
+    console.log('\n========================================');
+    console.log('🌎 [SERVICE getAulaAtiva] Hora São Paulo:', agoraSaoPaulo.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' }));
+    console.log('📆 [SERVICE getAulaAtiva] Dia da semana:', diaHoje, ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'][diaHoje]);
+    console.log('🕐 [SERVICE getAulaAtiva] Hora formatada:', horaAgora);
+    console.log('👤 [SERVICE getAulaAtiva] Usuário:', user.email);
+    console.log('========================================\n');
 
     // Detectar unidade(s) do usuário baseado no perfil
     let unidadesPermitidas: string[] = [];
@@ -167,6 +172,8 @@ export class PresencaService {
     const isRecepcionista = perfis.includes('RECEPCIONISTA');
     const isTablet = perfis.includes('TABLET_CHECKIN');
     const isMaster = perfis.includes('MASTER') || perfis.includes('ADMIN');
+
+    console.log('🔑 [SERVICE] Perfis do usuário:', perfis.join(', '));
 
     // Se for responsável, buscar unidades dos dependentes
     if (isResponsavel) {
@@ -184,6 +191,7 @@ export class PresencaService {
         ),
       ] as string[];
       
+      console.log('👨‍👩‍👧 [SERVICE] Unidades dos dependentes:', unidadesPermitidas);
     }
     // Se for aluno, buscar sua própria unidade
     else if (isAluno) {
@@ -192,8 +200,9 @@ export class PresencaService {
       });
       if (aluno?.unidade_id) {
         unidadesPermitidas = [aluno.unidade_id];
+        console.log('🎓 [SERVICE] Unidade do aluno:', aluno.unidade_id);
       } else {
-        console.warn(`⚠️ [getAulaAtiva] Aluno sem unidade vinculada!`, user.id);
+        console.warn(`⚠️ [SERVICE] Aluno sem unidade vinculada!`, user.id);
       }
     }
     // Se for gerente, buscar unidade que gerencia
@@ -204,6 +213,7 @@ export class PresencaService {
       );
       if (unidadeResult.length > 0) {
         unidadesPermitidas = [unidadeResult[0].unidade_id];
+        console.log('👔 [SERVICE] Unidade do gerente:', unidadeResult[0].unidade_id);
       }
     }
     // Se for recepcionista, buscar unidade vinculada
@@ -214,6 +224,7 @@ export class PresencaService {
       );
       if (unidadeResult.length > 0) {
         unidadesPermitidas = [unidadeResult[0].unidade_id];
+        console.log('📋 [SERVICE] Unidade do recepcionista:', unidadeResult[0].unidade_id);
       }
     }
     // Se for tablet, buscar unidade vinculada na tabela tablet_unidades
@@ -224,13 +235,15 @@ export class PresencaService {
       );
       if (unidadeResult.length > 0) {
         unidadesPermitidas = [unidadeResult[0].unidade_id];
+        console.log('📱 [SERVICE] Unidade do tablet:', unidadeResult[0].unidade_id);
       } else {
-        console.warn('⚠️ [getAulaAtiva] Tablet sem unidade vinculada!', user.id);
+        console.warn('⚠️ [SERVICE] Tablet sem unidade vinculada!', user.id);
       }
     }
     // Master pode ver todas as aulas
     else if (isMaster) {
       unidadesPermitidas = []; // Vazio = todas
+      console.log('👑 [SERVICE] Usuário MASTER - todas as unidades');
     }
 
     // Buscar aulas ativas no banco
@@ -248,20 +261,35 @@ export class PresencaService {
       });
     } else if (!isMaster) {
       // Se não tem unidades permitidas e não é master, não retornar nada
+      console.log('❌ [SERVICE] Sem permissão para ver aulas');
       return null;
     }
 
     const aulas = await queryBuilder.getMany();
 
+    console.log(`\n📚 [SERVICE] Total de aulas retornadas do BANCO: ${aulas.length}`);
+    console.log('\n🗄️ [SERVICE] DADOS BRUTOS DO BANCO:');
+    aulas.forEach((aula, index) => {
+      console.log(`   ${index + 1}. ${aula.nome}`);
+      console.log(`      ID: ${aula.id}`);
+      console.log(`      Dia semana: ${aula.dia_semana}`);
+      console.log(`      Hora inicio: ${aula.hora_inicio}`);
+      console.log(`      Hora fim: ${aula.hora_fim}`);
+      console.log(`      Ativo: ${aula.ativo}`);
+      console.log(`      Unidade ID: ${aula.unidade_id}`);
+      console.log(`      Data hora inicio: ${aula.data_hora_inicio}`);
+      console.log(`      Data hora fim: ${aula.data_hora_fim}`);
+    });
+
     // Filtrar aulas que estão acontecendo agora e priorizar por relevância
     const aulasAtivas: Array<{ aula: any; priority: number }> = [];
     const horaAtualMinutos = agoraSaoPaulo.getHours() * 60 + agoraSaoPaulo.getMinutes();
 
-    console.log(`🕐 [getAulaAtiva] Hora atual: ${agoraSaoPaulo.toLocaleTimeString('pt-BR')} (${horaAtualMinutos} minutos)`);
-    console.log(`📚 [getAulaAtiva] Total de aulas do dia: ${aulas.length}`);
+    console.log(`\n🕐 [SERVICE] Hora atual em minutos: ${horaAtualMinutos}`);
+    console.log(`📊 [SERVICE] Iniciando análise de ${aulas.length} aulas...`);
 
     for (const aula of aulas) {
-      console.log(`\n🔍 Analisando: ${aula.nome} (${aula.hora_inicio}-${aula.hora_fim})`);
+      console.log(`\n🔍 [SERVICE] Analisando: ${aula.nome} (${aula.hora_inicio}-${aula.hora_fim})`);
       const estaAtiva = aula.estaAtiva();
       console.log(`   estaAtiva()? ${estaAtiva}`);
       
@@ -298,23 +326,25 @@ export class PresencaService {
       }
     }
 
-    console.log(`\n📊 Aulas ativas encontradas: ${aulasAtivas.length}`);
+    console.log(`\n📊 [SERVICE] Aulas ativas encontradas: ${aulasAtivas.length}`);
 
     // Ordenar por prioridade (maior primeiro) e pegar a mais relevante
     if (aulasAtivas.length === 0) {
-      console.log('❌ Nenhuma aula ativa\n');
+      console.log('❌ [SERVICE] Nenhuma aula ativa no momento');
+      console.log('========================================\n');
       return null;
     }
 
     aulasAtivas.sort((a, b) => b.priority - a.priority);
     
-    console.log('🏆 Ranking:');
+    console.log('🏆 [SERVICE] Ranking de prioridades:');
     aulasAtivas.forEach((item, i) => {
-      console.log(`   ${i + 1}. ${item.aula.nome} - ${item.priority.toFixed(2)}`);
+      console.log(`   ${i + 1}. ${item.aula.nome} - Prioridade: ${item.priority.toFixed(2)}`);
     });
 
     const aulaEscolhida = aulasAtivas[0].aula;
-    console.log(`\n✅ ESCOLHIDA: ${aulaEscolhida.nome}\n`);
+    console.log(`\n✅ [SERVICE] AULA ESCOLHIDA: ${aulaEscolhida.nome} (${aulaEscolhida.hora_inicio}-${aulaEscolhida.hora_fim})`);
+    console.log('========================================\n');
 
     // Gerar QR Code se ainda não tiver ou se for antigo (mais de 1 hora)
     const precisaNovoQR =
@@ -326,6 +356,7 @@ export class PresencaService {
       aulaEscolhida.qr_code = aulaEscolhida.gerarQRCode();
       aulaEscolhida.qr_code_gerado_em = new Date();
       await this.aulaRepository.save(aulaEscolhida);
+      console.log('🔄 [SERVICE] Novo QR Code gerado');
     }
 
     return {
@@ -1746,6 +1777,16 @@ export class PresencaService {
     const hoje = data ? new Date(data) : new Date();
     const diaSemana = hoje.getDay();
 
+    console.log('\n========================================');
+    console.log('🔍 [SERVICE getAulasDisponiveis] Iniciando busca');
+    console.log('========================================');
+    console.log('📅 Data recebida:', data || 'hoje');
+    console.log('📅 Data processada:', hoje.toISOString());
+    console.log('📅 Dia da semana:', diaSemana, ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'][diaSemana]);
+    console.log('👤 Usuário:', user.email);
+    console.log('👤 AlunoId fornecido:', alunoId || 'não');
+    console.log('========================================\n');
+
     try {
       // Buscar unidade do aluno ou franqueado
       let unidadeId: string | null = null;
@@ -1757,16 +1798,19 @@ export class PresencaService {
           where: { id: alunoId },
           relations: ['unidade'],
         });
+        console.log('🎓 [SERVICE] Aluno especificado encontrado:', aluno ? 'sim' : 'não');
       } else {
         // Tentar como aluno do próprio usuário logado
         aluno = await this.alunoRepository.findOne({
           where: { usuario_id: user.id },
           relations: ['unidade'],
         });
+        console.log('🎓 [SERVICE] Aluno do usuário logado:', aluno ? 'sim' : 'não');
       }
 
       if (aluno?.unidade_id) {
         unidadeId = aluno.unidade_id;
+        console.log('🏢 [SERVICE] Unidade do aluno:', unidadeId);
       } else {
         // Se não é aluno, tentar buscar como franqueado
         const franqueado = await this.dataSource.query(
@@ -1778,6 +1822,9 @@ export class PresencaService {
 
         if (franqueado.length > 0) {
           unidadeId = franqueado[0].id;
+          console.log('🏢 [SERVICE] Unidade do franqueado:', unidadeId);
+        } else {
+          console.log('⚠️ [SERVICE] Nenhuma unidade encontrada para o usuário');
         }
       }
 
@@ -1791,6 +1838,8 @@ export class PresencaService {
         whereConditions.unidade_id = unidadeId;
       }
 
+      console.log('🔍 [SERVICE] Buscando aulas com condições:', JSON.stringify(whereConditions, null, 2));
+
       const aulas = await this.aulaRepository.find({
         where: whereConditions,
         relations: ['unidade', 'professor'],
@@ -1799,11 +1848,30 @@ export class PresencaService {
         },
       });
 
+      console.log(`📚 [SERVICE] Total de aulas retornadas do BANCO: ${aulas.length}`);
+      console.log('\n🗄️ [SERVICE] DADOS BRUTOS DO BANCO (getAulasDisponiveis):');
+      aulas.forEach((aula, index) => {
+        console.log(`   ${index + 1}. ${aula.nome}`);
+        console.log(`      ID: ${aula.id}`);
+        console.log(`      Dia semana: ${aula.dia_semana}`);
+        console.log(`      Hora inicio: ${aula.hora_inicio}`);
+        console.log(`      Hora fim: ${aula.hora_fim}`);
+        console.log(`      Ativo: ${aula.ativo}`);
+        console.log(`      Unidade ID: ${aula.unidade_id}`);
+        console.log(`      Data hora inicio: ${aula.data_hora_inicio}`);
+        console.log(`      Data hora fim: ${aula.data_hora_fim}`);
+      });
+
       // IMPORTANTE: Para aulas recorrentes (com dia_semana), NÃO usar data_hora_fim
       // porque são timestamps antigos. Apenas retornar todas as aulas do dia.
       const aulasDisponiveis = aulas.filter((aula) => {
+        console.log(`\n🔍 [SERVICE] Filtrando aula: ${aula.nome} (${aula.hora_inicio}-${aula.hora_fim})`);
+        console.log(`   Dia semana: ${aula.dia_semana}`);
+        console.log(`   Data hora fim: ${aula.data_hora_fim}`);
+        
         // Se é aula recorrente (tem dia_semana), sempre disponível
         if (aula.dia_semana !== null && aula.dia_semana !== undefined) {
+          console.log('   ✅ Aula recorrente - disponível');
           return true;
         }
         
@@ -1812,12 +1880,16 @@ export class PresencaService {
           const agora = hoje.getTime();
           const fimTime = aula.data_hora_fim.getTime();
           const disponivel = fimTime > agora;
+          console.log(`   ${disponivel ? '✅' : '❌'} Aula única - fim ${fimTime > agora ? '>' : '<='} agora`);
           return disponivel;
         }
         
         // Sem data_hora_fim e sem dia_semana, sempre disponível
+        console.log('   ✅ Sem restrições - disponível');
         return true;
       });
+
+      console.log(`\n📊 [SERVICE] Aulas disponíveis após filtro: ${aulasDisponiveis.length}`);
 
       // Formatar resposta
       const aulasFormatadas = aulasDisponiveis.map((aula) => {
@@ -1845,9 +1917,13 @@ export class PresencaService {
         };
       });
 
+      console.log(`✅ [SERVICE] Retornando ${aulasFormatadas.length} aulas formatadas`);
+      console.log('========================================\n');
+
       return aulasFormatadas;
     } catch (error) {
-      console.error(' [getAulasDisponiveis] Erro ao buscar aulas:', error);
+      console.error('❌ [SERVICE getAulasDisponiveis] Erro ao buscar aulas:', error);
+      console.log('========================================\n');
       // Em caso de erro, retornar array vazio ao invés de falhar
       return [];
     }
