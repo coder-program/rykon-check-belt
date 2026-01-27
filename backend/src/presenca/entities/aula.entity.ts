@@ -123,19 +123,18 @@ export class Aula {
   estaAtiva(): boolean {
     if (!this.ativo) return false;
 
-    // SEMPRE usar horário de São Paulo (UTC-3)
-    // Converter corretamente: pegar UTC e ajustar para São Paulo
+    // Usar toLocaleString para obter hora de São Paulo
     const agora = new Date();
-    const agoraSaoPaulo = new Date(agora.getTime() - 3 * 60 * 60 * 1000); // UTC - 3 horas
+    const spDate = new Date(agora.toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
 
     console.log(`   [estaAtiva] ${this.nome}:`);
     console.log(`      Hora UTC agora: ${agora.toISOString()}`);
-    console.log(`      Hora SP ajustada: ${agoraSaoPaulo.toISOString()}`);
+    console.log(`      Hora SP: ${spDate.toISOString()}`);
 
     // PRIORIZAR dia_semana para aulas recorrentes
     if (this.dia_semana !== null && this.dia_semana !== undefined) {
-      const diaHoje = agoraSaoPaulo.getDay(); // getDay() interpreta o timestamp ajustado
-      const horaAgora = agoraSaoPaulo.getHours() * 60 + agoraSaoPaulo.getMinutes();
+      const diaHoje = spDate.getDay();
+      const horaAgora = spDate.getHours() * 60 + spDate.getMinutes();
 
       console.log(`      Dia hoje: ${diaHoje}, Dia aula: ${this.dia_semana}`);
       console.log(`      Hora agora (minutos): ${horaAgora}`);
@@ -145,8 +144,28 @@ export class Aula {
         return false;
       }
 
-      const [horaInicio, minInicio] = this.hora_inicio.split(':').map(Number);
-      const [horaFim, minFim] = this.hora_fim.split(':').map(Number);
+      // Extrair horários dos timestamps usando toLocaleString
+      let horaInicio = 0, minInicio = 0, horaFim = 0, minFim = 0;
+      
+      if (this.data_hora_inicio) {
+        const horaStr = this.data_hora_inicio.toLocaleString('pt-BR', {
+          timeZone: 'America/Sao_Paulo',
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false,
+        });
+        [horaInicio, minInicio] = horaStr.split(':').map(Number);
+      }
+      
+      if (this.data_hora_fim) {
+        const horaStr = this.data_hora_fim.toLocaleString('pt-BR', {
+          timeZone: 'America/Sao_Paulo',
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false,
+        });
+        [horaFim, minFim] = horaStr.split(':').map(Number);
+      }
 
       const minutosInicio = horaInicio * 60 + minInicio;
       const minutosFim = horaFim * 60 + minFim;
@@ -184,7 +203,7 @@ export class Aula {
         this.data_hora_fim.getTime() + margemDepois,
       );
 
-      const ativa = agoraSaoPaulo >= inicioComMargem && agoraSaoPaulo <= fimComMargem;
+      const ativa = spDate >= inicioComMargem && spDate <= fimComMargem;
       return ativa;
     }
 

@@ -145,16 +145,15 @@ export class PresencaService {
       return null;
     }
 
-    // SEMPRE usar horário de São Paulo (UTC-3)
-    // Converter corretamente: pegar UTC e ajustar para São Paulo
+    // Usar toLocaleString para obter hora de São Paulo
     const agora = new Date();
-    const agoraSaoPaulo = new Date(agora.getTime() - 3 * 60 * 60 * 1000); // UTC - 3 horas
-    const diaHoje = agoraSaoPaulo.getDay(); // getDay() interpreta o timestamp ajustado corretamente
-    const horaAgora = `${String(agoraSaoPaulo.getHours()).padStart(2, '0')}:${String(agoraSaoPaulo.getMinutes()).padStart(2, '0')}`; // HH:MM
+    const spDate = new Date(agora.toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
+    const diaHoje = spDate.getDay();
+    const horaAgora = `${String(spDate.getHours()).padStart(2, '0')}:${String(spDate.getMinutes()).padStart(2, '0')}`;
     
     console.log('\n========================================');
     console.log('🌎 [SERVICE getAulaAtiva] Hora UTC:', agora.toISOString());
-    console.log('🌎 [SERVICE getAulaAtiva] Hora São Paulo (timestamp ajustado):', agoraSaoPaulo.toISOString());
+    console.log('🌎 [SERVICE getAulaAtiva] Hora São Paulo:', spDate.toISOString());
     console.log('🌎 [SERVICE getAulaAtiva] Hora São Paulo formatada:', horaAgora);
     console.log('📆 [SERVICE getAulaAtiva] Dia da semana:', diaHoje, ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'][diaHoje]);
     console.log('👤 [SERVICE getAulaAtiva] Usuário:', user.email);
@@ -285,7 +284,7 @@ export class PresencaService {
 
     // Filtrar aulas que estão acontecendo agora e priorizar por relevância
     const aulasAtivas: Array<{ aula: any; priority: number }> = [];
-    const horaAtualMinutos = agoraSaoPaulo.getHours() * 60 + agoraSaoPaulo.getMinutes();
+    const horaAtualMinutos = spDate.getHours() * 60 + spDate.getMinutes();
 
     console.log(`\n🕐 [SERVICE] Hora atual em minutos: ${horaAtualMinutos}`);
     console.log(`📊 [SERVICE] Iniciando análise de ${aulas.length} aulas...`);

@@ -213,25 +213,61 @@ export class AulaService {
       ativo: true,
     });
 
+    console.log('\n🗓️ [SERVICE findHorariosDisponiveis] Total de aulas:', aulas.length);
+
     // Mapear para formato do frontend
-    return aulas.map((aula) => ({
-      id: aula.id,
-      nome: aula.nome,
-      descricao: aula.descricao,
-      professor: aula.professor?.nome_completo || 'A definir',
-      unidade: aula.unidade?.nome || 'Unidade',
-      diaSemana: this.getDiaSemanaStr(aula.dia_semana),
-      horarioInicio: aula.hora_inicio,
-      horarioFim: aula.hora_fim,
-      tipo: aula.tipo,
-      nivel: 'Todos', // TODO: adicionar nível na entity se necessário
-      modalidade:
-        aula.tipo === 'GI' ? 'Gi' : aula.tipo === 'NO_GI' ? 'NoGi' : 'Misto',
-      vagasDisponiveis: aula.capacidade_maxima, // TODO: calcular baseado em inscrições
-      vagasTotal: aula.capacidade_maxima,
-      inscrito: false, // TODO: verificar se usuário está inscrito
-      ativo: aula.ativo,
-    }));
+    return aulas.map((aula, index) => {
+      console.log(`\n📚 [SERVICE] Aula ${index + 1}: ${aula.nome}`);
+      console.log(`   ID: ${aula.id}`);
+      console.log(`   Dia semana: ${aula.dia_semana}`);
+      console.log(`   data_hora_inicio (RAW do banco):`, aula.data_hora_inicio);
+      console.log(`   data_hora_fim (RAW do banco):`, aula.data_hora_fim);
+      
+      // Extrair horários dos timestamps usando toLocaleString
+      let horarioInicio = aula.hora_inicio; // Fallback
+      let horarioFim = aula.hora_fim; // Fallback
+      
+      if (aula.data_hora_inicio) {
+        const horaStr = aula.data_hora_inicio.toLocaleString('pt-BR', {
+          timeZone: 'America/Sao_Paulo',
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false,
+        });
+        horarioInicio = horaStr.split(':').slice(0, 2).join(':');
+        console.log(`   ✅ Horário início convertido: ${horarioInicio} (de ${aula.data_hora_inicio.toISOString()})`);
+      }
+      
+      if (aula.data_hora_fim) {
+        const horaStr = aula.data_hora_fim.toLocaleString('pt-BR', {
+          timeZone: 'America/Sao_Paulo',
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false,
+        });
+        horarioFim = horaStr.split(':').slice(0, 2).join(':');
+        console.log(`   ✅ Horário fim convertido: ${horarioFim} (de ${aula.data_hora_fim.toISOString()})`);
+      }
+
+      return {
+        id: aula.id,
+        nome: aula.nome,
+        descricao: aula.descricao,
+        professor: aula.professor?.nome_completo || 'A definir',
+        unidade: aula.unidade?.nome || 'Unidade',
+        diaSemana: this.getDiaSemanaStr(aula.dia_semana),
+        horarioInicio,
+        horarioFim,
+        tipo: aula.tipo,
+        nivel: 'Todos', // TODO: adicionar nível na entity se necessário
+        modalidade:
+          aula.tipo === 'GI' ? 'Gi' : aula.tipo === 'NO_GI' ? 'NoGi' : 'Misto',
+        vagasDisponiveis: aula.capacidade_maxima, // TODO: calcular baseado em inscrições
+        vagasTotal: aula.capacidade_maxima,
+        inscrito: false, // TODO: verificar se usuário está inscrito
+        ativo: aula.ativo,
+      };
+    });
   }
 
   private getDiaSemanaStr(dia: number): string {
