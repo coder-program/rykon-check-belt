@@ -145,9 +145,13 @@ export class PresencaService {
       return null;
     }
 
+    // SEMPRE usar horário de São Paulo (UTC-3), independente do fuso do servidor
     const agora = new Date();
-    const diaHoje = agora.getDay();
-    const horaAgora = agora.toTimeString().slice(0, 5); // HH:MM
+    const agoraSaoPaulo = new Date(agora.toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
+    const diaHoje = agoraSaoPaulo.getDay();
+    const horaAgora = agoraSaoPaulo.toTimeString().slice(0, 5); // HH:MM
+    
+    console.log(`🌎 [getAulaAtiva] Hora São Paulo: ${agoraSaoPaulo.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })} | Dia: ${diaHoje}`);
 
     // Detectar unidade(s) do usuário baseado no perfil
     let unidadesPermitidas: string[] = [];
@@ -251,9 +255,9 @@ export class PresencaService {
 
     // Filtrar aulas que estão acontecendo agora e priorizar por relevância
     const aulasAtivas: Array<{ aula: any; priority: number }> = [];
-    const horaAtualMinutos = agora.getHours() * 60 + agora.getMinutes();
+    const horaAtualMinutos = agoraSaoPaulo.getHours() * 60 + agoraSaoPaulo.getMinutes();
 
-    console.log(`🕐 [getAulaAtiva] Hora atual: ${agora.toLocaleTimeString('pt-BR')} (${horaAtualMinutos} minutos)`);
+    console.log(`🕐 [getAulaAtiva] Hora atual: ${agoraSaoPaulo.toLocaleTimeString('pt-BR')} (${horaAtualMinutos} minutos)`);
     console.log(`📚 [getAulaAtiva] Total de aulas do dia: ${aulas.length}`);
 
     for (const aula of aulas) {

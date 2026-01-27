@@ -123,12 +123,14 @@ export class Aula {
   estaAtiva(): boolean {
     if (!this.ativo) return false;
 
+    // SEMPRE usar horário de São Paulo (UTC-3), independente do fuso do servidor
     const agora = new Date();
+    const agoraSaoPaulo = new Date(agora.toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
 
     // PRIORIZAR dia_semana para aulas recorrentes
     if (this.dia_semana !== null && this.dia_semana !== undefined) {
-      const diaHoje = agora.getDay();
-      const horaAgora = agora.getHours() * 60 + agora.getMinutes();
+      const diaHoje = agoraSaoPaulo.getDay();
+      const horaAgora = agoraSaoPaulo.getHours() * 60 + agoraSaoPaulo.getMinutes();
 
       if (diaHoje !== this.dia_semana) {
         return false;
@@ -167,7 +169,7 @@ export class Aula {
         this.data_hora_fim.getTime() + margemDepois,
       );
 
-      const ativa = agora >= inicioComMargem && agora <= fimComMargem;
+      const ativa = agoraSaoPaulo >= inicioComMargem && agoraSaoPaulo <= fimComMargem;
       return ativa;
     }
 
