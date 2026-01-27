@@ -119,15 +119,6 @@ export default function MeuPerfilPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
 
-  console.log('\n========================================');
-  console.log('🔍 [MEU PERFIL] Carregando página');
-  console.log('========================================');
-  console.log('👤 User:', user?.email);
-  console.log('🔐 IsAuthenticated:', isAuthenticated);
-  console.log('⏳ AuthLoading:', authLoading);
-  console.log('👥 Perfis:', user?.perfis);
-  console.log('========================================\n');
-
   const [formData, setFormData] = useState<ProfileData>({
     nome: "",
     email: "",
@@ -144,6 +135,9 @@ export default function MeuPerfilPage() {
   >(null);
   const [unidadeOriginal, setUnidadeOriginal] = useState<string | null>(null);
   const [unidadeMudou, setUnidadeMudou] = useState(false);
+  const [diaVencimentoOriginal, setDiaVencimentoOriginal] = useState<number | null>(null);
+  const [consentLgpdOriginal, setConsentLgpdOriginal] = useState<boolean>(false);
+  const [consentImagemOriginal, setConsentImagemOriginal] = useState<boolean>(false);
 
   // Estados para controlar visibilidade das senhas
   const [showSenhaAtual, setShowSenhaAtual] = useState(false);
@@ -331,18 +325,12 @@ export default function MeuPerfilPage() {
 
   // Redirect se não autenticado
   useEffect(() => {
-    console.log('🔍 [MEU PERFIL] useEffect - Verificando autenticação');
-    console.log('   authLoading:', authLoading);
-    console.log('   isAuthenticated:', isAuthenticated);
-    
     if (!authLoading && !isAuthenticated) {
-      console.log('❌ [MEU PERFIL] Não autenticado - redirecionando para login');
       router.push("/login");
       return;
     }
     
     if (isAuthenticated && user) {
-      console.log('✅ [MEU PERFIL] Autenticado - usuário:', user.email);
     }
   }, [isAuthenticated, authLoading, router, user]);
 
@@ -415,6 +403,10 @@ export default function MeuPerfilPage() {
           consent_imagem: dadosAluno.consent_imagem || false,
         };
         
+        // Salvar o dia de vencimento original
+        setDiaVencimentoOriginal(dadosAluno.dia_vencimento || null);
+        setConsentLgpdOriginal(dadosAluno.consent_lgpd || false);
+        setConsentImagemOriginal(dadosAluno.consent_imagem || false);
       }
       // Se é professor, usar dados da entidade professor
       else if (dadosProfessor) {
@@ -576,10 +568,26 @@ export default function MeuPerfilPage() {
           responsavel_nome: data.responsavel_nome,
           responsavel_cpf: data.responsavel_cpf,
           responsavel_telefone: data.responsavel_telefone,
+          responsavel_parentesco: data.responsavel_parentesco,
+          // Dados médicos
+          observacoes_medicas: data.observacoes_medicas,
+          alergias: data.alergias,
+          medicamentos_uso_continuo: data.medicamentos_uso_continuo,
+          plano_saude: data.plano_saude,
+          atestado_medico_validade: data.atestado_medico_validade,
+          restricoes_medicas: data.restricoes_medicas,
+          // Dados financeiros
+          dia_vencimento: data.dia_vencimento,
+          valor_mensalidade: data.valor_mensalidade,
+          desconto_percentual: data.desconto_percentual,
           // Dados de graduação
           faixa_atual: data.faixa_atual,
           graus: data.graus !== undefined ? Number(data.graus) : undefined,
           data_ultima_graduacao: data.data_ultima_graduacao,
+          // Observações e LGPD
+          observacoes: data.observacoes,
+          consent_lgpd: data.consent_lgpd,
+          consent_imagem: data.consent_imagem,
           // Dados de endereço
           cep: data.cep,
           logradouro: data.logradouro,
@@ -591,7 +599,7 @@ export default function MeuPerfilPage() {
           // Unidade
           unidade_id: data.unidade_id,
         };
-
+        
         const alunoResponse = await fetch(
           `${API_URL}/alunos/${dadosAluno.id}`,
           {
@@ -1023,7 +1031,7 @@ export default function MeuPerfilPage() {
       dataToSubmit.atestado_medico_validade = formData.atestado_medico_validade;
       dataToSubmit.restricoes_medicas = formData.restricoes_medicas;
       // Dados financeiros
-      dataToSubmit.dia_vencimento = formData.dia_vencimento;
+      dataToSubmit.dia_vencimento = formData.dia_vencimento ? Number(formData.dia_vencimento) : undefined;
       dataToSubmit.valor_mensalidade = formData.valor_mensalidade;
       dataToSubmit.desconto_percentual = formData.desconto_percentual;
       // Graduação
@@ -1086,9 +1094,11 @@ export default function MeuPerfilPage() {
 
     Object.keys(dataToSubmit).forEach((key) => {
       const value = dataToSubmit[key as keyof ProfileData];
-      // Não remover: foto (para permitir remoção), campos booleanos (false é um valor válido)
+      // Não remover: foto (para permitir remoção), campos booleanos (false é um valor válido), números (0 é válido)
       const isBooleanField = key === 'consent_lgpd' || key === 'consent_imagem';
-      if (key !== "foto" && !isBooleanField && (!value || value === "")) {
+      const isNumericField = key === 'dia_vencimento' || key === 'graus' || key === 'valor_mensalidade' || key === 'desconto_percentual';
+      
+      if (key !== "foto" && !isBooleanField && !isNumericField && (!value || value === "")) {
         delete dataToSubmit[key as keyof ProfileData];
       } else if (isBooleanField) {
       }
@@ -1560,7 +1570,8 @@ export default function MeuPerfilPage() {
                           name="faixa_atual"
                           value={formData.faixa_atual || ""}
                           onChange={handleChange}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          disabled={true}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-100 cursor-not-allowed"
                         >
                           <option value="">Selecione a faixa</option>
                           <optgroup label="Faixas Infantis">
@@ -1601,7 +1612,8 @@ export default function MeuPerfilPage() {
                           name="graus"
                           value={formData.graus || 0}
                           onChange={handleChange}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          disabled={true}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-100 cursor-not-allowed"
                         >
                           <option value="0">0 graus</option>
                           <option value="1">1 grau</option>
@@ -1624,7 +1636,8 @@ export default function MeuPerfilPage() {
                           name="data_ultima_graduacao"
                           value={formData.data_ultima_graduacao || ""}
                           onChange={handleChange}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          disabled={true}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-100 cursor-not-allowed"
                         />
                       </div>
                     </div>
@@ -1862,77 +1875,85 @@ export default function MeuPerfilPage() {
                   </div>
                 </div>
 
-                {/* Dados Financeiros - ESCONDIDO TEMPORARIAMENTE */}
-                {/* <div className="mt-6 bg-green-50 p-4 rounded-lg">
-                  <h4 className="text-md font-medium text-gray-900 mb-3">
-                    💰 Dados Financeiros
-                  </h4>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                      <label
-                        htmlFor="dia_vencimento"
-                        className="block text-sm font-medium text-gray-700 mb-2"
-                      >
-                        Dia de Vencimento
-                      </label>
-                      <input
-                        type="number"
-                        id="dia_vencimento"
-                        name="dia_vencimento"
-                        value={formData.dia_vencimento || ""}
-                        onChange={handleChange}
-                        min="1"
-                        max="31"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="Ex: 10"
-                      />
-                      <p className="text-xs text-gray-500 mt-1">
-                        Dia do mês para vencimento
-                      </p>
-                    </div>
+                {/* Dia de Vencimento */}
+                <div className="mt-6">
+                  <label
+                    htmlFor="dia_vencimento"
+                    className="block text-sm font-medium text-gray-700 mb-2"
+                  >
+                    📅 Dia de Vencimento da Mensalidade
+                  </label>
+                  <input
+                    type="number"
+                    id="dia_vencimento"
+                    name="dia_vencimento"
+                    value={formData.dia_vencimento || ""}
+                    onChange={handleChange}
+                    min="1"
+                    max="31"
+                    disabled={!!diaVencimentoOriginal}
+                    className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                      diaVencimentoOriginal ? 'bg-gray-100 cursor-not-allowed' : ''
+                    }`}
+                    placeholder="Ex: 10"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    {diaVencimentoOriginal 
+                      ? '⚠️ Dia de vencimento já definido. Entre em contato com a administração para alterar.'
+                      : 'Dia do mês para vencimento da mensalidade'}
+                  </p>
+                </div>
 
-                    <div>
-                      <label
-                        htmlFor="valor_mensalidade"
-                        className="block text-sm font-medium text-gray-700 mb-2"
-                      >
-                        Valor da Mensalidade
-                      </label>
-                      <input
-                        type="number"
-                        id="valor_mensalidade"
-                        name="valor_mensalidade"
-                        value={formData.valor_mensalidade || ""}
-                        onChange={handleChange}
-                        step="0.01"
-                        min="0"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="Ex: 150.00"
-                      />
-                    </div>
-
-                    <div>
-                      <label
-                        htmlFor="desconto_percentual"
-                        className="block text-sm font-medium text-gray-700 mb-2"
-                      >
-                        Desconto (%)
-                      </label>
-                      <input
-                        type="number"
-                        id="desconto_percentual"
-                        name="desconto_percentual"
-                        value={formData.desconto_percentual || 0}
-                        onChange={handleChange}
-                        step="0.01"
-                        min="0"
-                        max="100"
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="Ex: 10"
-                      />
-                    </div>
+                {/* Valor Mensalidade e Desconto */}
+                <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label
+                      htmlFor="valor_mensalidade"
+                      className="block text-sm font-medium text-gray-700 mb-2"
+                    >
+                      💰 Valor Mensalidade (R$)
+                    </label>
+                    <input
+                      type="number"
+                      id="valor_mensalidade"
+                      name="valor_mensalidade"
+                      value={formData.valor_mensalidade || ""}
+                      onChange={handleChange}
+                      disabled={true}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-100 cursor-not-allowed"
+                      placeholder="0.00"
+                      step="0.01"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      ⚠️ Gerenciado pela administração
+                    </p>
                   </div>
-                </div> */}
+
+                  <div>
+                    <label
+                      htmlFor="desconto_percentual"
+                      className="block text-sm font-medium text-gray-700 mb-2"
+                    >
+                      🎟️ Desconto (%)
+                    </label>
+                    <input
+                      type="number"
+                      id="desconto_percentual"
+                      name="desconto_percentual"
+                      value={formData.desconto_percentual || ""}
+                      onChange={handleChange}
+                      disabled={true}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-100 cursor-not-allowed"
+                      placeholder="0"
+                      min="0"
+                      max="100"
+                      step="0.01"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      ⚠️ Gerenciado pela administração
+                    </p>
+                  </div>
+                </div>
 
                 {/* Observações Gerais */}
                 <div className="mt-6">
@@ -1971,14 +1992,22 @@ export default function MeuPerfilPage() {
                             consent_lgpd: e.target.checked,
                           });
                         }}
-                        className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                        disabled={consentLgpdOriginal}
+                        className={`mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded ${
+                          consentLgpdOriginal ? 'cursor-not-allowed opacity-60' : ''
+                        }`}
                       />
                       <label
                         htmlFor="consent_lgpd"
-                        className="ml-3 text-sm text-gray-700"
+                        className={`ml-3 text-sm ${
+                          consentLgpdOriginal ? 'text-gray-500' : 'text-gray-700'
+                        }`}
                       >
                         Autorizo o uso dos meus dados pessoais conforme a LGPD
                         (Lei Geral de Proteção de Dados)
+                        {consentLgpdOriginal && (
+                          <span className="ml-2 text-xs text-green-600 font-medium">✓ Já consentido</span>
+                        )}
                       </label>
                     </div>
 
@@ -1994,14 +2023,22 @@ export default function MeuPerfilPage() {
                             consent_imagem: e.target.checked,
                           });
                         }}
-                        className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                        disabled={consentImagemOriginal}
+                        className={`mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded ${
+                          consentImagemOriginal ? 'cursor-not-allowed opacity-60' : ''
+                        }`}
                       />
                       <label
                         htmlFor="consent_imagem"
-                        className="ml-3 text-sm text-gray-700"
+                        className={`ml-3 text-sm ${
+                          consentImagemOriginal ? 'text-gray-500' : 'text-gray-700'
+                        }`}
                       >
                         Autorizo o uso de imagem para divulgação nas redes
                         sociais e materiais de marketing
+                        {consentImagemOriginal && (
+                          <span className="ml-2 text-xs text-green-600 font-medium">✓ Já consentido</span>
+                        )}
                       </label>
                     </div>
                   </div>
@@ -2391,7 +2428,8 @@ export default function MeuPerfilPage() {
                       name="unidade_id"
                       value={formData.unidade_id}
                       onChange={(e) => handleUnidadeChange(e.target.value)}
-                      className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      disabled={true}
+                      className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-100 cursor-not-allowed"
                     >
                       <option value="">Selecione uma unidade</option>
                       {unidades?.map((unidade: Unidade) => (

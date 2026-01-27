@@ -831,7 +831,6 @@ export class AlunosService {
     const updateData: any = {
       ...dto,
     };
-
     // Helper to handle date fields
     function parseDateField(val: any, fallback: any = null) {
       if (val === undefined) return fallback;
@@ -870,6 +869,9 @@ export class AlunosService {
 
     // Numeric fields
     if (updateData.dia_vencimento !== undefined && String(updateData.dia_vencimento).trim() === '') updateData.dia_vencimento = null;
+    else if (dto.dia_vencimento !== undefined && dto.dia_vencimento !== null) {
+      updateData.dia_vencimento = Number(dto.dia_vencimento);
+    }
     if (updateData.valor_mensalidade !== undefined && String(updateData.valor_mensalidade).trim() === '') updateData.valor_mensalidade = null;
     if (updateData.desconto_percentual !== undefined && String(updateData.desconto_percentual).trim() === '') updateData.desconto_percentual = 0;
 

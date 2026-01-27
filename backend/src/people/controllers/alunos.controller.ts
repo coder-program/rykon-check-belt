@@ -280,20 +280,14 @@ export class AlunosController {
     @Body() bodyRaw: any,
     @Request() req,
   ) {
-    // WORKAROUND: O middleware/body parser está removendo campos consent_lgpd e consent_imagem
-    // Vamos forçar a adição deles baseado na presença no frontend
     
-    // Se o formData contém nome_completo, significa que veio do frontend de perfil
-    // Neste caso, podemos assumir que os campos de consentimento devem estar presentes
-    const isPerfilUpdate = bodyRaw.nome_completo && (bodyRaw.faixa_atual || bodyRaw.cep);
-    
-    if (isPerfilUpdate) {
-      // IMPORTANTE: Como os campos não chegam, vamos buscar os valores atuais do banco
-      // e manter eles inalterados, ou assumir false se não existirem
-      // Adicionar campos obrigatórios para que o DTO funcione
+    // WORKAROUND REMOVIDO: Agora os campos consent_lgpd e consent_imagem chegam corretamente do frontend
+    // Apenas garantir que existam caso não venham (para compatibilidade)
+    if (bodyRaw.consent_lgpd === undefined) {
       bodyRaw.consent_lgpd = false;
+    }
+    if (bodyRaw.consent_imagem === undefined) {
       bodyRaw.consent_imagem = false;
-      
     }
     
     const user = req?.user || null;
