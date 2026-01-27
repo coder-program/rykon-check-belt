@@ -165,6 +165,19 @@ export class UnidadesService {
         paramIndex += unidadeIds.length;
       }
     }
+    // Se instrutor ou professor, filtra pela unidade onde trabalha
+    else if (user && (this.isInstrutor(user) || this.isProfessor(user)) && !this.isMaster(user)) {
+      const unidadeId = await this.getUnidadeIdByProfessor(user);
+      if (unidadeId) {
+        whereConditions.push(`u.id = $${paramIndex}`);
+        queryParams.push(unidadeId);
+        paramIndex++;
+      } else {
+        console.warn(
+          '⚠️ [UnidadesService.listar] Instrutor/Professor sem unidade vinculada!',
+        );
+      }
+    }
     // Se franqueado (não master), filtra por sua franquia
     else if (user && this.isFranqueado(user) && !this.isMaster(user)) {
       const franqueadoId = await this.getFranqueadoIdByUser(user);
@@ -485,6 +498,20 @@ export class UnidadesService {
     return perfis.includes('recepcionista');
   }
 
+  private isInstrutor(user: any): boolean {
+    const perfis = (user?.perfis || []).map((p: any) =>
+      (p.nome || '').toLowerCase(),
+    );
+    return perfis.includes('instrutor');
+  }
+
+  private isProfessor(user: any): boolean {
+    const perfis = (user?.perfis || []).map((p: any) =>
+      (p.nome || '').toLowerCase(),
+    );
+    return perfis.includes('professor');
+  }
+
   private async getFranqueadoIdByUser(user: any): Promise<string | null> {
     if (!user?.id) return null;
     const res = await this.dataSource.query(
@@ -545,6 +572,24 @@ export class UnidadesService {
 
     const unidadeIds = result.map((row: any) => row.unidade_id);
     return unidadeIds;
+  }
+
+  private async getUnidadeIdByProfessor(user: any): Promise<string | null> {
+    if (!user?.id) return null;
+
+    // Buscar unidade vinculada ao professor através da tabela professor_unidades
+    const result = await this.dataSource.query(
+      `SELECT pu.unidade_id
+       FROM teamcruz.professor_unidades pu
+       LEFT JOIN teamcruz.professores p ON p.id = pu.professor_id
+       WHERE (p.usuario_id = $1 OR pu.usuario_id = $1)
+         AND pu.ativo = true
+       LIMIT 1`,
+      [user.id],
+    );
+
+    const unidadeId = result.length > 0 ? result[0].unidade_id : null;
+    return unidadeId;
   }
 
   private formatarUnidade(row: any): Unidade {

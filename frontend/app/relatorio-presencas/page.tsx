@@ -54,7 +54,7 @@ export default function RelatorioPresencasPage() {
   const [sortFieldUnidade, setSortFieldUnidade] = useState<string | null>(null);
   const [sortDirectionUnidade, setSortDirectionUnidade] = useState<"asc" | "desc">("asc");
   
-  // Verificar se é gerente ou recepcionista e pegar unidade específica
+  // Verificar se é gerente, recepcionista, instrutor ou professor e pegar unidade específica
   const isGerente = user?.perfis?.some((p: any) => 
     (typeof p === 'string' ? p : p.nome)?.toLowerCase() === 'gerente_unidade'
   );
@@ -63,9 +63,17 @@ export default function RelatorioPresencasPage() {
     (typeof p === 'string' ? p : p.nome)?.toLowerCase() === 'recepcionista'
   );
   
-  const isUnidadeRestrita = isGerente || isRecepcionista;
+  const isInstrutor = user?.perfis?.some((p: any) => 
+    (typeof p === 'string' ? p : p.nome)?.toLowerCase() === 'instrutor'
+  );
+  
+  const isProfessor = user?.perfis?.some((p: any) => 
+    (typeof p === 'string' ? p : p.nome)?.toLowerCase() === 'professor'
+  );
+  
+  const isUnidadeRestrita = isGerente || isRecepcionista || isInstrutor || isProfessor;
 
-  // Query para buscar unidades do franqueado/gerente/recepcionista
+  // Query para buscar unidades do franqueado/gerente/recepcionista/instrutor/professor
   const { data: unidades } = useQuery({
     queryKey: ["unidades"],
     queryFn: async () => {
@@ -88,7 +96,7 @@ export default function RelatorioPresencasPage() {
         const data = await response.json();
         const unidadesList = data.items || [];
         
-        // Se é gerente/recepcionista e tem unidades, auto-selecionar a primeira (única dele)
+        // Se tem unidade restrita e tem unidades, auto-selecionar a primeira (única dele)
         if (isUnidadeRestrita && unidadesList.length > 0 && selectedUnidade === "todas") {
           setSelectedUnidade(unidadesList[0].id);
         }
@@ -104,7 +112,7 @@ export default function RelatorioPresencasPage() {
   // Query para buscar relatório de presenças
   const { data: relatorio, isLoading } = useQuery({
     queryKey: ["relatorio-presencas", selectedUnidade, dataReferencia, tipoPeriodo],
-    enabled: !isUnidadeRestrita || (isUnidadeRestrita && selectedUnidade !== "todas"), // Só executar quando gerente/recepcionista tiver unidade definida
+    enabled: !isUnidadeRestrita || (isUnidadeRestrita && selectedUnidade !== "todas"), // Só executar quando perfis com unidade restrita tiverem unidade definida
     queryFn: async () => {
       // Calcular dataInicio e dataFim baseado no tipo de período
       let dataInicio: string;
@@ -175,10 +183,17 @@ export default function RelatorioPresencasPage() {
             aluno_nome: p.aluno?.nome || 'Aluno',
             unidade_nome: p.aula?.unidade?.nome || 'Unidade',
             data_presenca: p.data,
-            horario: p.data ? new Date(p.data).toLocaleTimeString('pt-BR', { 
-              hour: '2-digit', 
-              minute: '2-digit' 
-            }) : '00:00',
+            horario: p.hora_checkin ? (() => {
+              // Backend retorna em UTC, precisa converter para horário de São Paulo (UTC-3)
+              const date = new Date(p.hora_checkin);
+              const hours = date.getUTCHours() - 3; // Converter UTC para UTC-3
+              const minutes = date.getUTCMinutes();
+              
+              // Ajustar horas negativas (quando é depois da meia-noite UTC)
+              const adjustedHours = hours < 0 ? hours + 24 : hours;
+              
+              return `${String(adjustedHours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+            })() : '00:00',
             instrutor_nome: p.aula?.professor?.nome_completo || 'Instrutor',
             aluno: {
               categoria: p.aluno?.categoria,
@@ -366,7 +381,7 @@ export default function RelatorioPresencasPage() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* Filtro de Unidade - Desabilitado para gerentes/recepcionistas */}
+            {/* Filtro de Unidade - Desabilitado para gerentes/recepcionistas/instrutores/professores */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Unidade

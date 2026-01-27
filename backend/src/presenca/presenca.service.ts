@@ -249,34 +249,90 @@ export class PresencaService {
 
     const aulas = await queryBuilder.getMany();
 
-    // Filtrar aulas que estão acontecendo agora
-    for (const aula of aulas) {
-      
-      if (aula.estaAtiva()) {
-        
-        // Gerar QR Code se ainda não tiver ou se for antigo (mais de 1 hora)
-        const precisaNovoQR =
-          !aula.qr_code ||
-          !aula.qr_code_gerado_em ||
-          Date.now() - aula.qr_code_gerado_em.getTime() > 3600000;
+    // Filtrar aulas que estão acontecendo agora e priorizar por relevância
+    const aulasAtivas: Array<{ aula: any; priority: number }> = [];
+    const horaAtualMinutos = agora.getHours() * 60 + agora.getMinutes();
 
-        if (precisaNovoQR) {
-          aula.qr_code = aula.gerarQRCode();
-          aula.qr_code_gerado_em = new Date();
-          await this.aulaRepository.save(aula);
+    console.log(`🕐 [getAulaAtiva] Hora atual: ${agora.toLocaleTimeString('pt-BR')} (${horaAtualMinutos} minutos)`);
+    console.log(`📚 [getAulaAtiva] Total de aulas do dia: ${aulas.length}`);
+
+    for (const aula of aulas) {
+      console.log(`\n🔍 Analisando: ${aula.nome} (${aula.hora_inicio}-${aula.hora_fim})`);
+      const estaAtiva = aula.estaAtiva();
+      console.log(`   estaAtiva()? ${estaAtiva}`);
+      
+      if (estaAtiva) {
+        // Calcular prioridade baseada no horário
+        const [horaInicio, minInicio] = aula.hora_inicio.split(':').map(Number);
+        const [horaFim, minFim] = aula.hora_fim.split(':').map(Number);
+        const minutosInicio = horaInicio * 60 + minInicio;
+        const minutosFim = horaFim * 60 + minFim;
+
+        let priority = 0;
+
+        // PRIORIDADE MÁXIMA: Aula que está dentro do horário oficial (não em margem)
+        if (horaAtualMinutos >= minutosInicio && horaAtualMinutos <= minutosFim) {
+          priority = 100;
+          console.log(`   ✅ DENTRO DO HORÁRIO - Prioridade: ${priority}`);
+        }
+        // PRIORIDADE MÉDIA: Aula que ainda não começou (margem antes)
+        else if (horaAtualMinutos < minutosInicio) {
+          priority = 50;
+          const distanciaInicio = minutosInicio - horaAtualMinutos;
+          priority += (30 - Math.min(distanciaInicio, 30)) / 30 * 50;
+          console.log(`   ⏰ ANTES (${distanciaInicio}min) - Prioridade: ${priority.toFixed(2)}`);
+        }
+        // PRIORIDADE BAIXA: Aula que já terminou (margem depois)
+        else if (horaAtualMinutos > minutosFim) {
+          priority = 10;
+          const distanciaFim = horaAtualMinutos - minutosFim;
+          priority -= Math.min(distanciaFim, 30);
+          console.log(`   ❌ APÓS FIM (${distanciaFim}min) - Prioridade: ${priority}`);
         }
 
-        return {
-          id: aula.id,
-          nome: aula.nome,
-          professor: aula.professor?.nome_completo || 'Professor',
-          unidade: aula.unidade?.nome || 'Unidade',
-          horarioInicio: aula.hora_inicio,
-          horarioFim: aula.hora_fim,
-          qrCode: aula.qr_code,
-        };
+        aulasAtivas.push({ aula, priority });
       }
     }
+
+    console.log(`\n📊 Aulas ativas encontradas: ${aulasAtivas.length}`);
+
+    // Ordenar por prioridade (maior primeiro) e pegar a mais relevante
+    if (aulasAtivas.length === 0) {
+      console.log('❌ Nenhuma aula ativa\n');
+      return null;
+    }
+
+    aulasAtivas.sort((a, b) => b.priority - a.priority);
+    
+    console.log('🏆 Ranking:');
+    aulasAtivas.forEach((item, i) => {
+      console.log(`   ${i + 1}. ${item.aula.nome} - ${item.priority.toFixed(2)}`);
+    });
+
+    const aulaEscolhida = aulasAtivas[0].aula;
+    console.log(`\n✅ ESCOLHIDA: ${aulaEscolhida.nome}\n`);
+
+    // Gerar QR Code se ainda não tiver ou se for antigo (mais de 1 hora)
+    const precisaNovoQR =
+      !aulaEscolhida.qr_code ||
+      !aulaEscolhida.qr_code_gerado_em ||
+      Date.now() - aulaEscolhida.qr_code_gerado_em.getTime() > 3600000;
+
+    if (precisaNovoQR) {
+      aulaEscolhida.qr_code = aulaEscolhida.gerarQRCode();
+      aulaEscolhida.qr_code_gerado_em = new Date();
+      await this.aulaRepository.save(aulaEscolhida);
+    }
+
+    return {
+      id: aulaEscolhida.id,
+      nome: aulaEscolhida.nome,
+      professor: aulaEscolhida.professor?.nome_completo || 'Professor',
+      unidade: aulaEscolhida.unidade?.nome || 'Unidade',
+      horarioInicio: aulaEscolhida.hora_inicio,
+      horarioFim: aulaEscolhida.hora_fim,
+      qrCode: aulaEscolhida.qr_code,
+    };
 
     return null;
   }
@@ -1100,15 +1156,17 @@ export class PresencaService {
     dataFim?: string,
     unidadeId?: string,
   ) {
-    // Verificar se é gerente ou recepcionista e obter sua unidade automaticamente
+    // Verificar se é gerente, recepcionista, instrutor ou professor e obter sua unidade automaticamente
     const perfisNomes = (user?.perfis || []).map((p: any) =>
       typeof p === 'string' ? p.toUpperCase() : p.nome?.toUpperCase(),
     );
     const isGerente = perfisNomes.includes('GERENTE_UNIDADE');
     const isRecepcionista = perfisNomes.includes('RECEPCIONISTA');
+    const isInstrutor = perfisNomes.includes('INSTRUTOR');
+    const isProfessor = perfisNomes.includes('PROFESSOR');
     
-    // Se for gerente ou recepcionista, SEMPRE forçar filtro pela unidade dele
-    if (isGerente || isRecepcionista) {
+    // Se for gerente, recepcionista, instrutor ou professor, SEMPRE forçar filtro pela unidade dele (segurança)
+    if (isGerente || isRecepcionista || isInstrutor || isProfessor) {
       const unidadeUsuario = await this.getUnidadeUsuario(user);
       if (unidadeUsuario) {
         unidadeId = unidadeUsuario;
@@ -1207,6 +1265,7 @@ export class PresencaService {
       return {
         id: p.presenca_id,
         data: p.presenca_created_at,
+        hora_checkin: p.presenca_hora_checkin, // Adicionar hora_checkin para exibir horário correto
         aluno: {
           id: p.aluno_id_select || p.presenca_aluno_id,
           nome: p.aluno_nome || 'Nome não encontrado',
@@ -2266,7 +2325,8 @@ export class PresencaService {
         'PROFESSOR',
         'GERENTE_UNIDADE',
         'INSTRUTOR',
-        'GERENTE', // Adicionar também GERENTE
+        'GERENTE',
+        'FRANQUEADO', // Franqueados podem aprovar check-ins
       ];
 
       const perfisNomes = (user?.perfis || []).map((p: any) =>
@@ -2284,7 +2344,7 @@ export class PresencaService {
           perfisNomes,
         );
         throw new ForbiddenException(
-          'Apenas RECEPCIONISTA, PROFESSOR ou GERENTE pode visualizar presenças pendentes',
+          'Apenas RECEPCIONISTA, PROFESSOR, GERENTE ou FRANQUEADO pode visualizar presenças pendentes',
         );
       }
 
@@ -2558,6 +2618,18 @@ export class PresencaService {
          FROM teamcruz.professor_unidades pu
          LEFT JOIN teamcruz.professores p ON p.id = pu.professor_id
          WHERE (p.usuario_id = $1 OR pu.usuario_id = $1) AND pu.ativo = true
+         LIMIT 1`,
+        [user.id],
+      );
+      return result[0]?.unidade_id || null;
+    }
+
+    if (perfisNomes.includes('FRANQUEADO')) {
+      const result = await this.personRepository.query(
+        `SELECT u.id as unidade_id
+         FROM teamcruz.franqueados f
+         INNER JOIN teamcruz.unidades u ON u.franqueado_id = f.id
+         WHERE f.usuario_id = $1 AND u.ativo = true
          LIMIT 1`,
         [user.id],
       );
