@@ -123,14 +123,15 @@ export class Aula {
   estaAtiva(): boolean {
     if (!this.ativo) return false;
 
-    // SEMPRE usar horário de São Paulo (UTC-3), independente do fuso do servidor
+    // SEMPRE usar horário de São Paulo (UTC-3)
+    // Converter corretamente: pegar UTC e ajustar para São Paulo
     const agora = new Date();
-    const agoraSaoPaulo = new Date(agora.toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
+    const agoraSaoPaulo = new Date(agora.getTime() - 3 * 60 * 60 * 1000); // UTC - 3 horas
 
     // PRIORIZAR dia_semana para aulas recorrentes
     if (this.dia_semana !== null && this.dia_semana !== undefined) {
-      const diaHoje = agoraSaoPaulo.getDay();
-      const horaAgora = agoraSaoPaulo.getHours() * 60 + agoraSaoPaulo.getMinutes();
+      const diaHoje = agoraSaoPaulo.getUTCDay(); // Usar getUTCDay pois já ajustamos o timestamp
+      const horaAgora = agoraSaoPaulo.getUTCHours() * 60 + agoraSaoPaulo.getUTCMinutes();
 
       if (diaHoje !== this.dia_semana) {
         return false;

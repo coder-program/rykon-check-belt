@@ -145,16 +145,18 @@ export class PresencaService {
       return null;
     }
 
-    // SEMPRE usar horário de São Paulo (UTC-3), independente do fuso do servidor
+    // SEMPRE usar horário de São Paulo (UTC-3)
+    // Converter corretamente: pegar UTC e ajustar para São Paulo
     const agora = new Date();
-    const agoraSaoPaulo = new Date(agora.toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
-    const diaHoje = agoraSaoPaulo.getDay();
-    const horaAgora = agoraSaoPaulo.toTimeString().slice(0, 5); // HH:MM
+    const agoraSaoPaulo = new Date(agora.getTime() - 3 * 60 * 60 * 1000); // UTC - 3 horas
+    const diaHoje = agoraSaoPaulo.getUTCDay(); // Usar getUTCDay pois já ajustamos o timestamp
+    const horaAgora = `${String(agoraSaoPaulo.getUTCHours()).padStart(2, '0')}:${String(agoraSaoPaulo.getUTCMinutes()).padStart(2, '0')}`; // HH:MM
     
     console.log('\n========================================');
-    console.log('🌎 [SERVICE getAulaAtiva] Hora São Paulo:', agoraSaoPaulo.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' }));
+    console.log('🌎 [SERVICE getAulaAtiva] Hora UTC:', agora.toISOString());
+    console.log('🌎 [SERVICE getAulaAtiva] Hora São Paulo (timestamp ajustado):', agoraSaoPaulo.toISOString());
+    console.log('🌎 [SERVICE getAulaAtiva] Hora São Paulo formatada:', horaAgora);
     console.log('📆 [SERVICE getAulaAtiva] Dia da semana:', diaHoje, ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'][diaHoje]);
-    console.log('🕐 [SERVICE getAulaAtiva] Hora formatada:', horaAgora);
     console.log('👤 [SERVICE getAulaAtiva] Usuário:', user.email);
     console.log('========================================\n');
 
@@ -283,7 +285,7 @@ export class PresencaService {
 
     // Filtrar aulas que estão acontecendo agora e priorizar por relevância
     const aulasAtivas: Array<{ aula: any; priority: number }> = [];
-    const horaAtualMinutos = agoraSaoPaulo.getHours() * 60 + agoraSaoPaulo.getMinutes();
+    const horaAtualMinutos = agoraSaoPaulo.getUTCHours() * 60 + agoraSaoPaulo.getUTCMinutes();
 
     console.log(`\n🕐 [SERVICE] Hora atual em minutos: ${horaAtualMinutos}`);
     console.log(`📊 [SERVICE] Iniciando análise de ${aulas.length} aulas...`);

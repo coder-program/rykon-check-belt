@@ -119,6 +119,15 @@ export default function MeuPerfilPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
 
+  console.log('\n========================================');
+  console.log('🔍 [MEU PERFIL] Carregando página');
+  console.log('========================================');
+  console.log('👤 User:', user?.email);
+  console.log('🔐 IsAuthenticated:', isAuthenticated);
+  console.log('⏳ AuthLoading:', authLoading);
+  console.log('👥 Perfis:', user?.perfis);
+  console.log('========================================\n');
+
   const [formData, setFormData] = useState<ProfileData>({
     nome: "",
     email: "",
@@ -322,11 +331,20 @@ export default function MeuPerfilPage() {
 
   // Redirect se não autenticado
   useEffect(() => {
+    console.log('🔍 [MEU PERFIL] useEffect - Verificando autenticação');
+    console.log('   authLoading:', authLoading);
+    console.log('   isAuthenticated:', isAuthenticated);
+    
     if (!authLoading && !isAuthenticated) {
+      console.log('❌ [MEU PERFIL] Não autenticado - redirecionando para login');
       router.push("/login");
       return;
     }
-  }, [isAuthenticated, authLoading, router]);
+    
+    if (isAuthenticated && user) {
+      console.log('✅ [MEU PERFIL] Autenticado - usuário:', user.email);
+    }
+  }, [isAuthenticated, authLoading, router, user]);
 
   // Determinar tipo de usuário e preencher formulário
   useEffect(() => {
