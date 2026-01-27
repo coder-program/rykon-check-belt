@@ -920,13 +920,17 @@ export class PresencaService {
 
     // Mapear as presenças com informações das aulas
     const presencasComAulas = presencas.map((p) => {
-      // Converter hora_checkin para horário de São Paulo
+      // Converter hora_checkin para horário de São Paulo usando toLocaleString
       let horarioSaoPaulo = '00:00';
       if (p.hora_checkin) {
-        const horaCheckinSP = new Date(p.hora_checkin.getTime() - 3 * 60 * 60 * 1000);
-        const horas = String(horaCheckinSP.getHours()).padStart(2, '0');
-        const minutos = String(horaCheckinSP.getMinutes()).padStart(2, '0');
-        horarioSaoPaulo = `${horas}:${minutos}`;
+        const horaStr = p.hora_checkin.toLocaleString('pt-BR', {
+          timeZone: 'America/Sao_Paulo',
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false,
+        });
+        // Extrair apenas HH:mm do formato "HH:mm:ss"
+        horarioSaoPaulo = horaStr.split(':').slice(0, 2).join(':');
       }
 
       return {
@@ -1910,6 +1914,30 @@ export class PresencaService {
           dataAula = new Date(aula.data_hora_inicio);
         }
 
+        // Extrair horários de data_hora_inicio e data_hora_fim usando toLocaleString
+        let horarioInicio = aula.hora_inicio; // Fallback
+        let horarioFim = aula.hora_fim; // Fallback
+        
+        if (aula.data_hora_inicio) {
+          const horaStr = aula.data_hora_inicio.toLocaleString('pt-BR', {
+            timeZone: 'America/Sao_Paulo',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false,
+          });
+          horarioInicio = horaStr.split(':').slice(0, 2).join(':');
+        }
+        
+        if (aula.data_hora_fim) {
+          const horaStr = aula.data_hora_fim.toLocaleString('pt-BR', {
+            timeZone: 'America/Sao_Paulo',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false,
+          });
+          horarioFim = horaStr.split(':').slice(0, 2).join(':');
+        }
+
         // Contar quantos alunos já estão inscritos (presenças registradas)
         // Por enquanto, deixar como 0 - pode ser implementado depois
         const inscritos = 0;
@@ -1919,8 +1947,8 @@ export class PresencaService {
           nome: aula.nome,
           professor: aula.professor?.nome_completo || 'Professor não atribuído',
           unidade: aula.unidade?.nome || 'Unidade',
-          horarioInicio: aula.hora_inicio,
-          horarioFim: aula.hora_fim,
+          horarioInicio: horarioInicio,
+          horarioFim: horarioFim,
           data: dataAula.toISOString(),
           vagas: aula.capacidade_maxima || 30,
           inscritos: inscritos,
@@ -2804,13 +2832,17 @@ export class PresencaService {
 
     // Mapear as presenças com informações das aulas
     const presencasComAulas = presencas.map((p) => {
-      // Converter hora_checkin para horário de São Paulo
+      // Converter hora_checkin para horário de São Paulo usando toLocaleString
       let horarioSaoPaulo = '00:00';
       if (p.hora_checkin) {
-        const horaCheckinSP = new Date(p.hora_checkin.getTime() - 3 * 60 * 60 * 1000);
-        const horas = String(horaCheckinSP.getHours()).padStart(2, '0');
-        const minutos = String(horaCheckinSP.getMinutes()).padStart(2, '0');
-        horarioSaoPaulo = `${horas}:${minutos}`;
+        const horaStr = p.hora_checkin.toLocaleString('pt-BR', {
+          timeZone: 'America/Sao_Paulo',
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false,
+        });
+        // Extrair apenas HH:mm do formato "HH:mm:ss"
+        horarioSaoPaulo = horaStr.split(':').slice(0, 2).join(':');
       }
 
       return {
