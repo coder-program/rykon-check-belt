@@ -62,6 +62,7 @@ export class AlunosService {
     const query = this.alunoRepository.createQueryBuilder('aluno');
 
     query.leftJoinAndSelect('aluno.unidade', 'unidade');
+    query.leftJoinAndSelect('aluno.endereco', 'endereco'); // 🔥 Adicionar join com endereço
     // Comentado temporariamente - tabela aluno_unidades não existe
     // query.leftJoinAndSelect(
     //   'aluno.alunoUnidades',

@@ -520,14 +520,14 @@ function AlunosContent() {
       telefone_emergencia: aluno.telefone_emergencia,
       nome_contato_emergencia: aluno.nome_contato_emergencia,
       unidade_id: aluno.unidade_id || "",
-      // Endereço
-      cep: aluno.cep,
-      logradouro: aluno.logradouro,
-      numero: aluno.numero,
-      complemento: aluno.complemento,
-      bairro: aluno.bairro,
-      cidade: aluno.cidade,
-      uf: aluno.uf,
+      // Endereço - agora vem dentro do objeto endereco
+      cep: aluno.endereco?.cep || aluno.cep,
+      logradouro: aluno.endereco?.logradouro || aluno.logradouro,
+      numero: aluno.endereco?.numero || aluno.numero,
+      complemento: aluno.endereco?.complemento || aluno.complemento,
+      bairro: aluno.endereco?.bairro || aluno.bairro,
+      cidade: aluno.endereco?.cidade || aluno.cidade,
+      uf: aluno.endereco?.estado || aluno.uf,
       // Matrícula
       data_matricula: aluno.data_matricula,
       numero_matricula: aluno.numero_matricula,
