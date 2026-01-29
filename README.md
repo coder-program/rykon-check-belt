@@ -2,7 +2,7 @@
 
 Sistema base desenvolvido com **NestJS** (backend) e **React** (frontend) para autenticação JWT e gerenciamento completo de usuários, perfis e permissões. Projetado para ser **reutilizado como fundação** em outros projetos.
 
-## ✨ Características
+### ✨ Características
 
 - 🔐 **Autenticação JWT** completa com refresh tokens
 - 👤 **Gestão de Usuários** com perfis e permissões granulares
