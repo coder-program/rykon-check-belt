@@ -14,6 +14,9 @@ import { randomBytes } from 'crypto';
 import { Person } from './entities/person.entity';
 import { Endereco } from '../enderecos/endereco.entity';
 import { Usuario } from '../usuarios/entities/usuario.entity';
+import { Aluno, StatusAluno, Genero } from './entities/aluno.entity';
+import { AlunoConvenio, AlunoConvenioStatus } from '../financeiro/entities/aluno-convenio.entity';
+import { Convenio } from '../financeiro/entities/convenio.entity';
 import * as bcrypt from 'bcrypt';
 
 @Injectable()
@@ -27,6 +30,12 @@ export class ConviteCadastroService {
     private enderecoRepository: Repository<Endereco>,
     @InjectRepository(Usuario)
     private usuarioRepository: Repository<Usuario>,
+    @InjectRepository(Aluno)
+    private alunoRepository: Repository<Aluno>,
+    @InjectRepository(AlunoConvenio)
+    private alunoConvenioRepository: Repository<AlunoConvenio>,
+    @InjectRepository(Convenio)
+    private convenioRepository: Repository<Convenio>,
   ) {}
 
   async criarConvite(dto: CriarConviteDto, criadoPorId: string) {
@@ -295,5 +304,94 @@ export class ConviteCadastroService {
     await this.conviteRepository.remove(convite);
 
     return { success: true, message: 'Convite cancelado' };
+  }
+
+  /**
+   * Cadastro público com suporte a convênios (Gympass/Totalpass)
+   */
+  async cadastroPublico(dto: any) {
+    // Verificar se CPF já existe
+    const cpfExiste = await this.alunoRepository.findOne({
+      where: { cpf: dto.cpf },
+    });
+
+    if (cpfExiste) {
+      throw new BadRequestException('CPF já cadastrado no sistema');
+    }
+
+    // Verificar se email já existe
+    if (dto.email) {
+      const emailExiste = await this.usuarioRepository.findOne({
+        where: { email: dto.email },
+      });
+
+      if (emailExiste) {
+        throw new BadRequestException('Email já cadastrado no sistema');
+      }
+    }
+
+    // Hash da senha
+    const senhaHash = await bcrypt.hash(dto.senha, 10);
+
+    // Criar usuário
+    const usuario = this.usuarioRepository.create({
+      email: dto.email,
+      nome: dto.nome_completo,
+      cpf: dto.cpf,
+      telefone: dto.telefone,
+      password: senhaHash,
+      ativo: true,
+      cadastro_completo: true,
+    });
+
+    const usuarioSalvo = await this.usuarioRepository.save(usuario);
+
+    // Criar aluno
+    const aluno = this.alunoRepository.create({
+      nome_completo: dto.nome_completo,
+      cpf: dto.cpf,
+      email: dto.email,
+      telefone: dto.telefone,
+      data_nascimento: new Date(dto.data_nascimento),
+      genero: (dto.genero as Genero) || Genero.MASCULINO,
+      unidade_id: dto.unidade_id,
+      usuario_id: usuarioSalvo.id,
+      status: StatusAluno.ATIVO,
+      data_matricula: new Date(),
+    });
+
+    const alunoSalvo = await this.alunoRepository.save(aluno);
+
+    // Se tem dados de convênio, criar vínculo
+    if (dto.convenio_tipo && dto.convenio_user_id) {
+      const convenio = await this.convenioRepository.findOne({
+        where: { codigo: dto.convenio_tipo },
+      });
+
+      if (convenio) {
+        const alunoConvenio = this.alunoConvenioRepository.create({
+          aluno_id: alunoSalvo.id,
+          convenio_id: convenio.id,
+          unidade_id: dto.unidade_id,
+          convenio_user_id: dto.convenio_user_id,
+          status: AlunoConvenioStatus.ATIVO,
+          data_ativacao: new Date(),
+          metadata: {
+            email: dto.email,
+            telefone: dto.telefone,
+            origem: 'cadastro_publico',
+          },
+        });
+
+        await this.alunoConvenioRepository.save(alunoConvenio);
+      }
+    }
+
+    return {
+      success: true,
+      message: 'Cadastro completado com sucesso!',
+      aluno_id: alunoSalvo.id,
+      usuario_id: usuarioSalvo.id,
+    };
   }
 }

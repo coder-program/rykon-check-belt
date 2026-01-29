@@ -10,11 +10,17 @@ import { Transacao } from './entities/transacao.entity';
 import { Despesa } from './entities/despesa.entity';
 import { ConfiguracaoCobranca } from './entities/configuracao-cobranca.entity';
 import { Venda } from './entities/venda.entity';
+import { Convenio } from './entities/convenio.entity';
+import { AlunoConvenio } from './entities/aluno-convenio.entity';
+import { ConfiguracaoConvenioUnidade } from './entities/configuracao-convenio-unidade.entity';
+import { EventoConvenio } from './entities/evento-convenio.entity';
+import { UnidadeConvenio } from './entities/unidade-convenio.entity';
 
 // Entities externas necessárias
 import { Aluno } from '../people/entities/aluno.entity';
 import { Unidade } from '../people/entities/unidade.entity';
 import { Usuario } from '../usuarios/entities/usuario.entity';
+import { Presenca } from '../presenca/entities/presenca.entity';
 
 // Services
 import { PlanosService } from './services/planos.service';
@@ -56,10 +62,16 @@ import { AnexosController } from './controllers/anexos.controller';
       Despesa,
       ConfiguracaoCobranca,
       Venda,
+      Convenio,
+      AlunoConvenio,
+      ConfiguracaoConvenioUnidade,
+      EventoConvenio,
+      UnidadeConvenio,
       // Entities externas
       Aluno,
       Unidade,
       Usuario,
+      Presenca,
     ]),
   ],
   controllers: [

@@ -32,13 +32,13 @@ import { FinanceiroModule } from './financeiro/financeiro.module';
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: (configService: ConfigService) => {
+      useFactory: async (configService: ConfigService) => {
         const dbHost = configService.get('DB_HOST', 'localhost');
         const isSocketConnection = dbHost.startsWith('/cloudsql/');
         const isLocalhost = dbHost === 'localhost' || dbHost === '127.0.0.1';
 
-        return {
-          type: 'postgres',
+        const config = {
+          type: 'postgres' as const,
           host: dbHost,
           port: isSocketConnection
             ? undefined
@@ -51,29 +51,46 @@ import { FinanceiroModule } from './financeiro/financeiro.module';
           entities: ['dist/**/*.entity.js'],
           migrations: ['dist/src/migrations/*.js'],
           migrationsTableName: 'migrations',
-          // Pool de conexões para evitar esgotamento
-          pool: {
-            max: 20,          // Máximo 20 conexões
-            min: 5,           // Mínimo 5 conexões
-            acquire: 30000,   // Timeout para adquirir conexão (30s)
-            idle: 10000,      // Tempo de vida de conexão idle (10s)
-          },
-          // Timeouts para evitar travamentos
-          connectTimeoutMS: 60000,    // 60s timeout para conectar
-          socketTimeoutMS: 60000,     // 60s timeout para socket
-          // SSL apenas para conexões remotas, não para localhost
-          ssl: isLocalhost ? false : true,
+          
+          // ========== POOL DE CONEXÕES (OTIMIZADO) ==========
+          poolSize: 30,                        // Máximo de conexões
+          connectionTimeoutMillis: 5000,       // 5s para adquirir conexão (era 10s)
+          idleTimeoutMillis: 30000,            // 30s antes de fechar conexão idle
+          
+          // ========== TIMEOUTS ==========
+          connectTimeoutMS: 10000,             // 10s timeout para conectar (era 20s)
+          
+          // ========== RETRY E RESILIÊNCIA ==========
+          maxQueryExecutionTime: 30000,        // 30s para queries
+          
+          // ========== KEEP-ALIVE ==========
           extra: isLocalhost
             ? {
                 searchPath: 'teamcruz,public',
+                keepAlive: true,
+                keepAliveInitialDelayMillis: 10000,
               }
             : {
                 searchPath: 'teamcruz,public',
+                keepAlive: true,
+                keepAliveInitialDelayMillis: 10000,
                 ssl: {
                   rejectUnauthorized: false,
                 },
               },
+          
+          // ========== LOGGING ==========
+          logging: (configService.get('NODE_ENV') === 'development' ? ['query', 'error'] : ['error']) as any,
+          
+          // ========== SSL ==========
+          ssl: isLocalhost ? false : true,
         };
+
+        // ========== TENTAR CONECTAR COM RETRY ==========
+        console.log('🔄 Tentando conectar ao banco de dados...');
+        console.log(`📍 Host: ${dbHost}`);
+        
+        return config;
       },
     }),
     AuthModule,

@@ -79,4 +79,12 @@ export class ConviteCadastroController {
   async cancelarConvite(@Param('id') id: string) {
     return await this.conviteService.cancelarConvite(id);
   }
+
+  @Post('cadastro-publico')
+  @Public()
+  @ApiOperation({ summary: 'Cadastro público (com suporte a convênios)' })
+  @ApiResponse({ status: 201, description: 'Cadastro completado' })
+  async cadastroPublico(@Body() dto: any) {
+    return await this.conviteService.cadastroPublico(dto);
+  }
 }

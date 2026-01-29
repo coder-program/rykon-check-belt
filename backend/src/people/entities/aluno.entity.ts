@@ -17,6 +17,7 @@ import { AlunoGraduacao } from '../../graduacao/entities/aluno-graduacao.entity'
 import { AlunoUnidade } from './aluno-unidade.entity';
 import { AlunoModalidade } from './aluno-modalidade.entity';
 import { Endereco } from '../../enderecos/endereco.entity';
+import { AlunoConvenio } from '../../financeiro/entities/aluno-convenio.entity';
 
 export enum Genero {
   MASCULINO = 'MASCULINO',
@@ -225,6 +226,10 @@ export class Aluno {
 
   @Column({ type: 'integer', nullable: true })
   contrato_versao_assinada: number;
+
+  // ===== CONVÊNIOS (Gympass / Totalpass) - Nova estrutura =====
+  @OneToMany(() => AlunoConvenio, alunoConvenio => alunoConvenio.aluno)
+  convenios: AlunoConvenio[];
 
   @CreateDateColumn()
   created_at: Date;

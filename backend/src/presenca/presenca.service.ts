@@ -2518,6 +2518,24 @@ export class PresencaService {
     return entities.map((p, index) => {
       const rawData = raw[index];
 
+      // Extrair horários usando timezone de São Paulo
+      let horarioFormatado = '';
+      if (p.aula && p.aula.hora_inicio && p.aula.hora_fim) {
+        const inicioDate = new Date(p.aula.hora_inicio);
+        const fimDate = new Date(p.aula.hora_fim);
+        
+        // Converter para São Paulo e extrair apenas HH:MM
+        const spInicio = new Date(inicioDate.toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
+        const spFim = new Date(fimDate.toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
+        
+        const horaInicio = spInicio.getHours().toString().padStart(2, '0');
+        const minInicio = spInicio.getMinutes().toString().padStart(2, '0');
+        const horaFim = spFim.getHours().toString().padStart(2, '0');
+        const minFim = spFim.getMinutes().toString().padStart(2, '0');
+        
+        horarioFormatado = `${horaInicio}:${minInicio} - ${horaFim}:${minFim}`;
+      }
+
       return {
         id: p.id,
         aluno: {
@@ -2530,7 +2548,7 @@ export class PresencaService {
           id: p.aula?.id || p.aula_id,
           nome: p.aula?.nome || 'Aula',
           professor: p.aula?.professor?.nome_completo || '',
-          horario: p.aula ? `${p.aula.hora_inicio} - ${p.aula.hora_fim}` : '',
+          horario: horarioFormatado,
         },
         metodo: p.metodo,
         dataCheckin: p.created_at,

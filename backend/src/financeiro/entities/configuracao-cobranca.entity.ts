@@ -69,15 +69,25 @@ export class ConfiguracaoCobranca {
   @Column({ type: 'jsonb', nullable: true })
   gateway_configuracoes: any;
 
-  // Integração Gympass / Corporate
-  @Column({ type: 'boolean', default: false })
-  gympass_ativo: boolean;
+  // DEPRECADO: Campos migrados para tabela configuracoes_convenio_unidade
+  // Mantidos temporariamente para compatibilidade, mas não são mais usados
+  // @Column({ type: 'boolean', default: false })
+  // gympass_ativo: boolean;
 
-  @Column({ type: 'varchar', length: 255, nullable: true })
-  gympass_unidade_id: string;
+  // @Column({ type: 'varchar', length: 255, nullable: true })
+  // gympass_unidade_id: string;
 
-  @Column({ type: 'decimal', precision: 5, scale: 2, nullable: true })
-  gympass_percentual_repasse: number;
+  // @Column({ type: 'decimal', precision: 5, scale: 2, nullable: true })
+  // gympass_percentual_repasse: number;
+
+  // @Column({ type: 'boolean', default: false })
+  // totalpass_ativo: boolean;
+
+  // @Column({ type: 'varchar', length: 255, nullable: true })
+  // totalpass_unidade_id: string;
+
+  // @Column({ type: 'decimal', precision: 5, scale: 2, nullable: true })
+  // totalpass_percentual_repasse: number;
 
   @Column({ type: 'jsonb', nullable: true })
   mensagem_cobranca_whatsapp: string;

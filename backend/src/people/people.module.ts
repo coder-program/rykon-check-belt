@@ -41,6 +41,8 @@ import { AlunoModalidadeService } from './services/aluno-modalidade.service';
 import { Modalidade } from '../modalidades/entities/modalidade.entity';
 import { Endereco } from '../enderecos/endereco.entity';
 import { Usuario } from '../usuarios/entities/usuario.entity';
+import { AlunoConvenio } from '../financeiro/entities/aluno-convenio.entity';
+import { Convenio } from '../financeiro/entities/convenio.entity';
 
 @Module({
   imports: [
@@ -66,6 +68,8 @@ import { Usuario } from '../usuarios/entities/usuario.entity';
       ContratoAssinaturaHistorico,
       Endereco,
       Usuario,
+      AlunoConvenio,
+      Convenio,
     ]),
     EnderecosModule,
   ],

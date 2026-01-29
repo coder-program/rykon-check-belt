@@ -39,18 +39,56 @@ export class GlobalExceptionFilter implements ExceptionFilter {
           );
         }
       } else if (exception instanceof Error) {
-        // Log erro não tratado mas não derrubar servidor
+        // Log erro não tratado mas NÃO DERRUBAR SERVIDOR
         this.logger.error(`Erro não tratado: ${exception.message}`, exception.stack);
         
-        // Erros específicos que não devem derrubar servidor
-        if (exception.message.includes('Connection timeout') || 
-            exception.message.includes('SMTP') || 
-            exception.message.includes('ENOTFOUND') ||
-            exception.message.includes('ETIMEDOUT') ||
-            exception.message.includes('Cannot read properties of null') ||
-            exception.message.includes('Cannot read properties of undefined')) {
-          message = 'Serviço temporariamente indisponível';
+        // ========== ERROS DE CONEXÃO/TIMEOUT DO BANCO ==========
+        if (
+          exception.message.includes('timeout exceeded when trying to connect') ||
+          exception.message.includes('Connection terminated unexpectedly') ||
+          exception.message.includes('Connection timeout') ||
+          exception.message.includes('ECONNREFUSED') ||
+          exception.message.includes('connect ETIMEDOUT') ||
+          exception.message.includes('Connection lost')
+        ) {
+          this.logger.error('🔌 ERRO DE CONEXÃO COM BANCO DE DADOS');
+          message = 'Banco de dados temporariamente indisponível. Tente novamente em alguns instantes.';
           status = HttpStatus.SERVICE_UNAVAILABLE;
+        }
+        // ========== ERROS DE TIMEOUT GERAL ==========
+        else if (
+          exception.message.includes('ETIMEDOUT') ||
+          exception.message.includes('timeout') ||
+          exception.message.includes('ESOCKETTIMEDOUT')
+        ) {
+          this.logger.error('⏱️ TIMEOUT');
+          message = 'Operação demorou muito. Tente novamente.';
+          status = HttpStatus.REQUEST_TIMEOUT;
+        }
+        // ========== ERROS DE REDE/SMTP ==========
+        else if (
+          exception.message.includes('SMTP') ||
+          exception.message.includes('ENOTFOUND') ||
+          exception.message.includes('getaddrinfo')
+        ) {
+          this.logger.warn('📧 Erro de email (não crítico)');
+          message = 'Serviço de email temporariamente indisponível';
+          status = HttpStatus.SERVICE_UNAVAILABLE;
+        }
+        // ========== ERROS DE CÓDIGO (NULL/UNDEFINED) ==========
+        else if (
+          exception.message.includes('Cannot read properties of null') ||
+          exception.message.includes('Cannot read properties of undefined') ||
+          exception.message.includes('is not a function')
+        ) {
+          this.logger.error('💥 Erro de programação (null/undefined)');
+          message = 'Erro interno do servidor';
+          status = HttpStatus.INTERNAL_SERVER_ERROR;
+        }
+        // ========== OUTROS ERROS ==========
+        else {
+          message = 'Erro interno do servidor';
+          status = HttpStatus.INTERNAL_SERVER_ERROR;
         }
       } else {
         this.logger.error('Erro desconhecido:', exception);

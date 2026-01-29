@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -149,13 +150,21 @@ export default function ConfiguracoesFinanceiro() {
 
       const url = `${process.env.NEXT_PUBLIC_API_URL}/configuracoes-cobranca/unidade/${config.unidade_id}`;
 
+      // Remover campos de convênio (migrados para nova estrutura)
+      const { 
+        gympass_ativo, 
+        gympass_unidade_id, 
+        gympass_percentual_repasse,
+        ...configParaSalvar 
+      } = config;
+
       const response = await fetch(url, {
         method: "PUT",
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(config),
+        body: JSON.stringify(configParaSalvar),
       });
 
       if (response.ok) {
@@ -627,70 +636,167 @@ export default function ConfiguracoesFinanceiro() {
 
         {/* Integrações */}
         <TabsContent value="integracoes">
+          {/* Configuração Gympass/Totalpass */}
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle>Convênios - Gympass & Totalpass</CardTitle>
+              <CardDescription>
+                Configure a integração com convênios corporativos
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Gympass */}
+              <div className="border rounded-lg p-4 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <h3 className="font-semibold text-lg">Gympass</h3>
+                    <p className="text-sm text-gray-500">
+                      Integração com a plataforma Gympass/Wellhub
+                    </p>
+                  </div>
+                  <Switch
+                    id="gympass_ativo"
+                    checked={config.gympass_ativo}
+                    onCheckedChange={(checked) =>
+                      updateConfig("gympass_ativo", checked)
+                    }
+                  />
+                </div>
+
+                {config.gympass_ativo && (
+                  <div className="space-y-4 pt-4 border-t">
+                    <div className="space-y-2">
+                      <Label htmlFor="gympass_unidade_id">
+                        ID da Unidade Parceira *
+                      </Label>
+                      <Input
+                        id="gympass_unidade_id"
+                        placeholder="Ex: UNIT123456"
+                        value={config.gympass_unidade_id || ""}
+                        onChange={(e) =>
+                          updateConfig("gympass_unidade_id", e.target.value)
+                        }
+                      />
+                      <p className="text-xs text-gray-500">
+                        ID fornecido pelo Gympass para sua unidade
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="gympass_repasse">
+                          Percentual de Repasse (%)
+                        </Label>
+                        <Input
+                          id="gympass_repasse"
+                          type="number"
+                          min="0"
+                          max="100"
+                          value={config.gympass_percentual_repasse || 70}
+                          onChange={(e) =>
+                            updateConfig(
+                              "gympass_percentual_repasse",
+                              parseFloat(e.target.value)
+                            )
+                          }
+                        />
+                        <p className="text-xs text-gray-500">
+                          Valor que você recebe por check-in
+                        </p>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>Status da Integração</Label>
+                        <div className="flex items-center gap-2 h-10">
+                          {config.gympass_unidade_id ? (
+                            <Badge className="bg-green-100 text-green-800">
+                              Configurado
+                            </Badge>
+                          ) : (
+                            <Badge className="bg-yellow-100 text-yellow-800">
+                              Pendente
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="bg-blue-50 border border-blue-200 rounded-md p-3 text-sm">
+                      <p className="font-medium text-blue-900 mb-1">
+                        📋 Informações para o Gympass
+                      </p>
+                      <div className="text-blue-800 space-y-1">
+                        <p>
+                          <strong>URL de Registro:</strong>{" "}
+                          <code className="bg-white px-1 py-0.5 rounded">
+                            {typeof window !== "undefined"
+                              ? `${window.location.origin}/api/convenios/gympass/register/${unidadeIdAtual}`
+                              : "..."}
+                          </code>
+                        </p>
+                        <p>
+                          <strong>URL de Status:</strong>{" "}
+                          <code className="bg-white px-1 py-0.5 rounded">
+                            {typeof window !== "undefined"
+                              ? `${window.location.origin}/api/convenios/gympass/status`
+                              : "..."}
+                          </code>
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Totalpass */}
+              <div className="border rounded-lg p-4 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <h3 className="font-semibold text-lg">Totalpass</h3>
+                    <p className="text-sm text-gray-500">
+                      Integração com a plataforma Totalpass
+                    </p>
+                  </div>
+                  <Switch
+                    id="totalpass_ativo"
+                    checked={false}
+                    onCheckedChange={(checked) => {
+                      // TODO: Implementar configuração Totalpass
+                      console.log("Totalpass:", checked);
+                    }}
+                  />
+                </div>
+
+                <div className="bg-gray-50 border border-gray-200 rounded-md p-3 text-sm text-gray-600">
+                  Em breve disponível
+                </div>
+              </div>
+
+              {/* Botão para ver alunos */}
+              <div className="flex justify-end pt-4">
+                <Button
+                  onClick={() => (window.location.href = "/financeiro/convenios")}
+                  variant="outline"
+                >
+                  Ver Alunos dos Convênios
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Gateway de Pagamento */}
           <Card>
             <CardHeader>
-              <CardTitle>Gympass / Total Pass</CardTitle>
+              <CardTitle>Gateway de Pagamento</CardTitle>
               <CardDescription>
-                Configure a integração com o Gympass para receber alunos
-                corporativos
+                Configure o processador de pagamentos online
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label htmlFor="gympass_ativo">Gympass Ativo</Label>
-                  <p className="text-sm text-gray-500">
-                    Habilitar integração com Gympass
-                  </p>
-                </div>
-                <Switch
-                  id="gympass_ativo"
-                  checked={config.gympass_ativo}
-                  onCheckedChange={(checked) =>
-                    updateConfig("gympass_ativo", checked)
-                  }
-                />
+              <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3 text-sm text-yellow-800">
+                ⚠️ <strong>Atenção:</strong> Mantenha suas chaves em
+                segurança. Nunca compartilhe suas credenciais.
               </div>
-
-              {config.gympass_ativo && (
-                <>
-                  <div className="space-y-2">
-                    <Label htmlFor="gympass_unidade_id">
-                      ID da Unidade no Gympass
-                    </Label>
-                    <Input
-                      id="gympass_unidade_id"
-                      placeholder="Ex: UNIT123456"
-                      value={config.gympass_unidade_id || ""}
-                      onChange={(e) =>
-                        updateConfig("gympass_unidade_id", e.target.value)
-                      }
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="gympass_repasse">
-                      Percentual de Repasse (%)
-                    </Label>
-                    <Input
-                      id="gympass_repasse"
-                      type="number"
-                      min="0"
-                      max="100"
-                      value={config.gympass_percentual_repasse || 70}
-                      onChange={(e) =>
-                        updateConfig(
-                          "gympass_percentual_repasse",
-                          parseFloat(e.target.value)
-                        )
-                      }
-                    />
-                    <p className="text-xs text-gray-500">
-                      Percentual que a academia recebe por check-in
-                    </p>
-                  </div>
-                </>
-              )}
             </CardContent>
           </Card>
         </TabsContent>

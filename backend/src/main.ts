@@ -14,8 +14,41 @@ if (!globalThis.crypto) {
 async function bootstrap() {
   dotenv.config();
 
-  const app = await NestFactory.create(AppModule, {
-    bodyParser: true,
+  let app;
+  
+  try {
+    app = await NestFactory.create(AppModule, {
+      bodyParser: true,
+      // ⚠️ NÃO ABORTAR SE DATABASE FALHAR
+      abortOnError: false,
+    });
+  } catch (error) {
+    console.error('❌ ERRO CRÍTICO ao criar aplicação:', error.message);
+    console.log('⚠️ Tentando iniciar sem conexão ao banco...');
+    
+    // Tentar criar app mesmo sem DB
+    try {
+      app = await NestFactory.create(AppModule, {
+        bodyParser: true,
+        abortOnError: false,
+      });
+    } catch (retryError) {
+      console.error('❌ FALHA TOTAL ao criar aplicação:', retryError.message);
+      process.exit(1);
+    }
+  }
+
+  // ========== HANDLERS PARA EVITAR CRASH ==========
+  process.on('unhandledRejection', (reason: any, promise) => {
+    console.error('❌ Unhandled Rejection:', reason?.message || reason);
+    console.error('Stack:', reason?.stack);
+    // NÃO SAIR - continuar rodando
+  });
+
+  process.on('uncaughtException', (error: Error) => {
+    console.error('❌ Uncaught Exception:', error.message);
+    console.error('Stack:', error.stack);
+    // NÃO SAIR - continuar rodando
   });
 
   // Aumentar limite de tamanho do body para 10MB (para upload de imagens)
@@ -26,6 +59,10 @@ async function bootstrap() {
 
   // Filtro global para evitar crashes
   app.useGlobalFilters(new GlobalExceptionFilter());
+
+  // ========== INTERCEPTOR DE TIMEOUT ==========
+  const { TimeoutInterceptor } = require('./common/interceptors/timeout.interceptor');
+  app.useGlobalInterceptors(new TimeoutInterceptor());
 
   // Configuração CORS para produção - Vercel + Domínio customizado
   const allowedOrigins = [
