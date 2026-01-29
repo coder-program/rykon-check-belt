@@ -2520,9 +2520,26 @@ export class PresencaService {
 
       // Extrair horários usando timezone de São Paulo
       let horarioFormatado = '';
+      
+      console.log('🕐 [getPresencasPendentes] Debug aula:', {
+        aulaId: p.aula?.id,
+        nome: p.aula?.nome,
+        hora_inicio: p.aula?.hora_inicio,
+        hora_fim: p.aula?.hora_fim,
+        hora_inicio_type: typeof p.aula?.hora_inicio,
+        hora_fim_type: typeof p.aula?.hora_fim,
+      });
+      
       if (p.aula && p.aula.hora_inicio && p.aula.hora_fim) {
         const inicioDate = new Date(p.aula.hora_inicio);
         const fimDate = new Date(p.aula.hora_fim);
+        
+        console.log('🕐 [getPresencasPendentes] Datas parseadas:', {
+          inicioDate: inicioDate.toString(),
+          fimDate: fimDate.toString(),
+          inicioValid: !isNaN(inicioDate.getTime()),
+          fimValid: !isNaN(fimDate.getTime()),
+        });
         
         // Converter para São Paulo e extrair apenas HH:MM
         const spInicio = new Date(inicioDate.toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
@@ -2534,6 +2551,14 @@ export class PresencaService {
         const minFim = spFim.getMinutes().toString().padStart(2, '0');
         
         horarioFormatado = `${horaInicio}:${minInicio} - ${horaFim}:${minFim}`;
+        
+        console.log('🕐 [getPresencasPendentes] Horário formatado:', horarioFormatado);
+      } else {
+        console.warn('⚠️ [getPresencasPendentes] Aula sem horários:', {
+          hasAula: !!p.aula,
+          hasInicio: !!p.aula?.hora_inicio,
+          hasFim: !!p.aula?.hora_fim,
+        });
       }
 
       return {
@@ -2549,6 +2574,8 @@ export class PresencaService {
           nome: p.aula?.nome || 'Aula',
           professor: p.aula?.professor?.nome_completo || '',
           horario: horarioFormatado,
+          hora_inicio: p.aula?.hora_inicio, // DEBUG
+          hora_fim: p.aula?.hora_fim, // DEBUG
         },
         metodo: p.metodo,
         dataCheckin: p.created_at,

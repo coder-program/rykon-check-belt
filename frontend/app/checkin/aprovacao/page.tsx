@@ -66,6 +66,8 @@ export default function AprovacaoCheckinPage() {
   const { data: presencasPendentes = [], isLoading } = useQuery({
     queryKey: ["presencas-pendentes"],
     queryFn: async () => {
+      console.log("📡 [Frontend] Buscando presenças pendentes...");
+      
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/presenca/pendentes`,
         {
@@ -79,7 +81,21 @@ export default function AprovacaoCheckinPage() {
         throw new Error("Erro ao buscar presenças pendentes");
       }
 
-      return response.json();
+      const data = await response.json();
+      
+      console.log("📡 [Frontend] Presenças recebidas:", data.length);
+      console.log("📡 [Frontend] Primeira presença (amostra):", data[0]);
+      
+      if (data.length > 0) {
+        console.log("🕐 [Frontend] Debug horário primeira presença:", {
+          horario: data[0]?.aula?.horario,
+          hora_inicio: data[0]?.aula?.hora_inicio,
+          hora_fim: data[0]?.aula?.hora_fim,
+          aula_completa: data[0]?.aula,
+        });
+      }
+
+      return data;
     },
     refetchInterval: 10000, // Atualiza a cada 10 segundos
   });
@@ -209,6 +225,55 @@ export default function AprovacaoCheckinPage() {
       MANUAL: "Manual",
     };
     return labels[metodo] || metodo;
+  };
+
+  const formatTime = (val: any) => {
+    if (!val && val !== 0) return null;
+    // If already in HH:mm format
+    if (typeof val === "string" && /^\d{1,2}:\d{2}$/.test(val)) return val;
+    // Try parseable date string or timestamp
+    const d = new Date(val);
+    if (!isNaN(d.getTime())) {
+      return d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+    }
+    // Fallback to string representation
+    if (typeof val === "string") return val;
+    return null;
+  };
+
+  const getHorarioDisplay = (presenca: PresencaPendente) => {
+    const aula: any = presenca?.aula || {};
+    const rawHorario = aula?.horario;
+    
+    console.log("🕐 [Frontend getHorarioDisplay] Processando:", {
+      presencaId: presenca?.id,
+      alunoNome: presenca?.aluno?.nome,
+      rawHorario,
+      hora_inicio: aula?.hora_inicio,
+      hora_fim: aula?.hora_fim,
+      horaInicio: aula?.horaInicio,
+      horaFim: aula?.horaFim,
+    });
+    
+    if (rawHorario && typeof rawHorario === "string" && !/NaN/.test(rawHorario)) {
+      console.log("✅ [Frontend] Usando horario direto:", rawHorario);
+      return rawHorario;
+    }
+
+    const inicio = aula?.hora_inicio || aula?.horaInicio || aula?.hora_inicio_iso;
+    const fim = aula?.hora_fim || aula?.horaFim || aula?.hora_fim_iso;
+
+    const fInicio = formatTime(inicio);
+    const fFim = formatTime(fim);
+    
+    console.log("🕐 [Frontend] Horários formatados:", { fInicio, fFim });
+
+    if (fInicio && fFim) return `${fInicio} - ${fFim}`;
+    if (fInicio) return fInicio;
+    if (rawHorario) return String(rawHorario);
+    
+    console.warn("⚠️ [Frontend] Nenhum horário disponível!");
+    return "Horário indisponível";
   };
 
   return (
@@ -364,7 +429,7 @@ export default function AprovacaoCheckinPage() {
                                 <span className="font-medium">Professor:</span>{" "}
                                 {presenca.aula.professor} |{" "}
                                 <span className="font-medium">Horário:</span>{" "}
-                                {presenca.aula.horario}
+                                {getHorarioDisplay(presenca)}
                               </p>
                             </div>
                           </div>
