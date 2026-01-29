@@ -35,6 +35,115 @@ interface Aluno {
   corFaixa: string;
   numeroMatricula: string;
   unidade: string;
+  graus?: number;
+}
+
+// Funções auxiliares para renderização visual das faixas
+function getBeltTipStyle(faixa: string) {
+  let tip = "bg-black";
+  let stripeActive = "bg-white";
+  let stripeInactive = "bg-white/30";
+
+  if (faixa === "Preta") {
+    tip = "bg-red-600";
+    stripeActive = "bg-white";
+    stripeInactive = "bg-white/30";
+  }
+  if (faixa === "Coral" || faixa === "Vermelha") {
+    tip = "bg-white";
+    stripeActive = "bg-black";
+    stripeInactive = "bg-black/30";
+  }
+  return { tip, stripeActive, stripeInactive } as const;
+}
+
+function colorBgClass(nome: string) {
+  const map: Record<string, string> = {
+    Branca: "bg-white",
+    Cinza: "bg-gray-400",
+    Preta: "bg-black",
+    Amarela: "bg-yellow-400",
+    Amarelo: "bg-yellow-400",
+    Laranja: "bg-orange-500",
+    Verde: "bg-green-600",
+    Azul: "bg-blue-600",
+    Roxa: "bg-purple-700",
+    Marrom: "bg-amber-800",
+    Coral: "bg-red-500",
+    Vermelha: "bg-red-600",
+  };
+  return map[nome] || "bg-gray-300";
+}
+
+const KIDS_BASES = ["Cinza", "Amarela", "Laranja", "Verde"];
+function parseKidsPattern(faixa: string): {
+  isKids: boolean;
+  base?: string;
+  stripe?: "white" | "black" | null;
+} {
+  const raw = faixa.trim();
+  const lower = raw.toLowerCase();
+  const base = KIDS_BASES.find((b) => lower.startsWith(b.toLowerCase()));
+  if (!base) return { isKids: false };
+  const hasWhite = /e\s+branc[oa]/i.test(raw) || /\/\s*branc[ao]/i.test(raw);
+  const hasBlack = /e\s+pret[ao]/i.test(raw) || /\/\s*pret[ao]/i.test(raw);
+  return {
+    isKids: true,
+    base,
+    stripe: hasWhite ? "white" : hasBlack ? "black" : null,
+  };
+}
+
+function getBeltMainSegments(faixa: string): string[] {
+  const raw = faixa.replace(/\s+/g, " ").trim();
+  const parts = raw.split(/\s*\/\s*|\s+e\s+/i).map((p) => p.trim());
+  if (parts.length >= 2) return [parts[0], parts[1]];
+  return [raw];
+}
+
+function BeltTip({ faixa, graus }: { faixa: string; graus?: number }) {
+  const { tip, stripeActive, stripeInactive } = getBeltTipStyle(faixa);
+  const kids = parseKidsPattern(faixa);
+  const segments = kids.isKids
+    ? [kids.base as string]
+    : getBeltMainSegments(faixa);
+  const grauCount = graus || 0;
+
+  return (
+    <div className="flex items-center w-32 h-4 rounded-sm overflow-hidden ring-1 ring-black/10 shadow-sm">
+      <div className="relative flex-1 h-full flex">
+        {segments.length === 2 ? (
+          <>
+            <div className={`flex-1 h-full ${colorBgClass(segments[0])}`}></div>
+            <div className={`flex-1 h-full ${colorBgClass(segments[1])}`}></div>
+          </>
+        ) : (
+          <div
+            className={`flex-1 h-full ${colorBgClass(segments[0])} ${
+              segments[0] === "Branca" ? "border border-gray-300" : ""
+            }`}
+          ></div>
+        )}
+        {kids.isKids && kids.stripe && (
+          <div
+            className={`absolute top-1/2 -translate-y-1/2 left-0 right-0 ${
+              kids.stripe === "white" ? "bg-white" : "bg-black"
+            } h-0.5`}
+          ></div>
+        )}
+      </div>
+      <div className={`flex items-center justify-start ${tip} h-full w-9 px-1 gap-0.5`}>
+        {[...Array(4)].map((_, i) => (
+          <div
+            key={i}
+            className={`h-2.5 w-1 rounded-sm ${
+              i < grauCount ? stripeActive : stripeInactive
+            }`}
+          />
+        ))}
+      </div>
+    </div>
+  );
 }
 
 export default function TabletCheckinPage() {
@@ -48,6 +157,9 @@ export default function TabletCheckinPage() {
   const [loading, setLoading] = useState(true);
   const [scannerActive, setScannerActive] = useState(false);
   const [aulaAtiva, setAulaAtiva] = useState<any>(null);
+  const [selectedAluno, setSelectedAluno] = useState<Aluno | null>(null);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [checkinMethod, setCheckinMethod] = useState<"LISTA" | "QR_CODE">("LISTA");
 
   // Buscar aula ativa
   useEffect(() => {
@@ -181,10 +293,29 @@ export default function TabletCheckinPage() {
 
     const aluno = alunos.find((a) => a.id === alunoId);
     if (aluno) {
-      await handleCheckin(aluno, "QR_CODE");
+      handleAlunoClick(aluno, "QR_CODE");
     } else {
       toast.error("Aluno não encontrado");
     }
+  };
+
+  const handleAlunoClick = (aluno: Aluno, metodo: "LISTA" | "QR_CODE" = "LISTA") => {
+    setSelectedAluno(aluno);
+    setCheckinMethod(metodo);
+    setShowConfirmModal(true);
+  };
+
+  const handleConfirmCheckin = async () => {
+    if (!selectedAluno) return;
+    
+    setShowConfirmModal(false);
+    await handleCheckin(selectedAluno, checkinMethod);
+    setSelectedAluno(null);
+  };
+
+  const handleCancelConfirm = () => {
+    setShowConfirmModal(false);
+    setSelectedAluno(null);
   };
 
   const handleCheckin = async (aluno: Aluno, metodo: "LISTA" | "QR_CODE") => {
@@ -370,7 +501,7 @@ export default function TabletCheckinPage() {
                       key={aluno.id}
                       className="bg-gradient-to-r from-gray-50 to-blue-50 rounded-2xl p-4 shadow-md hover:shadow-xl active:shadow-2xl transition-all duration-200 cursor-pointer border-2 border-transparent hover:border-blue-400 active:scale-[0.98] touch-manipulation animate-in fade-in slide-in-from-bottom"
                       style={{ animationDelay: `${index * 30}ms` }}
-                      onClick={() => handleCheckin(aluno, "LISTA")}
+                      onClick={() => handleAlunoClick(aluno, "LISTA")}
                     >
                       <div className="flex items-center gap-4">
                         {/* Avatar */}
@@ -393,18 +524,11 @@ export default function TabletCheckinPage() {
 
                         {/* Informações */}
                         <div className="flex-1 min-w-0">
-                          <p className="font-bold text-gray-800 text-base mb-1 truncate">
+                          <p className="font-bold text-gray-800 text-base mb-1.5 truncate">
                             {aluno.nome}
                           </p>
-                          <div className="flex items-center gap-2 mb-1.5">
-                            <div
-                              style={{ backgroundColor: aluno.corFaixa }}
-                              className="px-3 py-1 rounded-full shadow-sm"
-                            >
-                              <span className="text-xs font-bold text-white">
-                                {aluno.faixa}
-                              </span>
-                            </div>
+                          <div className="mb-1.5">
+                            <BeltTip faixa={aluno.faixa} graus={aluno.graus || 0} />
                           </div>
                           <p className="text-xs text-gray-500 font-medium">
                             📋 {aluno.numeroMatricula}
@@ -426,6 +550,79 @@ export default function TabletCheckinPage() {
           </div>
         </div>
       </div>
+
+      {/* Modal de Confirmação */}
+      {showConfirmModal && selectedAluno && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6 animate-in fade-in zoom-in duration-200">
+            {/* Foto */}
+            <div className="flex justify-center mb-4">
+              <div className="relative">
+                <div 
+                  className="w-48 h-48 rounded-full flex items-center justify-center text-white font-bold text-6xl shadow-xl ring-8"
+                  style={{ 
+                    background: selectedAluno.foto 
+                      ? 'transparent' 
+                      : `linear-gradient(135deg, ${selectedAluno.corFaixa}, ${selectedAluno.corFaixa}dd)`,
+                    ringColor: selectedAluno.corFaixa + '40'
+                  }}
+                >
+                  {selectedAluno.foto ? (
+                    <img
+                      src={selectedAluno.foto}
+                      alt={selectedAluno.nome}
+                      className="w-full h-full rounded-full object-cover"
+                    />
+                  ) : (
+                    selectedAluno.nome.charAt(0).toUpperCase()
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Informações */}
+            <div className="text-center mb-6">
+              <h2 className="text-2xl font-bold text-gray-900 mb-3">
+                {selectedAluno.nome}
+              </h2>
+              <div className="flex items-center justify-center mb-3">
+                <BeltTip faixa={selectedAluno.faixa} graus={selectedAluno.graus || 0} />
+              </div>
+              <p className="text-sm text-gray-500">
+                📋 Matrícula: {selectedAluno.numeroMatricula}
+              </p>
+            </div>
+
+            {/* Mensagem de Confirmação */}
+            <div className="text-center mb-6 py-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl">
+              <p className="text-xl font-semibold text-gray-800">
+                É você mesmo? 🤔
+              </p>
+              <p className="text-sm text-gray-600 mt-1">
+                Confirme sua identidade para fazer check-in
+              </p>
+            </div>
+
+            {/* Botões */}
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={handleCancelConfirm}
+                className="bg-gray-500 hover:bg-gray-600 active:bg-gray-700 text-white font-bold py-4 px-6 rounded-2xl transition-all duration-200 active:scale-95 flex items-center justify-center gap-2 shadow-lg"
+              >
+                <span className="text-xl">❌</span>
+                <span>NÃO</span>
+              </button>
+              <button
+                onClick={handleConfirmCheckin}
+                className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 active:from-green-700 active:to-emerald-800 text-white font-bold py-4 px-6 rounded-2xl transition-all duration-200 active:scale-95 flex items-center justify-center gap-2 shadow-lg"
+              >
+                <span className="text-xl">✅</span>
+                <span>SIM, SOU EU</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <style jsx global>{`
         .custom-scrollbar::-webkit-scrollbar {
