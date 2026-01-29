@@ -45,14 +45,30 @@ interface HorarioAula {
 export default function HorariosPage() {
   const { shouldBlock } = useFranqueadoProtection();
 
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const [horarios, setHorarios] = useState<HorarioAula[]>([]);
   const [loading, setLoading] = useState(true);
   const [filtroSelecionado, setFiltroSelecionado] = useState<string>("todos");
   const [diaSelecionado, setDiaSelecionado] = useState<string>("todos");
 
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push('/login');
+    }
+  }, [authLoading, user, router]);
+
   if (shouldBlock) return null;
+  
+  // Wait for authentication check
+  if (authLoading || !user) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900"></div>
+      </div>
+    );
+  }
 
   const diasSemana = [
     { key: "todos", label: "Todos os Dias" },
@@ -81,27 +97,83 @@ export default function HorariosPage() {
     try {
       const token = localStorage.getItem("token");
 
-      // 🔒 Backend automaticamente filtra pela unidade do aluno
-      // Não é necessário enviar unidade_id no frontend
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/aulas/horarios`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
+      if (!token) {
+        console.error("❌ Token não encontrado no localStorage");
+        router.push('/login');
+        return;
+      }
+
+      console.log("🔑 Token encontrado, verificando validade...");
+
+      // Verificar se token está expirado antes de fazer requisição
+      try {
+        const base64Url = token.split(".")[1];
+        const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+        const jsonPayload = decodeURIComponent(
+          atob(base64)
+            .split("")
+            .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+            .join("")
+        );
+        const payload = JSON.parse(jsonPayload);
+        
+        if (payload.exp && Date.now() >= payload.exp * 1000) {
+          console.error("❌ Token expirado - redirecionando para login");
+          localStorage.removeItem("token");
+          localStorage.removeItem("user");
+          router.push('/login');
+          return;
         }
-      );
+        
+        console.log("✅ Token válido, fazendo requisição...");
+      } catch (e) {
+        console.error("❌ Erro ao decodificar token:", e);
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+        router.push('/login');
+        return;
+      }
+
+      // � Verificar se há alunoId na URL
+      const urlParams = new URLSearchParams(window.location.search);
+      const alunoId = urlParams.get('alunoId');
+      
+      let url = `${process.env.NEXT_PUBLIC_API_URL}/aulas/horarios`;
+      
+      // Se há alunoId na URL, passar para a API
+      if (alunoId) {
+        url += `?alunoId=${alunoId}`;
+        console.log(`🔍 Buscando horários para aluno: ${alunoId}`);
+      }
+
+      // 🔒 Backend automaticamente filtra pela unidade do aluno
+      const response = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (response.status === 401) {
+        console.error("❌ Não autorizado (401) - Token rejeitado pelo servidor");
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+        router.push('/login');
+        return;
+      }
 
       if (response.ok) {
         const data = await response.json();
+        console.log("✅ Horários carregados:", data.length);
         setHorarios(data);
       } else {
-        console.error(" Erro ao buscar horários:", response.status);
+        console.error("❌ Erro ao buscar horários:", response.status);
+        const errorText = await response.text();
+        console.error("Resposta do servidor:", errorText);
         setHorarios([]);
       }
     } catch (error) {
-      console.error(" Erro ao carregar horários:", error);
+      console.error("❌ Erro ao carregar horários:", error);
       setHorarios([]);
     } finally {
       setLoading(false);

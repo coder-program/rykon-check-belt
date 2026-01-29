@@ -161,6 +161,7 @@ export class AulaController {
   })
   async findHorarios(
     @Query('unidade_id') unidade_id?: string,
+    @Query('alunoId') alunoId?: string,
     @Request() req?: any,
   ) {
     // 🔥 Forçar no-cache para evitar problemas no celular
@@ -171,6 +172,19 @@ export class AulaController {
     }
 
     const unidadesDoUsuario = await this.getUnidadeIdsFromUser(req);
+
+    // 🔥 Se foi passado alunoId na URL, buscar a unidade desse aluno
+    if (!unidade_id && alunoId) {
+      const alunoByAlunoId = await this.dataSource.query(
+        `SELECT unidade_id FROM teamcruz.alunos WHERE id = $1 AND status = 'ATIVO'`,
+        [alunoId],
+      );
+
+      if (alunoByAlunoId && alunoByAlunoId.length > 0 && alunoByAlunoId[0].unidade_id) {
+        console.log(`✅ Buscando horários para alunoId ${alunoId}, unidade: ${alunoByAlunoId[0].unidade_id}`);
+        return this.aulaService.findHorariosDisponiveis(alunoByAlunoId[0].unidade_id);
+      }
+    }
 
     // Se for aluno, buscar a unidade dele automaticamente
     if (!unidade_id && req?.user?.id) {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2, CheckCircle, AlertCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import api from "@/lib/api";
 
-export default function CadastroGympassPage() {
+function CadastroGympassForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   
@@ -244,5 +244,17 @@ export default function CadastroGympassPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function CadastroGympassPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="w-8 h-8 animate-spin" />
+      </div>
+    }>
+      <CadastroGympassForm />
+    </Suspense>
   );
 }
