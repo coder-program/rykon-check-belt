@@ -133,6 +133,25 @@ function LoginContent() {
 
     const result = await login(formData.emailOrUsername, formData.password);
     if (result.success) {
+      // Verificar se é ADMIN_SISTEMA primeiro (prioridade máxima)
+      const isAdminSistema = result.user?.perfis?.some(
+        (perfil: string | { nome?: string; name?: string }) => {
+          if (typeof perfil === "string")
+            return perfil.toLowerCase() === "admin_sistema";
+          if (typeof perfil === "object" && perfil?.nome)
+            return perfil.nome.toLowerCase() === "admin_sistema";
+          if (typeof perfil === "object" && perfil?.name)
+            return perfil.name.toLowerCase() === "admin_sistema";
+          return String(perfil).toLowerCase() === "admin_sistema";
+        }
+      );
+
+      if (isAdminSistema) {
+        // ADMIN_SISTEMA vai direto para página otimizada
+        router.push("/admin/sistema");
+        return;
+      }
+
       // Verificar se é franqueado primeiro - usando mesma lógica dos outros componentes
       const isFranqueado = result.user?.perfis?.some(
         (perfil: string | { nome?: string; name?: string }) => {

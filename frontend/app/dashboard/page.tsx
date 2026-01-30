@@ -60,6 +60,13 @@ export default function DashboardPage() {
     }
 
     if (!loading && user) {
+      // ADMIN_SISTEMA vai direto para página otimizada
+      if (hasPerfil("admin_sistema")) {
+        console.log('[DASHBOARD] ADMIN_SISTEMA detectado, redirecionando...')
+        router.push("/admin/sistema");
+        return;
+      }
+
       // Se não tem perfis ou perfis inválidos, vai para login
       if (
         !user.perfis ||
@@ -72,7 +79,7 @@ export default function DashboardPage() {
         return;
       }
     }
-  }, [user, loading, isAuthenticated, router, logout]);
+  }, [user, loading, isAuthenticated, router, logout, hasPerfil]);
 
   // Mostrar loading durante verificação
   if (loading) {

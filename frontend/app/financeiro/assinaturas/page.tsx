@@ -100,7 +100,7 @@ export default function Assinaturas() {
   const [searchTerm, setSearchTerm] = useState("");
   const [alunoSearchTerm, setAlunoSearchTerm] = useState("");
   const [alunoSelecionado, setAlunoSelecionado] = useState<Aluno | null>(null);
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string>("ATIVA");
   const [showDialog, setShowDialog] = useState(false);
   const [showDetalhesDialog, setShowDetalhesDialog] = useState(false);
   const [selectedAssinatura, setSelectedAssinatura] =
@@ -307,6 +307,8 @@ export default function Assinaturas() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (processando) return; // Prevenir cliques múltiplos
+
     const userData = localStorage.getItem("user");
     const user = JSON.parse(userData || "{}");
 
@@ -368,6 +370,7 @@ export default function Assinaturas() {
     }
 
     try {
+      setProcessando(true);
       const token = localStorage.getItem("token");
 
       const response = await fetch(
@@ -407,6 +410,8 @@ export default function Assinaturas() {
     } catch (error) {
       console.error("Erro ao criar assinatura:", error);
       mostrarMensagem("Erro", "Erro ao criar assinatura", "erro");
+    } finally {
+      setProcessando(false);
     }
   };
 
@@ -1191,10 +1196,13 @@ export default function Assinaturas() {
                 type="button"
                 variant="outline"
                 onClick={() => setShowDialog(false)}
+                disabled={processando}
               >
                 Cancelar
               </Button>
-              <Button type="submit">Criar Assinatura</Button>
+              <Button type="submit" disabled={processando}>
+                {processando ? "Criando..." : "Criar Assinatura"}
+              </Button>
             </DialogFooter>
           </form>
         </DialogContent>

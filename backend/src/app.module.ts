@@ -25,6 +25,7 @@ import { CompeticoesModule } from './competicoes/competicoes.module';
 import { SupportModule } from './support/support.module';
 import { ModalidadesModule } from './modalidades/modalidades.module';
 import { FinanceiroModule } from './financeiro/financeiro.module';
+import { PaytimeModule } from './paytime/paytime.module';
 
 @Module({
   imports: [
@@ -108,6 +109,7 @@ import { FinanceiroModule } from './financeiro/financeiro.module';
     SupportModule,
     ModalidadesModule,
     FinanceiroModule,
+    PaytimeModule,
   ],
 })
 export class AppModule {
