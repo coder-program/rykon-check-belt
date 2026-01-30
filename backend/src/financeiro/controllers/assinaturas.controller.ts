@@ -104,4 +104,9 @@ export class AssinaturasController {
   ) {
     return this.assinaturasService.alterarPlano(id, alterarPlanoDto);
   }
+
+  @Post('renovar/:id')
+  renovar(@Param('id') id: string, @Request() req) {
+    return this.assinaturasService.renovar(id);
+  }
 }

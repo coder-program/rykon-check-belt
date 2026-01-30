@@ -307,6 +307,38 @@ export class AssinaturasService {
     return await this.assinaturaRepository.save(assinatura);
   }
 
+  async renovar(id: string): Promise<Assinatura> {
+    const assinatura = await this.findOne(id);
+
+    if (assinatura.status === StatusAssinatura.CANCELADA) {
+      throw new BadRequestException(
+        'Assinatura cancelada não pode ser renovada',
+      );
+    }
+
+    // Ativar a assinatura
+    assinatura.status = StatusAssinatura.ATIVA;
+
+    // Estender a data de fim se houver
+    if (assinatura.data_fim) {
+      const novaDataFim = new Date(assinatura.data_fim);
+      // Verificar se o plano é mensal, trimestral, semestral ou anual
+      // Para simplificar, vamos adicionar 1 mês (30 dias)
+      novaDataFim.setMonth(novaDataFim.getMonth() + 1);
+      assinatura.data_fim = novaDataFim;
+    }
+
+    // Recalcular próxima cobrança
+    const proximaCobranca = new Date();
+    proximaCobranca.setDate(assinatura.dia_vencimento);
+    if (proximaCobranca < new Date()) {
+      proximaCobranca.setMonth(proximaCobranca.getMonth() + 1);
+    }
+    assinatura.proxima_cobranca = proximaCobranca;
+
+    return await this.assinaturaRepository.save(assinatura);
+  }
+
   async alterarPlano(
     id: string,
     alterarPlanoDto: AlterarPlanoDto,
