@@ -2,8 +2,10 @@ import {
   Controller,
   Get,
   Post,
+  Put,
   Body,
   Query,
+  Param,
   UseGuards,
   Logger,
 } from '@nestjs/common';
@@ -183,5 +185,57 @@ export class PaytimeController {
   async createEstablishment(@Body() data: any) {
     this.logger.debug('Criando novo estabelecimento no Paytime...');
     return this.paytimeService.createEstablishment(data);
+  }
+
+  @Get('establishments/:id')
+  @ApiOperation({
+    summary: '🔍 Buscar estabelecimento por ID',
+    description: 'Retorna todos os detalhes de um estabelecimento específico',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Detalhes do estabelecimento',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Token inválido ou expirado',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Estabelecimento não encontrado',
+  })
+  async getEstablishmentById(@Param('id') id: string) {
+    this.logger.debug(`Buscando estabelecimento ID: ${id}...`);
+    return this.paytimeService.getEstablishmentById(parseInt(id));
+  }
+
+  @Put('establishments/:id')
+  @ApiOperation({
+    summary: '✏️ Atualizar estabelecimento',
+    description: 'Atualiza dados de um estabelecimento existente',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Estabelecimento atualizado com sucesso',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Dados inválidos',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Token inválido ou expirado',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Estabelecimento não encontrado',
+  })
+  @ApiResponse({
+    status: 422,
+    description: 'Erro de validação',
+  })
+  async updateEstablishment(@Param('id') id: string, @Body() data: any) {
+    this.logger.debug(`Atualizando estabelecimento ID: ${id}...`);
+    return this.paytimeService.updateEstablishment(parseInt(id), data);
   }
 }

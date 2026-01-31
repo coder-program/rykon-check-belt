@@ -222,9 +222,17 @@ export default function UsuariosManagerNew() {
     queryFn: getUsuarios,
   });
 
-  const { data: perfis = [] } = useQuery({
+  const { data: perfis = [], isLoading: loadingPerfis, isError: errorPerfis } = useQuery({
     queryKey: ["perfis"],
     queryFn: getPerfis,
+  });
+
+  // Debug: mostrar estado dos perfis
+  console.log(" [UsuariosManager] Estado dos perfis:", {
+    perfis,
+    loadingPerfis,
+    errorPerfis,
+    perfisLength: perfis?.length,
   });
 
   // Buscar faixas para instrutores (Azul, Roxa, Marrom, Preta)
@@ -289,6 +297,10 @@ export default function UsuariosManagerNew() {
 
     // Se não conseguiu detectar o usuário, NÃO mostrar perfis (segurança)
     if (!user || !user.perfis || user.perfis.length === 0) {
+      console.log(" [UsuariosManager] Usuário não detectado ou sem perfis:", {
+        user,
+        userPerfis: user?.perfis,
+      });
       return false;
     }
 
@@ -323,6 +335,17 @@ export default function UsuariosManagerNew() {
 
     // Se não for MASTER, FRANQUEADO nem GERENTE_UNIDADE, NÃO pode criar usuários
     return false;
+  });
+
+  // Debug: mostrar perfis disponíveis
+  console.log(" [UsuariosManager] Perfis disponíveis:", {
+    perfisDisponiveis,
+    perfisDisponiveisLength: perfisDisponiveis?.length,
+    isMaster,
+    isSuperAdmin,
+    isFranqueado,
+    isGerenteUnidade,
+    userPerfis: user?.perfis,
   });
 
   // Perfis para o filtro de visualização (adiciona ALUNO e INSTRUTOR aos perfis que o usuário pode criar)

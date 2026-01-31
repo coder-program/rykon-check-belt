@@ -6,11 +6,14 @@ import {
   Patch,
   Param,
   Delete,
+  UseGuards,
 } from '@nestjs/common';
+import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { PerfisService } from '../services/perfis.service';
 import { CreatePerfilDto } from '../dto/create-perfil.dto';
 
 @Controller('perfis')
+@UseGuards(JwtAuthGuard)
 export class PerfisController {
   constructor(private readonly perfisService: PerfisService) {}
 
@@ -21,6 +24,13 @@ export class PerfisController {
 
   @Get()
   findAll() {
+    // Retorna perfis SEM relations (otimizado para dropdowns)
+    return this.perfisService.findAllSimple();
+  }
+
+  @Get('completo')
+  findAllCompleto() {
+    // Retorna perfis COM relations (apenas para admin de perfis)
     return this.perfisService.findAll();
   }
 

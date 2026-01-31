@@ -1,4 +1,4 @@
-import { Injectable, Logger, BadRequestException } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 interface PaytimeAuthResponse {
@@ -323,6 +323,109 @@ export class PaytimeService {
       return result;
     } catch (error) {
       this.logger.error('❌ Erro ao criar estabelecimento:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Busca um estabelecimento por ID
+   */
+  async getEstablishmentById(id: number, retry = true): Promise<any> {
+    const token = await this.authenticate();
+
+    try {
+      this.logger.debug(`Buscando estabelecimento ID: ${id}...`);
+      
+      const response = await fetch(
+        `${this.baseUrl}/api/establishments/${id}`,
+        {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      if (!response.ok) {
+        if (response.status === 401 && retry) {
+          this.token = null;
+          this.tokenExpires = 0;
+          this.logger.warn('Token Paytime expirado, renovando automaticamente...');
+          return this.getEstablishmentById(id, false);
+        }
+
+        if (response.status === 404) {
+          throw new NotFoundException(`Estabelecimento ${id} não encontrado`);
+        }
+        
+        const errorText = await response.text();
+        this.logger.error(`❌ Erro HTTP ${response.status}: ${errorText}`);
+        throw new BadRequestException(`Erro ao buscar estabelecimento: ${response.status}`);
+      }
+
+      const result = await response.json();
+      this.logger.debug(`✅ Estabelecimento encontrado: ${result.first_name}`);
+      
+      return result;
+    } catch (error) {
+      this.logger.error('❌ Erro ao buscar estabelecimento:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Atualiza um estabelecimento existente
+   */
+  async updateEstablishment(id: number, data: any, retry = true): Promise<any> {
+    const token = await this.authenticate();
+
+    try {
+      this.logger.debug(`Atualizando estabelecimento ID: ${id}...`);
+      this.logger.debug('📤 Payload enviado:', JSON.stringify(data, null, 2));
+      
+      const response = await fetch(
+        `${this.baseUrl}/api/establishments/${id}`,
+        {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(data),
+        }
+      );
+
+      if (!response.ok) {
+        if (response.status === 401 && retry) {
+          this.token = null;
+          this.tokenExpires = 0;
+          this.logger.warn('Token Paytime expirado, renovando automaticamente...');
+          return this.updateEstablishment(id, data, false);
+        }
+
+        if (response.status === 404) {
+          throw new NotFoundException(`Estabelecimento ${id} não encontrado`);
+        }
+        
+        const errorText = await response.text();
+        this.logger.error(`❌ Erro HTTP ${response.status}: ${errorText}`);
+        
+        try {
+          const errorJson = JSON.parse(errorText);
+          this.logger.error('📋 Detalhes do erro:', JSON.stringify(errorJson, null, 2));
+          throw new BadRequestException(errorJson.message || `Erro ao atualizar estabelecimento: ${response.status}`);
+        } catch {
+          throw new BadRequestException(`Erro ao atualizar estabelecimento: ${response.status}`);
+        }
+      }
+
+      const result = await response.json();
+      this.logger.debug(`✅ Estabelecimento atualizado: ${result.first_name}`);
+      
+      return result;
+    } catch (error) {
+      this.logger.error('❌ Erro ao atualizar estabelecimento:', error);
       throw error;
     }
   }

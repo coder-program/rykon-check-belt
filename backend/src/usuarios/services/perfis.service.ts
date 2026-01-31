@@ -52,6 +52,15 @@ export class PerfisService {
     });
   }
 
+  async findAllSimple(): Promise<Perfil[]> {
+    // Query otimizada: retorna apenas dados básicos SEM relations
+    // Usado para dropdowns e listagens simples
+    return await this.perfilRepository.find({
+      select: ['id', 'nome', 'descricao', 'ativo', 'created_at', 'updated_at'],
+      order: { nome: 'ASC' },
+    });
+  }
+
   async findPublicos(): Promise<Perfil[]> {
     // Query otimizada: busca apenas 2 perfis SEM relations
     return await this.perfilRepository

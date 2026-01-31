@@ -28,6 +28,9 @@ import {
   RefreshCw,
   Eye,
   Loader2,
+  Edit,
+  X,
+  Plus,
 } from "lucide-react";
 import toast from "react-hot-toast";
 // import { paytimeService, type PaytimeEstablishment } from "@/lib/services/paytimeService";
@@ -64,6 +67,11 @@ export default function EstabelecimentosPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [selectedEstabelecimento, setSelectedEstabelecimento] = useState<any>(null);
+  const [showModal, setShowModal] = useState(false);
+  const [loadingDetails, setLoadingDetails] = useState(false);
+  const [editMode, setEditMode] = useState(false);
+  const [formData, setFormData] = useState<any>({});
 
   useEffect(() => {
     carregarEstabelecimentos();
@@ -145,6 +153,85 @@ export default function EstabelecimentosPage() {
     }
   };
 
+  const verDetalhes = async (id: string) => {
+    try {
+      setLoadingDetails(true);
+      setShowModal(true);
+      
+      const token = localStorage.getItem("token");
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/paytime/establishments/${id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!response.ok) throw new Error("Erro ao buscar detalhes");
+
+      const data = await response.json();
+      setSelectedEstabelecimento(data);
+      setFormData({
+        access_type: data.access_type || "ACQUIRER",
+        first_name: data.first_name || "",
+        last_name: data.last_name || "",
+        phone_number: data.phone_number || "",
+        revenue: data.revenue || "",
+        format: data.format || "",
+        email: data.email || "",
+        gmv: data.gmv || 0,
+        birthdate: data.birthdate || "",
+      });
+    } catch (error) {
+      console.error("Erro:", error);
+      toast.error("Erro ao carregar detalhes");
+      setShowModal(false);
+    } finally {
+      setLoadingDetails(false);
+    }
+  };
+
+  const handleUpdate = async () => {
+    try {
+      setLoadingDetails(true);
+      
+      const token = localStorage.getItem("token");
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/paytime/establishments/${selectedEstabelecimento.id}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(formData),
+        }
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Erro ao atualizar");
+      }
+
+      toast.success("Estabelecimento atualizado com sucesso!");
+      setEditMode(false);
+      setShowModal(false);
+      carregarEstabelecimentos(currentPage, false);
+    } catch (error: any) {
+      console.error("Erro:", error);
+      toast.error(error.message || "Erro ao atualizar estabelecimento");
+    } finally {
+      setLoadingDetails(false);
+    }
+  };
+
+  const closeModal = () => {
+    setShowModal(false);
+    setEditMode(false);
+    setSelectedEstabelecimento(null);
+  };
+
   const getStatusBadgeVariant = (status: string) => {
     switch (status) {
       case 'APPROVED':
@@ -209,6 +296,13 @@ export default function EstabelecimentosPage() {
                 Consulte todos os estabelecimentos integrados com Paytime
               </p>
             </div>
+            <Button
+              onClick={() => router.push("/admin/estabelecimentos/novo")}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Novo Estabelecimento
+            </Button>
           </div>
         </div>
 
@@ -361,10 +455,7 @@ export default function EstabelecimentosPage() {
                         variant="outline"
                         size="sm"
                         className="flex-1"
-                        onClick={() => {
-                          // Abrir modal ou página de detalhes
-                          console.log('Ver detalhes:', estabelecimento);
-                        }}
+                        onClick={() => verDetalhes(estabelecimento.id)}
                       >
                         <Eye className="w-3 h-3 mr-2" />
                         Detalhes
@@ -446,6 +537,158 @@ export default function EstabelecimentosPage() {
               </CardContent>
             </Card>
           )}
+
+          {/* Modal de Detalhes/Edição */}
+          {showModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+            <Card className="w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle>
+                    {editMode ? "Editar Estabelecimento" : "Detalhes do Estabelecimento"}
+                  </CardTitle>
+                  <CardDescription>
+                    ID: {selectedEstabelecimento?.id}
+                  </CardDescription>
+                </div>
+                <Button variant="ghost" size="sm" onClick={closeModal}>
+                  <X className="w-4 h-4" />
+                </Button>
+              </CardHeader>
+              <CardContent>
+                {loadingDetails ? (
+                  <div className="flex justify-center py-8">
+                    <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+                  </div>
+                ) : selectedEstabelecimento ? (
+                  <div className="space-y-6">
+                    <div className="flex gap-4">
+                      <Badge variant={getStatusBadgeVariant(selectedEstabelecimento.status)}>
+                        {getStatusLabel(selectedEstabelecimento.status)}
+                      </Badge>
+                      <Badge variant="outline">
+                        {getTipoLabel(selectedEstabelecimento.type)}
+                      </Badge>
+                      <Badge variant="outline">
+                        Risco: {selectedEstabelecimento.risk}
+                      </Badge>
+                    </div>
+
+                    {editMode ? (
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium mb-1">Tipo de Acesso *</label>
+                            <Select
+                              value={formData.access_type}
+                              onValueChange={(value) => setFormData({...formData, access_type: value})}
+                            >
+                              <SelectTrigger><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="ACQUIRER">Adquirência</SelectItem>
+                                <SelectItem value="BANKING">Bancário</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium mb-1">Formato *</label>
+                            <Select
+                              value={formData.format}
+                              onValueChange={(value) => setFormData({...formData, format: value})}
+                            >
+                              <SelectTrigger><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="LTDA">LTDA</SelectItem>
+                                <SelectItem value="SA">SA</SelectItem>
+                                <SelectItem value="ME">ME</SelectItem>
+                                <SelectItem value="MEI">MEI</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium mb-1">Nome/Razão Social *</label>
+                            <Input
+                              value={formData.first_name}
+                              onChange={(e) => setFormData({...formData, first_name: e.target.value})}
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium mb-1">Email *</label>
+                            <Input
+                              type="email"
+                              value={formData.email}
+                              onChange={(e) => setFormData({...formData, email: e.target.value})}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium mb-1">Telefone *</label>
+                            <Input
+                              value={formData.phone_number}
+                              onChange={(e) => setFormData({...formData, phone_number: e.target.value})}
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium mb-1">Receita *</label>
+                            <Input
+                              value={formData.revenue}
+                              onChange={(e) => setFormData({...formData, revenue: e.target.value})}
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium mb-1">GMV</label>
+                            <Input
+                              type="number"
+                              value={formData.gmv}
+                              onChange={(e) => setFormData({...formData, gmv: parseInt(e.target.value)})}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="flex gap-2 pt-4">
+                          <Button onClick={handleUpdate} disabled={loadingDetails}>
+                            {loadingDetails ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Salvando...</> : "Salvar"}
+                          </Button>
+                          <Button variant="outline" onClick={() => setEditMode(false)}>Cancelar</Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        <div>
+                          <h3 className="font-semibold mb-2">Informações Básicas</h3>
+                          <div className="grid grid-cols-2 gap-3 text-sm">
+                            <p><span className="text-gray-600">Nome:</span> {selectedEstabelecimento.first_name}</p>
+                            <p><span className="text-gray-600">Documento:</span> {selectedEstabelecimento.document}</p>
+                            <p><span className="text-gray-600">Email:</span> {selectedEstabelecimento.email}</p>
+                            <p><span className="text-gray-600">Telefone:</span> {selectedEstabelecimento.phone_number}</p>
+                          </div>
+                        </div>
+
+                        <div>
+                          <h3 className="font-semibold mb-2">Endereço</h3>
+                          <p className="text-sm">{selectedEstabelecimento.address?.street}, {selectedEstabelecimento.address?.number} - {selectedEstabelecimento.address?.neighborhood}</p>
+                          <p className="text-sm">{selectedEstabelecimento.address?.city}/{selectedEstabelecimento.address?.state} - CEP: {selectedEstabelecimento.address?.zip_code}</p>
+                        </div>
+
+                        <div className="flex gap-2 pt-4">
+                          <Button onClick={() => setEditMode(true)}>
+                            <Edit className="w-4 h-4 mr-2" />Editar
+                          </Button>
+                          <Button variant="outline" onClick={closeModal}>Fechar</Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : null}
+              </CardContent>
+            </Card>
+          </div>
+        )}
       </div>
     </ProtectedRoute>
   );
