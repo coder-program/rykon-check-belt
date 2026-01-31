@@ -9,6 +9,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { Public } from '../../auth/decorators/public.decorator';
 import { PerfisService } from '../services/perfis.service';
 import { CreatePerfilDto } from '../dto/create-perfil.dto';
 
@@ -35,6 +36,7 @@ export class PerfisController {
   }
 
   @Get('publicos/registro')
+  @Public() // Endpoint público para cadastro
   async findPublicos() {
     // Retorna apenas perfis públicos para cadastro (aluno e responsavel)
     // Query otimizada no service - apenas 2 registros sem relations

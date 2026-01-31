@@ -949,6 +949,7 @@ export default function DashboardNew() {
           faixa: faixaNome,
           graus: grausAtual,
           cpf: aluno.cpf,
+          data_nascimento: aluno.data_nascimento,
           token: `TKN-${aluno.id.substring(0, 8)}`,
         };
       });
@@ -973,6 +974,42 @@ export default function DashboardNew() {
         nextPage: response.hasNextPage ? response.page + 1 : null,
       };
     },
+  });
+
+  // Query separada para aniversariantes (sempre respeita unidade selecionada)
+  const aniversariantesQuery = useQuery({
+    queryKey: ["aniversariantes", selectedUnidade],
+    queryFn: async () => {
+      const mesAtual = new Date().getMonth();
+      const response = await listAlunos({
+        page: 1,
+        pageSize: 500, // Buscar muitos para pegar todos aniversariantes
+        unidadeId: selectedUnidade !== "todas" ? selectedUnidade : undefined,
+      });
+
+      return response.items
+        .filter((aluno: any) => {
+          if (!aluno.data_nascimento) return false;
+          const dataNasc = new Date(aluno.data_nascimento);
+          return dataNasc.getMonth() === mesAtual;
+        })
+        .map((aluno: any) => {
+          const faixaAtiva = aluno.faixas?.find((f: any) => f.ativa);
+          const faixaNome = faixaAtiva?.faixaDef?.nome_exibicao || aluno.faixa || "Branca";
+          return {
+            id: aluno.id,
+            nome: aluno.nome || aluno.nome_completo,
+            faixa: faixaNome,
+            data_nascimento: aluno.data_nascimento,
+          };
+        })
+        .sort((a: any, b: any) => {
+          const diaA = new Date(a.data_nascimento).getDate();
+          const diaB = new Date(b.data_nascimento).getDate();
+          return diaA - diaB;
+        });
+    },
+    staleTime: 5 * 60 * 1000, // Cache de 5 minutos
   });
 
   // Query para Professores (aba Professores) - DADOS REAIS DO BANCO
@@ -2968,20 +3005,15 @@ export default function DashboardNew() {
                   <CardContent>
                     <div className="space-y-2 max-h-[300px] overflow-y-auto">
                       {(() => {
-                        const alunos = alunosQuery.data?.pages[0]?.items || [];
-                        const mesAtual = new Date().getMonth();
+                        if (aniversariantesQuery.isLoading) {
+                          return (
+                            <p className="text-sm text-gray-500 text-center py-4">
+                              Carregando aniversariantes...
+                            </p>
+                          );
+                        }
 
-                        const aniversariantes = alunos
-                          .filter((aluno: any) => {
-                            if (!aluno.data_nascimento) return false;
-                            const dataNasc = new Date(aluno.data_nascimento);
-                            return dataNasc.getMonth() === mesAtual;
-                          })
-                          .sort((a: any, b: any) => {
-                            const diaA = new Date(a.data_nascimento).getDate();
-                            const diaB = new Date(b.data_nascimento).getDate();
-                            return diaA - diaB;
-                          });
+                        const aniversariantes = aniversariantesQuery.data || [];
 
                         if (aniversariantes.length === 0) {
                           return (
@@ -2990,6 +3022,8 @@ export default function DashboardNew() {
                             </p>
                           );
                         }
+
+                        const mesAtual = new Date().getMonth();
 
                         return aniversariantes.map((aluno: any) => {
                           const dataNasc = new Date(aluno.data_nascimento);
