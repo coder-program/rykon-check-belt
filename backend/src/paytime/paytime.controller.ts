@@ -286,4 +286,140 @@ export class PaytimeController {
     this.logger.debug(`Desvinculando unidade ${unidadeId} do estabelecimento ${establishmentId}...`);
     return this.paytimeService.desvincularUnidade(establishmentId, unidadeId);
   }
+
+  // ==========================================
+  // GATEWAYS
+  // ==========================================
+
+  @Get('gateways')
+  @ApiOperation({
+    summary: '⚡ Listar gateways disponíveis',
+    description: 'Lista todos os gateways (ACQUIRER e BANKING) disponíveis na plataforma Paytime',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Lista de gateways retornada com sucesso',
+    schema: {
+      example: {
+        total: 3,
+        page: 1,
+        perPage: 20,
+        lastPage: 1,
+        data: [
+          {
+            id: 2,
+            name: 'PAGSEGURO',
+            type: 'ACQUIRER',
+            created_at: '2023-06-21T15:06:02.000Z',
+            updated_at: '2023-06-21T15:06:02.000Z',
+          },
+          {
+            id: 4,
+            name: 'PAYTIME',
+            type: 'ACQUIRER',
+            created_at: '2023-06-21T15:06:02.000Z',
+            updated_at: '2023-06-21T15:06:02.000Z',
+          },
+          {
+            id: 6,
+            name: 'CELCOIN',
+            type: 'BANKING',
+            created_at: '2023-12-13T09:36:06.000Z',
+            updated_at: '2023-12-13T09:36:06.000Z',
+          },
+        ],
+      },
+    },
+  })
+  @ApiQuery({
+    name: 'filters',
+    required: false,
+    description: 'Filtros em JSON (ex: {"type":"ACQUIRER"})',
+    example: '{"type":"ACQUIRER"}',
+  })
+  @ApiQuery({
+    name: 'search',
+    required: false,
+    description: 'Busca textual por nome do gateway',
+    example: 'PAYTIME',
+  })
+  @ApiQuery({
+    name: 'page',
+    required: false,
+    description: 'Página atual',
+    example: 1,
+  })
+  @ApiQuery({
+    name: 'perPage',
+    required: false,
+    description: 'Registros por página (máx: 100)',
+    example: 20,
+  })
+  @ApiQuery({
+    name: 'sorters',
+    required: false,
+    description: 'Ordenação em JSON',
+    example: '[{"column":"created_at","direction":"DESC"}]',
+  })
+  async listGateways(
+    @Query('filters') filters?: string,
+    @Query('search') search?: string,
+    @Query('page') page?: number,
+    @Query('perPage') perPage?: number,
+    @Query('sorters') sorters?: string,
+  ) {
+    this.logger.debug('📋 Listando gateways Paytime...');
+    
+    let parsedFilters;
+    let parsedSorters;
+
+    try {
+      parsedFilters = filters ? JSON.parse(filters) : undefined;
+    } catch (error) {
+      this.logger.warn('Erro ao parsear filtros:', error);
+      parsedFilters = undefined;
+    }
+
+    try {
+      parsedSorters = sorters ? JSON.parse(sorters) : undefined;
+    } catch (error) {
+      this.logger.warn('Erro ao parsear sorters:', error);
+      parsedSorters = undefined;
+    }
+
+    return this.paytimeService.listGateways(
+      parsedFilters,
+      search,
+      page || 1,
+      perPage || 20,
+      parsedSorters,
+    );
+  }
+
+  @Get('gateways/:id')
+  @ApiOperation({
+    summary: '🔍 Buscar gateway por ID',
+    description: 'Retorna detalhes de um gateway específico (PAYTIME: 4, PAGSEGURO: 2, CELCOIN: 6)',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Gateway encontrado',
+    schema: {
+      example: {
+        id: 4,
+        name: 'PAYTIME',
+        type: 'ACQUIRER',
+        created_at: '2023-06-21T15:06:02.000Z',
+        updated_at: '2023-06-21T15:06:02.000Z',
+      },
+    },
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Gateway não encontrado',
+  })
+  async getGateway(@Param('id') id: string) {
+    this.logger.debug(`🔍 Buscando gateway ${id}...`);
+    return this.paytimeService.getGateway(parseInt(id, 10));
+  }
 }

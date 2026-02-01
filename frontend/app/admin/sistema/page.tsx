@@ -77,8 +77,8 @@ export default function AdminSistemaPage() {
       title: "Gateways",
       description: "Provedores de pagamento",
       color: "orange",
-      route: null,
-      active: false,
+      route: "/admin/gateways",
+      active: true,
     },
     {
       icon: Package,

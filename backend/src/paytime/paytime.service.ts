@@ -526,6 +526,142 @@ export class PaytimeService {
     
     return { message: 'Unidade desvinculada com sucesso' };
   }
+
+  // ==========================================
+  // GATEWAYS
+  // ==========================================
+
+  /**
+   * Listar gateways disponíveis na plataforma Paytime
+   */
+  async listGateways(
+    filters?: Record<string, any>,
+    search?: string,
+    page: number = 1,
+    perPage: number = 20,
+    sorters?: Array<{ column: string; direction: 'ASC' | 'DESC' }>,
+  ) {
+    this.logger.debug('🎯 [GATEWAYS] Parâmetros recebidos:', { filters, search, page, perPage, sorters });
+    
+    const token = await this.authenticate();
+
+    const queryParams = new URLSearchParams();
+    
+    if (filters) {
+      const filtersJson = JSON.stringify(filters);
+      this.logger.debug(`🎯 [GATEWAYS] Aplicando filtros: ${filtersJson}`);
+      queryParams.append('filters', filtersJson);
+    } else {
+      this.logger.debug('🎯 [GATEWAYS] Sem filtros');
+    }
+    
+    if (search) {
+      this.logger.debug(`🔍 [GATEWAYS] Aplicando busca: ${search}`);
+      queryParams.append('search', search);
+    } else {
+      this.logger.debug('🔍 [GATEWAYS] Sem busca');
+    }
+    
+    queryParams.append('page', page.toString());
+    queryParams.append('perPage', Math.min(perPage, 100).toString());
+    
+    if (sorters && sorters.length > 0) {
+      queryParams.append('sorters', JSON.stringify(sorters));
+    }
+
+    const url = `${this.baseUrl}/api/api/gateways?${queryParams.toString()}`;
+    
+    this.logger.debug(`📡 [GATEWAYS] URL completa: ${url}`);
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      this.logger.error(`❌ Erro ao listar gateways: ${response.status} - ${errorText}`);
+      throw new BadRequestException(
+        `Erro ao listar gateways: ${response.status} - ${errorText}`,
+      );
+    }
+
+    const data = await response.json();
+    this.logger.debug(`✅ [GATEWAYS] Resposta da API Paytime: ${JSON.stringify(data)}`);
+    this.logger.debug(`📊 [GATEWAYS] Total retornado: ${data.total}`);
+    this.logger.debug(`📄 [GATEWAYS] Gateways: ${data.data?.length || 0} items`);
+    
+    // FILTRAR LOCALMENTE pois a API Paytime ignora os filtros
+    if ((filters || search) && data.data) {
+      let filtered = data.data;
+      
+      // Filtrar por tipo
+      if (filters?.type) {
+        this.logger.debug(`🎯 [GATEWAYS] Filtrando por tipo: ${filters.type}`);
+        filtered = filtered.filter((g: any) => g.type === filters.type);
+      }
+      
+      // Filtrar por busca
+      if (search) {
+        this.logger.debug(`🔍 [GATEWAYS] Filtrando por busca: ${search}`);
+        const searchLower = search.toLowerCase();
+        filtered = filtered.filter((g: any) => 
+          g.name?.toLowerCase().includes(searchLower) ||
+          g.type?.toLowerCase().includes(searchLower)
+        );
+      }
+      
+      this.logger.debug(`✅ [GATEWAYS] Após filtro local: ${filtered.length} items`);
+      
+      return {
+        ...data,
+        total: filtered.length,
+        data: filtered,
+        lastPage: Math.ceil(filtered.length / perPage),
+      };
+    }
+    
+    return data;
+  }
+
+  /**
+   * Buscar gateway específico por ID
+   */
+  async getGateway(gatewayId: number) {
+    const token = await this.authenticate();
+
+    const url = `${this.baseUrl}/api/api/gateways/${gatewayId}`;
+    
+    this.logger.debug(`🔍 Buscando gateway ${gatewayId}: ${url}`);
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      if (response.status === 404) {
+        throw new NotFoundException(`Gateway com ID ${gatewayId} não encontrado`);
+      }
+      
+      const errorText = await response.text();
+      this.logger.error(`❌ Erro ao buscar gateway: ${response.status} - ${errorText}`);
+      throw new BadRequestException(
+        `Erro ao buscar gateway: ${response.status} - ${errorText}`,
+      );
+    }
+
+    const data = await response.json();
+    this.logger.debug(`✅ Gateway ${gatewayId} encontrado: ${data.name} (${data.type})`);
+    
+    return data;
+  }
 }
 
 export type { PaytimeEstablishment, PaytimeListResponse, PaytimeFilters, PaytimeSorter };

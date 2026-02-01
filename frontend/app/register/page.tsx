@@ -342,17 +342,38 @@ function RegisterPageContent() {
 
         setPerfis(perfisDisponiveis);
 
-        // Definir "aluno" como padrão
-        const perfilAluno = perfisDisponiveis.find(
-          (p) => p.nome.toLowerCase() === "aluno"
-        );
-        if (perfilAluno) {
-          setFormData((prev) => ({ ...prev, perfil_id: perfilAluno.id }));
-        } else {
-          console.warn(
-            "Perfil 'aluno' não encontrado, usando primeiro perfil disponível"
+        // APENAS definir perfil padrão se ainda não tiver um perfil selecionado
+        if (!formData.perfil_id) {
+          const perfilAluno = perfisDisponiveis.find(
+            (p) => p.nome.toLowerCase() === "aluno"
           );
-          setFormData((prev) => ({ ...prev, perfil_id: perfisDisponiveis[0].id }));
+          if (perfilAluno) {
+            setFormData((prev) => ({ ...prev, perfil_id: perfilAluno.id }));
+          } else {
+            console.warn(
+              "Perfil 'aluno' não encontrado, usando primeiro perfil disponível"
+            );
+            setFormData((prev) => ({ ...prev, perfil_id: perfisDisponiveis[0].id }));
+          }
+        } else {
+          // Se já tem perfil selecionado, verificar se ainda é válido
+          const perfilAtualValido = perfisDisponiveis.find(
+            (p) => p.id === formData.perfil_id
+          );
+          
+          // Se for menor de idade e o perfil atual não é aluno, forçar para aluno
+          if (isMenorDeIdade && !perfilAtualValido) {
+            const perfilAluno = perfisDisponiveis.find(
+              (p) => p.nome.toLowerCase() === "aluno"
+            );
+            if (perfilAluno) {
+              setFormData((prev) => ({ ...prev, perfil_id: perfilAluno.id }));
+              toast.info("Menores de 16 anos devem se cadastrar como Aluno", {
+                duration: 3000,
+              });
+            }
+          }
+          // Se o perfil atual não está mais disponível (mas não é caso de menor de idade), manter o atual
         }
       } catch (error) {
         console.error("Erro ao carregar perfis:", error);
@@ -367,7 +388,11 @@ function RegisterPageContent() {
         };
 
         setPerfis([perfilPadrao]);
-        setFormData((prev) => ({ ...prev, perfil_id: perfilPadrao.id }));
+        
+        // Apenas setar perfil padrão se não tiver um
+        if (!formData.perfil_id) {
+          setFormData((prev) => ({ ...prev, perfil_id: perfilPadrao.id }));
+        }
 
         toast.error(
           "Não foi possível carregar os perfis. Você será cadastrado como Aluno.",
