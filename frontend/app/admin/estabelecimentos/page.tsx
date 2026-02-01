@@ -31,6 +31,8 @@ import {
   Edit,
   X,
   Plus,
+  Link as LinkIcon,
+  Unlink,
 } from "lucide-react";
 import toast from "react-hot-toast";
 // import { paytimeService, type PaytimeEstablishment } from "@/lib/services/paytimeService";
@@ -72,6 +74,13 @@ export default function EstabelecimentosPage() {
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [formData, setFormData] = useState<any>({});
+  
+  // Estados para gerenciar vínculos com unidades
+  const [vinculatedUnidades, setVinculatedUnidades] = useState<any[]>([]);
+  const [availableUnidades, setAvailableUnidades] = useState<any[]>([]);
+  const [loadingUnidades, setLoadingUnidades] = useState(false);
+  const [selectedUnidadeToLink, setSelectedUnidadeToLink] = useState<string>("");
+  const [searchUnidade, setSearchUnidade] = useState<string>("");
 
   useEffect(() => {
     carregarEstabelecimentos();
@@ -183,6 +192,12 @@ export default function EstabelecimentosPage() {
         gmv: data.gmv || 0,
         birthdate: data.birthdate || "",
       });
+
+      // Carregar unidades vinculadas e disponíveis
+      await Promise.all([
+        carregarUnidadesVinculadas(id),
+        carregarUnidades(),
+      ]);
     } catch (error) {
       console.error("Erro:", error);
       toast.error("Erro ao carregar detalhes");
@@ -230,6 +245,135 @@ export default function EstabelecimentosPage() {
     setShowModal(false);
     setEditMode(false);
     setSelectedEstabelecimento(null);
+    setVinculatedUnidades([]);
+    setAvailableUnidades([]);
+    setSelectedUnidadeToLink("");
+  };
+
+  // Funções para gerenciar vínculos com unidades
+  const carregarUnidades = async () => {
+    try {
+      setLoadingUnidades(true);
+      console.log('🔍 Carregando lista de unidades...');
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/unidades`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+      });
+
+      if (!response.ok) throw new Error("Erro ao carregar unidades");
+
+      const data = await response.json();
+      console.log(`✅ Resposta da API:`, data);
+      // Se for objeto paginado, pegar o array items
+      const unidadesArray = Array.isArray(data) ? data : (data.items || []);
+      console.log(`✅ ${unidadesArray.length} unidades carregadas:`, unidadesArray);
+      setAvailableUnidades(unidadesArray);
+    } catch (error: any) {
+      console.error("Erro:", error);
+      toast.error("Erro ao carregar unidades");
+      setAvailableUnidades([]);
+    } finally {
+      setLoadingUnidades(false);
+    }
+  };
+
+  const carregarUnidadesVinculadas = async (establishmentId: string) => {
+    try {
+      setLoadingUnidades(true);
+      console.log(`🔍 Carregando unidades vinculadas ao estabelecimento ${establishmentId}...`);
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/paytime/establishments/${establishmentId}/unidades`,
+        {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          },
+        }
+      );
+
+      console.log('📡 Response status:', response.status);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ Erro na resposta:', errorText);
+        throw new Error("Erro ao carregar unidades vinculadas");
+      }
+
+      const data = await response.json();
+      console.log(`✅ ${Array.isArray(data) ? data.length : 0} unidades vinculadas:`, data);
+      setVinculatedUnidades(data);
+    } catch (error: any) {
+      console.error("Erro:", error);
+      toast.error("Erro ao carregar unidades vinculadas");
+    } finally {
+      setLoadingUnidades(false);
+    }
+  };
+
+  const vincularUnidade = async () => {
+    if (!selectedUnidadeToLink || !selectedEstabelecimento) return;
+
+    try {
+      setLoadingUnidades(true);
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/paytime/establishments/${selectedEstabelecimento.id}/vincular-unidade/${selectedUnidadeToLink}`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Erro ao vincular unidade");
+      }
+
+      toast.success("Unidade vinculada com sucesso!");
+      setSelectedUnidadeToLink("");
+      setSearchUnidade("");
+      await carregarUnidadesVinculadas(selectedEstabelecimento.id);
+    } catch (error: any) {
+      console.error("Erro:", error);
+      toast.error(error.message || "Erro ao vincular unidade");
+    } finally {
+      setLoadingUnidades(false);
+    }
+  };
+
+  const desvincularUnidade = async (unidadeId: string) => {
+    if (!selectedEstabelecimento) return;
+
+    if (!confirm("Deseja realmente desvincular esta unidade?")) return;
+
+    try {
+      setLoadingUnidades(true);
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/paytime/establishments/${selectedEstabelecimento.id}/desvincular-unidade/${unidadeId}`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Erro ao desvincular unidade");
+      }
+
+      toast.success("Unidade desvinculada com sucesso!");
+      await carregarUnidadesVinculadas(selectedEstabelecimento.id);
+    } catch (error: any) {
+      console.error("Erro:", error);
+      toast.error(error.message || "Erro ao desvincular unidade");
+    } finally {
+      setLoadingUnidades(false);
+    }
   };
 
   const getStatusBadgeVariant = (status: string) => {
@@ -401,66 +545,58 @@ export default function EstabelecimentosPage() {
               </CardContent>
             </Card>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {estabelecimentos.map((estabelecimento) => (
                 <Card
                   key={estabelecimento.id}
                   className="hover:shadow-lg transition-shadow"
                 >
-                  <CardHeader>
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <CardTitle className="text-lg mb-1">
+                  <CardContent className="p-4">
+                    <div className="mb-3">
+                      <div className="flex items-start gap-2 mb-2">
+                        <Building2 className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                        <h3 className="text-base font-semibold text-gray-900 line-clamp-2">
                           {estabelecimento.nome}
-                        </CardTitle>
-                        <CardDescription className="flex items-center gap-2">
-                          <MapPin className="w-3 h-3" />
-                          {estabelecimento.cidade}/{estabelecimento.estado}
-                        </CardDescription>
+                        </h3>
                       </div>
-                      <div className="flex flex-col gap-1 items-end">
-                        <Badge variant={getStatusBadgeVariant(estabelecimento.status)}>
+                      
+                      <div className="flex flex-wrap gap-1.5 mb-3">
+                        <Badge variant={getStatusBadgeVariant(estabelecimento.status)} className="text-xs">
                           {getStatusLabel(estabelecimento.status)}
                         </Badge>
-                        <span className="text-xs text-gray-500">
+                        <Badge variant="outline" className="text-xs">
                           {getTipoLabel(estabelecimento.tipo)}
+                        </Badge>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2 mb-4 text-xs">
+                      <div className="flex items-center gap-2">
+                        <span className="text-gray-500 min-w-[60px]">Documento:</span>
+                        <span className="font-medium text-gray-900 truncate">{estabelecimento.cnpj}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <MapPin className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                        <span className="text-gray-600 truncate">
+                          {estabelecimento.cidade}/{estabelecimento.estado}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className={`text-xs font-medium ${getRiscoColor(estabelecimento.risco)}`}>
+                          Risco: {estabelecimento.risco}
                         </span>
                       </div>
                     </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-2 text-sm mb-4">
-                      <p className="text-gray-600">
-                        <span className="font-medium">Documento:</span>{" "}
-                        {estabelecimento.cnpj}
-                      </p>
-                      <p className="text-gray-600">
-                        <span className="font-medium">Email:</span>{" "}
-                        {estabelecimento.email}
-                      </p>
-                      <p className="text-gray-600">
-                        <span className="font-medium">Telefone:</span>{" "}
-                        {estabelecimento.telefone}
-                      </p>
-                      <p className="text-gray-600">
-                        <span className="font-medium">Risco:</span>{" "}
-                        <span className={getRiscoColor(estabelecimento.risco)}>
-                          {estabelecimento.risco}
-                        </span>
-                      </p>
-                    </div>
 
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="flex-1"
-                        onClick={() => verDetalhes(estabelecimento.id)}
-                      >
-                        <Eye className="w-3 h-3 mr-2" />
-                        Detalhes
-                      </Button>
-                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full"
+                      onClick={() => verDetalhes(estabelecimento.id)}
+                    >
+                      <Eye className="w-3.5 h-3.5 mr-2" />
+                      Ver Detalhes
+                    </Button>
                   </CardContent>
                 </Card>
               ))}
@@ -663,16 +799,239 @@ export default function EstabelecimentosPage() {
                           <h3 className="font-semibold mb-2">Informações Básicas</h3>
                           <div className="grid grid-cols-2 gap-3 text-sm">
                             <p><span className="text-gray-600">Nome:</span> {selectedEstabelecimento.first_name}</p>
+                            <p><span className="text-gray-600">Sobrenome:</span> {selectedEstabelecimento.last_name || "—"}</p>
                             <p><span className="text-gray-600">Documento:</span> {selectedEstabelecimento.document}</p>
+                            <p><span className="text-gray-600">Tipo:</span> {getTipoLabel(selectedEstabelecimento.type)}</p>
                             <p><span className="text-gray-600">Email:</span> {selectedEstabelecimento.email}</p>
                             <p><span className="text-gray-600">Telefone:</span> {selectedEstabelecimento.phone_number}</p>
+                            <p><span className="text-gray-600">Data Nascimento/Fundação:</span> {selectedEstabelecimento.birthdate || "—"}</p>
+                            <p><span className="text-gray-600">Formato:</span> {selectedEstabelecimento.format || "—"}</p>
+                            <p><span className="text-gray-600">Tipo de Acesso:</span> {selectedEstabelecimento.access_type}</p>
+                            <p><span className="text-gray-600">Atividade Econômica:</span> {selectedEstabelecimento.activity_id || "—"}</p>
+                          </div>
+                        </div>
+
+                        {selectedEstabelecimento.legal_representative && (
+                          <div>
+                            <h3 className="font-semibold mb-2">Representante Legal</h3>
+                            <div className="grid grid-cols-2 gap-3 text-sm">
+                              <p><span className="text-gray-600">Nome:</span> {selectedEstabelecimento.legal_representative.first_name}</p>
+                              <p><span className="text-gray-600">Sobrenome:</span> {selectedEstabelecimento.legal_representative.last_name}</p>
+                              <p><span className="text-gray-600">CPF:</span> {selectedEstabelecimento.legal_representative.document}</p>
+                              <p><span className="text-gray-600">Data Nascimento:</span> {selectedEstabelecimento.legal_representative.birthdate || "—"}</p>
+                            </div>
+                          </div>
+                        )}
+
+                        <div>
+                          <h3 className="font-semibold mb-2">Endereço</h3>
+                          <div className="grid grid-cols-2 gap-3 text-sm">
+                            <p><span className="text-gray-600">CEP:</span> {selectedEstabelecimento.address?.zip_code}</p>
+                            <p><span className="text-gray-600">Cidade:</span> {selectedEstabelecimento.address?.city}</p>
+                            <p><span className="text-gray-600">Estado:</span> {selectedEstabelecimento.address?.state}</p>
+                            <p><span className="text-gray-600">Bairro:</span> {selectedEstabelecimento.address?.neighborhood}</p>
+                            <p><span className="text-gray-600">Logradouro:</span> {selectedEstabelecimento.address?.street}</p>
+                            <p><span className="text-gray-600">Número:</span> {selectedEstabelecimento.address?.number}</p>
+                            <p><span className="text-gray-600">Complemento:</span> {selectedEstabelecimento.address?.complement || "—"}</p>
                           </div>
                         </div>
 
                         <div>
-                          <h3 className="font-semibold mb-2">Endereço</h3>
-                          <p className="text-sm">{selectedEstabelecimento.address?.street}, {selectedEstabelecimento.address?.number} - {selectedEstabelecimento.address?.neighborhood}</p>
-                          <p className="text-sm">{selectedEstabelecimento.address?.city}/{selectedEstabelecimento.address?.state} - CEP: {selectedEstabelecimento.address?.zip_code}</p>
+                          <h3 className="font-semibold mb-2">Informações Financeiras</h3>
+                          <div className="grid grid-cols-2 gap-3 text-sm">
+                            <p><span className="text-gray-600">Receita:</span> {selectedEstabelecimento.revenue || "—"}</p>
+                            <p><span className="text-gray-600">GMV:</span> {selectedEstabelecimento.gmv || "0"}</p>
+                            <p><span className="text-gray-600">Inscrição Estadual:</span> {selectedEstabelecimento.state_registration || "—"}</p>
+                            <p><span className="text-gray-600">Inscrição Municipal:</span> {selectedEstabelecimento.municipal_registration || "—"}</p>
+                          </div>
+                        </div>
+
+                        {(selectedEstabelecimento.phones && selectedEstabelecimento.phones.length > 0) && (
+                          <div>
+                            <h3 className="font-semibold mb-2">Telefones Adicionais</h3>
+                            <div className="space-y-1 text-sm">
+                              {selectedEstabelecimento.phones.map((phone: any, idx: number) => (
+                                <p key={idx}>
+                                  <span className="text-gray-600">Telefone {idx + 1}:</span> {phone.number}
+                                  {phone.type && <span className="text-gray-500 ml-2">({phone.type})</span>}
+                                </p>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        <div>
+                          <h3 className="font-semibold mb-2">Status e Datas</h3>
+                          <div className="grid grid-cols-2 gap-3 text-sm">
+                            <p><span className="text-gray-600">Status:</span> {getStatusLabel(selectedEstabelecimento.status)}</p>
+                            <p><span className="text-gray-600">Nível de Risco:</span> <span className={getRiscoColor(selectedEstabelecimento.risk)}>{selectedEstabelecimento.risk}</span></p>
+                            <p><span className="text-gray-600">Criado em:</span> {new Date(selectedEstabelecimento.created_at).toLocaleString('pt-BR')}</p>
+                            <p><span className="text-gray-600">Atualizado em:</span> {new Date(selectedEstabelecimento.updated_at).toLocaleString('pt-BR')}</p>
+                          </div>
+                        </div>
+
+                        {/* Seção de Vínculos com Unidades TeamCruz */}
+                        <div className="border-t pt-4">
+                          <h3 className="font-semibold mb-3 flex items-center gap-2">
+                            <LinkIcon className="w-4 h-4" />
+                            Unidades Vinculadas
+                          </h3>
+
+                          {loadingUnidades ? (
+                            <div className="flex justify-center py-4">
+                              <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
+                            </div>
+                          ) : (
+                            <div className="space-y-4">
+                              {/* Lista de unidades vinculadas */}
+                              {vinculatedUnidades.length > 0 ? (
+                                <div className="space-y-2">
+                                  {vinculatedUnidades.map((unidade: any) => (
+                                    <div key={unidade.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                                      <div className="flex-1">
+                                        <p className="font-medium">{unidade.nome}</p>
+                                        <p className="text-sm text-gray-600">
+                                          {unidade.cidade} - {unidade.estado}
+                                        </p>
+                                      </div>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => desvincularUnidade(unidade.id)}
+                                        disabled={loadingUnidades}
+                                      >
+                                        <Unlink className="w-4 h-4 mr-1" />
+                                        Desvincular
+                                      </Button>
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : (
+                                <p className="text-sm text-gray-500 py-2">
+                                  Nenhuma unidade vinculada a este estabelecimento.
+                                </p>
+                              )}
+
+                              {/* Formulário para vincular nova unidade */}
+                              <div className="pt-4 border-t mt-4">
+                                <div className="space-y-3">
+                                  {/* Campo de busca */}
+                                  <div className="relative">
+                                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                                    <Input
+                                      placeholder="Busque por nome ou localização..."
+                                      value={searchUnidade}
+                                      onChange={(e) => setSearchUnidade(e.target.value)}
+                                      className="pl-10"
+                                    />
+                                  </div>
+                                  
+                                  {/* Unidade selecionada */}
+                                  {selectedUnidadeToLink && (
+                                    <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
+                                      <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                          <Building2 className="w-4 h-4 text-blue-600" />
+                                          <span className="text-sm font-medium text-blue-900">
+                                            {availableUnidades.find(u => u.id === selectedUnidadeToLink)?.nome.toUpperCase()}
+                                          </span>
+                                        </div>
+                                        <button
+                                          onClick={() => setSelectedUnidadeToLink("")}
+                                          className="text-blue-600 hover:text-blue-800"
+                                        >
+                                          <X className="w-4 h-4" />
+                                        </button>
+                                      </div>
+                                    </div>
+                                  )}
+                                  
+                                  {/* Lista filtrada de unidades */}
+                                  {searchUnidade && (
+                                    <div className="max-h-60 overflow-y-auto border rounded-md bg-white shadow-sm">
+                                      {(Array.isArray(availableUnidades) ? availableUnidades : [])
+                                        .filter(u => !u.paytime_establishment_id)
+                                        .filter(u => !vinculatedUnidades.find(v => v.id === u.id))
+                                        .filter(u => {
+                                          const search = searchUnidade.toLowerCase();
+                                          return u.nome?.toLowerCase().includes(search) ||
+                                                 u.cidade?.toLowerCase().includes(search) ||
+                                                 u.estado?.toLowerCase().includes(search);
+                                        })
+                                        .map((unidade: any) => {
+                                          const location = [unidade.cidade, unidade.estado].filter(Boolean).join('/');
+                                          const isSelected = selectedUnidadeToLink === unidade.id;
+                                          
+                                          return (
+                                            <div
+                                              key={unidade.id}
+                                              onClick={() => {
+                                                setSelectedUnidadeToLink(unidade.id);
+                                                setSearchUnidade('');
+                                              }}
+                                              className={`p-3 border-b last:border-b-0 cursor-pointer transition-colors ${
+                                                isSelected 
+                                                  ? 'bg-blue-50 border-l-4 border-l-blue-600' 
+                                                  : 'hover:bg-gray-50'
+                                              }`}
+                                            >
+                                              <div className="flex items-start gap-2">
+                                                <Building2 className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
+                                                <div>
+                                                  <div className="font-medium text-sm text-gray-900">
+                                                    {unidade.nome.toUpperCase()}
+                                                  </div>
+                                                  {location && (
+                                                    <div className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
+                                                      <MapPin className="w-3 h-3" />
+                                                      {location.toUpperCase()}
+                                                    </div>
+                                                  )}
+                                                </div>
+                                              </div>
+                                            </div>
+                                          );
+                                        })}
+                                      {(Array.isArray(availableUnidades) ? availableUnidades : [])
+                                        .filter(u => !u.paytime_establishment_id)
+                                        .filter(u => !vinculatedUnidades.find(v => v.id === u.id))
+                                        .filter(u => {
+                                          const search = searchUnidade.toLowerCase();
+                                          return u.nome?.toLowerCase().includes(search) ||
+                                                 u.cidade?.toLowerCase().includes(search) ||
+                                                 u.estado?.toLowerCase().includes(search);
+                                        }).length === 0 && (
+                                          <div className="p-8 text-center">
+                                            <Building2 className="w-12 h-12 text-gray-300 mx-auto mb-2" />
+                                            <p className="text-sm text-gray-500">
+                                              Nenhuma unidade encontrada
+                                            </p>
+                                          </div>
+                                        )}
+                                    </div>
+                                  )}
+                                  
+                                  <Button
+                                    onClick={vincularUnidade}
+                                    disabled={!selectedUnidadeToLink || loadingUnidades}
+                                    className="w-full"
+                                  >
+                                    {loadingUnidades ? (
+                                      <>
+                                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                        Vinculando...
+                                      </>
+                                    ) : (
+                                      <>
+                                        <LinkIcon className="w-4 h-4 mr-2" />
+                                        Confirmar Vínculo
+                                      </>
+                                    )}
+                                  </Button>
+                                </div>
+                              </div>
+                            </div>
+                          )}
                         </div>
 
                         <div className="flex gap-2 pt-4">

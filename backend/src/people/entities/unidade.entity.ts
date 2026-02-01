@@ -119,6 +119,10 @@ export class Unidade {
   @Column({ type: 'uuid', nullable: true })
   endereco_id: string | null;
 
+  // Integração Paytime
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  paytime_establishment_id: string | null;
+
   // Metadados
   @CreateDateColumn({ name: 'created_at' })
   created_at: Date;

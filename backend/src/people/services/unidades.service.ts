@@ -613,6 +613,8 @@ export class UnidadesService {
       // Status
       status: row.status,
       requer_aprovacao_checkin: row.requer_aprovacao_checkin || false,
+      // Integração Paytime
+      paytime_establishment_id: row.paytime_establishment_id || null,
       // Geolocalização
       latitude: row.latitude ? parseFloat(row.latitude) : null,
       longitude: row.longitude ? parseFloat(row.longitude) : null,

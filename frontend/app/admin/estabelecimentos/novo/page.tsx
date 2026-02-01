@@ -21,7 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ArrowLeft, Building2, Save, User, MapPin, Loader2 } from "lucide-react";
+import { ArrowLeft, Building2, Save, User, MapPin, Loader2, Search, X } from "lucide-react";
 import toast from "react-hot-toast";
 import {
   maskCNPJ,
@@ -40,6 +40,10 @@ export default function NovoEstabelecimentoPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [loadingCep, setLoadingCep] = useState(false);
+  const [unidades, setUnidades] = useState<any[]>([]);
+  const [selectedUnidade, setSelectedUnidade] = useState<any>(null);
+  const [searchUnidade, setSearchUnidade] = useState("");
+  const [loadingUnidades, setLoadingUnidades] = useState(false);
   const [formData, setFormData] = useState({
     // Dados do Estabelecimento
     type: "BUSINESS" as "BUSINESS" | "INDIVIDUAL",
@@ -77,6 +81,11 @@ export default function NovoEstabelecimentoPage() {
     notes: "",
   });
 
+  // Carregar unidades ao montar
+  useEffect(() => {
+    carregarUnidades();
+  }, []);
+
   // Buscar endereço pelo CEP
   useEffect(() => {
     const cepLimpo = unmask(formData.zip_code);
@@ -85,6 +94,94 @@ export default function NovoEstabelecimentoPage() {
       buscarCep(cepLimpo);
     }
   }, [formData.zip_code]);
+
+  const carregarUnidades = async () => {
+    try {
+      setLoadingUnidades(true);
+      const token = localStorage.getItem("token");
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/unidades`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!response.ok) throw new Error("Erro ao carregar unidades");
+
+      const data = await response.json();
+      // Se for objeto paginado, pegar o array items
+      const unidadesArray = Array.isArray(data) ? data : (data.items || []);
+      console.log(`📊 Total de unidades recebidas: ${unidadesArray.length}`);
+      
+      // Filtrar apenas unidades SEM vínculo com estabelecimento
+      const unidadesSemVinculo = unidadesArray.filter(u => !u.paytime_establishment_id);
+      console.log(`✅ Unidades sem vínculo: ${unidadesSemVinculo.length}`);
+      console.log('Unidades com vínculo:', unidadesArray.filter(u => u.paytime_establishment_id).map(u => ({nome: u.nome, estabelecimento: u.paytime_establishment_id})));
+      
+      setUnidades(unidadesSemVinculo);
+    } catch (error: any) {
+      console.error("Erro:", error);
+      toast.error("Erro ao carregar unidades");
+      setUnidades([]); // Garantir array vazio em caso de erro
+    } finally {
+      setLoadingUnidades(false);
+    }
+  };
+
+  const preencherComDadosUnidade = async (unidade: any) => {
+    if (!unidade) return;
+
+    // Buscar detalhes completos da unidade com endereço
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/unidades/${unidade.id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!response.ok) throw new Error("Erro ao buscar detalhes da unidade");
+
+      const unidadeCompleta = await response.json();
+      const endereco = unidadeCompleta.endereco;
+
+      setFormData(prev => ({
+        ...prev,
+        // Dados básicos da unidade
+        type: "BUSINESS",
+        document: unidade.cnpj || "",
+        first_name: unidade.nome || "",
+        last_name: unidade.nome || "",
+        email: unidade.email || "",
+        phone_number: unidade.telefone || "",
+        
+        // Endereço (se existir)
+        zip_code: endereco?.cep || "",
+        street: endereco?.logradouro || "",
+        number: endereco?.numero || "",
+        complement: endereco?.complemento || "",
+        neighborhood: endereco?.bairro || "",
+        city: endereco?.cidade || "",
+        state: endereco?.estado || "",
+
+        // Responsável (usar dados do franqueado ou deixar vazio para preenchimento manual)
+        responsible_email: unidadeCompleta.franqueado?.email || "",
+        responsible_first_name: unidadeCompleta.franqueado?.nome || "",
+        responsible_document: unidadeCompleta.franqueado?.cpf || "",
+        responsible_phone: unidadeCompleta.franqueado?.telefone || "",
+      }));
+
+      toast.success(`Dados da unidade "${unidade.nome}" carregados!`);
+    } catch (error: any) {
+      console.error("Erro:", error);
+      toast.error("Erro ao carregar dados da unidade");
+    }
+  };
 
   const buscarCep = async (cep: string) => {
     setLoadingCep(true);
@@ -291,7 +388,35 @@ export default function NovoEstabelecimentoPage() {
       const data = await response.json();
       console.log("✅ Estabelecimento criado:", data);
 
-      toast.success("Estabelecimento cadastrado com sucesso no Paytime!");
+      // Se foi selecionada uma unidade, vincular automaticamente
+      if (selectedUnidade && data.id) {
+        try {
+          const vincularResponse = await fetch(
+            `${process.env.NEXT_PUBLIC_API_URL}/paytime/establishments/${data.id}/vincular-unidade/${selectedUnidade.id}`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+              },
+            }
+          );
+
+          if (vincularResponse.ok) {
+            console.log("✅ Unidade vinculada automaticamente");
+            toast.success("Estabelecimento criado e vinculado à unidade com sucesso!");
+          } else {
+            console.warn("⚠️ Estabelecimento criado mas falha ao vincular unidade");
+            toast.success("Estabelecimento criado! Porém, falha ao vincular com a unidade.");
+          }
+        } catch (vincularError) {
+          console.error("❌ Erro ao vincular:", vincularError);
+          toast.success("Estabelecimento criado! Porém, falha ao vincular com a unidade.");
+        }
+      } else {
+        toast.success("Estabelecimento cadastrado com sucesso no Paytime!");
+      }
+
       router.push("/admin/estabelecimentos");
     } catch (error: any) {
       console.error("❌ Erro:", error);
@@ -325,6 +450,132 @@ export default function NovoEstabelecimentoPage() {
 
         {/* Form Cards */}
         <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Seletor de Unidade TeamCruz */}
+          <Card className="border-blue-200 bg-blue-50">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-blue-700">
+                <Building2 className="w-5 h-5" />
+                Vincular com Unidade TeamCruz (Opcional)
+              </CardTitle>
+              <CardDescription>
+                Selecione uma unidade existente para preencher automaticamente os campos
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {/* Unidade Selecionada */}
+                {selectedUnidade && (
+                  <div className="bg-blue-100 border-2 border-blue-300 rounded-lg p-4">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Building2 className="w-5 h-5 text-blue-600" />
+                          <h3 className="font-semibold text-blue-900">
+                            {selectedUnidade.nome.toUpperCase()}
+                          </h3>
+                        </div>
+                        {selectedUnidade.cidade && (
+                          <div className="flex items-center gap-2 text-sm text-blue-700">
+                            <MapPin className="w-4 h-4" />
+                            <span>{selectedUnidade.cidade}/{selectedUnidade.estado}</span>
+                          </div>
+                        )}
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setSelectedUnidade(null);
+                          setSearchUnidade("");
+                        }}
+                        className="text-blue-600 hover:text-blue-800 hover:bg-blue-200"
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </div>
+                    <p className="text-sm text-blue-600 mt-2">
+                      ✓ Unidade será automaticamente vinculada ao estabelecimento após criação
+                    </p>
+                  </div>
+                )}
+
+                {/* Busca de Unidades */}
+                {!selectedUnidade && (
+                  <>
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                      <Input
+                        placeholder="Busque por nome ou localização..."
+                        value={searchUnidade}
+                        onChange={(e) => setSearchUnidade(e.target.value)}
+                        className="pl-10"
+                        disabled={loadingUnidades}
+                      />
+                    </div>
+
+                    {/* Lista de Unidades */}
+                    {searchUnidade && (
+                      <div className="border rounded-lg max-h-60 overflow-y-auto">
+                        {loadingUnidades ? (
+                          <div className="flex items-center justify-center py-8">
+                            <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+                          </div>
+                        ) : unidades
+                            .filter(u => 
+                              !u.paytime_establishment_id &&
+                              (u.nome?.toLowerCase().includes(searchUnidade.toLowerCase()) ||
+                              u.cidade?.toLowerCase().includes(searchUnidade.toLowerCase()) ||
+                              u.estado?.toLowerCase().includes(searchUnidade.toLowerCase()))
+                            ).length === 0 ? (
+                          <div className="text-center py-8 text-gray-500">
+                            <Building2 className="w-12 h-12 mx-auto mb-2 text-gray-300" />
+                            <p>Nenhuma unidade encontrada</p>
+                          </div>
+                        ) : (
+                          unidades
+                            .filter(u => 
+                              !u.paytime_establishment_id &&
+                              (u.nome?.toLowerCase().includes(searchUnidade.toLowerCase()) ||
+                              u.cidade?.toLowerCase().includes(searchUnidade.toLowerCase()) ||
+                              u.estado?.toLowerCase().includes(searchUnidade.toLowerCase()))
+                            )
+                            .map((unidade) => (
+                              <button
+                                key={unidade.id}
+                                type="button"
+                                onClick={() => {
+                                  setSelectedUnidade(unidade);
+                                  setSearchUnidade("");
+                                  preencherComDadosUnidade(unidade);
+                                }}
+                                className="w-full text-left px-4 py-3 hover:bg-blue-50 border-b last:border-b-0 transition-colors"
+                              >
+                                <div className="flex items-center gap-3">
+                                  <Building2 className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                                  <div className="flex-1 min-w-0">
+                                    <div className="font-medium text-gray-900 truncate">
+                                      {unidade.nome.toUpperCase()}
+                                    </div>
+                                    {unidade.cidade && (
+                                      <div className="flex items-center gap-1 text-sm text-gray-500">
+                                        <MapPin className="w-3 h-3" />
+                                        <span>{unidade.cidade}/{unidade.estado}</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              </button>
+                            ))
+                        )}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
             {/* Tipo e Dados Básicos do Estabelecimento */}
             <Card>
               <CardHeader>

@@ -96,6 +96,8 @@ function RegisterPageContent() {
   const [isMenorDeIdade, setIsMenorDeIdade] = useState(false);
   const [unidadeSearchTerm, setUnidadeSearchTerm] = useState("");
   const [showUnidadeDropdown, setShowUnidadeDropdown] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
 
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -824,13 +826,19 @@ function RegisterPageContent() {
 
       // Verificar se o perfil escolhido requer aprovação
       const perfilEscolhido = perfis.find((p) => p.id === formData.perfil_id);
-      const requerAprovacao = perfilEscolhido?.nome.toLowerCase() !== "aluno";
+      const perfilNome = perfilEscolhido?.nome.toLowerCase() || "aluno";
+      const unidadeSelecionada = unidades.find((u) => u.id === formData.unidade_id);
 
-      if (requerAprovacao) {
-        router.push("/login?message=pending-approval");
+      // Definir mensagem de sucesso baseada no perfil
+      let mensagem = "";
+      if (perfilNome === "aluno") {
+        mensagem = `Cadastro realizado com sucesso na unidade ${unidadeSelecionada?.nome || ''}!\n\nSeu cadastro está aguardando aprovação da unidade. Você receberá uma notificação por email assim que for aprovado e poderá acessar o sistema.`;
       } else {
-        router.push("/login?message=registration-success");
+        mensagem = `Cadastro realizado com sucesso!\n\nSeu cadastro como ${perfilEscolhido?.nome || ''} está aguardando aprovação do administrador. Você receberá uma notificação por email assim que for aprovado e poderá acessar o sistema.`;
       }
+
+      setSuccessMessage(mensagem);
+      setShowSuccessModal(true);
     } catch (error: unknown) {
       console.error("Erro no cadastro:", error);
       let errorMessage = "Erro ao realizar cadastro";
@@ -1779,6 +1787,48 @@ function RegisterPageContent() {
           </Card>
         </div>
       </div>
+
+      {/* Modal de Sucesso */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <Card className="max-w-lg w-full shadow-2xl border-2 border-green-500/30 bg-black/95">
+            <CardHeader className="text-center pb-4">
+              <div className="flex justify-center mb-4">
+                <div className="rounded-full bg-green-500/20 p-4">
+                  <CheckCircle className="h-16 w-16 text-green-500" />
+                </div>
+              </div>
+              <CardTitle className="text-2xl font-bold text-white">
+                Cadastro Realizado com Sucesso!
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="bg-blue-900/30 border border-blue-500/30 rounded-lg p-4">
+                <p className="text-gray-200 text-center whitespace-pre-line leading-relaxed">
+                  {successMessage}
+                </p>
+              </div>
+              <div className="bg-yellow-900/30 border border-yellow-500/30 rounded-lg p-3">
+                <p className="text-yellow-200 text-sm text-center">
+                  <AlertCircle className="inline h-4 w-4 mr-1" />
+                  Aguarde a aprovação para fazer login no sistema
+                </p>
+              </div>
+            </CardContent>
+            <CardFooter className="flex justify-center pb-6">
+              <Button
+                onClick={() => {
+                  setShowSuccessModal(false);
+                  router.push("/login");
+                }}
+                className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-semibold px-8 py-2 rounded-lg transition-all duration-200"
+              >
+                IR PARA LOGIN
+              </Button>
+            </CardFooter>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }

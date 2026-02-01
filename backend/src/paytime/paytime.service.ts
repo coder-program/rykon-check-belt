@@ -1,5 +1,8 @@
 import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Unidade } from '../people/entities/unidade.entity';
 
 interface PaytimeAuthResponse {
   access_token: string;
@@ -97,7 +100,11 @@ export class PaytimeService {
   private tokenExpires: number = 0;
   private authenticationPromise: Promise<string> | null = null; // Lock para evitar múltiplas autenticações simultâneas
 
-  constructor(private configService: ConfigService) {}
+  constructor(
+    private configService: ConfigService,
+    @InjectRepository(Unidade)
+    private unidadeRepository: Repository<Unidade>,
+  ) {}
 
   /**
    * Autentica com a API do Paytime (com proteção contra múltiplas chamadas simultâneas)
@@ -428,6 +435,96 @@ export class PaytimeService {
       this.logger.error('❌ Erro ao atualizar estabelecimento:', error);
       throw error;
     }
+  }
+
+  // Métodos para vincular estabelecimentos com unidades
+  async getVinculatedUnidades(establishmentId: string) {
+    this.logger.debug(`🔍 Buscando unidades vinculadas ao estabelecimento ${establishmentId}`);
+    
+    try {
+      // Buscar todas as unidades para debug
+      const todasUnidades = await this.unidadeRepository.count();
+      this.logger.debug(`📊 Total de unidades no banco: ${todasUnidades}`);
+      
+      const unidades = await this.unidadeRepository.find({
+        where: { paytime_establishment_id: establishmentId },
+        select: ['id', 'nome', 'cnpj', 'paytime_establishment_id'],
+      });
+
+      this.logger.debug(`✅ Encontradas ${unidades.length} unidades vinculadas ao estabelecimento ${establishmentId}`);
+      
+      // Se não encontrou, vamos verificar se há alguma unidade com esse ID
+      if (unidades.length === 0) {
+        const unidadesComEstabelecimento = await this.unidadeRepository.find({
+          where: {},
+          select: ['id', 'nome', 'paytime_establishment_id'],
+          take: 5,
+        });
+        this.logger.debug(`🔍 Exemplo de unidades no banco: ${JSON.stringify(unidadesComEstabelecimento)}`);
+      }
+      
+      return unidades;
+    } catch (error) {
+      this.logger.error(`❌ Erro ao buscar unidades vinculadas:`, error);
+      throw error;
+    }
+  }
+
+  async vincularUnidade(establishmentId: string, unidadeId: string) {
+    this.logger.debug(`🔗 Vinculando unidade ${unidadeId} ao estabelecimento ${establishmentId}`);
+    
+    // Verificar se a unidade existe
+    const unidade = await this.unidadeRepository.findOne({ where: { id: unidadeId } });
+    if (!unidade) {
+      throw new NotFoundException(`Unidade com ID ${unidadeId} não encontrada`);
+    }
+
+    // Verificar se o estabelecimento existe (convertendo string para number)
+    try {
+      await this.getEstablishmentById(parseInt(establishmentId));
+    } catch (error) {
+      throw new NotFoundException(`Estabelecimento com ID ${establishmentId} não encontrado`);
+    }
+
+    // Atualizar o campo paytime_establishment_id
+    await this.unidadeRepository.update(
+      { id: unidadeId },
+      { paytime_establishment_id: establishmentId }
+    );
+
+    this.logger.debug(`✅ Unidade ${unidadeId} vinculada ao estabelecimento ${establishmentId}`);
+    
+    return this.unidadeRepository.findOne({ 
+      where: { id: unidadeId },
+    });
+  }
+
+  async desvincularUnidade(establishmentId: string, unidadeId: string) {
+    this.logger.debug(`🔓 Desvinculando unidade ${unidadeId} do estabelecimento ${establishmentId}`);
+    
+    // Verificar se a unidade existe e está vinculada a este estabelecimento
+    const unidade = await this.unidadeRepository.findOne({ 
+      where: { 
+        id: unidadeId,
+        paytime_establishment_id: establishmentId 
+      } 
+    });
+
+    if (!unidade) {
+      throw new NotFoundException(
+        `Unidade com ID ${unidadeId} não encontrada ou não está vinculada ao estabelecimento ${establishmentId}`
+      );
+    }
+
+    // Remover o vínculo
+    await this.unidadeRepository.update(
+      { id: unidadeId },
+      { paytime_establishment_id: null }
+    );
+
+    this.logger.debug(`✅ Unidade ${unidadeId} desvinculada do estabelecimento ${establishmentId}`);
+    
+    return { message: 'Unidade desvinculada com sucesso' };
   }
 }
 

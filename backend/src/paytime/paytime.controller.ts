@@ -238,4 +238,52 @@ export class PaytimeController {
     this.logger.debug(`Atualizando estabelecimento ID: ${id}...`);
     return this.paytimeService.updateEstablishment(parseInt(id), data);
   }
+
+  @Get('establishments/:id/unidades')
+  @ApiOperation({
+    summary: '🏢 Listar unidades vinculadas',
+    description: 'Lista todas as unidades TeamCruz vinculadas a um estabelecimento Paytime',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Lista de unidades vinculadas',
+  })
+  async getVinculatedUnidades(@Param('id') establishmentId: string) {
+    this.logger.log(`🔍 [CONTROLLER] Requisição recebida: GET /paytime/establishments/${establishmentId}/unidades`);
+    return this.paytimeService.getVinculatedUnidades(establishmentId);
+  }
+
+  @Post('establishments/:id/vincular-unidade/:unidadeId')
+  @ApiOperation({
+    summary: '🔗 Vincular unidade',
+    description: 'Vincula uma unidade TeamCruz a um estabelecimento Paytime',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Unidade vinculada com sucesso',
+  })
+  async vincularUnidade(
+    @Param('id') establishmentId: string,
+    @Param('unidadeId') unidadeId: string,
+  ) {
+    this.logger.debug(`Vinculando unidade ${unidadeId} ao estabelecimento ${establishmentId}...`);
+    return this.paytimeService.vincularUnidade(establishmentId, unidadeId);
+  }
+
+  @Post('establishments/:id/desvincular-unidade/:unidadeId')
+  @ApiOperation({
+    summary: '🔓 Desvincular unidade',
+    description: 'Remove vínculo de uma unidade TeamCruz com estabelecimento Paytime',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Unidade desvinculada com sucesso',
+  })
+  async desvincularUnidade(
+    @Param('id') establishmentId: string,
+    @Param('unidadeId') unidadeId: string,
+  ) {
+    this.logger.debug(`Desvinculando unidade ${unidadeId} do estabelecimento ${establishmentId}...`);
+    return this.paytimeService.desvincularUnidade(establishmentId, unidadeId);
+  }
 }

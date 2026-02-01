@@ -680,6 +680,9 @@ export class AuthService {
   }
 
   async registerAluno(payload: any) {
+    const startTime = Date.now();
+    console.log('⏱️ [REGISTER] INÍCIO DO CADASTRO', new Date().toISOString());
+    
     // ========================================
     // VALIDAÇÃO CRÍTICA DE UNIDADE
     // ========================================
@@ -688,6 +691,7 @@ export class AuthService {
         'Você precisa selecionar uma unidade para se cadastrar',
       );
     }
+    console.log(`⏱️ [REGISTER] Validação de unidade OK - ${Date.now() - startTime}ms`);
 
     // Validar se unidade_id é um UUID válido
     const uuidRegex =
@@ -698,12 +702,14 @@ export class AuthService {
         'ID da unidade inválido. Por favor, selecione uma unidade válida da lista.',
       );
     }
+    console.log(`⏱️ [REGISTER] Validação UUID OK - ${Date.now() - startTime}ms`);
 
     // Verificar se a unidade existe e está ativa
     const unidadeValida = await this.dataSource.query(
       `SELECT id, nome, status FROM teamcruz.unidades WHERE id = $1`,
       [payload.unidade_id],
     );
+    console.log(`⏱️ [REGISTER] Query unidade executada - ${Date.now() - startTime}ms`);
 
     if (!unidadeValida || unidadeValida.length === 0) {
       throw new BadRequestException(
@@ -716,6 +722,7 @@ export class AuthService {
         `A unidade "${unidadeValida[0].nome}" não está ativa e não pode receber cadastros no momento. Por favor, selecione outra unidade.`,
       );
     }
+    console.log(`⏱️ [REGISTER] Validações de unidade completas - ${Date.now() - startTime}ms`);
 
     // Determinar perfil: usa perfil_id se fornecido, caso contrário usa "aluno" por padrão
     let perfilId: string = ''; // Inicializar vazio
@@ -727,10 +734,15 @@ export class AuthService {
     // Tentar usar o perfil_id fornecido se for um UUID válido
     if (payload.perfil_id && uuidRegex.test(payload.perfil_id)) {
       try {
-        const perfilEscolhido = await this.perfisService.findOne(
-          payload.perfil_id,
+        // Query otimizada - busca APENAS id e nome (sem permissões, sem usuários)
+        const perfilResult = await this.dataSource.query(
+          `SELECT id, nome FROM teamcruz.perfis WHERE id = $1 LIMIT 1`,
+          [payload.perfil_id]
         );
-        if (perfilEscolhido) {
+        console.log(`⏱️ [REGISTER] Perfil buscado - ${Date.now() - startTime}ms`);
+        
+        if (perfilResult && perfilResult.length > 0) {
+          const perfilEscolhido = perfilResult[0];
           perfilId = payload.perfil_id;
           perfilNome = perfilEscolhido.nome.toLowerCase();
           perfilValido = true;
@@ -760,26 +772,35 @@ export class AuthService {
 
     // Se não tem perfil válido, usa "aluno" como padrão
     if (!perfilValido) {
-      const perfilAluno = await this.perfisService.findByName('aluno');
-      if (!perfilAluno) {
+      // Query otimizada - busca APENAS id e nome
+      const perfilAlunoResult = await this.dataSource.query(
+        `SELECT id, nome FROM teamcruz.perfis WHERE LOWER(nome) = 'aluno' LIMIT 1`
+      );
+      console.log(`⏱️ [REGISTER] Perfil aluno buscado - ${Date.now() - startTime}ms`);
+      
+      if (!perfilAlunoResult || perfilAlunoResult.length === 0) {
         throw new BadRequestException(
           'Perfil de aluno não encontrado no sistema. Entre em contato com o administrador.',
         );
       }
-      perfilId = perfilAluno.id;
+      perfilId = perfilAlunoResult[0].id;
       perfilNome = 'aluno';
       usuarioAtivo = false; // INATIVO até completar cadastro
     }
+    console.log(`⏱️ [REGISTER] Perfil determinado: ${perfilNome} - ${Date.now() - startTime}ms`);
 
     // ========================================
     // TRANSAÇÃO ATÔMICA PARA GARANTIR CONSISTÊNCIA
     // ========================================
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
+    console.log(`⏱️ [REGISTER] QueryRunner conectado - ${Date.now() - startTime}ms`);
     await queryRunner.startTransaction();
+    console.log(`⏱️ [REGISTER] Transação iniciada - ${Date.now() - startTime}ms`);
 
     try {
       // Cria usuário com perfil selecionado
+      console.log(`⏱️ [REGISTER] Iniciando criação de usuário - ${Date.now() - startTime}ms`);
       const user = await this.usuariosService.create({
         username: payload.username,
         email: payload.email,
@@ -792,6 +813,7 @@ export class AuthService {
         perfil_ids: [perfilId],
         cadastro_completo: true, // ✅ ALUNO já vai com cadastro completo, não precisa logar 2x
       } as any);
+      console.log(`⏱️ [REGISTER] Usuário criado: ${user.id} - ${Date.now() - startTime}ms`);
 
       // ========================================
       // LÓGICA OBRIGATÓRIA POR PERFIL
@@ -799,9 +821,11 @@ export class AuthService {
 
       // 🔴 CRÍTICO: Se perfil é ALUNO, OBRIGATORIAMENTE criar registro na tabela alunos
       if (perfilNome === 'aluno') {
+        console.log(`⏱️ [REGISTER] Iniciando criação de aluno - ${Date.now() - startTime}ms`);
         try {
           // Validar data de nascimento
           const dataNascimento = user.data_nascimento || payload.data_nascimento;
+          console.log(`⏱️ [REGISTER] Data nascimento obtida - ${Date.now() - startTime}ms`);
           
           // Verificar se a data existe e não é vazia
           if (!dataNascimento || String(dataNascimento).trim() === '') {
@@ -824,6 +848,7 @@ export class AuthService {
           if (isNaN(testDate.getTime())) {
             throw new BadRequestException('Data de nascimento em formato inválido para aluno');
           }
+          console.log(`⏱️ [REGISTER] Validações de data completas - ${Date.now() - startTime}ms`);
 
           // Usar dados do usuário + dados adicionais do payload
           const alunoData = {
@@ -873,8 +898,10 @@ export class AuthService {
             consent_imagem: payload.consent_uso_imagem ?? payload.consent_imagem ?? false,
             consent_lgpd_date: (payload.consent_uso_dados_lgpd || payload.consent_lgpd) ? new Date() : null,
           };
+          console.log(`⏱️ [REGISTER] Dados do aluno preparados - ${Date.now() - startTime}ms`);
 
-          const alunoCriado = await this.alunosService.create(alunoData as any);
+          await this.alunosService.create(alunoData as any);
+          console.log(`⏱️ [REGISTER] Aluno criado com sucesso - ${Date.now() - startTime}ms`);
           
         } catch (error) {
           console.error('❌ [REGISTER ALUNO] ERRO CRÍTICO ao criar aluno:', error.message);
@@ -985,16 +1012,20 @@ export class AuthService {
       }
 
       // ✅ COMMIT: Se chegou até aqui, tudo deu certo
+      console.log(`⏱️ [REGISTER] Iniciando COMMIT da transação - ${Date.now() - startTime}ms`);
       await queryRunner.commitTransaction();
+      console.log(`⏱️ [REGISTER] COMMIT realizado com sucesso - ${Date.now() - startTime}ms`);
       
+      console.log(`✅ [REGISTER] CADASTRO COMPLETO - TEMPO TOTAL: ${Date.now() - startTime}ms`);
       return user;
 
     } catch (error) {
       // ❌ ROLLBACK: Em caso de qualquer erro, reverter toda a transação
-      console.error('❌ [REGISTER] ERRO na transação, fazendo rollback:', error.message);
+      console.error(`❌ [REGISTER] ERRO na transação após ${Date.now() - startTime}ms:`, error.message);
       
       try {
         await queryRunner.rollbackTransaction();
+        console.log(`⏱️ [REGISTER] Rollback executado - ${Date.now() - startTime}ms`);
       } catch (rollbackError) {
         console.error('❌ [REGISTER] Erro crítico no rollback:', rollbackError.message);
       }
@@ -1004,6 +1035,7 @@ export class AuthService {
     } finally {
       // 🔧 CLEANUP: Sempre liberar conexão
       await queryRunner.release();
+      console.log(`⏱️ [REGISTER] QueryRunner liberado - ${Date.now() - startTime}ms`);
     }
   }
 
