@@ -258,7 +258,13 @@ export default function TabletCheckinPage() {
         scanner.render(
           (decodedText) => {
             handleQRScan(decodedText);
-            scanner.clear();
+            if (scannerRef.current) {
+              try {
+                scannerRef.current.clear()?.catch(console.error);
+              } catch (error) {
+                console.error("Erro ao limpar scanner após scan:", error);
+              }
+            }
             setScannerActive(false);
             scannerRef.current = null;
           },
@@ -277,7 +283,11 @@ export default function TabletCheckinPage() {
 
     return () => {
       if (scannerRef.current) {
-        scannerRef.current.clear().catch(console.error);
+        try {
+          scannerRef.current.clear()?.catch(console.error);
+        } catch (error) {
+          console.error("Erro ao limpar scanner:", error);
+        }
         scannerRef.current = null;
       }
     };
