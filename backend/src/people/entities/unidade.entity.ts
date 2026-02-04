@@ -123,6 +123,14 @@ export class Unidade {
   @Column({ type: 'varchar', length: 50, nullable: true })
   paytime_establishment_id: string | null;
 
+  @Column({ 
+    type: 'jsonb', 
+    nullable: true,
+    default: () => "'[]'",
+    comment: 'Planos comerciais Paytime selecionados (array de {id, active, name})'
+  })
+  paytime_plans: Array<{id: number; active: boolean; name: string}> | null;
+
   // Metadados
   @CreateDateColumn({ name: 'created_at' })
   created_at: Date;

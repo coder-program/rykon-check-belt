@@ -137,6 +137,16 @@ export class Transacao {
   @Column({ type: 'uuid', nullable: true })
   criado_por: string;
 
+  // Campos Paytime
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  paytime_transaction_id: string;
+
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  paytime_payment_type: string; // PIX, CREDIT, DEBIT, BILLET
+
+  @Column({ type: 'jsonb', nullable: true })
+  paytime_metadata: any;
+
   @CreateDateColumn()
   created_at: Date;
 

@@ -127,20 +127,12 @@ export class Aula {
     const agora = new Date();
     const spDate = new Date(agora.toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
 
-    console.log(`   [estaAtiva] ${this.nome}:`);
-    console.log(`      Hora UTC agora: ${agora.toISOString()}`);
-    console.log(`      Hora SP: ${spDate.toISOString()}`);
-
     // PRIORIZAR dia_semana para aulas recorrentes
     if (this.dia_semana !== null && this.dia_semana !== undefined) {
       const diaHoje = spDate.getDay();
       const horaAgora = spDate.getHours() * 60 + spDate.getMinutes();
 
-      console.log(`      Dia hoje: ${diaHoje}, Dia aula: ${this.dia_semana}`);
-      console.log(`      Hora agora (minutos): ${horaAgora}`);
-
       if (diaHoje !== this.dia_semana) {
-        console.log(`      ❌ Dia diferente: ${diaHoje} !== ${this.dia_semana}`);
         return false;
       }
 
@@ -175,13 +167,8 @@ export class Aula {
       const margemDepois =
         this.configuracoes?.permite_checkin_atrasado_minutos || 30;
 
-      console.log(`      Minutos inicio: ${minutosInicio}, fim: ${minutosFim}`);
-      console.log(`      Margem antes: ${margemAntes}, depois: ${margemDepois}`);
-      console.log(`      Range válido: ${minutosInicio - margemAntes} até ${minutosFim + margemDepois}`);
-      console.log(`      Hora atual: ${horaAgora}`);
 
       const ativa = horaAgora >= minutosInicio - margemAntes && horaAgora <= minutosFim + margemDepois;
-      console.log(`      Resultado: ${ativa}`);
       return ativa;
     }
 

@@ -213,16 +213,8 @@ export class AulaService {
       ativo: true,
     });
 
-    console.log('\n🗓️ [SERVICE findHorariosDisponiveis] Total de aulas:', aulas.length);
-
     // Mapear para formato do frontend
     return aulas.map((aula, index) => {
-      console.log(`\n📚 [SERVICE] Aula ${index + 1}: ${aula.nome}`);
-      console.log(`   ID: ${aula.id}`);
-      console.log(`   Dia semana: ${aula.dia_semana}`);
-      console.log(`   data_hora_inicio (RAW do banco):`, aula.data_hora_inicio);
-      console.log(`   data_hora_fim (RAW do banco):`, aula.data_hora_fim);
-      
       // Extrair horários dos timestamps usando toLocaleString
       let horarioInicio = aula.hora_inicio; // Fallback
       let horarioFim = aula.hora_fim; // Fallback
@@ -235,7 +227,6 @@ export class AulaService {
           hour12: false,
         });
         horarioInicio = horaStr.split(':').slice(0, 2).join(':');
-        console.log(`   ✅ Horário início convertido: ${horarioInicio} (de ${aula.data_hora_inicio.toISOString()})`);
       }
       
       if (aula.data_hora_fim) {
@@ -246,7 +237,6 @@ export class AulaService {
           hour12: false,
         });
         horarioFim = horaStr.split(':').slice(0, 2).join(':');
-        console.log(`   ✅ Horário fim convertido: ${horarioFim} (de ${aula.data_hora_fim.toISOString()})`);
       }
 
       return {

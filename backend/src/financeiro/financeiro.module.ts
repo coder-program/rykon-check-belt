@@ -49,6 +49,13 @@ import { VendasController } from './controllers/vendas.controller';
 import { AutomacoesController } from './controllers/automacoes.controller';
 import { GympassController } from './controllers/gympass.controller';
 import { AnexosController } from './controllers/anexos.controller';
+import { PagamentosOnlineController } from './controllers/pagamentos-online.controller';
+import { WebhooksController } from './controllers/webhooks.controller';
+
+// Services externos
+import { PaytimeService } from '../paytime/paytime.service';
+import { PaytimeIntegrationService } from './services/paytime-integration.service';
+import { PaytimeWebhookService } from './services/paytime-webhook.service';
 
 @Module({
   imports: [
@@ -86,6 +93,8 @@ import { AnexosController } from './controllers/anexos.controller';
     AutomacoesController,
     GympassController,
     AnexosController,
+    PagamentosOnlineController,
+    WebhooksController,
   ],
   providers: [
     PlanosService,
@@ -99,6 +108,9 @@ import { AnexosController } from './controllers/anexos.controller';
     AutomacoesService,
     NotificacoesService,
     WhatsappService,
+    PaytimeService,
+    PaytimeIntegrationService,
+    PaytimeWebhookService,
     GympassService,
     AnexosService,
   ],

@@ -274,17 +274,6 @@ export class DashboardService {
       const proximosGraduaveis = await this.getProximosGraduaveis(unidadeId, unidadesDoFranqueado);
       const presencasHoje = await this.getPresencasHoje(unidadeId, unidadesDoFranqueado);
 
-      console.log('📊 [DASHBOARD STATS]', {
-        userId,
-        unidadeId,
-        isFranqueado,
-        unidadesDoFranqueado,
-        totalAlunos,
-        aulasHoje,
-        proximosGraduaveis,
-        presencasHoje,
-      });
-
       const stats = {
         totalUsuarios,
         usuariosPendentes,
@@ -339,12 +328,9 @@ export class DashboardService {
         params.push(unidadesDoFranqueado);
       }
 
-      console.log('📅 [AULAS HOJE]', { diaSemanaHoje, unidadeId, unidadesDoFranqueado, query, params });
-
       const result = await this.dataSource.query(query, params);
       const total = parseInt(result[0]?.total || '0');
       
-      console.log('✅ [AULAS HOJE] Total:', total);
       return total;
     } catch (error) {
       console.error('❌ [AULAS HOJE] Erro:', error);
@@ -375,12 +361,9 @@ export class DashboardService {
         params.push(unidadesDoFranqueado);
       }
 
-      console.log('✅ [PRESENÇAS HOJE]', { hojeStr, unidadeId, unidadesDoFranqueado });
-
       const result = await this.dataSource.query(query, params);
       const total = parseInt(result[0]?.total || '0');
       
-      console.log('✅ [PRESENÇAS HOJE] Total:', total);
       return total;
     } catch (error) {
       console.error('❌ [PRESENÇAS HOJE] Erro:', error);
@@ -412,7 +395,6 @@ export class DashboardService {
       const result = await this.dataSource.query(query, params);
       const total = parseInt(result[0]?.total || '0');
       
-      console.log('🎓 [PRÓXIMOS GRADUÁVEIS] Total:', total);
       return total;
     } catch (error) {
       console.error('❌ [PRÓXIMOS GRADUÁVEIS] Erro:', error);

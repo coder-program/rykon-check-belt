@@ -1,4 +1,4 @@
-import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException, NotFoundException, HttpException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -94,6 +94,7 @@ interface PaytimeSorter {
 export class PaytimeService {
   private readonly logger = new Logger(PaytimeService.name);
   private readonly baseUrl = 'https://rykon-pay-production.up.railway.app';
+  private readonly paytimeUsername = 'admin';
   private readonly paytimePassword = '!Rykon@pay';
   
   private token: string | null = null;
@@ -146,6 +147,7 @@ export class PaytimeService {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
+          username: this.paytimeUsername,
           password: this.paytimePassword
         })
       });
@@ -569,7 +571,7 @@ export class PaytimeService {
       queryParams.append('sorters', JSON.stringify(sorters));
     }
 
-    const url = `${this.baseUrl}/api/api/gateways?${queryParams.toString()}`;
+    const url = `${this.baseUrl}/api/gateways?${queryParams.toString()}`;
     
     this.logger.debug(`📡 [GATEWAYS] URL completa: ${url}`);
 
@@ -633,7 +635,7 @@ export class PaytimeService {
   async getGateway(gatewayId: number) {
     const token = await this.authenticate();
 
-    const url = `${this.baseUrl}/api/api/gateways/${gatewayId}`;
+    const url = `${this.baseUrl}/api/gateways/${gatewayId}`;
     
     this.logger.debug(`🔍 Buscando gateway ${gatewayId}: ${url}`);
 
@@ -661,6 +663,608 @@ export class PaytimeService {
     this.logger.debug(`✅ Gateway ${gatewayId} encontrado: ${data.name} (${data.type})`);
     
     return data;
+  }
+
+  /**
+   * Listar planos comerciais disponíveis
+   */
+  async listPlans(
+    page: number = 1,
+    perPage: number = 20,
+    filters?: any,
+    search?: string,
+    sorters?: any[],
+  ) {
+    const token = await this.authenticate();
+
+    // Construir query params
+    const params = new URLSearchParams();
+    params.append('page', page.toString());
+    params.append('perPage', perPage.toString());
+
+    this.logger.debug(`🎯 [PLANS] Parâmetros recebidos - page: ${page}, perPage: ${perPage}`);
+
+    if (filters) {
+      params.append('filters', JSON.stringify(filters));
+      this.logger.debug(`🎯 [PLANS] Aplicando filtros: ${JSON.stringify(filters)}`);
+    }
+
+    if (search) {
+      params.append('search', search);
+      this.logger.debug(`🔍 [PLANS] Aplicando busca: ${search}`);
+    }
+
+    if (sorters && sorters.length > 0) {
+      params.append('sorters', JSON.stringify(sorters));
+    } else {
+      // Ordenar por nome por padrão
+      params.append('sorters', JSON.stringify([{ column: 'name', direction: 'ASC' }]));
+    }
+
+    const url = `${this.baseUrl}/api/plans?${params.toString()}`;
+    
+    this.logger.debug(`📡 [PLANS] URL completa: ${url}`);
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      this.logger.error(`❌ [PLANS] Erro na API Paytime: ${response.status} - ${errorText}`);
+      throw new BadRequestException(
+        `Erro ao listar planos comerciais: ${response.status} - ${errorText}`,
+      );
+    }
+
+    const data = await response.json();
+    
+    this.logger.debug(`✅ [PLANS] Resposta da API Paytime: ${JSON.stringify({ 
+      total: data.total, 
+      page: data.page, 
+      perPage: data.perPage,
+      plansCount: data.data?.length 
+    })}`);
+
+    // Aplicar filtros e busca client-side caso a API Paytime ignore os parâmetros
+    if ((filters || search) && data.data) {
+      let filtered = data.data;
+      
+      // Filtrar por gateway_id
+      if (filters?.gateway_id) {
+        filtered = filtered.filter((p: any) => p.gateway_id === parseInt(filters.gateway_id));
+        this.logger.debug(`🔍 [PLANS] Após filtro gateway_id: ${filtered.length} planos`);
+      }
+      
+      // Filtrar por type
+      if (filters?.type) {
+        filtered = filtered.filter((p: any) => p.type === filters.type);
+        this.logger.debug(`🔍 [PLANS] Após filtro type: ${filtered.length} planos`);
+      }
+      
+      // Filtrar por modality
+      if (filters?.modality) {
+        filtered = filtered.filter((p: any) => p.modality === filters.modality);
+        this.logger.debug(`🔍 [PLANS] Após filtro modality: ${filtered.length} planos`);
+      }
+      
+      // Filtrar por active
+      if (filters?.active !== undefined) {
+        const activeValue = filters.active === 'true' || filters.active === true;
+        filtered = filtered.filter((p: any) => p.active === activeValue);
+        this.logger.debug(`🔍 [PLANS] Após filtro active: ${filtered.length} planos`);
+      }
+      
+      // Busca por texto
+      if (search) {
+        const searchLower = search.toLowerCase();
+        filtered = filtered.filter((p: any) => 
+          p.name?.toLowerCase().includes(searchLower) ||
+          p.type?.toLowerCase().includes(searchLower) ||
+          p.modality?.toLowerCase().includes(searchLower)
+        );
+        this.logger.debug(`🔍 [PLANS] Após busca: ${filtered.length} planos`);
+      }
+      
+      // Se filtrou alguma coisa, recalcular paginação
+      if (filtered.length !== data.data.length) {
+        this.logger.debug(`📊 [PLANS] Aplicando filtros client-side: ${data.data.length} → ${filtered.length} planos`);
+        
+        return {
+          ...data,
+          total: filtered.length,
+          data: filtered,
+          lastPage: Math.ceil(filtered.length / perPage),
+        };
+      }
+    }
+    
+    return data;
+  }
+
+  /**
+   * Buscar plano comercial específico por ID
+   */
+  async getPlan(planId: number) {
+    const token = await this.authenticate();
+
+    const url = `${this.baseUrl}/api/plans/${planId}`;
+    
+    this.logger.debug(`🔍 Buscando plano ${planId}: ${url}`);
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      if (response.status === 404) {
+        throw new NotFoundException(`Plano com ID ${planId} não encontrado`);
+      }
+      
+      const errorText = await response.text();
+      this.logger.error(`❌ Erro ao buscar plano: ${response.status} - ${errorText}`);
+      throw new BadRequestException(
+        `Erro ao buscar plano: ${response.status} - ${errorText}`,
+      );
+    }
+
+    const data = await response.json();
+    this.logger.debug(`✅ Plano ${planId} encontrado: ${data.name} (Gateway: ${data.gateway_id})`);
+    
+    return data;
+  }
+
+  /**
+   * Ativar gateway em um estabelecimento
+   */
+  async activateGateway(establishmentId: number, gatewayData: any) {
+    const token = await this.authenticate();
+
+    const url = `${this.baseUrl}/api/establishments/${establishmentId}/gateways`;
+    
+    this.logger.debug(`🔌 Ativando gateway para estabelecimento ${establishmentId}: ${url}`);
+    this.logger.debug(`📋 Dados do gateway: ${JSON.stringify(gatewayData)}`);
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(gatewayData),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      this.logger.error(`❌ Erro ao ativar gateway: ${response.status} - ${errorText}`);
+      throw new BadRequestException(
+        `Erro ao ativar gateway: ${response.status} - ${errorText}`,
+      );
+    }
+
+    const data = await response.json();
+    this.logger.debug(`✅ Gateway ${data.gateway?.id} ativado com sucesso para estabelecimento ${establishmentId}`);
+    
+    return data;
+  }
+
+  /**
+   * Listar gateways ativos de um estabelecimento
+   */
+  async listEstablishmentGateways(
+    establishmentId: number,
+    page: number = 1,
+    perPage: number = 20,
+  ) {
+    const token = await this.authenticate();
+
+    const params = new URLSearchParams({
+      page: page.toString(),
+      perPage: perPage.toString(),
+    });
+
+    const url = `${this.baseUrl}/api/establishments/${establishmentId}/gateways?${params.toString()}`;
+    
+    this.logger.debug(`📋 Listando gateways do estabelecimento ${establishmentId}: ${url}`);
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      this.logger.error(`❌ Erro ao listar gateways: ${response.status} - ${errorText}`);
+      throw new BadRequestException(
+        `Erro ao listar gateways do estabelecimento: ${response.status} - ${errorText}`,
+      );
+    }
+
+    const data = await response.json();
+    this.logger.debug(`✅ Gateways do estabelecimento ${establishmentId}: ${data.data?.length || 0} encontrado(s)`);
+    
+    return data;
+  }
+
+  /**
+   * Buscar gateway específico de um estabelecimento (inclui URL do KYC se for Banking)
+   */
+  async getEstablishmentGateway(establishmentId: number, gatewayConfigId: number) {
+    const token = await this.authenticate();
+
+    const url = `${this.baseUrl}/api/establishments/${establishmentId}/gateways/${gatewayConfigId}`;
+    
+    this.logger.debug(`🔍 Buscando gateway ${gatewayConfigId} do estabelecimento ${establishmentId}: ${url}`);
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      if (response.status === 404) {
+        throw new NotFoundException(`Gateway config ${gatewayConfigId} não encontrado para estabelecimento ${establishmentId}`);
+      }
+      
+      const errorText = await response.text();
+      this.logger.error(`❌ Erro ao buscar gateway config: ${response.status} - ${errorText}`);
+      throw new BadRequestException(
+        `Erro ao buscar gateway config: ${response.status} - ${errorText}`,
+      );
+    }
+
+    const data = await response.json();
+    this.logger.debug(`✅ Gateway config ${gatewayConfigId} encontrado: ${data.gateway?.name}`);
+    
+    // Se for Banking (gateway_id 6) e tiver URL do KYC, logar
+    if (data.gateway?.id === 6 && data.metadata?.url_documents_copy) {
+      this.logger.debug(`📄 URL do KYC disponível: ${data.metadata.url_documents_copy}`);
+    }
+    
+    return data;
+  }
+
+  /**
+   * Criar transação PIX
+   */
+  async createPixTransaction(establishmentId: number, pixData: any) {
+    const token = await this.authenticate();
+
+    const url = `${this.baseUrl}/api/transactions/pix`;
+    
+    this.logger.debug(`💳 Criando transação PIX para estabelecimento ${establishmentId}`);
+    this.logger.debug(`📋 Request URL: ${url}`);
+    this.logger.debug(`📋 Request Headers: ${JSON.stringify({
+      Authorization: `Bearer ${token.substring(0, 20)}...`,
+      'Content-Type': 'application/json',
+      'establishment_id': establishmentId.toString(),
+    })}`);
+    this.logger.debug(`📋 Request Body: ${JSON.stringify(pixData, null, 2)}`);
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        'establishment_id': establishmentId.toString(),
+      },
+      body: JSON.stringify(pixData),
+    });
+
+    const responseText = await response.text();
+    this.logger.debug(`📥 Response Status: ${response.status}`);
+    this.logger.debug(`📥 Response StatusText: ${response.statusText}`);
+    this.logger.debug(`📥 Response OK: ${response.ok}`);
+    this.logger.debug(`📥 Response Headers: ${JSON.stringify(Object.fromEntries(response.headers.entries()))}`);
+    this.logger.debug(`📥 Response Body: ${responseText}`);
+
+    if (!response.ok) {
+      this.logger.error(`❌ Erro Paytime API - Status: ${response.status}`);
+      this.logger.error(`❌ Response completo: ${responseText}`);
+      
+      let errorDetails;
+      try {
+        errorDetails = JSON.parse(responseText);
+      } catch (e) {
+        errorDetails = { raw: responseText };
+      }
+      
+      // Usar HttpException para preservar o status code exato da API Paytime
+      throw new HttpException({
+        message: errorDetails.message || 'Erro ao criar transação PIX',
+        statusCode: response.status,
+        error: errorDetails.error || 'Paytime API Error',
+        paytimeError: errorDetails,
+        timestamp: errorDetails.timestamp || new Date().toISOString(),
+        path: errorDetails.path || '/api/transactions/pix',
+        request: {
+          url,
+          method: 'POST',
+          establishment_id: establishmentId,
+          payload: pixData,
+        },
+      }, response.status);
+    }
+
+    const data = JSON.parse(responseText);
+    this.logger.debug(`✅ Transação PIX criada: ${data.id} - Status: ${data.status}`);
+    
+    return data;
+  }
+
+  /**
+   * Criar transação com Cartão (Crédito ou Débito)
+   */
+  async createCardTransaction(establishmentId: number, cardData: any) {
+    const token = await this.authenticate();
+
+    const url = `${this.baseUrl}/api/transactions`;
+    
+    const logData = { ...cardData, card: cardData.card ? { ...cardData.card, cvv: '***', number: '****' + cardData.card.number?.slice(-4) } : undefined };
+    this.logger.debug(`💳 Criando transação Cartão para estabelecimento ${establishmentId}`);
+    this.logger.debug(`📋 Request URL: ${url}`);
+    this.logger.debug(`📋 Request Body: ${JSON.stringify(logData, null, 2)}`);
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        'establishment_id': establishmentId.toString(),
+      },
+      body: JSON.stringify(cardData),
+    });
+
+    const responseText = await response.text();
+    this.logger.debug(`📥 Response Status: ${response.status}`);
+    this.logger.debug(`📥 Response Body: ${responseText}`);
+
+    if (!response.ok) {
+      this.logger.error(`❌ Erro Paytime API - Status: ${response.status}`);
+      this.logger.error(`❌ Response completo: ${responseText}`);
+      
+      let errorDetails;
+      try {
+        errorDetails = JSON.parse(responseText);
+      } catch (e) {
+        errorDetails = { raw: responseText };
+      }
+      
+      throw new HttpException({
+        message: errorDetails.message || 'Erro ao criar transação com Cartão',
+        statusCode: response.status,
+        error: errorDetails.error || 'Paytime API Error',
+        paytimeError: errorDetails,
+        timestamp: errorDetails.timestamp || new Date().toISOString(),
+        path: errorDetails.path || '/api/transactions',
+        request: {
+          url,
+          method: 'POST',
+          establishment_id: establishmentId,
+          payload: logData,
+        },
+      }, response.status);
+    }
+
+    const data = JSON.parse(responseText);
+    this.logger.debug(`✅ Transação com cartão criada: ${data.id} - Status: ${data.status}`);
+    
+    return data;
+  }
+
+  /**
+   * Criar transação com Boleto
+   */
+  async createBilletTransaction(establishmentId: number, billetData: any) {
+    const token = await this.authenticate();
+
+    const url = `${this.baseUrl}/api/transactions`;
+    
+    this.logger.debug(`💳 Criando boleto para estabelecimento ${establishmentId}`);
+    this.logger.debug(`📋 Request URL: ${url}`);
+    this.logger.debug(`📋 Request Body: ${JSON.stringify(billetData, null, 2)}`);
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        'establishment_id': establishmentId.toString(),
+      },
+      body: JSON.stringify(billetData),
+    });
+
+    const responseText = await response.text();
+    this.logger.debug(`📥 Response Status: ${response.status}`);
+    this.logger.debug(`📥 Response Body: ${responseText}`);
+
+    if (!response.ok) {
+      this.logger.error(`❌ Erro Paytime API - Status: ${response.status}`);
+      this.logger.error(`❌ Response completo: ${responseText}`);
+      
+      let errorDetails;
+      try {
+        errorDetails = JSON.parse(responseText);
+      } catch (e) {
+        errorDetails = { raw: responseText };
+      }
+      
+      throw new HttpException({
+        message: errorDetails.message || 'Erro ao criar boleto',
+        statusCode: response.status,
+        error: errorDetails.error || 'Paytime API Error',
+        paytimeError: errorDetails,
+        timestamp: errorDetails.timestamp || new Date().toISOString(),
+        path: errorDetails.path || '/api/transactions',
+        request: {
+          url,
+          method: 'POST',
+          establishment_id: establishmentId,
+          payload: billetData,
+        },
+      }, response.status);
+    }
+
+    const data = JSON.parse(responseText);
+    this.logger.debug(`✅ Boleto criado: ${data.id} - Status: ${data.status}`);
+    
+    return data;
+  }
+
+  /**
+   * Listar transações
+   */
+  async listTransactions(
+    establishmentId: number,
+    page: number = 1,
+    perPage: number = 20,
+    filters?: any,
+    search?: string,
+  ) {
+    const token = await this.authenticate();
+
+    const params = new URLSearchParams({
+      page: page.toString(),
+      perPage: perPage.toString(),
+    });
+
+    if (filters) {
+      params.append('filters', JSON.stringify(filters));
+    }
+
+    if (search) {
+      params.append('search', search);
+    }
+
+    const url = `${this.baseUrl}/api/transactions?${params.toString()}`;
+    
+    this.logger.debug(`📋 Listando transações do estabelecimento ${establishmentId}`);
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        'establishment_id': establishmentId.toString(),
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      this.logger.error(`❌ Erro ao listar transações: ${response.status} - ${errorText}`);
+      throw new BadRequestException(
+        `Erro ao listar transações: ${response.status} - ${errorText}`,
+      );
+    }
+
+    const data = await response.json();
+    this.logger.debug(`✅ Transações listadas: ${data.data?.length || 0} encontrada(s)`);
+    
+    return data;
+  }
+
+  /**
+   * Buscar transação específica por ID
+   */
+  async getTransaction(establishmentId: number, transactionId: string) {
+    const token = await this.authenticate();
+
+    const url = `${this.baseUrl}/api/transactions/${transactionId}`;
+    
+    this.logger.debug(`🔍 Buscando transação ${transactionId} do estabelecimento ${establishmentId}`);
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        'establishment_id': establishmentId.toString(),
+      },
+    });
+
+    if (!response.ok) {
+      if (response.status === 404) {
+        throw new NotFoundException(`Transação ${transactionId} não encontrada`);
+      }
+      
+      const errorText = await response.text();
+      this.logger.error(`❌ Erro ao buscar transação: ${response.status} - ${errorText}`);
+      throw new BadRequestException(
+        `Erro ao buscar transação: ${response.status} - ${errorText}`,
+      );
+    }
+
+    const data = await response.json();
+    this.logger.debug(`✅ Transação ${transactionId} encontrada - Status: ${data.status}`);
+    
+    return data;
+  }
+
+  /**
+   * Buscar planos comerciais Paytime selecionados da unidade
+   */
+  async getUnidadePaytimePlans(unidadeId: string): Promise<Array<{id: number; active: boolean; name: string}>> {
+    const unidade = await this.unidadeRepository.findOne({
+      where: { id: unidadeId },
+      select: ['id', 'nome', 'paytime_establishment_id', 'paytime_plans'],
+    });
+
+    if (!unidade) {
+      throw new NotFoundException('Unidade não encontrada');
+    }
+
+    if (!unidade.paytime_establishment_id) {
+      throw new BadRequestException('Unidade não possui estabelecimento Paytime configurado');
+    }
+
+    return unidade.paytime_plans || [];
+  }
+
+  /**
+   * Atualizar planos comerciais Paytime selecionados da unidade
+   */
+  async updateUnidadePaytimePlans(
+    unidadeId: string, 
+    plans: Array<{id: number; active: boolean; name: string}>
+  ): Promise<void> {
+    const unidade = await this.unidadeRepository.findOne({
+      where: { id: unidadeId },
+    });
+
+    if (!unidade) {
+      throw new NotFoundException('Unidade não encontrada');
+    }
+
+    if (!unidade.paytime_establishment_id) {
+      throw new BadRequestException('Unidade não possui estabelecimento Paytime configurado');
+    }
+
+    // Validar se os planos existem na API Paytime (opcional - pode comentar se quiser performance)
+    // const allPlans = await this.listPlans();
+    // const validPlanIds = allPlans.data.map(p => p.id);
+    // const invalidPlans = plans.filter(p => !validPlanIds.includes(p.id));
+    // if (invalidPlans.length > 0) {
+    //   throw new BadRequestException(`Planos inválidos: ${invalidPlans.map(p => p.id).join(', ')}`);
+    // }
+
+    unidade.paytime_plans = plans;
+    await this.unidadeRepository.save(unidade);
+
+    this.logger.log(`✅ Planos Paytime atualizados para unidade ${unidade.nome}: ${plans.length} planos`);
   }
 }
 

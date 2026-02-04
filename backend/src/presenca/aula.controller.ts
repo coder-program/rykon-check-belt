@@ -181,7 +181,6 @@ export class AulaController {
       );
 
       if (alunoByAlunoId && alunoByAlunoId.length > 0 && alunoByAlunoId[0].unidade_id) {
-        console.log(`✅ Buscando horários para alunoId ${alunoId}, unidade: ${alunoByAlunoId[0].unidade_id}`);
         return this.aulaService.findHorariosDisponiveis(alunoByAlunoId[0].unidade_id);
       }
     }

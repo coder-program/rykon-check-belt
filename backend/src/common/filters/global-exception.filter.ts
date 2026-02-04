@@ -42,8 +42,15 @@ export class GlobalExceptionFilter implements ExceptionFilter {
         // Log erro não tratado mas NÃO DERRUBAR SERVIDOR
         this.logger.error(`Erro não tratado: ${exception.message}`, exception.stack);
         
+        // ========== VERIFICAR SE O ERRO TEM STATUS CODE (de APIs externas) ==========
+        const errorObj = exception as any;
+        if (errorObj.statusCode && typeof errorObj.statusCode === 'number') {
+          status = errorObj.statusCode;
+          message = errorObj.message || exception.message;
+          this.logger.error(`📡 Erro de API externa - Status: ${status}, Message: ${message}`);
+        }
         // ========== ERROS DE CONEXÃO/TIMEOUT DO BANCO ==========
-        if (
+        else if (
           exception.message.includes('timeout exceeded when trying to connect') ||
           exception.message.includes('Connection terminated unexpectedly') ||
           exception.message.includes('Connection timeout') ||

@@ -46,12 +46,12 @@ export class DashboardInstrutorService {
   ) {}
 
   async getInstrutorStats(
-    professorId: string,
+    usuarioId: string,
   ): Promise<InstrutorDashboardStats> {
-    // Verificar se o professor existe
+    // Buscar o professor pelo usuario_id
     const professor = await this.personRepository.findOne({
       where: {
-        id: professorId,
+        usuario_id: usuarioId,
         tipo_cadastro: TipoCadastro.PROFESSOR,
       },
     });
@@ -59,6 +59,8 @@ export class DashboardInstrutorService {
     if (!professor) {
       throw new NotFoundException('Professor não encontrado');
     }
+
+    const professorId = professor.id;
 
     // Buscar aulas do professor
     const aulasProfessor = await this.aulaRepository.find({
@@ -165,7 +167,21 @@ export class DashboardInstrutorService {
     };
   }
 
-  async getProximasAulas(professorId: string): Promise<ProximaAula[]> {
+  async getProximasAulas(usuarioId: string): Promise<ProximaAula[]> {
+    // Buscar o professor pelo usuario_id
+    const professor = await this.personRepository.findOne({
+      where: {
+        usuario_id: usuarioId,
+        tipo_cadastro: TipoCadastro.PROFESSOR,
+      },
+    });
+
+    if (!professor) {
+      throw new NotFoundException('Professor não encontrado');
+    }
+
+    const professorId = professor.id;
+
     const hoje = new Date();
     const amanha = new Date(hoje);
     amanha.setDate(hoje.getDate() + 1);
@@ -204,7 +220,21 @@ export class DashboardInstrutorService {
     return aulasComAlunos;
   }
 
-  async getAlunosDestaque(professorId: string): Promise<AlunoDestaque[]> {
+  async getAlunosDestaque(usuarioId: string): Promise<AlunoDestaque[]> {
+    // Buscar o professor pelo usuario_id
+    const professor = await this.personRepository.findOne({
+      where: {
+        usuario_id: usuarioId,
+        tipo_cadastro: TipoCadastro.PROFESSOR,
+      },
+    });
+
+    if (!professor) {
+      throw new NotFoundException('Professor não encontrado');
+    }
+
+    const professorId = professor.id;
+
     // Buscar aulas do professor
     const aulasProfessor = await this.aulaRepository.find({
       where: { professor_id: professorId },

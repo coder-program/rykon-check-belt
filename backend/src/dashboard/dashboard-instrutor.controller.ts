@@ -21,8 +21,8 @@ export class DashboardInstrutorController {
   @ApiOperation({ summary: 'Obter estatísticas do dashboard do instrutor' })
   @ApiResponse({ status: 200, description: 'Estatísticas obtidas com sucesso' })
   async getInstrutorStats(@Request() req: any) {
-    const professorId = req.user.id;
-    return this.dashboardInstrutorService.getInstrutorStats(professorId);
+    const usuarioId = req.user.id;
+    return this.dashboardInstrutorService.getInstrutorStats(usuarioId);
   }
 
   @Get('proximas-aulas')
@@ -32,8 +32,8 @@ export class DashboardInstrutorController {
     description: 'Próximas aulas obtidas com sucesso',
   })
   async getProximasAulas(@Request() req: any) {
-    const professorId = req.user.id;
-    return this.dashboardInstrutorService.getProximasAulas(professorId);
+    const usuarioId = req.user.id;
+    return this.dashboardInstrutorService.getProximasAulas(usuarioId);
   }
 
   @Get('alunos-destaque')
@@ -43,8 +43,8 @@ export class DashboardInstrutorController {
     description: 'Alunos em destaque obtidos com sucesso',
   })
   async getAlunosDestaque(@Request() req: any) {
-    const professorId = req.user.id;
-    return this.dashboardInstrutorService.getAlunosDestaque(professorId);
+    const usuarioId = req.user.id;
+    return this.dashboardInstrutorService.getAlunosDestaque(usuarioId);
   }
 
   @Get('meus-professores')

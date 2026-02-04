@@ -1467,7 +1467,8 @@ export class AlunosService {
     query.leftJoinAndSelect('aluno.usuario', 'usuario'); // Join com usuario para pegar foto
 
     // Excluir alunos que já tem presença hoje (APROVADO ou PENDENTE)
-    const hoje = new Date();
+    // Usar timezone de São Paulo para garantir consistência
+    const hoje = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
     hoje.setHours(0, 0, 0, 0);
     const amanha = new Date(hoje);
     amanha.setDate(amanha.getDate() + 1);

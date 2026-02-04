@@ -29,22 +29,7 @@ export class PresencaController {
   @ApiResponse({ status: 404, description: 'Nenhuma aula ativa' })
   async getAulaAtiva(@Request() req): Promise<AulaAtiva | null> {
     try {
-      console.log('\n========================================');
-      console.log('🔍 [CONTROLLER] GET /presenca/aula-ativa');
-      console.log('========================================');
-      console.log('📅 Hora do servidor (UTC):', new Date().toISOString());
-      console.log('📅 Hora São Paulo:', new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' }));
-      console.log('👤 Usuário:', req.user?.email || req.user?.id);
-      console.log('========================================\n');
-      
       const result = await this.presencaService.getAulaAtiva(req.user);
-      
-      if (result) {
-        console.log('✅ [CONTROLLER] Aula ativa encontrada:', result.nome);
-      } else {
-        console.log('❌ [CONTROLLER] Nenhuma aula ativa no momento');
-      }
-      console.log('========================================\n');
       
       return result;
     } catch (error) {
@@ -361,19 +346,7 @@ export class PresencaController {
     @Query('data') data?: string,
     @Query('alunoId') alunoId?: string
   ) {
-    console.log('\n========================================');
-    console.log('🔍 [CONTROLLER] GET /presenca/aulas-disponiveis');
-    console.log('========================================');
-    console.log('📅 Hora do servidor (UTC):', new Date().toISOString());
-    console.log('📅 Hora São Paulo:', new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' }));
-    console.log('📆 Data filtro:', data || 'hoje');
-    console.log('👤 AlunoId:', alunoId || 'usuário logado');
-    console.log('========================================\n');
-    
     const result = await this.presencaService.getAulasDisponiveis(req.user, data, alunoId);
-    
-    console.log(`✅ [CONTROLLER] ${result.length} aulas disponíveis encontradas`);
-    console.log('========================================\n');
     
     return result;
   }

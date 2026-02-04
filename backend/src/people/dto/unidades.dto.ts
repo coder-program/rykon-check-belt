@@ -361,6 +361,14 @@ export class UpdateUnidadeDto {
   @IsOptional()
   @IsString()
   endereco_id?: string;
+
+  @ApiPropertyOptional({
+    description: 'ID do estabelecimento no Rykon-Pay',
+    example: '156655',
+  })
+  @IsOptional()
+  @IsString()
+  paytime_establishment_id?: string;
 }
 
 export class UnidadeQueryDto {

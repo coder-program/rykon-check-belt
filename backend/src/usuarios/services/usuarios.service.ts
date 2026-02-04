@@ -1643,8 +1643,6 @@ export class UsuariosService {
 
       await queryRunner.commitTransaction();
 
-      console.log(`✅ Usuário ${userId} rejeitado e removido fisicamente do banco`);
-
       // TODO: Enviar email informando sobre a rejeição
 
       return {

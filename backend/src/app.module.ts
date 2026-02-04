@@ -87,10 +87,6 @@ import { PaytimeModule } from './paytime/paytime.module';
           ssl: isLocalhost ? false : true,
         };
 
-        // ========== TENTAR CONECTAR COM RETRY ==========
-        console.log('🔄 Tentando conectar ao banco de dados...');
-        console.log(`📍 Host: ${dbHost}`);
-        
         return config;
       },
     }),

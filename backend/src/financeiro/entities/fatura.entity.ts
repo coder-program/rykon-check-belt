@@ -68,7 +68,7 @@ export class Fatura {
   data_vencimento: Date;
 
   @Column({ type: 'date', nullable: true })
-  data_pagamento: Date;
+  data_pagamento: Date | null;
 
   @Column({
     type: 'enum',
