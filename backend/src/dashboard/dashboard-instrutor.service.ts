@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, In } from 'typeorm';
 import { Person, TipoCadastro } from '../people/entities/person.entity';
 import { Aula } from '../presenca/entities/aula.entity';
 import { Presenca } from '../presenca/entities/presenca.entity';
@@ -48,6 +48,8 @@ export class DashboardInstrutorService {
   async getInstrutorStats(
     usuarioId: string,
   ): Promise<InstrutorDashboardStats> {
+    console.log('🎯 [INSTRUTOR STATS] Iniciando busca de estatísticas para usuário:', usuarioId);
+    
     // Buscar o professor pelo usuario_id
     const professor = await this.personRepository.findOne({
       where: {
@@ -57,9 +59,11 @@ export class DashboardInstrutorService {
     });
 
     if (!professor) {
+      console.error('❌ [INSTRUTOR STATS] Professor não encontrado para usuário:', usuarioId);
       throw new NotFoundException('Professor não encontrado');
     }
 
+    console.log('✅ [INSTRUTOR STATS] Professor encontrado:', professor.id, professor.nome_completo);
     const professorId = professor.id;
 
     // Buscar aulas do professor
@@ -68,13 +72,34 @@ export class DashboardInstrutorService {
       relations: ['unidade', 'professor'],
     });
 
+    console.log('📚 [INSTRUTOR STATS] Total de aulas do professor:', aulasProfessor.length);
+
+    const aulasIds = aulasProfessor.map((aula) => aula.id);
+
+    // Se não tem aulas, retorna stats zeradas
+    if (aulasIds.length === 0) {
+      console.warn('⚠️ [INSTRUTOR STATS] Professor sem aulas cadastradas');
+      return {
+        meusAlunos: 0,
+        aulasSemana: 0,
+        graduacoesPendentes: 0,
+        novasInscricoes: 0,
+        presencaMedia: 0,
+        proximasAulas: 0,
+        alunosAtivos: 0,
+        avaliacoesPendentes: 0,
+      };
+    }
+
     // Buscar presenças das aulas do professor
     const presencas = await this.presencaRepository.find({
       where: {
-        aula_id: { $in: aulasProfessor.map((aula) => aula.id) } as any,
+        aula_id: In(aulasIds),
       },
       relations: ['aluno'],
     });
+
+    console.log('👥 [INSTRUTOR STATS] Total de presenças encontradas:', presencas.length);
 
     // Alunos únicos do professor
     const alunosUnicos = new Set();
@@ -83,6 +108,8 @@ export class DashboardInstrutorService {
         alunosUnicos.add(presenca.aluno.id);
       }
     });
+
+    console.log('🎓 [INSTRUTOR STATS] Alunos únicos:', alunosUnicos.size);
 
     // Aulas desta semana
     const hoje = new Date();
@@ -96,15 +123,37 @@ export class DashboardInstrutorService {
       return dataAula >= inicioSemana && dataAula <= fimSemana;
     });
 
+    console.log('📅 [INSTRUTOR STATS] Aulas desta semana:', aulasSemana.length);
+
     // Próximas aulas (hoje)
-    const hojeStr = new Date().toISOString().split('T')[0];
+    const hojeDate = new Date();
+    const hojeStr = hojeDate.toISOString().split('T')[0];
+    
+    console.log('📆 [INSTRUTOR STATS] Data de hoje (ISO):', hojeStr);
+    console.log('📚 [INSTRUTOR STATS] Analisando', aulasProfessor.length, 'aulas para encontrar as de hoje');
+    
     const proximasAulas = aulasProfessor.filter((aula) => {
-      if (!aula.data_hora_inicio) return false;
-      const dataAulaStr = new Date(aula.data_hora_inicio)
-        .toISOString()
-        .split('T')[0];
-      return dataAulaStr === hojeStr;
+      if (!aula.data_hora_inicio) {
+        console.log('⚠️ [INSTRUTOR STATS] Aula sem data_hora_inicio:', aula.id);
+        return false;
+      }
+      const dataAula = new Date(aula.data_hora_inicio);
+      const dataAulaStr = dataAula.toISOString().split('T')[0];
+      const isToday = dataAulaStr === hojeStr;
+      
+      if (isToday) {
+        console.log('✅ [INSTRUTOR STATS] Aula de hoje encontrada:', {
+          id: aula.id,
+          nome: aula.nome,
+          data_hora_inicio: aula.data_hora_inicio,
+          dataAulaStr,
+        });
+      }
+      
+      return isToday;
     });
+
+    console.log('⏰ [INSTRUTOR STATS] Total de aulas hoje:', proximasAulas.length);
 
     // Calcular presença média
     let totalPresencas = 0;
@@ -129,42 +178,55 @@ export class DashboardInstrutorService {
         ? Math.round(totalPresencas / totalAulasComPresenca)
         : 0;
 
+    console.log('📊 [INSTRUTOR STATS] Presença média:', presencaMedia + '%');
+
     // Alunos ativos (com presença nos últimos 30 dias)
     const dataLimite = new Date();
     dataLimite.setDate(dataLimite.getDate() - 30);
 
     // Buscar aulas do professor nos últimos 30 dias
-    const aulasRecentes = await this.aulaRepository.find({
-      where: {
-        professor_id: professorId,
-        data_hora_inicio: {
-          $gte: dataLimite,
-        } as any,
-      },
+    const aulasRecentes = aulasProfessor.filter((aula) => {
+      if (!aula.data_hora_inicio) return false;
+      return new Date(aula.data_hora_inicio) >= dataLimite;
     });
 
-    const presencasRecentes = await this.presencaRepository.find({
-      where: {
-        status: 'presente',
-        aula_id: { $in: aulasRecentes.map((aula) => aula.id) } as any,
-      },
-      relations: ['aluno'],
-    });
+    console.log('🕐 [INSTRUTOR STATS] Aulas recentes (últimos 30 dias):', aulasRecentes.length);
+
+    const aulasRecentesIds = aulasRecentes.map((aula) => aula.id);
+
+    let presencasRecentes: Presenca[] = [];
+    if (aulasRecentesIds.length > 0) {
+      presencasRecentes = await this.presencaRepository.find({
+        where: {
+          status: 'presente',
+          aula_id: In(aulasRecentesIds),
+        },
+        relations: ['aluno'],
+      });
+    }
+
+    console.log('✅ [INSTRUTOR STATS] Presenças recentes:', presencasRecentes.length);
 
     const alunosAtivos = new Set(
       presencasRecentes.map((p) => p.aluno?.id).filter((id) => id),
     ).size;
 
-    return {
+    console.log('🏃 [INSTRUTOR STATS] Alunos ativos:', alunosAtivos);
+
+    const stats = {
       meusAlunos: alunosUnicos.size,
       aulasSemana: aulasSemana.length,
-      graduacoesPendentes: 5, // TODO: implementar lógica real
-      novasInscricoes: 3, // TODO: implementar lógica real
+      graduacoesPendentes: 0,
+      novasInscricoes: 0,
       presencaMedia,
       proximasAulas: proximasAulas.length,
       alunosAtivos,
-      avaliacoesPendentes: 8, // TODO: implementar lógica real
+      avaliacoesPendentes: 0,
     };
+
+    console.log('📈 [INSTRUTOR STATS] Estatísticas finais:', JSON.stringify(stats, null, 2));
+
+    return stats;
   }
 
   async getProximasAulas(usuarioId: string): Promise<ProximaAula[]> {
@@ -240,10 +302,17 @@ export class DashboardInstrutorService {
       where: { professor_id: professorId },
     });
 
+    const aulasIds = aulasProfessor.map((aula) => aula.id);
+
+    // Se não tem aulas, retorna array vazio
+    if (aulasIds.length === 0) {
+      return [];
+    }
+
     // Buscar presenças dos alunos nessas aulas
     const presencasAlunos = await this.presencaRepository.find({
       where: {
-        aula_id: { $in: aulasProfessor.map((aula) => aula.id) } as any,
+        aula_id: In(aulasIds),
         status: 'presente',
       },
       relations: ['aluno'],

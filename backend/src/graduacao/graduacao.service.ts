@@ -1443,6 +1443,34 @@ export class GraduacaoService {
     const dataLimite = new Date();
     dataLimite.setDate(dataLimite.getDate() - 90); // Últimos 3 meses
 
+    // 🔥 Detectar unidades do franqueado se não especificou unidade
+    let unidadeFiltro = unidadeId;
+    let unidadesFranqueado: string[] = [];
+
+    if (!unidadeFiltro && user) {
+      const perfis =
+        user?.perfis?.map((p: any) =>
+          (typeof p === 'string' ? p : p.nome)?.toUpperCase(),
+        ) || [];
+      const isFranqueado = perfis.includes('FRANQUEADO');
+      const isMaster = perfis.includes('MASTER') || perfis.includes('ADMIN');
+
+      if (isFranqueado && !isMaster) {
+        // Franqueado: buscar todas as unidades dele
+        const unidadesResult = await this.alunoGraduacaoRepository.manager.query(
+          `SELECT id FROM teamcruz.unidades WHERE franqueado_id =
+           (SELECT id FROM teamcruz.franqueados WHERE usuario_id = $1)`,
+          [user.id],
+        );
+
+        if (unidadesResult.length === 0) {
+          return [];
+        }
+
+        unidadesFranqueado = unidadesResult.map((u: any) => u.id);
+      }
+    }
+
     // Query para buscar professores com taxa de aprovação
     let query = `
       SELECT
@@ -1459,6 +1487,7 @@ export class GraduacaoService {
         ) as taxa_aprovacao
       FROM teamcruz.professores prof
       INNER JOIN teamcruz.usuarios u ON u.id = prof.usuario_id
+      INNER JOIN teamcruz.professor_unidades pu ON pu.professor_id = prof.id AND pu.ativo = true
       LEFT JOIN teamcruz.aluno_graduacao ag ON ag.concedido_por::uuid = u.id
         AND ag.dt_graduacao >= $1
       WHERE prof.status = 'ATIVO'
@@ -1466,9 +1495,13 @@ export class GraduacaoService {
 
     const params: any[] = [dataLimite];
 
-    if (unidadeId) {
-      query += ` AND prof.unidade_id = $2`;
-      params.push(unidadeId);
+    if (unidadeFiltro) {
+      query += ` AND pu.unidade_id = $2`;
+      params.push(unidadeFiltro);
+    } else if (unidadesFranqueado.length > 0) {
+      // 🔥 Filtrar por múltiplas unidades do franqueado
+      query += ` AND pu.unidade_id = ANY($2::uuid[])`;
+      params.push(unidadesFranqueado);
     }
 
     query += `

@@ -931,7 +931,7 @@ export default function DashboardNew() {
         pageSize: 30,
         search: debouncedSearch,
         faixa: faixaParam,
-        unidadeId: selectedUnidade !== "todas" ? selectedUnidade : undefined,
+        unidade_id: selectedUnidade !== "todas" ? selectedUnidade : undefined,
       });
 
       // Adaptar os dados para o formato esperado pelo componente
@@ -980,17 +980,34 @@ export default function DashboardNew() {
   const aniversariantesQuery = useQuery({
     queryKey: ["aniversariantes", selectedUnidade],
     queryFn: async () => {
+      console.log('\n🎂🎂🎂 [ANIVERSARIANTES] Buscando aniversariantes');
+      console.log('   - selectedUnidade:', selectedUnidade);
+      console.log('   - Perfis:', perfis);
+      
       const mesAtual = new Date().getMonth();
-      const response = await listAlunos({
+      const paramsEnviados = {
         page: 1,
         pageSize: 500, // Buscar muitos para pegar todos aniversariantes
-        unidadeId: selectedUnidade !== "todas" ? selectedUnidade : undefined,
-      });
+        unidade_id: selectedUnidade !== "todas" ? selectedUnidade : undefined,
+      };
+      
+      console.log('   - Params sendo enviados:', JSON.stringify(paramsEnviados, null, 2));
+      
+      const response = await listAlunos(paramsEnviados);
 
-      return response.items
+      console.log('   - Total alunos retornados:', response.items.length);
+      console.log('   - Total no banco (response.total):', response.total);
+      console.log('   - Primeiros 3 alunos:', response.items.slice(0, 3).map((a: any) => ({ 
+        nome: a.nome, 
+        unidade: a.unidade?.nome,
+        data_nascimento: a.data_nascimento 
+      })));
+
+      const aniversariantes = response.items
         .filter((aluno: any) => {
           if (!aluno.data_nascimento) return false;
-          const dataNasc = new Date(aluno.data_nascimento);
+          // Usar UTC para evitar problemas de timezone
+          const dataNasc = new Date(aluno.data_nascimento + 'T12:00:00');
           return dataNasc.getMonth() === mesAtual;
         })
         .map((aluno: any) => {
@@ -1004,10 +1021,17 @@ export default function DashboardNew() {
           };
         })
         .sort((a: any, b: any) => {
-          const diaA = new Date(a.data_nascimento).getDate();
-          const diaB = new Date(b.data_nascimento).getDate();
+          // Usar UTC para evitar problemas de timezone
+          const diaA = new Date(a.data_nascimento + 'T12:00:00').getDate();
+          const diaB = new Date(b.data_nascimento + 'T12:00:00').getDate();
           return diaA - diaB;
         });
+
+      console.log('   - Aniversariantes encontrados:', aniversariantes.length);
+      console.log('   - Lista:', aniversariantes.map((a: any) => a.nome));
+      console.log('🎂🎂🎂🎂🎂🎂🎂🎂🎂🎂🎂🎂🎂🎂🎂🎂🎂🎂🎂🎂\n');
+      
+      return aniversariantes;
     },
     staleTime: 5 * 60 * 1000, // Cache de 5 minutos
   });
@@ -1089,6 +1113,7 @@ export default function DashboardNew() {
         pageSize: 30,
         search: debouncedSearch,
         faixa: faixaParam,
+        unidade_id: selectedUnidade !== "todas" ? selectedUnidade : undefined,
       });
 
       // Adaptar os dados
@@ -2882,7 +2907,8 @@ export default function DashboardNew() {
                 <CardContent>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                     {(() => {
-                      const alunos = alunosQuery.data?.pages[0]?.items || [];
+                      // 🔥 Concatenar TODAS as páginas, não só a primeira
+                      const alunos = alunosQuery.data?.pages.flatMap(page => page.items) || [];
                       const faixas = alunos.reduce((acc: any, aluno: any) => {
                         const faixa = aluno.faixa || "Sem Faixa";
                         acc[faixa] = (acc[faixa] || 0) + 1;
@@ -3026,7 +3052,8 @@ export default function DashboardNew() {
                         const mesAtual = new Date().getMonth();
 
                         return aniversariantes.map((aluno: any) => {
-                          const dataNasc = new Date(aluno.data_nascimento);
+                          // Usar UTC para evitar problemas de timezone
+                          const dataNasc = new Date(aluno.data_nascimento + 'T12:00:00');
                           const dia = dataNasc.getDate();
                           const hoje = new Date().getDate();
                           const isHoje = dia === hoje;
@@ -3230,9 +3257,9 @@ export default function DashboardNew() {
                         </p>
                         <p className="text-3xl font-bold text-red-900">
                           {(() => {
-                            const total =
-                              professoresQuery.data?.pages[0]?.total || 0;
-                            return total;
+                            // 🔥 Contar todos os professores de todas as páginas
+                            const professores = professoresQuery.data?.pages.flatMap(page => page.items) || [];
+                            return professores.length;
                           })()}
                         </p>
                       </div>
@@ -3249,9 +3276,11 @@ export default function DashboardNew() {
                           Ativos
                         </p>
                         <p className="text-3xl font-bold text-green-900">
-                          {professoresQuery.data?.pages[0]?.items?.filter(
-                            (p: any) => p.status === "ATIVO"
-                          ).length || 0}
+                          {(() => {
+                            // 🔥 Contar ativos de todas as páginas
+                            const professores = professoresQuery.data?.pages.flatMap(page => page.items) || [];
+                            return professores.filter((p: any) => p.status === "ATIVO").length;
+                          })()}
                         </p>
                       </div>
                       <CheckCircle className="h-10 w-10 text-green-600 opacity-50" />
@@ -3267,7 +3296,10 @@ export default function DashboardNew() {
                           Total de Aulas
                         </p>
                         <p className="text-3xl font-bold text-purple-900">
-                          {aulasHojeQuery.data?.length || 0}
+                          {(() => {
+                            // 🔥 Total de aulas dos últimos 30 dias
+                            return rankingAulasPorProf.reduce((acc, p) => acc + (p.totalAulas || 0), 0);
+                          })()}
                         </p>
                       </div>
                       <Calendar className="h-10 w-10 text-purple-600 opacity-50" />
@@ -3314,11 +3346,11 @@ export default function DashboardNew() {
                         </p>
                         <p className="text-3xl font-bold text-cyan-900">
                           {(() => {
-                            const totalProfs =
-                              professoresQuery.data?.pages[0]?.items?.length ||
-                              0;
-                            const totalAlunos =
-                              alunosQuery.data?.pages[0]?.total || 0;
+                            // 🔥 Usar todos os professores e alunos de todas as páginas
+                            const professores = professoresQuery.data?.pages.flatMap(page => page.items) || [];
+                            const totalProfs = professores.length;
+                            const alunos = alunosQuery.data?.pages.flatMap(page => page.items) || [];
+                            const totalAlunos = alunos.length;
                             return totalProfs > 0
                               ? Math.round(totalAlunos / totalProfs)
                               : 0;
@@ -3339,11 +3371,11 @@ export default function DashboardNew() {
                         </p>
                         <p className="text-3xl font-bold text-orange-900">
                           {(() => {
-                            const professores =
-                              professoresQuery.data?.pages[0]?.items || [];
+                            // 🔥 Contar especialidades únicas de todos os professores
+                            const professores = professoresQuery.data?.pages.flatMap(page => page.items) || [];
                             const especialidades = new Set(
                               professores
-                                .map((p: any) => p.especialidades)
+                                .flatMap((p: any) => p.especialidades || [])
                                 .filter(Boolean)
                             );
                             return especialidades.size;
@@ -3364,8 +3396,11 @@ export default function DashboardNew() {
                         </p>
                         <p className="text-3xl font-bold text-pink-900">
                           {(() => {
-                            // TODO: Calcular horas reais das aulas
-                            return (aulasHojeQuery.data?.length || 0) * 1.5;
+                            // 🔥 Calcular média de horas/semana das aulas dos últimos 30 dias
+                            const totalAulas = rankingAulasPorProf.reduce((acc, p) => acc + (p.totalAulas || 0), 0);
+                            // Assumindo 1.5h por aula, dividir por ~4 semanas
+                            const horasSemana = totalAulas > 0 ? (totalAulas * 1.5) / 4 : 0;
+                            return horasSemana.toFixed(1);
                           })()}
                           h
                         </p>
@@ -3387,12 +3422,14 @@ export default function DashboardNew() {
                 <CardContent>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                     {(() => {
+                      // 🔥 Usar todos os professores de todas as páginas
                       const professores =
-                        professoresQuery.data?.pages[0]?.items || [];
+                        professoresQuery.data?.pages.flatMap(page => page.items) || [];
+                      
                       const faixas = professores.reduce(
                         (acc: any, prof: any) => {
                           const faixa =
-                            prof.faixa_ministrante || "Não definida";
+                            prof.faixa_ministrante || "Sem faixa definida";
                           acc[faixa] = (acc[faixa] || 0) + 1;
                           return acc;
                         },

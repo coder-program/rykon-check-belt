@@ -165,6 +165,8 @@ export class AlunosController {
   @ApiQuery({ name: 'page', required: false })
   @ApiQuery({ name: 'pageSize', required: false })
   list(@Query(ValidationPipe) query: any, @Request() req) {
+    console.log('🎯🎯🎯 [CONTROLLER] Query params recebidos:', JSON.stringify(query, null, 2));
+    console.log('🎯 [CONTROLLER] pageSize tipo:', typeof query.pageSize, 'valor:', query.pageSize);
     const user = req?.user || null;
     return this.service.list(query, user);
   }

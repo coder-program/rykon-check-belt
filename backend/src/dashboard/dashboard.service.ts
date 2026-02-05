@@ -6,6 +6,12 @@ import { Person, TipoCadastro } from '../people/entities/person.entity';
 import { Aluno, StatusAluno } from '../people/entities/aluno.entity';
 import { Unidade } from '../people/entities/unidade.entity';
 import { Franqueado } from '../people/entities/franqueado.entity';
+import * as dayjs from 'dayjs';
+import * as utc from 'dayjs/plugin/utc';
+import * as timezone from 'dayjs/plugin/timezone';
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 @Injectable()
 export class DashboardService {
@@ -340,24 +346,30 @@ export class DashboardService {
 
   private async getPresencasHoje(unidadeId?: string, unidadesDoFranqueado?: string[]): Promise<number> {
     try {
-      const hoje = new Date();
-      const hojeStr = hoje.toISOString().split('T')[0];
+      // 🔥 Usar dayjs para calcular "hoje" no Brasil (America/Sao_Paulo)
+      const hojeBrasil = dayjs().tz('America/Sao_Paulo').startOf('day');
+      const amanhaBrasil = hojeBrasil.add(1, 'day');
+      
+      // Converter para UTC para a query
+      const hoje = hojeBrasil.utc().toDate();
+      const amanha = amanhaBrasil.utc().toDate();
 
       let query = `
         SELECT COUNT(*) as total
         FROM teamcruz.presencas p
         INNER JOIN teamcruz.aulas a ON p.aula_id = a.id
         WHERE p.status = 'presente'
-          AND DATE(p.hora_checkin) = $1
+          AND p.hora_checkin >= $1
+          AND p.hora_checkin < $2
       `;
 
-      const params: any[] = [hojeStr];
+      const params: any[] = [hoje, amanha];
 
       if (unidadeId) {
-        query += ` AND a.unidade_id = $2`;
+        query += ` AND a.unidade_id = $3`;
         params.push(unidadeId);
       } else if (unidadesDoFranqueado && unidadesDoFranqueado.length > 0) {
-        query += ` AND a.unidade_id = ANY($2::uuid[])`;
+        query += ` AND a.unidade_id = ANY($3::uuid[])`;
         params.push(unidadesDoFranqueado);
       }
 

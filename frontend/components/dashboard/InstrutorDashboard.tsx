@@ -87,15 +87,18 @@ export default function InstrutorDashboard() {
     useQuery<InstrutorStats>({
       queryKey: ["dashboard-instrutor-stats"],
       queryFn: async () => {
-        const response = await fetch("/api/dashboard/instrutor/stats", {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/dashboard/instrutor/stats`,
+          {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+          }
+        );
         if (!response.ok) throw new Error("Erro ao buscar estatísticas");
         return response.json();
       },
-      enabled: !!token,
+      enabled: !!user?.id,
     });
 
   // Buscar próximas aulas
@@ -104,15 +107,25 @@ export default function InstrutorDashboard() {
   >({
     queryKey: ["dashboard-instrutor-proximas-aulas"],
     queryFn: async () => {
-      const response = await fetch("/api/dashboard/instrutor/proximas-aulas", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      if (!response.ok) throw new Error("Erro ao buscar próximas aulas");
-      return response.json();
+      console.log('🎯 [FRONTEND] Buscando próximas aulas...');
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/dashboard/instrutor/proximas-aulas`,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
+      if (!response.ok) {
+        console.error('❌ [FRONTEND] Erro ao buscar próximas aulas:', response.status);
+        throw new Error("Erro ao buscar próximas aulas");
+      }
+      const data = await response.json();
+      console.log('✅ [FRONTEND] Próximas aulas recebidas:', data);
+      console.log('📊 [FRONTEND] Total de aulas:', data?.length);
+      return data;
     },
-    enabled: !!token,
+    enabled: !!user?.id,
   });
 
   // Buscar alunos em destaque
@@ -121,15 +134,18 @@ export default function InstrutorDashboard() {
   >({
     queryKey: ["dashboard-instrutor-alunos-destaque"],
     queryFn: async () => {
-      const response = await fetch("/api/dashboard/instrutor/alunos-destaque", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/dashboard/instrutor/alunos-destaque`,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
       if (!response.ok) throw new Error("Erro ao buscar alunos em destaque");
       return response.json();
     },
-    enabled: !!token,
+    enabled: !!user?.id,
   });
 
   // Dados padrão enquanto carrega
@@ -349,6 +365,12 @@ export default function InstrutorDashboard() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
+                {(() => {
+                  console.log('🖼️ [FRONTEND RENDER] aulasLoading:', aulasLoading);
+                  console.log('🖼️ [FRONTEND RENDER] proximasAulas:', proximasAulas);
+                  console.log('🖼️ [FRONTEND RENDER] proximasAulas?.length:', proximasAulas?.length);
+                  return null;
+                })()}
                 {aulasLoading ? (
                   <div className="text-center py-8 text-gray-500">
                     Carregando próximas aulas...

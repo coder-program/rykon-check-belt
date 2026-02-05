@@ -856,13 +856,26 @@ export default function PresencaPage() {
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("pt-BR", {
+    console.log('📅 [formatDate] Input:', dateString);
+    
+    // Criar Date a partir da string ISO que vem do backend
+    // Se a string já tem timezone (-0300), o Date vai interpretar corretamente
+    const date = new Date(dateString);
+    console.log('📅 [formatDate] Date object:', date);
+    console.log('📅 [formatDate] Date ISO:', date.toISOString());
+    
+    // Formatar usando as opções do Brasil, mas mantendo a data original
+    const formatted = date.toLocaleDateString("pt-BR", {
       day: "2-digit",
-      month: "2-digit",
+      month: "2-digit", 
       year: "numeric",
       hour: "2-digit",
       minute: "2-digit",
+      timeZone: "America/Sao_Paulo", // Forçar timezone de São Paulo
     });
+    
+    console.log('📅 [formatDate] Formatted:', formatted);
+    return formatted;
   };
 
   // Bloquear acesso de franqueados
@@ -1635,7 +1648,17 @@ export default function PresencaPage() {
                           <div className="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto sm:text-right">
                             <div>
                               <div className="text-sm font-medium">
-                                {formatDate(presenca.data).split(" ")[0]}
+                                {(() => {
+                                  console.log('🔥🔥🔥 [PRESENCA ITEM] Dados da presença:');
+                                  console.log('   - Presenca ID:', presenca.id);
+                                  console.log('   - Data recebida:', presenca.data);
+                                  console.log('   - Data typeof:', typeof presenca.data);
+                                  console.log('   - Horario:', presenca.horario);
+                                  const formatted = formatDate(presenca.data).split(" ")[0];
+                                  console.log('   - Data formatada:', formatted);
+                                  console.log('🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥\n');
+                                  return formatted;
+                                })()}
                               </div>
                               <div className="text-xs text-gray-600">
                                 {presenca.horario}

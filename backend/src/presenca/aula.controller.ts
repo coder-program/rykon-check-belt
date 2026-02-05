@@ -283,18 +283,18 @@ export class AulaController {
           );
         }
         const aulas = await this.aulaService.findAulasHoje(unidade_id);
-        return aulas;
+        return this.transformAulasComDataHoje(aulas);
       } else {
         // Retorna aulas de todas as unidades do franqueado
         const aulas = await this.aulaService.findAulasHoje(unidadesDoUsuario);
-        return aulas;
+        return this.transformAulasComDataHoje(aulas);
       }
     }
 
     // GERENTE/PROFESSOR/RECEPCIONISTA - apenas da sua unidade
     if (typeof unidadesDoUsuario === 'string') {
       const aulas = await this.aulaService.findAulasHoje(unidadesDoUsuario);
-      return aulas;
+      return this.transformAulasComDataHoje(aulas);
     }
 
     // MASTER/ADMIN - precisa especificar unidade
@@ -303,7 +303,60 @@ export class AulaController {
     }
 
     const aulas = await this.aulaService.findAulasHoje(unidade_id);
-    return aulas;
+    return this.transformAulasComDataHoje(aulas);
+  }
+
+  /**
+   * Transforma aulas recorrentes para usar a data de HOJE
+   * em vez da data antiga do data_hora_inicio, MAS mantém o horário original
+   */
+  private transformAulasComDataHoje(aulas: any[]) {
+    const hoje = new Date();
+    const ano = hoje.getFullYear();
+    const mes = hoje.getMonth();
+    const dia = hoje.getDate();
+    
+    return aulas.map(aula => {
+      // Se é aula recorrente (tem dia_semana), criar nova data com horário original
+      if (aula.dia_semana !== null && aula.dia_semana !== undefined) {
+        let novaDataInicio = hoje;
+        let novaDataFim = hoje;
+        
+        // Se tem data_hora_inicio, extrair o horário e aplicar na data de hoje
+        if (aula.data_hora_inicio) {
+          const dataOriginal = new Date(aula.data_hora_inicio);
+          novaDataInicio = new Date(
+            ano, 
+            mes, 
+            dia,
+            dataOriginal.getHours(),
+            dataOriginal.getMinutes(),
+            dataOriginal.getSeconds()
+          );
+        }
+        
+        // Se tem data_hora_fim, extrair o horário e aplicar na data de hoje
+        if (aula.data_hora_fim) {
+          const dataOriginal = new Date(aula.data_hora_fim);
+          novaDataFim = new Date(
+            ano,
+            mes,
+            dia,
+            dataOriginal.getHours(),
+            dataOriginal.getMinutes(),
+            dataOriginal.getSeconds()
+          );
+        }
+        
+        return {
+          ...aula,
+          data_hora_inicio: novaDataInicio,
+          data_hora_fim: novaDataFim,
+        };
+      }
+      // Aula única mantém data original
+      return aula;
+    });
   }
 
   @Get('por-professor/ranking')

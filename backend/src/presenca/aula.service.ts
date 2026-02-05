@@ -328,6 +328,7 @@ export class AulaService {
 
     // Se não forneceu unidadeId, detectar automaticamente baseado no usuário
     let unidadeFiltro = unidadeId;
+    let unidadesFranqueado: string[] = [];
 
     const perfis =
       user?.perfis?.map((p: any) =>
@@ -352,10 +353,8 @@ export class AulaService {
             return [];
           }
 
-          // Se não especificou unidade, não retornar dados agregados
-          if (!unidadeId) {
-            return [];
-          }
+          // 🔥 Se não especificou unidade, buscar de TODAS as unidades do franqueado
+          unidadesFranqueado = unidadesResult.map((u: any) => u.id);
         } else if (isGerente) {
           // Gerente: buscar unidade que ele gerencia
           const unidadeResult = await this.aulaRepository.manager.query(
@@ -394,6 +393,10 @@ export class AulaService {
     if (unidadeFiltro) {
       query += ` AND pu.unidade_id = $2`;
       params.push(unidadeFiltro);
+    } else if (unidadesFranqueado.length > 0) {
+      // 🔥 Filtrar por múltiplas unidades do franqueado
+      query += ` AND pu.unidade_id = ANY($2::uuid[])`;
+      params.push(unidadesFranqueado);
     }
 
     query += `

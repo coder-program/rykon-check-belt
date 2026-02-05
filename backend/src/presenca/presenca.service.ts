@@ -71,6 +71,31 @@ export class PresencaService {
   ) {}
 
   /**
+   * Calcula o início e fim do "hoje" no horário do Brasil (UTC-3)
+   * Retorna datas em UTC que representam 00:00 e 23:59:59 do Brasil
+   */
+  private getHojeBrasil(): { hoje: Date; amanha: Date } {
+    const agora = new Date();
+    const offsetBrasil = -3 * 60; // UTC-3 em minutos
+    const offsetAtual = agora.getTimezoneOffset();
+    const diffMinutos = offsetAtual - offsetBrasil;
+    const agoraBrasil = new Date(agora.getTime() - (diffMinutos * 60 * 1000));
+    
+    // 00:00 Brasil = 03:00 UTC
+    const hoje = new Date(Date.UTC(
+      agoraBrasil.getUTCFullYear(),
+      agoraBrasil.getUTCMonth(),
+      agoraBrasil.getUTCDate(),
+      3, 0, 0, 0
+    ));
+    
+    const amanha = new Date(hoje);
+    amanha.setDate(amanha.getDate() + 1);
+    
+    return { hoje, amanha };
+  }
+
+  /**
    * Calcula a distância entre duas coordenadas geográficas usando a fórmula de Haversine
    * @param lat1 Latitude do ponto 1
    * @param lon1 Longitude do ponto 1
@@ -421,16 +446,13 @@ export class PresencaService {
       throw new NotFoundException('Aluno não encontrado');
     }
 
-    // Verificar se já fez check-in hoje
-    const hoje = new Date();
-    hoje.setHours(0, 0, 0, 0);
-    const amanha = new Date(hoje);
-    amanha.setDate(amanha.getDate() + 1);
+    // Verificar se já fez check-in hoje (horário Brasil)
+    const { hoje, amanha } = this.getHojeBrasil();
 
     const presencaHoje = await this.presencaRepository.findOne({
       where: {
         aluno_id: aluno.id,
-        created_at: Between(hoje, amanha),
+        hora_checkin: Between(hoje, amanha),
       },
     });
 
@@ -532,15 +554,12 @@ export class PresencaService {
     }
 
     // Verificar se já existe check-in hoje (apenas 1 check-in por dia permitido)
-    const hoje = new Date();
-    hoje.setHours(0, 0, 0, 0);
-    const amanha = new Date(hoje);
-    amanha.setDate(amanha.getDate() + 1);
+    const { hoje, amanha } = this.getHojeBrasil();
 
     const presencaHoje = await this.presencaRepository.findOne({
       where: {
         aluno_id: aluno.id,
-        created_at: Between(hoje, amanha),
+        hora_checkin: Between(hoje, amanha),
         status_aprovacao: In(['APROVADO', 'PENDENTE']),
       },
     });
@@ -704,15 +723,12 @@ export class PresencaService {
     }
 
     // Verificar se já existe check-in hoje (apenas 1 check-in por dia permitido)
-    const hoje = new Date();
-    hoje.setHours(0, 0, 0, 0);
-    const amanha = new Date(hoje);
-    amanha.setDate(amanha.getDate() + 1);
+    const { hoje, amanha } = this.getHojeBrasil();
 
     const presencaHoje = await this.presencaRepository.findOne({
       where: {
         aluno_id: aluno.id,
-        created_at: Between(hoje, amanha),
+        hora_checkin: Between(hoje, amanha),
         status_aprovacao: In(['APROVADO', 'PENDENTE']),
       },
     });
@@ -820,6 +836,13 @@ export class PresencaService {
       order: { created_at: 'DESC' },
     });
 
+    console.log('\n🔥🔥🔥 [GET MINHAS ESTATISTICAS] ULTIMA PRESENCA 🔥🔥🔥');
+    console.log('   - Aluno ID:', aluno.id);
+    console.log('   - created_at (UTC):', ultimaPresenca?.created_at?.toISOString());
+    console.log('   - hora_checkin (Brazil):', ultimaPresenca?.hora_checkin?.toISOString());
+    console.log('   - Retornando:', ultimaPresenca?.hora_checkin?.toISOString());
+    console.log('🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥\n');
+
     // Sequência atual (simplificado)
     const sequenciaAtual = await this.calcularSequenciaAtual(aluno.id);
 
@@ -827,7 +850,7 @@ export class PresencaService {
       presencaMensal: Math.min(presencaMensal, 100),
       aulasMes: presencasMes,
       sequenciaAtual,
-      ultimaPresenca: ultimaPresenca?.created_at.toISOString() || null,
+      ultimaPresenca: ultimaPresenca?.hora_checkin?.toISOString() || null,
     };
   }
 
@@ -879,9 +902,16 @@ export class PresencaService {
         horarioSaoPaulo = horaStr.split(':').slice(0, 2).join(':');
       }
 
+      console.log('\n🔥🔥🔥 [MINHA HISTORICO] RETORNANDO PRESENCA 🔥🔥🔥');
+      console.log('   - Presenca ID:', p.id);
+      console.log('   - created_at (UTC):', p.created_at?.toISOString());
+      console.log('   - hora_checkin (Brazil):', p.hora_checkin?.toISOString());
+      console.log('   - Retornando campo data:', p.hora_checkin?.toISOString());
+      console.log('🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥\n');
+
       return {
         id: p.id,
-        data: p.created_at,
+        data: p.hora_checkin, // Usar hora_checkin ao invés de created_at
         horario: horarioSaoPaulo,
         tipo: 'entrada',
         faixa: faixaAtiva?.faixaDef?.nome_exibicao || 'Branca',
@@ -1006,15 +1036,12 @@ export class PresencaService {
     adminUser: any,
   ) {
     // Verificar se já fez check-in hoje
-    const hoje = new Date();
-    hoje.setHours(0, 0, 0, 0);
-    const amanha = new Date(hoje);
-    amanha.setDate(amanha.getDate() + 1);
+    const { hoje, amanha } = this.getHojeBrasil();
 
     const presencaHoje = await this.presencaRepository.findOne({
       where: {
         aluno_id: alunoId,
-        created_at: Between(hoje, amanha),
+        hora_checkin: Between(hoje, amanha),
       },
     });
 
@@ -1212,14 +1239,14 @@ export class PresencaService {
       .leftJoinAndSelect('presenca.aula', 'aula')
       .leftJoinAndSelect('aula.unidade', 'unidade')
       .leftJoinAndSelect('aula.professor', 'professor')
-      .where('presenca.created_at BETWEEN :inicio AND :fim', { inicio, fim });
+      .where('presenca.hora_checkin BETWEEN :inicio AND :fim', { inicio, fim });
 
     // Primeiro buscar SEM filtro de unidade para ver se existem presenças
     const todasPresencas = await this.presencaRepository
       .createQueryBuilder('presenca')
       .innerJoin(Aluno, 'aluno', 'aluno.id = presenca.aluno_id')
       .addSelect('aluno.unidade_id', 'aluno_unidade_id')
-      .where('presenca.created_at BETWEEN :inicio AND :fim', { inicio, fim })
+      .where('presenca.hora_checkin BETWEEN :inicio AND :fim', { inicio, fim })
       .getRawMany();
     
     if (todasPresencas.length > 0) {
@@ -1249,7 +1276,7 @@ export class PresencaService {
       .addSelect('unidade.id', 'unidade_id')
       .addSelect('professor.nome_completo', 'professor_nome_completo')
       .addSelect('professor.id', 'professor_id')
-      .orderBy('presenca.created_at', 'DESC')
+      .orderBy('presenca.hora_checkin', 'DESC')
       .getRawMany();
 
     const resultado = presencas.map((p) => {
@@ -1260,7 +1287,7 @@ export class PresencaService {
 
       return {
         id: p.presenca_id,
-        data: p.presenca_created_at,
+        data: p.presenca_hora_checkin, // 🔥 Usar hora_checkin ao invés de created_at
         hora_checkin: p.presenca_hora_checkin, // Adicionar hora_checkin para exibir horário correto
         aluno: {
           id: p.aluno_id_select || p.presenca_aluno_id,
@@ -1515,6 +1542,7 @@ export class PresencaService {
 
     // Se não forneceu unidadeId, detectar automaticamente baseado no usuário
     let unidadeFiltro = unidadeId;
+    let unidadesFranqueado: string[] = [];
 
     const perfis =
       user?.perfis?.map((p: any) =>
@@ -1539,10 +1567,8 @@ export class PresencaService {
             return [];
           }
 
-          // Se não especificou unidade, não retornar dados agregados
-          if (!unidadeId) {
-            return [];
-          }
+          // 🔥 Se não especificou unidade, buscar de TODAS as unidades do franqueado
+          unidadesFranqueado = unidadesResult.map((u: any) => u.id);
         } else if (isGerente) {
           // Gerente: buscar unidade que ele gerencia
           const unidadeResult = await this.presencaRepository.manager.query(
@@ -1580,6 +1606,10 @@ export class PresencaService {
     if (unidadeFiltro) {
       query += ` AND pu.unidade_id = $2`;
       params.push(unidadeFiltro);
+    } else if (unidadesFranqueado.length > 0) {
+      // 🔥 Filtrar por múltiplas unidades do franqueado
+      query += ` AND pu.unidade_id = ANY($2::uuid[])`;
+      params.push(unidadesFranqueado);
     }
 
     query += `
@@ -1813,11 +1843,21 @@ export class PresencaService {
 
       // Formatar resposta
       const aulasFormatadas = aulasDisponiveis.map((aula) => {
-        // Se tiver data_hora_inicio, usar ela, senão criar uma data de hoje com o horário
+        // Para aulas recorrentes (com dia_semana), usar a data de HOJE
+        // Para aulas únicas (sem dia_semana), usar data_hora_inicio original
         let dataAula = hoje;
-        if (aula.data_hora_inicio) {
-          dataAula = new Date(aula.data_hora_inicio);
+        if (aula.dia_semana === null || aula.dia_semana === undefined) {
+          // Aula única - usar data original
+          if (aula.data_hora_inicio) {
+            dataAula = new Date(aula.data_hora_inicio);
+          }
         }
+        // Se é aula recorrente, dataAula já é hoje (correto!)
+
+        console.log('\n🔥 [AULAS DISPONIVEIS] Aula:', aula.nome);
+        console.log('   - dia_semana:', aula.dia_semana);
+        console.log('   - data_hora_inicio (original):', aula.data_hora_inicio?.toISOString());
+        console.log('   - dataAula (retornando):', dataAula.toISOString());
 
         // Extrair horários de data_hora_inicio e data_hora_fim usando toLocaleString
         let horarioInicio = aula.hora_inicio; // Fallback
@@ -2766,9 +2806,16 @@ export class PresencaService {
         horarioSaoPaulo = horaStr.split(':').slice(0, 2).join(':');
       }
 
+      console.log('\n🔥🔥🔥 [HISTORICO ALUNO] RETORNANDO PRESENCA 🔥🔥🔥');
+      console.log('   - Presenca ID:', p.id);
+      console.log('   - created_at (UTC):', p.created_at?.toISOString());
+      console.log('   - hora_checkin (Brazil):', p.hora_checkin?.toISOString());
+      console.log('   - Retornando campo data:', p.hora_checkin?.toISOString());
+      console.log('🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥\n');
+
       return {
         id: p.id,
-        data: p.created_at,
+        data: p.hora_checkin, // Usar hora_checkin ao invés de created_at
         horario: horarioSaoPaulo,
         tipo: 'entrada',
         faixa: faixaAtiva?.faixaDef?.nome_exibicao || 'Branca',
@@ -2841,6 +2888,13 @@ export class PresencaService {
       order: { created_at: 'DESC' },
     });
 
+    console.log('\n🔥🔥🔥 [GET ESTATISTICAS ALUNO] ULTIMA PRESENCA 🔥🔥🔥');
+    console.log('   - Aluno ID:', alunoId);
+    console.log('   - created_at (UTC):', ultimaPresenca?.created_at?.toISOString());
+    console.log('   - hora_checkin (Brazil):', ultimaPresenca?.hora_checkin?.toISOString());
+    console.log('   - Retornando:', ultimaPresenca?.hora_checkin?.toISOString());
+    console.log('🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥\n');
+
     // Sequência atual
     const sequenciaAtual = await this.calcularSequenciaAtual(alunoId);
 
@@ -2848,7 +2902,7 @@ export class PresencaService {
       presencaMensal: Math.min(presencaMensal, 100),
       aulasMes: presencasMes,
       sequenciaAtual,
-      ultimaPresenca: ultimaPresenca?.created_at.toISOString() || null,
+      ultimaPresenca: ultimaPresenca?.hora_checkin?.toISOString() || null,
     };
 
     return resultado;

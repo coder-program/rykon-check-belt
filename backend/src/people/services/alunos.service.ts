@@ -56,8 +56,16 @@ export class AlunosService {
   ) {}
 
   async list(params: ListAlunosParams, user?: any) {
+    console.log('\n🔥🔥🔥 [LIST ALUNOS] INÍCIO 🔥🔥🔥');
+    console.log('📋 Params recebidos:', JSON.stringify(params, null, 2));
+    console.log('👤 User perfis:', user?.perfis?.map((p: any) => p.nome || p));
+    
     const page = Math.max(1, Number(params.page) || 1);
     const pageSize = Math.min(5000, Math.max(1, Number(params.pageSize) || 20));
+    
+    console.log('📄 Page:', page);
+    console.log('📏 PageSize calculado:', pageSize);
+    console.log('📏 PageSize original:', params.pageSize);
 
     const query = this.alunoRepository.createQueryBuilder('aluno');
 
@@ -125,18 +133,26 @@ export class AlunosService {
     }
     // Se franqueado (não master), filtra apenas alunos das suas unidades
     else if (user && this.isFranqueado(user) && !this.isMaster(user)) {
+      console.log('🏢 É FRANQUEADO (não master)');
       const franqueadoId = await this.getFranqueadoIdByUser(user);
+      console.log('🆔 FranqueadoId:', franqueadoId);
+      
       if (franqueadoId) {
         // Buscar unidades do franqueado
         const unidadesDeFranqueado =
           await this.getUnidadesDeFranqueado(franqueadoId);
+        
+        console.log('🏢 Unidades do franqueado:', unidadesDeFranqueado);
+        console.log('🏢 Total de unidades:', unidadesDeFranqueado.length);
 
         if (unidadesDeFranqueado.length > 0) {
           query.andWhere('aluno.unidade_id IN (:...unidades)', {
             unidades: unidadesDeFranqueado,
           });
+          console.log('✅ Filtro aplicado: unidade_id IN', unidadesDeFranqueado);
         } else {
           query.andWhere('1 = 0'); // Retorna vazio se franqueado não tem unidades
+          console.log('❌ Franqueado sem unidades - retornando vazio');
         }
       }
     }
@@ -206,11 +222,21 @@ export class AlunosService {
     // Ordenar por data de matrícula (mais recentes primeiro)
     query.orderBy('aluno.data_matricula', 'DESC');
 
+    console.log('🔍 SQL QUERY:', query.getSql());
+    console.log('🔍 PARAMETERS:', query.getParameters());
+
     // Paginação
     const [items, total] = await query
       .skip((page - 1) * pageSize)
       .take(pageSize)
       .getManyAndCount();
+    
+    console.log('✅ Resultados:');
+    console.log('   - Items retornados:', items.length);
+    console.log('   - Total no banco:', total);
+    console.log('   - Skip:', (page - 1) * pageSize);
+    console.log('   - Take:', pageSize);
+    console.log('🔥🔥🔥 [LIST ALUNOS] FIM 🔥🔥🔥\n');
 
     // Buscar status dos usuários vinculados aos alunos
     const usuarioIds = items

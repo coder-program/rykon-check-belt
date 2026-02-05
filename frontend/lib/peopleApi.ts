@@ -12,7 +12,7 @@ interface ListAlunosParams {
   page?: number;
   pageSize?: number;
   search?: string;
-  unidadeId?: number;
+  unidade_id?: string; // 🔥 Corrigido: backend espera unidade_id (snake_case) e string
   status?: string;
   ativo?: boolean;
   perfil_id?: number;

@@ -26,6 +26,7 @@ import {
   Users,
   UserPlus,
   CheckCircle2,
+  CreditCard,
 } from "lucide-react";
 import { getStatusGraduacao, StatusGraduacao } from "@/lib/graduacaoApi";
 import { http } from "@/lib/api";
@@ -927,6 +928,16 @@ export default function AlunoDashboard({
       color: "bg-purple-500",
     },
     {
+      title: "Minhas Faturas",
+      description: "Ver e pagar faturas online",
+      icon: CreditCard,
+      action: () => {
+        console.log("Navegando para /financeiro/minhas-faturas");
+        router.push("/financeiro/minhas-faturas");
+      },
+      color: "bg-green-500",
+    },
+    {
       title: "TeamCruz Jiu-Jitsu",
       description: "Ranking, aulas e check-in",
       icon: Trophy,
@@ -1259,29 +1270,35 @@ export default function AlunoDashboard({
           <h2 className="text-xl font-semibold mb-4">Ações Rápidas</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {quickActions.map((action, index) => (
-              <Card
+              <button
                 key={index}
-                className={`cursor-pointer hover:shadow-lg transition-all transform hover:scale-105 ${
+                className={`cursor-pointer hover:shadow-lg transition-all transform hover:scale-105 text-left w-full ${
                   action.urgent ? "ring-2 ring-green-400 bg-green-50" : ""
                 }`}
-                onClick={action.action}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  action.action();
+                }}
               >
-                <CardHeader>
-                  <CardTitle className="flex items-center justify-between">
-                    <span className="flex items-center gap-2">
-                      <div
-                        className={`p-2 rounded-lg ${action.color} text-white`}
-                      >
-                        <action.icon className="h-5 w-5" />
-                      </div>
-                      <span className="text-sm">{action.title}</span>
-                    </span>
-                  </CardTitle>
-                  <CardDescription className="text-xs">
-                    {action.description}
-                  </CardDescription>
-                </CardHeader>
-              </Card>
+                <Card className="h-full">
+                  <CardHeader>
+                    <CardTitle className="flex items-center justify-between">
+                      <span className="flex items-center gap-2">
+                        <div
+                          className={`p-2 rounded-lg ${action.color} text-white`}
+                        >
+                          <action.icon className="h-5 w-5" />
+                        </div>
+                        <span className="text-sm">{action.title}</span>
+                      </span>
+                    </CardTitle>
+                    <CardDescription className="text-xs">
+                      {action.description}
+                    </CardDescription>
+                  </CardHeader>
+                </Card>
+              </button>
             ))}
           </div>
         </div>
