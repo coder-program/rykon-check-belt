@@ -498,10 +498,19 @@ export class AlunosService {
         cpf: dto.cpf && dto.cpf.trim() !== '' ? dto.cpf : null, // Converter string vazia para null
         usuario_id, // Incluir o usuario_id criado automaticamente
         status: dto.status || StatusAluno.ATIVO,
-        // Garantir que data_matricula seja sempre a data local atual (sem problemas de timezone)
+        // Garantir que data_matricula seja sempre a data local atual (horário Brasil UTC-3)
         data_matricula: dto.data_matricula
           ? (dto.data_matricula instanceof Date ? dto.data_matricula : new Date(dto.data_matricula + 'T12:00:00'))
-          : new Date(new Date().toISOString().split('T')[0] + 'T12:00:00'),
+          : (() => {
+              // Calcular data atual no horário do Brasil (UTC-3)
+              const agora = new Date();
+              const offsetBrasil = -3 * 60;
+              const offsetAtual = agora.getTimezoneOffset();
+              const diffMinutos = offsetAtual - offsetBrasil;
+              const agoraBrasil = new Date(agora.getTime() - (diffMinutos * 60 * 1000));
+              const dataStr = agoraBrasil.toISOString().split('T')[0];
+              return new Date(dataStr + 'T12:00:00');
+            })(),
         data_nascimento: dataNascimento, // Usar a data já processada acima
         data_ultima_graduacao: dto.data_ultima_graduacao
           ? new Date(dto.data_ultima_graduacao + 'T12:00:00')
@@ -597,6 +606,17 @@ export class AlunosService {
       }
 
       const aluno = queryRunner.manager.create(Aluno, alunoData);
+      
+      // Sobrescrever created_at e updated_at com horário do Brasil
+      const agora = new Date();
+      const offsetBrasil = -3 * 60;
+      const offsetAtual = agora.getTimezoneOffset();
+      const diffMinutos = offsetAtual - offsetBrasil;
+      const agoraBrasil = new Date(agora.getTime() - (diffMinutos * 60 * 1000));
+      
+      aluno.created_at = agoraBrasil;
+      aluno.updated_at = agoraBrasil;
+      
       savedAluno = await queryRunner.manager.save(Aluno, aluno);
 
       // 5. Buscar a definição da faixa
