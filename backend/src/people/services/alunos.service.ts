@@ -1474,14 +1474,29 @@ export class AlunosService {
     query.leftJoinAndSelect('aluno.usuario', 'usuario'); // Join com usuario para pegar foto
 
     // Excluir alunos que já tem presença hoje (APROVADO ou PENDENTE)
-    const hoje = new Date();
-    hoje.setHours(0, 0, 0, 0);
+    // Calcular "hoje" no horário de São Paulo (UTC-3)
+    const agora = new Date();
+    const offsetBrasil = -3 * 60; // UTC-3 em minutos
+    const offsetAtual = agora.getTimezoneOffset(); // offset do servidor em minutos
+    const diffMinutos = offsetAtual - offsetBrasil;
+    const agoraBrasil = new Date(agora.getTime() - (diffMinutos * 60 * 1000));
+    
+    // Início do dia no Brasil, convertido para UTC para query
+    const hoje = new Date(Date.UTC(
+      agoraBrasil.getUTCFullYear(),
+      agoraBrasil.getUTCMonth(),
+      agoraBrasil.getUTCDate(),
+      3, 0, 0, 0  // 00:00 Brasil = 03:00 UTC
+    ));
+    
     const amanha = new Date(hoje);
     amanha.setDate(amanha.getDate() + 1);
     
     console.log('📅 [listarAlunosParaCheckin] Range de data:');
-    console.log('  - Hoje:', hoje.toISOString());
-    console.log('  - Amanhã:', amanha.toISOString());
+    console.log('  - Servidor (UTC):', agora.toISOString());
+    console.log('  - Brasil (calculado):', agoraBrasil.toISOString());
+    console.log('  - Hoje 00:00 Brasil (UTC):', hoje.toISOString());
+    console.log('  - Amanhã 00:00 Brasil (UTC):', amanha.toISOString());
     
     // Verificar quantas presencas existem hoje
     const presencasHoje = await this.dataSource.query(
