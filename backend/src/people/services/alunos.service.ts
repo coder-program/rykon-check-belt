@@ -1474,8 +1474,7 @@ export class AlunosService {
     query.leftJoinAndSelect('aluno.usuario', 'usuario'); // Join com usuario para pegar foto
 
     // Excluir alunos que já tem presença hoje (APROVADO ou PENDENTE)
-    // Usar timezone de São Paulo para garantir consistência
-    const hoje = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
+    const hoje = new Date();
     hoje.setHours(0, 0, 0, 0);
     const amanha = new Date(hoje);
     amanha.setDate(amanha.getDate() + 1);
@@ -1483,7 +1482,16 @@ export class AlunosService {
     console.log('📅 [listarAlunosParaCheckin] Range de data:');
     console.log('  - Hoje:', hoje.toISOString());
     console.log('  - Amanhã:', amanha.toISOString());
-    console.log('  - Timezone local servidor:', new Date().toString());
+    
+    // Verificar quantas presencas existem hoje
+    const presencasHoje = await this.dataSource.query(
+      `SELECT COUNT(*), MIN(hora_checkin), MAX(hora_checkin) 
+       FROM teamcruz.presencas 
+       WHERE hora_checkin >= $1 AND hora_checkin < $2 
+       AND status_aprovacao IN ('APROVADO', 'PENDENTE')`,
+      [hoje, amanha]
+    );
+    console.log('📊 [listarAlunosParaCheckin] Presenças hoje:', presencasHoje[0]);
 
     query.where('aluno.unidade_id = :unidadeId', { unidadeId });
     query.andWhere('aluno.status = :status', { status: StatusAluno.ATIVO });
