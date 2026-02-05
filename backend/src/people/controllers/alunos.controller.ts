@@ -282,6 +282,21 @@ export class AlunosController {
     @Body() bodyRaw: any,
     @Request() req,
   ) {
+    console.log('\n🌐🌐🌐 [CONTROLLER /alunos/:id PATCH] INÍCIO 🌐🌐🌐');
+    console.log('📋 [CONTROLLER] ID do aluno:', id);
+    console.log('👤 [CONTROLLER] Usuário:', {
+      id: req?.user?.id,
+      nome: req?.user?.nome,
+    });
+    console.log('📦 [CONTROLLER] Body recebido:', {
+      ...bodyRaw,
+      RESPONSAVEL: {
+        nome: bodyRaw.responsavel_nome,
+        cpf: bodyRaw.responsavel_cpf,
+        telefone: bodyRaw.responsavel_telefone,
+        parentesco: bodyRaw.responsavel_parentesco,
+      }
+    });
     
     // WORKAROUND REMOVIDO: Agora os campos consent_lgpd e consent_imagem chegam corretamente do frontend
     // Apenas garantir que existam caso não venham (para compatibilidade)

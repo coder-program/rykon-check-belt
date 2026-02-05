@@ -252,6 +252,7 @@ export default function AlunoDashboard({
   const [alunoFoto, setAlunoFoto] = useState<string | null>(null);
   const [canAccess, setCanAccess] = useState(false);
   const [dependentes, setDependentes] = useState<Dependente[]>([]);
+  const [refreshKey, setRefreshKey] = useState(0); // Force refresh
   const [showModal, setShowModal] = useState(false);
   const [showFaixaModal, setShowFaixaModal] = useState(false);
   const [faixaInicial, setFaixaInicial] = useState({
@@ -386,6 +387,10 @@ export default function AlunoDashboard({
       console.log('\n📦 [ALUNO DASHBOARD] Carregando dados em paralelo...');
       console.log('   - Real Aluno ID:', realAlunoId);
       console.log('   - User Perfis:', user?.perfis);
+      console.log('   - Refresh Key:', refreshKey);
+
+      // Cache-busting timestamp para garantir dados frescos
+      const timestamp = `${Date.now()}_${refreshKey}`;
 
       // Carregar dados em paralelo - USAR realAlunoId para graduação
       const [
@@ -430,10 +435,10 @@ export default function AlunoDashboard({
 
         // 6. Dados do Aluno (inclui unidade)
         // Usar realAlunoId que já foi resolvido
-        http(`/alunos/${realAlunoId}`, { auth: true }),
+        http(`/alunos/${realAlunoId}?_t=${timestamp}`, { auth: true }),
 
         // 7. Dependentes do aluno (se ele for responsável)
-        http("/alunos/meus-dependentes", { auth: true }),
+        http(`/alunos/meus-dependentes?_t=${timestamp}`, { auth: true }),
       ]);
 
       console.log('\n📊 [ALUNO DASHBOARD] Resultados das chamadas:');
@@ -517,7 +522,8 @@ export default function AlunoDashboard({
         const dependentesArray = Array.isArray(dependentesData.value)
           ? dependentesData.value
           : [];
-        setDependentes(dependentesArray);
+        console.log('👨‍👩‍👧‍👦 [DASHBOARD] Dependentes atualizados:', dependentesArray.length);
+        setDependentes([...dependentesArray]); // Force new array reference
       }
       // Histórico será implementado futuramente
       // if (historicoData.status === "fulfilled") {
@@ -575,9 +581,84 @@ export default function AlunoDashboard({
 
   const handleEditDependente = async (dependente: Dependente) => {
     try {
-      // Buscar dados completos do dependente
-      const dadosCompletos = await http(`/alunos/${dependente.id}`, {
+      // Limpar formData primeiro para evitar dados residuais
+      setFormData({
+        nome_completo: "",
+        cpf: "",
+        data_nascimento: "",
+        genero: "MASCULINO",
+        foto: "",
+        email: "",
+        telefone: "",
+        telefone_emergencia: "",
+        nome_contato_emergencia: "",
+        cep: "",
+        logradouro: "",
+        numero: "",
+        complemento: "",
+        bairro: "",
+        cidade: "",
+        uf: "",
+        unidade_id: "",
+        numero_matricula: "",
+        data_matricula: "",
+        faixa_atual: "",
+        graus: "",
+        observacoes_medicas: "",
+        alergias: "",
+        medicamentos_uso_continuo: "",
+        plano_saude: "",
+        atestado_medico_validade: "",
+        restricoes_medicas: "",
+        responsavel_nome: "",
+        responsavel_cpf: "",
+        responsavel_telefone: "",
+        responsavel_parentesco: "",
+        dia_vencimento: "",
+        valor_mensalidade: "",
+        desconto_percentual: "",
+        consent_lgpd: "",
+        consent_imagem: "",
+        observacoes: "",
+      });
+      
+      // Buscar dados completos do dependente (SEMPRE FRESH, SEM CACHE)
+      const timestamp = `${Date.now()}_${refreshKey}`;
+      console.log('🔍 [FRONTEND] Buscando dependente com timestamp:', timestamp);
+      
+      const dadosCompletos = await http(`/alunos/${dependente.id}?_t=${timestamp}`, {
         auth: true,
+      });
+
+      console.log('📋 [FRONTEND - handleEditDependente] Dados completos recebidos da API:', dadosCompletos);
+      console.log('📞 [FRONTEND - handleEditDependente] CONTATO recebido:', {
+        email: dadosCompletos.email,
+        telefone: dadosCompletos.telefone,
+        telefone_emergencia: dadosCompletos.telefone_emergencia,
+        nome_contato_emergencia: dadosCompletos.nome_contato_emergencia
+      });
+      console.log('🏠 [FRONTEND - handleEditDependente] ENDEREÇO recebido:', {
+        endereco: dadosCompletos.endereco,
+        cep: dadosCompletos.endereco?.cep,
+        logradouro: dadosCompletos.endereco?.logradouro,
+        numero: dadosCompletos.endereco?.numero,
+        complemento: dadosCompletos.endereco?.complemento,
+        bairro: dadosCompletos.endereco?.bairro,
+        cidade: dadosCompletos.endereco?.cidade,
+        estado: dadosCompletos.endereco?.estado
+      });
+      console.log('🏥 [FRONTEND - handleEditDependente] SAÚDE recebido:', {
+        observacoes_medicas: dadosCompletos.observacoes_medicas,
+        alergias: dadosCompletos.alergias,
+        medicamentos_uso_continuo: dadosCompletos.medicamentos_uso_continuo,
+        plano_saude: dadosCompletos.plano_saude,
+        atestado_medico_validade: dadosCompletos.atestado_medico_validade,
+        restricoes_medicas: dadosCompletos.restricoes_medicas
+      });
+      console.log('💰 [FRONTEND - handleEditDependente] FINANCEIRO recebido:', {
+        dia_vencimento: dadosCompletos.dia_vencimento,
+        valor_mensalidade: dadosCompletos.valor_mensalidade,
+        desconto_percentual: dadosCompletos.desconto_percentual
       });
 
       // Buscar graduação atual do aluno
@@ -607,7 +688,8 @@ export default function AlunoDashboard({
 
       setIsEditMode(true);
       setEditingDependenteId(dependente.id);
-      setFormData({
+      
+      const formDataToSet = {
         nome_completo: dadosCompletos.nome_completo || "",
         cpf: dadosCompletos.cpf || "",
         data_nascimento: dadosCompletos.data_nascimento || "",
@@ -649,7 +731,41 @@ export default function AlunoDashboard({
         consent_lgpd: dadosCompletos.consent_lgpd?.toString() || "",
         consent_imagem: dadosCompletos.consent_imagem?.toString() || "",
         observacoes: dadosCompletos.observacoes || "",
+      };
+      
+      console.log('📝 [FRONTEND - handleEditDependente] FormData preparado com CONTATO:', {
+        email: formDataToSet.email,
+        telefone: formDataToSet.telefone,
+        telefone_emergencia: formDataToSet.telefone_emergencia,
+        nome_contato_emergencia: formDataToSet.nome_contato_emergencia
       });
+      
+      console.log('📝 [FRONTEND - handleEditDependente] FormData preparado com ENDEREÇO:', {
+        cep: formDataToSet.cep,
+        logradouro: formDataToSet.logradouro,
+        numero: formDataToSet.numero,
+        complemento: formDataToSet.complemento,
+        bairro: formDataToSet.bairro,
+        cidade: formDataToSet.cidade,
+        uf: formDataToSet.uf
+      });
+      
+      console.log('📝 [FRONTEND - handleEditDependente] FormData preparado com SAÚDE:', {
+        observacoes_medicas: formDataToSet.observacoes_medicas,
+        alergias: formDataToSet.alergias,
+        medicamentos_uso_continuo: formDataToSet.medicamentos_uso_continuo,
+        plano_saude: formDataToSet.plano_saude,
+        atestado_medico_validade: formDataToSet.atestado_medico_validade,
+        restricoes_medicas: formDataToSet.restricoes_medicas
+      });
+      
+      console.log('📝 [FRONTEND - handleEditDependente] FormData preparado com FINANCEIRO:', {
+        dia_vencimento: formDataToSet.dia_vencimento,
+        valor_mensalidade: formDataToSet.valor_mensalidade,
+        desconto_percentual: formDataToSet.desconto_percentual
+      });
+      
+      setFormData(formDataToSet);
 
       setShowModal(true);
     } catch (error) {
@@ -660,6 +776,32 @@ export default function AlunoDashboard({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    console.log('\n🔵🔵🔵 [FRONTEND handleSubmit] INÍCIO 🔵🔵🔵');
+    console.log('📝 [FRONTEND] Dados do formulário:', {
+      ...formData,
+      RESPONSAVEL: {
+        nome: formData.responsavel_nome,
+        cpf: formData.responsavel_cpf,
+        telefone: formData.responsavel_telefone,
+        parentesco: formData.responsavel_parentesco,
+      },
+      SAUDE: {
+        observacoes_medicas: formData.observacoes_medicas,
+        alergias: formData.alergias,
+        medicamentos_uso_continuo: formData.medicamentos_uso_continuo,
+        plano_saude: formData.plano_saude,
+        atestado_medico_validade: formData.atestado_medico_validade,
+        restricoes_medicas: formData.restricoes_medicas
+      },
+      FINANCEIRO: {
+        dia_vencimento: formData.dia_vencimento,
+        valor_mensalidade: formData.valor_mensalidade,
+        desconto_percentual: formData.desconto_percentual
+      }
+    });
+    console.log('✏️ [FRONTEND] Modo:', isEditMode ? 'EDITAR' : 'CRIAR');
+    console.log('🆔 [FRONTEND] ID do dependente:', editingDependenteId);
 
     // Prevenir múltiplas submissões
     if (isLoading) return;
@@ -720,6 +862,29 @@ export default function AlunoDashboard({
           {} as Record<string, unknown>
         );
 
+        console.log('📤 [FRONTEND] Dados preparados para envio (PATCH):', {
+          ...dataToSend,
+          RESPONSAVEL: {
+            nome: dataToSend.responsavel_nome,
+            cpf: dataToSend.responsavel_cpf,
+            telefone: dataToSend.responsavel_telefone,
+            parentesco: dataToSend.responsavel_parentesco,
+          },
+          SAUDE: {
+            observacoes_medicas: dataToSend.observacoes_medicas,
+            alergias: dataToSend.alergias,
+            medicamentos_uso_continuo: dataToSend.medicamentos_uso_continuo,
+            plano_saude: dataToSend.plano_saude,
+            atestado_medico_validade: dataToSend.atestado_medico_validade,
+            restricoes_medicas: dataToSend.restricoes_medicas
+          },
+          FINANCEIRO: {
+            dia_vencimento: dataToSend.dia_vencimento,
+            valor_mensalidade: dataToSend.valor_mensalidade,
+            desconto_percentual: dataToSend.desconto_percentual
+          }
+        });
+
         const response = await http(`/alunos/${editingDependenteId}`, {
           method: "PATCH",
           body: dataToSend,
@@ -727,10 +892,29 @@ export default function AlunoDashboard({
         });
 
         if (response) {
+          console.log('✅ [FRONTEND] Resposta do backend (PATCH):', {
+            ...response,
+            endereco: response.endereco,
+            saude: {
+              observacoes_medicas: response.observacoes_medicas,
+              alergias: response.alergias,
+              medicamentos_uso_continuo: response.medicamentos_uso_continuo,
+              plano_saude: response.plano_saude,
+              atestado_medico_validade: response.atestado_medico_validade,
+              restricoes_medicas: response.restricoes_medicas
+            },
+            financeiro: {
+              dia_vencimento: response.dia_vencimento,
+              valor_mensalidade: response.valor_mensalidade,
+              desconto_percentual: response.desconto_percentual
+            }
+          });
           toast.success("Dependente atualizado com sucesso!");
         }
       } else {
         // Criar novo dependente
+        console.log('📤 [FRONTEND] Dados preparados para envio (POST):', formData);
+
         const response = await http("/alunos", {
           method: "POST",
           body: formData as Record<string, unknown>,
@@ -738,12 +922,25 @@ export default function AlunoDashboard({
         });
 
         if (response) {
+          console.log('✅ [FRONTEND] Resposta do backend (POST):', response);
           toast.success("Dependente cadastrado com sucesso!");
         }
       }
 
-      // Recarregar dados ANTES de fechar modal
+      // Recarregar dados e aguardar um pouco para garantir atualização
+      console.log('🔄 [FRONTEND] Recarregando dashboard após save...');
+      
+      // Incrementar refreshKey para forçar re-fetch
+      setRefreshKey(prev => prev + 1);
+      
+      // Aguardar um pouco para o backend processar
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
       await loadDashboardData();
+      console.log('✅ [FRONTEND] Dashboard recarregado!');
+      
+      // Aguardar 200ms para garantir que o estado foi atualizado
+      await new Promise(resolve => setTimeout(resolve, 200));
 
       // Limpar e fechar modal
       setShowModal(false);

@@ -187,6 +187,18 @@ export class CreateAlunoDto {
   @IsOptional()
   medicamentos_uso_continuo?: string;
 
+  @IsString()
+  @IsOptional()
+  plano_saude?: string;
+
+  @IsDateString({}, { message: 'Validade do atestado médico inválida' })
+  @IsOptional()
+  atestado_medico_validade?: string;
+
+  @IsString()
+  @IsOptional()
+  restricoes_medicas?: string;
+
   // ===== RESPONSÁVEL (obrigatório para menores) =====
   @IsString()
   @IsOptional()
@@ -362,6 +374,18 @@ export class CreateDependenteDto {
   @IsString()
   @IsOptional()
   medicamentos_uso_continuo?: string;
+
+  @IsString()
+  @IsOptional()
+  plano_saude?: string;
+
+  @IsDateString({}, { message: 'Validade do atestado médico inválida' })
+  @IsOptional()
+  atestado_medico_validade?: string;
+
+  @IsString()
+  @IsOptional()
+  restricoes_medicas?: string;
 
   // ===== FINANCEIRO =====
   @IsInt()

@@ -224,6 +224,40 @@ export default function DependenteForm({
       .slice(0, 15);
   };
 
+  const buscarCEP = async (cep: string) => {
+    const cepLimpo = cep.replace(/\D/g, "");
+
+    if (cepLimpo.length !== 8) {
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `https://viacep.com.br/ws/${cepLimpo}/json/`
+      );
+      const data = await response.json();
+
+      if (data.erro) {
+        console.error("CEP não encontrado");
+        return;
+      }
+
+      // Preencher campos de endereço automaticamente
+      setFormData({
+        ...formData,
+        cep: cepLimpo,
+        logradouro: data.logradouro || formData.logradouro,
+        bairro: data.bairro || formData.bairro,
+        cidade: data.localidade || formData.cidade,
+        uf: data.uf || formData.uf,
+      });
+
+      console.log("✅ Endereço preenchido automaticamente via CEP:", data);
+    } catch (error) {
+      console.error("Erro ao buscar CEP:", error);
+    }
+  };
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
       <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[95vh] sm:max-h-[90vh] overflow-y-auto">
@@ -566,10 +600,17 @@ export default function DependenteForm({
                 <Input
                   id="cep"
                   value={formData.cep || ""}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                    handleChange("cep", e.target.value)
-                  }
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                    const cep = e.target.value.replace(/\D/g, "");
+                    handleChange("cep", cep);
+                    
+                    // Buscar CEP automaticamente quando tiver 8 dígitos
+                    if (cep.length === 8) {
+                      buscarCEP(cep);
+                    }
+                  }}
                   placeholder="00000-000"
+                  maxLength={8}
                   className="h-10 sm:h-11 text-sm sm:text-base"
                 />
               </div>
