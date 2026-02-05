@@ -1241,6 +1241,11 @@ export class PresencaService {
       .leftJoinAndSelect('aula.professor', 'professor')
       .where('presenca.hora_checkin BETWEEN :inicio AND :fim', { inicio, fim });
 
+    console.log('🔍 [RELATÓRIO BACKEND] Params recebidos:', { dataInicio, dataFim, unidadeId });
+    console.log('📅 [RELATÓRIO BACKEND] Datas calculadas:', { inicio, fim });
+    console.log('👤 [RELATÓRIO BACKEND] User perfis:', perfisNomes);
+    console.log('🏢 [RELATÓRIO BACKEND] Filtros:', { isInstrutor, isProfessor, isGerente, isRecepcionista, unidadeId });
+
     // Primeiro buscar SEM filtro de unidade para ver se existem presenças
     const todasPresencas = await this.presencaRepository
       .createQueryBuilder('presenca')
@@ -1249,9 +1254,11 @@ export class PresencaService {
       .where('presenca.hora_checkin BETWEEN :inicio AND :fim', { inicio, fim })
       .getRawMany();
     
+    console.log(`📊 [RELATÓRIO BACKEND] Total presenças no período (sem filtro unidade): ${todasPresencas.length}`);
+    
     if (todasPresencas.length > 0) {
-      todasPresencas.forEach((p, i) => {
-      });
+      const unidadesPresentes = [...new Set(todasPresencas.map(p => p.aluno_unidade_id))];
+      console.log('🏢 [RELATÓRIO BACKEND] Unidades com presenças:', unidadesPresentes);
     }
 
     if (unidadeId) {
@@ -1278,6 +1285,17 @@ export class PresencaService {
       .addSelect('professor.id', 'professor_id')
       .orderBy('presenca.hora_checkin', 'DESC')
       .getRawMany();
+
+    console.log(`✅ [RELATÓRIO BACKEND] Presenças encontradas COM filtro: ${presencas.length}`);
+    
+    if (presencas.length > 0) {
+      console.log('📄 [RELATÓRIO BACKEND] Primeira presença:', {
+        id: presencas[0].presenca_id,
+        hora_checkin: presencas[0].presenca_hora_checkin,
+        aluno: presencas[0].aluno_nome,
+        unidade_id: presencas[0].unidade_id
+      });
+    }
 
     const resultado = presencas.map((p) => {
       // Buscar categoria da faixa cadastrada (INFANTIL ou ADULTO)

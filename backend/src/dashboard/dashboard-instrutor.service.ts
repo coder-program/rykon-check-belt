@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In } from 'typeorm';
+import { Repository, In, Between } from 'typeorm';
 import { Person, TipoCadastro } from '../people/entities/person.entity';
 import { Aula } from '../presenca/entities/aula.entity';
 import { Presenca } from '../presenca/entities/presenca.entity';
@@ -230,56 +230,78 @@ export class DashboardInstrutorService {
   }
 
   async getProximasAulas(usuarioId: string): Promise<ProximaAula[]> {
-    // Buscar o professor pelo usuario_id
-    const professor = await this.personRepository.findOne({
-      where: {
-        usuario_id: usuarioId,
-        tipo_cadastro: TipoCadastro.PROFESSOR,
-      },
-    });
+    console.log('\n🎯🎯🎯 [PRÓXIMAS AULAS] INÍCIO 🎯🎯🎯');
+    console.log('👤 Usuario ID:', usuarioId);
+    
+    try {
+      // Buscar o professor pelo usuario_id
+      const professor = await this.personRepository.findOne({
+        where: {
+          usuario_id: usuarioId,
+          tipo_cadastro: TipoCadastro.PROFESSOR,
+        },
+      });
 
-    if (!professor) {
-      throw new NotFoundException('Professor não encontrado');
+      if (!professor) {
+        throw new NotFoundException('Professor não encontrado');
+      }
+
+      console.log('👨‍🏫 Professor encontrado:', professor.id, professor.nome_completo);
+      const professorId = professor.id;
+
+      // Pegar dia da semana atual (0 = domingo, 1 = segunda, ..., 6 = sábado)
+      const diaSemanaHoje = new Date().getDay();
+      console.log('📅 Dia da semana hoje:', diaSemanaHoje);
+
+      // Buscar aulas do dia da semana (aulas recorrentes)
+      const aulas = await this.aulaRepository.find({
+        where: {
+          professor_id: professorId,
+          dia_semana: diaSemanaHoje,
+          ativo: true,
+        },
+        relations: ['unidade'],
+        order: { data_hora_inicio: 'ASC' },
+        take: 3,
+      });
+      
+      console.log('🎯 Aulas encontradas para DIA DA SEMANA', diaSemanaHoje, ':', aulas.length);
+
+      // Para cada aula, buscar número de alunos inscritos
+      const aulasComAlunos = await Promise.all(
+        aulas.map(async (aula) => {
+          const numAlunos = await this.presencaRepository.count({
+            where: { aula_id: aula.id },
+          });
+
+          // Extrair horário da data_hora_inicio e data_hora_fim
+          const horaInicio = aula.data_hora_inicio 
+            ? new Date(aula.data_hora_inicio).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+            : '00:00';
+          const horaFim = aula.data_hora_fim 
+            ? new Date(aula.data_hora_fim).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+            : '00:00';
+
+          return {
+            id: aula.id,
+            horario: `${horaInicio} - ${horaFim}`,
+            tipo: aula.tipo || 'Jiu-Jitsu',
+            alunos: numAlunos,
+            local: aula.unidade?.nome || 'Tatame Principal',
+            data: new Date(), // Data de hoje
+          };
+        }),
+      );
+
+      console.log('✅ Total de aulas retornadas:', aulasComAlunos.length);
+      console.log('🎯🎯🎯 [PRÓXIMAS AULAS] FIM 🎯🎯🎯\n');
+      
+      return aulasComAlunos;
+    } catch (error) {
+      console.error('❌❌❌ [PRÓXIMAS AULAS] ERRO:', error);
+      console.error('Stack:', error.stack);
+      throw error;
     }
-
-    const professorId = professor.id;
-
-    const hoje = new Date();
-    const amanha = new Date(hoje);
-    amanha.setDate(hoje.getDate() + 1);
-
-    const aulas = await this.aulaRepository.find({
-      where: {
-        professor_id: professorId,
-        data_hora_inicio: {
-          $gte: hoje,
-          $lte: amanha,
-        } as any,
-      },
-      relations: ['unidade'],
-      order: { data_hora_inicio: 'ASC' },
-      take: 3,
-    });
-
-    // Para cada aula, buscar número de alunos inscritos
-    const aulasComAlunos = await Promise.all(
-      aulas.map(async (aula) => {
-        const numAlunos = await this.presencaRepository.count({
-          where: { aula_id: aula.id },
-        });
-
-        return {
-          id: aula.id,
-          horario: `${aula.hora_inicio} - ${aula.hora_fim}`,
-          tipo: aula.tipo || 'Jiu-Jitsu',
-          alunos: numAlunos,
-          local: aula.unidade?.nome || 'Tatame Principal',
-          data: aula.data_hora_inicio || new Date(),
-        };
-      }),
-    );
-
-    return aulasComAlunos;
   }
 
   async getAlunosDestaque(usuarioId: string): Promise<AlunoDestaque[]> {

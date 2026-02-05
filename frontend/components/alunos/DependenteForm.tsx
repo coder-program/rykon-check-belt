@@ -29,6 +29,15 @@ interface DependenteFormData {
   telefone_emergencia?: string;
   nome_contato_emergencia?: string;
 
+  // Endereço
+  cep?: string;
+  logradouro?: string;
+  numero?: string;
+  complemento?: string;
+  bairro?: string;
+  cidade?: string;
+  uf?: string;
+
   // Matrícula
   unidade_id: string;
   data_matricula?: string;
@@ -540,6 +549,152 @@ export default function DependenteForm({
                 placeholder="Nome completo"
                 className="h-10 sm:h-11 text-sm sm:text-base"
               />
+            </div>
+          </div>
+
+          {/* Informações de Endereço */}
+          <div className="space-y-3 sm:space-y-4">
+            <h3 className="text-base sm:text-lg font-semibold text-gray-900 border-b pb-2">
+              Endereço
+            </h3>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
+              <div>
+                <Label htmlFor="cep" className="text-xs sm:text-sm">
+                  CEP
+                </Label>
+                <Input
+                  id="cep"
+                  value={formData.cep || ""}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    handleChange("cep", e.target.value)
+                  }
+                  placeholder="00000-000"
+                  className="h-10 sm:h-11 text-sm sm:text-base"
+                />
+              </div>
+
+              <div className="md:col-span-2">
+                <Label htmlFor="logradouro" className="text-xs sm:text-sm">
+                  Logradouro
+                </Label>
+                <Input
+                  id="logradouro"
+                  value={formData.logradouro || ""}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    handleChange("logradouro", e.target.value)
+                  }
+                  placeholder="Rua, Avenida, etc."
+                  className="h-10 sm:h-11 text-sm sm:text-base"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
+              <div>
+                <Label htmlFor="numero" className="text-xs sm:text-sm">
+                  Número
+                </Label>
+                <Input
+                  id="numero"
+                  value={formData.numero || ""}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    handleChange("numero", e.target.value)
+                  }
+                  placeholder="123"
+                  className="h-10 sm:h-11 text-sm sm:text-base"
+                />
+              </div>
+
+              <div className="md:col-span-2">
+                <Label htmlFor="complemento" className="text-xs sm:text-sm">
+                  Complemento
+                </Label>
+                <Input
+                  id="complemento"
+                  value={formData.complemento || ""}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    handleChange("complemento", e.target.value)
+                  }
+                  placeholder="Apto, Casa, etc."
+                  className="h-10 sm:h-11 text-sm sm:text-base"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
+              <div>
+                <Label htmlFor="bairro" className="text-xs sm:text-sm">
+                  Bairro
+                </Label>
+                <Input
+                  id="bairro"
+                  value={formData.bairro || ""}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    handleChange("bairro", e.target.value)
+                  }
+                  placeholder="Nome do bairro"
+                  className="h-10 sm:h-11 text-sm sm:text-base"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="cidade" className="text-xs sm:text-sm">
+                  Cidade
+                </Label>
+                <Input
+                  id="cidade"
+                  value={formData.cidade || ""}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    handleChange("cidade", e.target.value)
+                  }
+                  placeholder="Nome da cidade"
+                  className="h-10 sm:h-11 text-sm sm:text-base"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="uf" className="text-xs sm:text-sm">
+                  UF
+                </Label>
+                <Select
+                  value={formData.uf || ""}
+                  onValueChange={(value) => handleChange("uf", value)}
+                >
+                  <SelectTrigger className="h-10 sm:h-11 text-sm sm:text-base">
+                    <SelectValue placeholder="Selecione" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="AC">AC</SelectItem>
+                    <SelectItem value="AL">AL</SelectItem>
+                    <SelectItem value="AP">AP</SelectItem>
+                    <SelectItem value="AM">AM</SelectItem>
+                    <SelectItem value="BA">BA</SelectItem>
+                    <SelectItem value="CE">CE</SelectItem>
+                    <SelectItem value="DF">DF</SelectItem>
+                    <SelectItem value="ES">ES</SelectItem>
+                    <SelectItem value="GO">GO</SelectItem>
+                    <SelectItem value="MA">MA</SelectItem>
+                    <SelectItem value="MT">MT</SelectItem>
+                    <SelectItem value="MS">MS</SelectItem>
+                    <SelectItem value="MG">MG</SelectItem>
+                    <SelectItem value="PA">PA</SelectItem>
+                    <SelectItem value="PB">PB</SelectItem>
+                    <SelectItem value="PR">PR</SelectItem>
+                    <SelectItem value="PE">PE</SelectItem>
+                    <SelectItem value="PI">PI</SelectItem>
+                    <SelectItem value="RJ">RJ</SelectItem>
+                    <SelectItem value="RN">RN</SelectItem>
+                    <SelectItem value="RS">RS</SelectItem>
+                    <SelectItem value="RO">RO</SelectItem>
+                    <SelectItem value="RR">RR</SelectItem>
+                    <SelectItem value="SC">SC</SelectItem>
+                    <SelectItem value="SP">SP</SelectItem>
+                    <SelectItem value="SE">SE</SelectItem>
+                    <SelectItem value="TO">TO</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
 

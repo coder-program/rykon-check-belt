@@ -131,8 +131,9 @@ export default function RelatorioPresencasPage() {
   // Query para buscar relatório de presenças
   const { data: relatorio, isLoading } = useQuery({
     queryKey: ["relatorio-presencas", selectedUnidade, dataReferencia, tipoPeriodo],
-    enabled: !isUnidadeRestrita || (isUnidadeRestrita && selectedUnidade !== "todas"), // Só executar quando perfis com unidade restrita tiverem unidade definida
+    enabled: !!user, // Executar sempre que user estiver carregado
     queryFn: async () => {
+      console.log('🚀 [RELATÓRIO] Query sendo EXECUTADA!');
       console.log('🔍 [RELATÓRIO] Iniciando busca com parâmetros:', {
         selectedUnidade,
         dataReferencia,

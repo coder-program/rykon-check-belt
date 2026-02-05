@@ -33,25 +33,40 @@ export class UsuariosService {
    * Retorna array serializado (plain objects) para preservar propriedades customizadas
    */
   private async enrichUsersWithUnidade(usuarios: any[]): Promise<any[]> {
+    console.log('\n🏗️ [ENRICH] Iniciando enriquecimento de usuários');
+    console.log(`🔢 [ENRICH] Total usuários para enriquecer: ${usuarios.length}`);
+
     if (!usuarios || usuarios.length === 0) {
+      console.log('⚠️ [ENRICH] Lista de usuários vazia, retornando array vazio');
       return [];
     }
 
     const usuariosEnriquecidos = await Promise.all(
       usuarios.map(async (usuario) => {
-        // Verificar perfis do usuário
+        // Log especial para responsáveis
         const perfis = usuario.perfis || [];
         const perfisNomes = perfis.map((p: any) =>
           (typeof p === 'string' ? p : p.nome)?.toUpperCase(),
         );
 
+        const isResponsavel = perfisNomes.includes('RESPONSAVEL');
+        
+        if (isResponsavel) {
+          console.log('👨‍👩‍👧‍👦 [ENRICH] Processando responsável:', {
+            id: usuario.id,
+            nome: usuario.nome,
+            email: usuario.email,
+            perfis: perfisNomes
+          });
+        }
+
+        // Verificar perfis do usuário
         const isGerente = perfisNomes.includes('GERENTE_UNIDADE');
         const isRecepcionista = perfisNomes.includes('RECEPCIONISTA');
         const isProfessor =
           perfisNomes.includes('PROFESSOR') ||
           perfisNomes.includes('INSTRUTOR');
         const isAluno = perfisNomes.includes('ALUNO');
-        const isResponsavel = perfisNomes.includes('RESPONSAVEL');
         const isTablet = perfisNomes.includes('TABLET_CHECKIN');
 
         const needsUnidade =
@@ -141,6 +156,8 @@ export class UsuariosService {
               };
             }
           } else if (isResponsavel) {
+            console.log('👨‍👩‍👧‍👦 [ENRICH] Buscando unidade do responsável:', usuario.id);
+            
             // Responsável: buscar via tabela responsaveis
             const unidadeData = await this.usuarioRepository.query(
               `SELECT u.id, u.nome, u.status
@@ -151,12 +168,16 @@ export class UsuariosService {
               [usuario.id],
             );
 
+            console.log('👨‍👩‍👧‍👦 [ENRICH] Unidade do responsável:', unidadeData);
+
             if (unidadeData && unidadeData.length > 0) {
               unidade = {
                 id: unidadeData[0].id,
                 nome: unidadeData[0].nome,
                 status: unidadeData[0].status,
               };
+              
+              console.log('👨‍👩‍👧‍👦 [ENRICH] Unidade encontrada para responsável:', unidade);
             }
           } else if (isTablet) {
             // Tablet: buscar via tabela tablet_unidades
@@ -179,16 +200,36 @@ export class UsuariosService {
           }
         }
 
-        return {
+        const resultado = {
           ...usuario,
           unidade,
           unidades: unidade ? [unidade] : [], // Array para compatibilidade com frontend
         };
+
+        if (isResponsavel) {
+          console.log('👨‍👩‍👧‍👦 [ENRICH] Resultado final do responsável:', {
+            id: resultado.id,
+            nome: resultado.nome,
+            unidade: resultado.unidade
+          });
+        }
+
+        return resultado;
       }),
     );
 
     // Serializar para plain objects
     const resultado = JSON.parse(JSON.stringify(usuariosEnriquecidos));
+
+    console.log('✅ [ENRICH] Enriquecimento concluído.');
+    console.log('📊 [ENRICH] Resumo final:', {
+      total: resultado.length,
+      comUnidade: resultado.filter(u => u.unidade).length,
+      semUnidade: resultado.filter(u => !u.unidade).length,
+      responsaveis: resultado.filter(u => 
+        u.perfis?.some(p => (typeof p === 'string' ? p : p.nome)?.toUpperCase() === 'RESPONSAVEL')
+      ).length
+    });
 
     return resultado;
   }
@@ -528,7 +569,16 @@ export class UsuariosService {
   }
 
   async findAllWithHierarchy(user?: any): Promise<Usuario[]> {
+    console.log('\n🔥🔥🔥 [FIND ALL HIERARCHY] INÍCIO 🔥🔥🔥');
+    console.log('👤 [DEBUG] Usuário logado:', {
+      id: user?.id,
+      nome: user?.nome,
+      email: user?.email,
+      perfis: user?.perfis
+    });
+    
     if (!user || !user.perfis) {
+      console.log('❌ [DEBUG] Usuário não tem perfis - retornando todos');
       const usuarios = await this.findAll();
       return this.enrichUsersWithUnidade(usuarios);
     }
@@ -545,24 +595,42 @@ export class UsuariosService {
     const isGerente = perfisLower.includes('gerente_unidade');
     const isRecepcionista = perfisLower.includes('recepcionista');
 
+    console.log('🔍 [DEBUG] Perfis detectados:', {
+      perfisOriginais: perfis,
+      perfisLower,
+      isMaster,
+      isFranqueado,
+      isGerente,
+      isRecepcionista
+    });
+
     // Master vê todos
     if (isMaster) {
+      console.log('👑 [DEBUG] MASTER - Retornando todos os usuários');
       const usuarios = await this.findAll();
-      return this.enrichUsersWithUnidade(usuarios);
+      const enriched = await this.enrichUsersWithUnidade(usuarios);
+      console.log(`👑 [DEBUG] MASTER - Total usuários: ${enriched.length}`);
+      return enriched;
     }
 
     // Franqueado vê apenas usuários das suas unidades
     if (isFranqueado) {
+      console.log('🏢 [DEBUG] FRANQUEADO - Buscando usuários das unidades...');
+      
       const franqueadoData = await this.usuarioRepository.query(
         `SELECT id FROM teamcruz.franqueados WHERE usuario_id = $1`,
         [user.id],
       );
 
+      console.log('🏢 [DEBUG] Dados do franqueado:', franqueadoData);
+
       if (!franqueadoData || franqueadoData.length === 0) {
+        console.log('❌ [DEBUG] Franqueado não encontrado!');
         return [];
       }
 
       const franqueadoId = franqueadoData[0].id;
+      console.log('🏢 [DEBUG] ID do franqueado:', franqueadoId);
 
       // LOG: Verificar tablets antes da query principal
       const debugTablets = await this.usuarioRepository.query(
@@ -574,6 +642,8 @@ export class UsuariosService {
          LEFT JOIN teamcruz.unidades un ON un.id = tu.unidade_id
          WHERE p.nome = 'TABLET_CHECKIN'`,
       );
+
+      console.log('📱 [DEBUG] Tablets no sistema:', debugTablets);
 
       const usuariosIds = await this.usuarioRepository.query(
         `
@@ -631,23 +701,51 @@ export class UsuariosService {
             AND f2.id != $1
             AND u.id != $2
         )
+        -- 🔥 CORREÇÃO CRÍTICA: Excluir RESPONSÁVEIS que têm unidade_id de OUTRA franquia
+        AND NOT EXISTS (
+          SELECT 1
+          FROM teamcruz.responsaveis resp_check
+          INNER JOIN teamcruz.unidades un_check ON un_check.id = resp_check.unidade_id
+          WHERE resp_check.usuario_id = u.id
+            AND un_check.franqueado_id != $1
+            AND un_check.franqueado_id IS NOT NULL
+        )
         `,
         [franqueadoId, user.id],
       );
 
+      console.log('🎯 [DEBUG] Query findAllWithHierarchy result:', {
+        total: usuariosIds.length,
+        usuarios: usuariosIds.map(u => ({
+          id: u.id,
+          nome: u.nome,
+          email: u.email,
+          motivo_inclusao: u.motivo_inclusao
+        }))
+      });
+
       // 🔥 LOG: Comparar tablets do sistema com os retornados
       const tabletsRetornados = usuariosIds.filter(
-        (u) => u.motivo_inclusao === 'tablet',
+        (u) => u.motivo_inclusao === 'tablet_da_unidade',
       );
+
+      console.log('📱 [DEBUG] Tablets retornados pela query:', tabletsRetornados);
+
+      // LOG: Responsáveis específicos
+      const responsaveis = usuariosIds.filter(u => u.motivo_inclusao.includes('responsavel'));
+      console.log('👨‍👩‍👧‍👦 [DEBUG] Responsáveis incluídos:', responsaveis);
 
       // 🔥 LOG DETALHADO: Quantos alunos foram retornados pela query
       const totalAlunos = usuariosIds.filter(
         (u: any) => u.motivo_inclusao === 'aluno_da_unidade',
       ).length;
 
+      console.log(`🎓 [DEBUG] Total de alunos: ${totalAlunos}`);
+
       const ids = usuariosIds.map((row: any) => row.id);
 
       if (ids.length === 0) {
+        console.log('🏢 [DEBUG] Nenhum usuário encontrado para o franqueado');
         return [];
       }
 
@@ -669,7 +767,22 @@ export class UsuariosService {
         },
       });
 
-      return this.enrichUsersWithUnidade(resultado);
+      console.log(`🏢 [DEBUG] Usuários finais findAllWithHierarchy: ${resultado.length}`);
+      
+      const enriched = await this.enrichUsersWithUnidade(resultado);
+      
+      console.log('✅ [DEBUG] Retornando usuários enriched:', {
+        total: enriched.length,
+        usuarios: enriched.map(u => ({
+          id: u.id,
+          nome: u.nome,
+          email: u.email,
+          ativo: u.ativo,
+          perfis: u.perfis?.map(p => p.nome)
+        }))
+      });
+
+      return enriched;
     }
 
     // Gerente vê apenas usuários da sua unidade
@@ -1226,6 +1339,14 @@ export class UsuariosService {
   }
 
   async findPendingApproval(user?: any): Promise<any[]> {
+    console.log('\n🔥🔥🔥🔥🔥 [USUARIOS PENDENTES] INÍCIO - BUG CRÍTICO 🔥🔥🔥🔥🔥');
+    console.log('👤 [DEBUG] Usuário logado:', {
+      id: user?.id,
+      nome: user?.nome,
+      email: user?.email,
+      perfis: user?.perfis
+    });
+    
     // Detectar perfil do usuário logado
     const perfis =
       user?.perfis?.map((p: any) => (typeof p === 'string' ? p : p.nome)) || [];
@@ -1239,10 +1360,20 @@ export class UsuariosService {
     const isGerente = perfisLower.includes('gerente_unidade');
     const isRecepcionista = perfisLower.includes('recepcionista');
 
+    console.log('🔍 [DEBUG] Perfis detectados:', {
+      perfisOriginais: perfis,
+      perfisLower,
+      isMaster,
+      isFranqueado,
+      isGerente,
+      isRecepcionista
+    });
+
     // Buscar usuários que estão inativos (aguardando aprovação)
     let usuarios: any[] = [];
 
     if (isMaster) {
+      console.log('👑 [DEBUG] MASTER - Buscando todos os usuários pendentes...');
       // Master vê todos os usuários pendentes
       usuarios = await this.usuarioRepository.find({
         where: {
@@ -1265,14 +1396,30 @@ export class UsuariosService {
           created_at: 'DESC',
         },
       });
+      
+      console.log(`👑 [DEBUG] MASTER - Encontrados ${usuarios.length} usuários pendentes`);
+      
+      // Enriquecer usuários com dados de unidade
+      const usuariosEnriquecidos = await this.enrichUsersWithUnidade(usuarios);
+      
+      console.log(`👑 [DEBUG] MASTER - Retornando ${usuariosEnriquecidos.length} usuários enriched`);
+      
+      return usuariosEnriquecidos;
+      
     } else if (isFranqueado) {
+      console.log('🏢 [DEBUG] FRANQUEADO - Buscando usuários das unidades do franqueado...');
+      
       const franqueadoData = await this.usuarioRepository.query(
         `SELECT id FROM teamcruz.franqueados WHERE usuario_id = $1`,
         [user.id],
       );
 
+      console.log('🏢 [DEBUG] Dados do franqueado:', franqueadoData);
+
       if (franqueadoData && franqueadoData.length > 0) {
         const franqueadoId = franqueadoData[0].id;
+        
+        console.log('🏢 [DEBUG] ID do franqueado:', franqueadoId);
 
         // DEBUG: Verificar usuários inativos no banco
         const usuariosInativos = await this.usuarioRepository.query(
@@ -1282,6 +1429,8 @@ export class UsuariosService {
            ORDER BY u.created_at DESC
            LIMIT 10`,
         );
+
+        console.log('🔍 [DEBUG] Total de usuários inativos no sistema:', usuariosInativos);
 
         // DEBUG: Verificar alunos vinculados a usuários inativos
         const alunosInativos = await this.usuarioRepository.query(
@@ -1296,6 +1445,8 @@ export class UsuariosService {
            LIMIT 10`,
         );
 
+        console.log('🎓 [DEBUG] Alunos inativos com suas unidades:', alunosInativos);
+
         // DEBUG: Verificar perfis dos usuários inativos
         const perfisInativos = await this.usuarioRepository.query(
           `SELECT u.id as usuario_id, u.nome as usuario_nome, p.nome as perfil_nome
@@ -1307,7 +1458,11 @@ export class UsuariosService {
            LIMIT 20`,
         );
 
+        console.log('👥 [DEBUG] Perfis dos usuários inativos:', perfisInativos);
+
         // Buscar GERENTES, ALUNOS, RECEPCIONISTAS, PROFESSORES e RESPONSAVEIS pendentes das unidades do franqueado
+        
+        console.log('🔍 [DEBUG] Executando query principal para franqueado...');
         
         const usuariosPendentes = await this.usuarioRepository.query(
           `
@@ -1354,6 +1509,17 @@ export class UsuariosService {
           [franqueadoId],
         );
 
+        console.log('🎯 [DEBUG] Resultado da query principal:', {
+          totalUsuarios: usuariosPendentes.length,
+          usuarios: usuariosPendentes.map(u => ({
+            id: u.id,
+            nome: u.nome,
+            email: u.email,
+            unidade_id: u.unidade_id,
+            unidade_nome: u.unidade_nome
+          }))
+        });
+
         // Buscar perfis e unidade para cada usuário
         for (const usuario of usuariosPendentes) {
           const perfisData = await this.usuarioRepository.query(
@@ -1379,6 +1545,11 @@ export class UsuariosService {
             delete usuario.unidade_nome;
             delete usuario.unidade_status;
           } else {
+            console.log('⚠️ [DEBUG] Usuário sem unidade detectado:', {
+              id: usuario.id,
+              nome: usuario.nome,
+              email: usuario.email
+            });
           }
         }
 
@@ -1388,15 +1559,29 @@ export class UsuariosService {
           JSON.stringify(usuariosPendentes),
         );
 
+        console.log('✅ [DEBUG] Usuários finais retornados para franqueado:', {
+          total: usuariosSerializados.length,
+          usuarios: usuariosSerializados.map(u => ({
+            id: u.id,
+            nome: u.nome,
+            email: u.email,
+            unidade: u.unidade,
+            perfis: u.perfis?.map(p => p.nome)
+          }))
+        });
+
         // Retornar direto os usuários serializados - não entrar no Promise.all abaixo
         // pois já temos a unidade correta vinda do LEFT JOIN na query
         return usuariosSerializados;
       } else {
+        console.log('❌ [DEBUG] Franqueado não encontrado na base de dados!');
         return [];
       }
     } else if (isGerente || isRecepcionista) {
       // Gerente ou Recepcionista vêem apenas alunos da sua unidade
       const tipoUsuario = isGerente ? 'Gerente' : 'Recepcionista';
+      
+      console.log(`🏛️ [DEBUG] ${tipoUsuario.toUpperCase()} - Buscando usuários da unidade...`);
 
       // Para gerente: buscar via tabela gerente_unidades
       // Para recepcionista: buscar via tabela recepcionista_unidades
@@ -1408,6 +1593,8 @@ export class UsuariosService {
            WHERE usuario_id = $1 AND ativo = true LIMIT 1`,
           [user.id],
         );
+        
+        console.log('🏛️ [DEBUG] Dados de unidade do gerente:', gerenteUnidade);
 
         if (gerenteUnidade && gerenteUnidade.length > 0) {
           unidadeId = gerenteUnidade[0].unidade_id;
@@ -1418,14 +1605,20 @@ export class UsuariosService {
           `SELECT unidade_id FROM teamcruz.recepcionista_unidades WHERE usuario_id = $1 AND ativo = true`,
           [user.id],
         );
+        
+        console.log('🏛️ [DEBUG] Dados de unidade do recepcionista:', recepcionistaData);
 
         if (recepcionistaData && recepcionistaData.length > 0) {
           unidadeId = recepcionistaData[0].unidade_id;
         }
       }
 
+      console.log(`🏛️ [DEBUG] ${tipoUsuario} - Unidade ID: ${unidadeId}`);
+
       if (unidadeId) {
         // Buscar ALUNOS, RECEPCIONISTAS, PROFESSORES e RESPONSÁVEIS da unidade que estão pendentes
+        console.log(`🏛️ [DEBUG] ${tipoUsuario} - Executando query para unidade ${unidadeId}...`);
+        
         const usuariosPendentes = await this.usuarioRepository.query(
           `
           SELECT DISTINCT u.id, u.username, u.email, u.nome, u.cpf, u.telefone,
@@ -1460,6 +1653,16 @@ export class UsuariosService {
           [unidadeId],
         );
 
+        console.log(`🎯 [DEBUG] ${tipoUsuario} - Resultado da query:`, {
+          totalUsuarios: usuariosPendentes.length,
+          usuarios: usuariosPendentes.map(u => ({
+            id: u.id,
+            nome: u.nome,
+            email: u.email,
+            unidade_id: u.unidade_id
+          }))
+        });
+
         // Buscar perfis e unidade para cada usuário
         for (const usuario of usuariosPendentes) {
           const perfisData = await this.usuarioRepository.query(
@@ -1490,68 +1693,27 @@ export class UsuariosService {
           }
         }
 
+        console.log(`✅ [DEBUG] ${tipoUsuario} - Usuários finais retornados:`, {
+          total: usuariosPendentes.length,
+          usuarios: usuariosPendentes.map(u => ({
+            id: u.id,
+            nome: u.nome,
+            email: u.email,
+            unidade: u.unidade,
+            perfis: u.perfis?.map(p => p.nome)
+          }))
+        });
+
         // Serializar para preservar propriedades customizadas
         return JSON.parse(JSON.stringify(usuariosPendentes));
       } else {
+        console.log(`❌ [DEBUG] ${tipoUsuario} - Unidade não encontrada!`);
         return [];
       }
     } else {
+      console.log('❌ [DEBUG] Perfil não reconhecido ou sem permissão!');
       return [];
     }
-
-    // Para cada usuário, buscar dados de aluno/professor e unidade
-    const usuariosComUnidade = await Promise.all(
-      usuarios.map(async (usuario) => {
-        const usuarioComUnidade = { ...usuario, unidade: null as any };
-
-        try {
-          // Tentar buscar como aluno
-          const aluno = await this.usuarioRepository.query(
-            `
-            SELECT a.*, u.nome as unidade_nome
-            FROM teamcruz.alunos a
-            LEFT JOIN teamcruz.unidades u ON a.unidade_id = u.id
-            WHERE a.usuario_id = $1
-          `,
-            [usuario.id],
-          );
-
-          if (aluno && aluno.length > 0) {
-            usuarioComUnidade.unidade = {
-              id: aluno[0].unidade_id,
-              nome: aluno[0].unidade_nome,
-              tipo: 'ALUNO',
-            };
-          } else {
-            // Tentar buscar como professor
-            const professor = await this.usuarioRepository.query(
-              `
-              SELECT p.*, pu.unidade_id, u.nome as unidade_nome
-              FROM teamcruz.professores p
-              LEFT JOIN teamcruz.professor_unidades pu ON p.id = pu.professor_id
-              LEFT JOIN teamcruz.unidades u ON pu.unidade_id = u.id
-              WHERE p.usuario_id = $1
-            `,
-              [usuario.id],
-            );
-
-            if (professor && professor.length > 0) {
-              usuarioComUnidade.unidade = {
-                id: professor[0].unidade_id,
-                nome: professor[0].unidade_nome,
-                tipo: 'PROFESSOR',
-              };
-            }
-          }
-        } catch (error) {
-          // Error silenciado
-        }
-
-        return usuarioComUnidade;
-      }),
-    );
-
-    return usuariosComUnidade;
   }
 
   async approveUser(userId: string): Promise<{ message: string }> {
