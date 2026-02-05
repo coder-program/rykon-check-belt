@@ -1432,6 +1432,10 @@ export class AlunosService {
   // ========== TABLET CHECK-IN ==========
 
   async listarAlunosParaCheckin(user: any, search?: string) {
+    console.log('🔍 [listarAlunosParaCheckin] INÍCIO');
+    console.log('📋 [listarAlunosParaCheckin] User ID:', user?.id);
+    console.log('📋 [listarAlunosParaCheckin] User perfis:', user?.perfis);
+    
     // Buscar unidade do usuário (TABLET_CHECKIN deve estar vinculado a uma unidade)
     let unidadeId: string | null = null;
 
@@ -1439,13 +1443,16 @@ export class AlunosService {
     const perfisNomes = (user?.perfis || []).map((p: any) =>
       typeof p === 'string' ? p.toUpperCase() : p.nome?.toUpperCase(),
     );
+    console.log('🔑 [listarAlunosParaCheckin] Perfis processados:', perfisNomes);
 
     if (perfisNomes.includes('TABLET_CHECKIN')) {
+      console.log('✅ [listarAlunosParaCheckin] Perfil TABLET_CHECKIN encontrado');
       const result = await this.dataSource.query(
         `SELECT unidade_id FROM teamcruz.tablet_unidades WHERE tablet_id = $1 AND ativo = true LIMIT 1`,
         [user.id],
       );
       unidadeId = result[0]?.unidade_id || null;
+      console.log('🏢 [listarAlunosParaCheckin] Unidade ID encontrada:', unidadeId);
     }
 
     if (!unidadeId) {
@@ -1472,6 +1479,11 @@ export class AlunosService {
     hoje.setHours(0, 0, 0, 0);
     const amanha = new Date(hoje);
     amanha.setDate(amanha.getDate() + 1);
+    
+    console.log('📅 [listarAlunosParaCheckin] Range de data:');
+    console.log('  - Hoje:', hoje.toISOString());
+    console.log('  - Amanhã:', amanha.toISOString());
+    console.log('  - Timezone local servidor:', new Date().toString());
 
     query.where('aluno.unidade_id = :unidadeId', { unidadeId });
     query.andWhere('aluno.status = :status', { status: StatusAluno.ATIVO });
@@ -1493,11 +1505,14 @@ export class AlunosService {
         '(LOWER(aluno.nome_completo) LIKE :search OR aluno.cpf LIKE :search)',
         { search: `%${search.toLowerCase()}%` },
       );
+      console.log('🔎 [listarAlunosParaCheckin] Filtro de busca aplicado:', search);
     }
 
     query.orderBy('aluno.nome_completo', 'ASC');
 
+    console.log('🔍 [listarAlunosParaCheckin] Query SQL:', query.getSql());
     const alunos = await query.getMany();
+    console.log(`📊 [listarAlunosParaCheckin] Total alunos encontrados: ${alunos.length}`);
     
     // Construir URL completa para as fotos
     // Usar a URL pública da API (backend)
