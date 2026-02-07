@@ -31,7 +31,9 @@ import {
 export class PaytimeController {
   private readonly logger = new Logger(PaytimeController.name);
 
-  constructor(private readonly paytimeService: PaytimeService) {}
+  constructor(
+    private readonly paytimeService: PaytimeService,
+  ) {}
 
   @Get('establishments')
   @ApiOperation({
@@ -1137,5 +1139,63 @@ export class PaytimeController {
     this.logger.debug(`💾 Atualizando planos Paytime da unidade ${unidadeId}...`);
     await this.paytimeService.updateUnidadePaytimePlans(unidadeId, plans);
     return { message: 'Planos atualizados com sucesso', plans };
+  }
+
+  @Get('banking/balance')
+  @ApiOperation({
+    summary: '💰 Consultar saldo bancário',
+    description: 'Consulta o saldo bancário de um estabelecimento Paytime',
+  })
+  @ApiQuery({
+    name: 'establishment_id',
+    required: true,
+    description: 'ID do estabelecimento',
+    example: 123,
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Saldo consultado com sucesso',
+  })
+  async getBankingBalance(@Query('establishment_id') establishmentId: number) {
+    return this.paytimeService.getBankingBalance(establishmentId);
+  }
+
+  @Get('banking/extract')
+  @ApiOperation({
+    summary: '📋 Consultar extrato bancário',
+    description: 'Consulta o extrato bancário de um estabelecimento Paytime',
+  })
+  @ApiQuery({
+    name: 'establishment_id',
+    required: true,
+    description: 'ID do estabelecimento',
+    example: 123,
+  })
+  @ApiQuery({
+    name: 'start_date',
+    required: true,
+    description: 'Data de início (YYYY-MM-DD)',
+    example: '2026-01-01',
+  })
+  @ApiQuery({
+    name: 'end_date',
+    required: true,
+    description: 'Data de fim (YYYY-MM-DD)',
+    example: '2026-01-31',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Extrato consultado com sucesso',
+  })
+  async getBankingExtract(
+    @Query('establishment_id') establishmentId: number,
+    @Query('start_date') startDate: string,
+    @Query('end_date') endDate: string,
+  ) {
+    return this.paytimeService.getBankingExtract(
+      establishmentId,
+      startDate,
+      endDate,
+    );
   }
 }

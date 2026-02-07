@@ -6,6 +6,7 @@ import {
   Param,
   UseGuards,
   Request,
+ Patch,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { PaytimeIntegrationService } from '../services/paytime-integration.service';
@@ -14,6 +15,7 @@ import {
   ProcessarPagamentoCartaoDto,
   ProcessarPagamentoBoletoDto,
 } from '../services/paytime-integration.service';
+import { CompletarDadosBoletoDto } from '../dto/completar-dados-boleto.dto';
 
 @Controller('financeiro/pagamentos-online')
 @UseGuards(JwtAuthGuard)
@@ -62,6 +64,17 @@ export class PagamentosOnlineController {
   ) {
     return this.paytimeIntegrationService.verificarStatusPix(
       transacaoId,
+      req.user.id,
+    );
+  }
+
+  @Post('boleto/completar-dados')
+  async completarDadosEGerarBoleto(
+    @Body() dto: CompletarDadosBoletoDto,
+    @Request() req: any,
+  ) {
+    return this.paytimeIntegrationService.completarDadosEGerarBoleto(
+      dto,
       req.user.id,
     );
   }

@@ -93,9 +93,9 @@ interface PaytimeSorter {
 @Injectable()
 export class PaytimeService {
   private readonly logger = new Logger(PaytimeService.name);
-  private readonly baseUrl = 'https://rykon-pay-production.up.railway.app';
-  private readonly paytimeUsername = 'admin';
-  private readonly paytimePassword = '!Rykon@pay';
+  private readonly baseUrl: string;
+  private readonly paytimeUsername: string;
+  private readonly paytimePassword: string;
   
   private token: string | null = null;
   private tokenExpires: number = 0;
@@ -105,7 +105,12 @@ export class PaytimeService {
     private configService: ConfigService,
     @InjectRepository(Unidade)
     private unidadeRepository: Repository<Unidade>,
-  ) {}
+  ) {
+    this.baseUrl = this.configService.get('RYKON_PAY_BASE_URL') || 'https://rykon-pay-production.up.railway.app';
+    this.paytimeUsername = this.configService.get('RYKON_PAY_USERNAME') || 'admin';
+    this.paytimePassword = this.configService.get('RYKON_PAY_PASSWORD') || '!Rykon@pay';
+    this.logger.log(`🔧 RykonPay configurado para: ${this.baseUrl}`);
+  }
 
   /**
    * Autentica com a API do Paytime (com proteção contra múltiplas chamadas simultâneas)
@@ -1012,9 +1017,21 @@ export class PaytimeService {
   async createCardTransaction(establishmentId: number, cardData: any) {
     const token = await this.authenticate();
 
-    const url = `${this.baseUrl}/api/transactions`;
+    const url = `${this.baseUrl}/api/transactions/card`;
     
-    const logData = { ...cardData, card: cardData.card ? { ...cardData.card, cvv: '***', number: '****' + cardData.card.number?.slice(-4) } : undefined };
+    // Log seguro (mascarar dados sensíveis)
+    const logData = {
+      ...cardData,
+      card: cardData.card ? {
+        holder_name: cardData.card.holder_name,
+        holder_document: cardData.card.holder_document,
+        card_number: '****' + (cardData.card.card_number?.slice(-4) || ''),
+        expiration_month: cardData.card.expiration_month,
+        expiration_year: cardData.card.expiration_year,
+        security_code: '***',
+      } : undefined
+    };
+    
     this.logger.debug(`💳 Criando transação Cartão para estabelecimento ${establishmentId}`);
     this.logger.debug(`📋 Request URL: ${url}`);
     this.logger.debug(`📋 Request Body: ${JSON.stringify(logData, null, 2)}`);
@@ -1050,7 +1067,7 @@ export class PaytimeService {
         error: errorDetails.error || 'Paytime API Error',
         paytimeError: errorDetails,
         timestamp: errorDetails.timestamp || new Date().toISOString(),
-        path: errorDetails.path || '/api/transactions',
+        path: errorDetails.path || '/api/transactions/card',
         request: {
           url,
           method: 'POST',
@@ -1072,7 +1089,7 @@ export class PaytimeService {
   async createBilletTransaction(establishmentId: number, billetData: any) {
     const token = await this.authenticate();
 
-    const url = `${this.baseUrl}/api/transactions`;
+    const url = `${this.baseUrl}/api/billets`;
     
     this.logger.debug(`💳 Criando boleto para estabelecimento ${establishmentId}`);
     this.logger.debug(`📋 Request URL: ${url}`);
@@ -1109,7 +1126,7 @@ export class PaytimeService {
         error: errorDetails.error || 'Paytime API Error',
         paytimeError: errorDetails,
         timestamp: errorDetails.timestamp || new Date().toISOString(),
-        path: errorDetails.path || '/api/transactions',
+        path: errorDetails.path || '/api/billets',
         request: {
           url,
           method: 'POST',
@@ -1121,6 +1138,43 @@ export class PaytimeService {
 
     const data = JSON.parse(responseText);
     this.logger.debug(`✅ Boleto criado: ${data.id} - Status: ${data.status}`);
+    
+    return data;
+  }
+
+  /**
+   * Buscar boleto específico por ID
+   */
+  async getBillet(establishmentId: number, billetId: string) {
+    const token = await this.authenticate();
+
+    const url = `${this.baseUrl}/api/billets/${billetId}`;
+    
+    this.logger.debug(`🔍 Buscando boleto ${billetId} do estabelecimento ${establishmentId}`);
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        'establishment_id': establishmentId.toString(),
+      },
+    });
+
+    if (!response.ok) {
+      if (response.status === 404) {
+        throw new NotFoundException(`Boleto ${billetId} não encontrado`);
+      }
+      
+      const errorText = await response.text();
+      this.logger.error(`❌ Erro ao buscar boleto: ${response.status} - ${errorText}`);
+      throw new BadRequestException(
+        `Erro ao buscar boleto: ${response.status} - ${errorText}`,
+      );
+    }
+
+    const data = await response.json();
+    this.logger.debug(`✅ Boleto ${billetId} encontrado - Status: ${data.status}`);
     
     return data;
   }
@@ -1265,6 +1319,75 @@ export class PaytimeService {
     await this.unidadeRepository.save(unidade);
 
     this.logger.log(`✅ Planos Paytime atualizados para unidade ${unidade.nome}: ${plans.length} planos`);
+  }
+
+  /**
+   * 📊 Consultar saldo bancário de um estabelecimento
+   */
+  async getBankingBalance(establishmentId: number) {
+    const token = await this.authenticate();
+    const url = `${this.baseUrl}/api/banking/balance`;
+
+    this.logger.debug(`💰 Consultando saldo bancário do estabelecimento ${establishmentId}...`);
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        'establishment_id': establishmentId.toString(),
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      this.logger.error(`❌ Erro ao consultar saldo: ${response.status} - ${errorText}`);
+      throw new BadRequestException(`Erro ao consultar saldo: ${response.status}`);
+    }
+
+    const data = await response.json();
+    this.logger.debug(`✅ Saldo consultado com sucesso`);
+    return data;
+  }
+
+  /**
+   * 📋 Consultar extrato bancário de um estabelecimento
+   */
+  async getBankingExtract(
+    establishmentId: number,
+    startDate: string,
+    endDate: string,
+  ) {
+    const token = await this.authenticate();
+    const url = `${this.baseUrl}/api/banking/extract`;
+
+    this.logger.debug(
+      `📋 Consultando extrato bancário do estabelecimento ${establishmentId} de ${startDate} a ${endDate}...`,
+    );
+
+    const queryParams = new URLSearchParams({
+      start_date: startDate,
+      end_date: endDate,
+    });
+
+    const response = await fetch(`${url}?${queryParams}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        'establishment_id': establishmentId.toString(),
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      this.logger.error(`❌ Erro ao consultar extrato: ${response.status} - ${errorText}`);
+      throw new BadRequestException(`Erro ao consultar extrato: ${response.status}`);
+    }
+
+    const data = await response.json();
+    this.logger.debug(`✅ Extrato consultado com sucesso - ${data.data?.length || 0} lançamentos`);
+    return data;
   }
 }
 

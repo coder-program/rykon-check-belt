@@ -113,13 +113,10 @@ export default function NovoEstabelecimentoPage() {
       const data = await response.json();
       // Se for objeto paginado, pegar o array items
       const unidadesArray = Array.isArray(data) ? data : (data.items || []);
-      console.log(`📊 Total de unidades recebidas: ${unidadesArray.length}`);
-      
+
       // Filtrar apenas unidades SEM vínculo com estabelecimento
       const unidadesSemVinculo = unidadesArray.filter(u => !u.paytime_establishment_id);
-      console.log(`✅ Unidades sem vínculo: ${unidadesSemVinculo.length}`);
-      console.log('Unidades com vínculo:', unidadesArray.filter(u => u.paytime_establishment_id).map(u => ({nome: u.nome, estabelecimento: u.paytime_establishment_id})));
-      
+
       setUnidades(unidadesSemVinculo);
     } catch (error: any) {
       console.error("Erro:", error);
@@ -365,8 +362,6 @@ export default function NovoEstabelecimentoPage() {
         representative_id: formData.representative_id ? parseInt(formData.representative_id) : undefined,
       };
 
-      console.log("📤 Enviando payload:", payload);
-
       const token = localStorage.getItem("token");
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/paytime/establishments`,
@@ -386,7 +381,6 @@ export default function NovoEstabelecimentoPage() {
       }
 
       const data = await response.json();
-      console.log("✅ Estabelecimento criado:", data);
 
       // Se foi selecionada uma unidade, vincular automaticamente
       if (selectedUnidade && data.id) {
@@ -403,7 +397,6 @@ export default function NovoEstabelecimentoPage() {
           );
 
           if (vincularResponse.ok) {
-            console.log("✅ Unidade vinculada automaticamente");
             toast.success("Estabelecimento criado e vinculado à unidade com sucesso!");
           } else {
             console.warn("⚠️ Estabelecimento criado mas falha ao vincular unidade");

@@ -73,18 +73,11 @@ export default function GatewaysPage() {
       // Filtro por tipo
       if (typeFilter !== "all") {
         const filters = { type: typeFilter };
-        console.log("🎯 [GATEWAY] Aplicando filtro de tipo:", filters);
         params.append("filters", JSON.stringify(filters));
-      } else {
-        console.log("🎯 [GATEWAY] Sem filtro de tipo (all)");
       }
-
       // Busca
       if (searchTerm.trim()) {
-        console.log("🔍 [GATEWAY] Aplicando busca:", searchTerm.trim());
         params.append("search", searchTerm.trim());
-      } else {
-        console.log("🔍 [GATEWAY] Sem termo de busca");
       }
 
       // Ordenação padrão
@@ -94,14 +87,6 @@ export default function GatewaysPage() {
       );
 
       const url = `${process.env.NEXT_PUBLIC_API_URL}/paytime/gateways?${params.toString()}`;
-      console.log("📡 [GATEWAY] URL da requisição:", url);
-      console.log("📋 [GATEWAY] Parâmetros:", {
-        page,
-        perPage,
-        typeFilter,
-        searchTerm,
-        paramsString: params.toString()
-      });
 
       const response = await fetch(url, {
         headers: {
@@ -114,10 +99,7 @@ export default function GatewaysPage() {
       }
 
       const data: GatewaysResponse = await response.json();
-      console.log("✅ [GATEWAY] Resposta recebida:", data);
-      console.log("📊 [GATEWAY] Total de gateways:", data.total);
-      console.log("📄 [GATEWAY] Gateways retornados:", data.data.length);
-      
+
       setGateways(data.data);
       setTotal(data.total);
       setLastPage(data.lastPage);

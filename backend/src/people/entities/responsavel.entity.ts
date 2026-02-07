@@ -9,6 +9,7 @@ import {
   OneToMany,
 } from 'typeorm';
 import { Usuario } from '../../usuarios/entities/usuario.entity';
+import { Endereco } from '../../enderecos/endereco.entity';
 
 @Entity({ name: 'responsaveis', schema: 'teamcruz' })
 export class Responsavel {
@@ -50,30 +51,40 @@ export class Responsavel {
   @Column({ length: 20, nullable: true })
   telefone_secundario: string;
 
-  // Endereço
-  @Column({ length: 10, nullable: true })
-  cep: string;
+  // Endereço - Relação com tabela de endereços
+  @Column({ type: 'uuid', nullable: true })
+  endereco_id: string;
 
-  @Column({ length: 255, nullable: true })
-  logradouro: string;
+  @ManyToOne(() => Endereco, { eager: false })
+  @JoinColumn({ name: 'endereco_id' })
+  endereco: Endereco;
 
-  @Column({ length: 10, nullable: true })
-  numero: string;
+  // Campos legados de endereço (deprecados - usar endereco_id)
+  // NOTA: Colunas comentadas até executar migration
+  // Após migration, esses campos permanecerão no banco mas não serão mais usados pelo código
+  // @Column({ length: 10, nullable: true })
+  // cep: string;
 
-  @Column({ length: 100, nullable: true })
-  complemento: string;
+  // @Column({ length: 255, nullable: true })
+  // logradouro: string;
 
-  @Column({ length: 100, nullable: true })
-  bairro: string;
+  // @Column({ length: 10, nullable: true })
+  // numero: string;
 
-  @Column({ length: 100, nullable: true })
-  cidade: string;
+  // @Column({ length: 100, nullable: true })
+  // complemento: string;
 
-  @Column({ length: 2, nullable: true })
-  estado: string;
+  // @Column({ length: 100, nullable: true })
+  // bairro: string;
 
-  @Column({ length: 50, default: 'Brasil', nullable: true })
-  pais: string;
+  // @Column({ length: 100, nullable: true })
+  // cidade: string;
+
+  // @Column({ length: 2, nullable: true })
+  // estado: string;
+
+  // @Column({ length: 50, default: 'Brasil', nullable: true })
+  // pais: string;
 
   // Profissional
   @Column({ length: 100, nullable: true })

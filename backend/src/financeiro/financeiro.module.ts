@@ -21,6 +21,7 @@ import { Aluno } from '../people/entities/aluno.entity';
 import { Unidade } from '../people/entities/unidade.entity';
 import { Usuario } from '../usuarios/entities/usuario.entity';
 import { Presenca } from '../presenca/entities/presenca.entity';
+import { Endereco } from '../enderecos/endereco.entity';
 
 // Services
 import { PlanosService } from './services/planos.service';
@@ -79,6 +80,7 @@ import { PaytimeWebhookService } from './services/paytime-webhook.service';
       Unidade,
       Usuario,
       Presenca,
+      Endereco,
     ]),
   ],
   controllers: [

@@ -33,7 +33,15 @@ export class Plano {
   })
   tipo: TipoPlano;
 
-  @Column({ type: 'decimal', precision: 10, scale: 2 })
+  @Column({ 
+    type: 'decimal', 
+    precision: 10, 
+    scale: 2,
+    transformer: {
+      to: (value) => value,
+      from: (value) => parseFloat(value) || 0,
+    }
+  })
   valor: number;
 
   @Column({ type: 'text', nullable: true })

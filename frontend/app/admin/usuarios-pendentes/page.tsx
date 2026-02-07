@@ -139,24 +139,55 @@ function AprovacaoUsuariosPage() {
   const { data: users = [], isLoading } = useQuery({
     queryKey: ["usuarios-pendentes", search, filter],
     queryFn: async () => {
+      console.log('\n🔥🔥🔥 [FRONTEND] CARREGANDO USUÁRIOS PENDENTES 🔥🔥🔥');
+      console.log('🔍 [FRONTEND] Filtros:', { search, filter });
+      
       // Buscar todos os usuários se o filtro for "todos" ou "aprovados"
       const endpoint =
         filter === "pendentes" ? "/usuarios/pendentes/list" : "/usuarios";
+
+      console.log('🌐 [FRONTEND] Endpoint:', endpoint);
+
+      const token = localStorage.getItem("token");
+      const userData = localStorage.getItem("user");
+      
+      if (userData) {
+        const user = JSON.parse(userData);
+        console.log('👤 [FRONTEND] Usuário logado:', {
+          id: user.id,
+          nome: user.nome,
+          email: user.email,
+          perfis: user.perfis
+        });
+      }
 
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}${endpoint}`,
         {
           headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
+            Authorization: `Bearer ${token}`,
           },
         }
       );
 
       if (!response.ok) {
+        console.error('❌ [FRONTEND] Erro na resposta:', response.status, response.statusText);
         throw new Error("Erro ao carregar usuários");
       }
 
       const data = await response.json();
+      
+      console.log('📥 [FRONTEND] Dados recebidos do backend:', {
+        total: data.length,
+        usuarios: data.map((user: any) => ({
+          id: user.id,
+          nome: user.nome,
+          email: user.email,
+          perfis: user.perfis?.map((p: any) => (typeof p === 'string' ? p : p.nome)),
+          unidade: user.unidade,
+          ativo: user.ativo
+        }))
+      });
 
       // Transformar dados para o formato esperado
       const allUsers = data.map((user: {
@@ -168,6 +199,7 @@ function AprovacaoUsuariosPage() {
         perfis?: Array<{ nome: string } | string>;
         ativo: boolean;
         created_at: string;
+        unidade?: any;
       }) => ({
         id: user.id,
         nome: user.nome,
@@ -180,6 +212,18 @@ function AprovacaoUsuariosPage() {
         unidade: user.unidade, // Incluir dados da unidade
       }));
 
+      console.log('🔄 [FRONTEND] Dados transformados:', {
+        total: allUsers.length,
+        usuarios: allUsers.map(u => ({
+          id: u.id,
+          nome: u.nome,
+          email: u.email,
+          perfis: u.perfis,
+          unidade: u.unidade,
+          ativo: u.ativo
+        }))
+      });
+
       // Filtrar baseado no estado
       let filtered = allUsers;
       if (filter === "pendentes") {
@@ -191,6 +235,18 @@ function AprovacaoUsuariosPage() {
       }
       // Se filter === "todos", não filtra por status
 
+      console.log('🎯 [FRONTEND] Após filtro por status:', {
+        filtro: filter,
+        total: filtered.length,
+        usuarios: filtered.map(u => ({
+          id: u.id,
+          nome: u.nome,
+          email: u.email,
+          ativo: u.ativo,
+          unidade: u.unidade
+        }))
+      });
+
       // Filtrar por busca
       if (search) {
         filtered = filtered.filter(
@@ -198,7 +254,24 @@ function AprovacaoUsuariosPage() {
             u.nome.toLowerCase().includes(search.toLowerCase()) ||
             u.email.toLowerCase().includes(search.toLowerCase())
         );
+        
+        console.log('🔎 [FRONTEND] Após filtro por busca:', {
+          busca: search,
+          total: filtered.length
+        });
       }
+
+      console.log('✅ [FRONTEND] Dados finais retornados:', {
+        total: filtered.length,
+        usuarios: filtered.map(u => ({
+          id: u.id,
+          nome: u.nome,
+          email: u.email,
+          perfis: u.perfis,
+          unidade: u.unidade,
+          ativo: u.ativo
+        }))
+      });
 
       return filtered;
     },

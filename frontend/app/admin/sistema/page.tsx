@@ -45,32 +45,32 @@ export default function AdminSistemaPage() {
       title: "Transações",
       description: "Pix, Cartão, Boleto e Split",
       color: "green",
-      route: null,
-      active: false,
+      route: "/admin/transacoes",
+      active: true,
     },
     {
       icon: Wallet,
       title: "Banking",
       description: "Saldo, extrato e transferências",
       color: "emerald",
-      route: null,
-      active: false,
+      route: "/admin/banking",
+      active: true,
     },
     {
       icon: DollarSign,
       title: "Liquidações",
       description: "Extratos do marketplace",
       color: "blue",
-      route: null,
-      active: false,
+      route: "/admin/liquidacoes",
+      active: true,
     },
     {
       icon: Shield,
       title: "Antifraude",
       description: "ClearSale, 3DS e IDPAY",
       color: "red",
-      route: null,
-      active: false,
+      route: "/admin/antifraude",
+      active: true,
     },
     {
       icon: Zap,
@@ -85,32 +85,40 @@ export default function AdminSistemaPage() {
       title: "Planos",
       description: "Planos comerciais e tarifas",
       color: "cyan",
-      route: null,
-      active: false,
+      route: "/admin/plans",
+      active: true,
+    },
+    {
+      icon: Building2,
+      title: "Unidades & Planos",
+      description: "Vincular estabelecimentos e planos às unidades",
+      color: "violet",
+      route: "/admin/unidades-planos",
+      active: true,
     },
     {
       icon: Users,
       title: "Representantes",
       description: "Gestão de representantes comerciais",
       color: "purple",
-      route: null,
-      active: false,
+      route: "/admin/representantes",
+      active: true,
     },
     {
       icon: List,
       title: "Atividades",
       description: "CNAEs e atividades econômicas",
       color: "amber",
-      route: null,
-      active: false,
+      route: "/admin/atividades",
+      active: true,
     },
     {
       icon: Webhook,
       title: "Webhooks",
       description: "Eventos e notificações",
       color: "pink",
-      route: null,
-      active: false,
+      route: "/admin/webhooks",
+      active: true,
     },
     {
       icon: Settings,
@@ -137,7 +145,7 @@ export default function AdminSistemaPage() {
         <div className="w-80 bg-white border-r border-gray-200 overflow-y-auto">
           <div className="p-6 border-b border-gray-200">
             <h1 className="text-2xl font-bold text-gray-900">
-              Paytime
+              Rykon-Pay
             </h1>
             <p className="text-sm text-gray-600 mt-1">
               Administração
@@ -176,7 +184,7 @@ export default function AdminSistemaPage() {
         <div className="flex-1 overflow-y-auto p-8">
           <div className="max-w-4xl">
             <h2 className="text-3xl font-bold text-gray-900 mb-4">
-              Bem-vindo ao Paytime
+              Bem-vindo ao Rykon-Pay
             </h2>
             <p className="text-gray-600 mb-8">
               Selecione um módulo no menu lateral para começar

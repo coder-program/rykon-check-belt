@@ -11,6 +11,7 @@ import {
   ListChecks,
   Settings,
   Tags,
+  CreditCard,
 } from "lucide-react";
 
 const menuItems = [
@@ -67,6 +68,12 @@ const menuItems = [
     icon: Settings,
     href: "/financeiro/configuracoes",
     description: "Configurar cobrança",
+  },
+  {
+    title: "Rykon-Pay",
+    icon: CreditCard,
+    href: "/financeiro/configuracao-paytime",
+    description: "Planos Rykon-Pay",
   },
 ];
 

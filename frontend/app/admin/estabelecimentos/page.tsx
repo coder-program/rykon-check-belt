@@ -33,8 +33,10 @@ import {
   Plus,
   Link as LinkIcon,
   Unlink,
+  Zap,
 } from "lucide-react";
 import toast from "react-hot-toast";
+import AtivarGatewayModal from "@/components/paytime/AtivarGatewayModal";
 // import { paytimeService, type PaytimeEstablishment } from "@/lib/services/paytimeService";
 
 interface Estabelecimento {
@@ -81,6 +83,10 @@ export default function EstabelecimentosPage() {
   const [loadingUnidades, setLoadingUnidades] = useState(false);
   const [selectedUnidadeToLink, setSelectedUnidadeToLink] = useState<string>("");
   const [searchUnidade, setSearchUnidade] = useState<string>("");
+
+  // Estados para gerenciar modal de ativar gateway
+  const [showGatewayModal, setShowGatewayModal] = useState(false);
+  const [selectedEstabForGateway, setSelectedEstabForGateway] = useState<Estabelecimento | null>(null);
 
   useEffect(() => {
     carregarEstabelecimentos();
@@ -254,7 +260,6 @@ export default function EstabelecimentosPage() {
   const carregarUnidades = async () => {
     try {
       setLoadingUnidades(true);
-      console.log('🔍 Carregando lista de unidades...');
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/unidades`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
@@ -264,10 +269,8 @@ export default function EstabelecimentosPage() {
       if (!response.ok) throw new Error("Erro ao carregar unidades");
 
       const data = await response.json();
-      console.log(`✅ Resposta da API:`, data);
       // Se for objeto paginado, pegar o array items
       const unidadesArray = Array.isArray(data) ? data : (data.items || []);
-      console.log(`✅ ${unidadesArray.length} unidades carregadas:`, unidadesArray);
       setAvailableUnidades(unidadesArray);
     } catch (error: any) {
       console.error("Erro:", error);
@@ -281,7 +284,6 @@ export default function EstabelecimentosPage() {
   const carregarUnidadesVinculadas = async (establishmentId: string) => {
     try {
       setLoadingUnidades(true);
-      console.log(`🔍 Carregando unidades vinculadas ao estabelecimento ${establishmentId}...`);
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/paytime/establishments/${establishmentId}/unidades`,
         {
@@ -291,8 +293,6 @@ export default function EstabelecimentosPage() {
         }
       );
 
-      console.log('📡 Response status:', response.status);
-      
       if (!response.ok) {
         const errorText = await response.text();
         console.error('❌ Erro na resposta:', errorText);
@@ -300,7 +300,6 @@ export default function EstabelecimentosPage() {
       }
 
       const data = await response.json();
-      console.log(`✅ ${Array.isArray(data) ? data.length : 0} unidades vinculadas:`, data);
       setVinculatedUnidades(data);
     } catch (error: any) {
       console.error("Erro:", error);
@@ -588,15 +587,28 @@ export default function EstabelecimentosPage() {
                       </div>
                     </div>
 
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="w-full"
-                      onClick={() => verDetalhes(estabelecimento.id)}
-                    >
-                      <Eye className="w-3.5 h-3.5 mr-2" />
-                      Ver Detalhes
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex-1"
+                        onClick={() => verDetalhes(estabelecimento.id)}
+                      >
+                        <Eye className="w-3.5 h-3.5 mr-2" />
+                        Detalhes
+                      </Button>
+                      <Button
+                        size="sm"
+                        className="flex-1 bg-green-600 hover:bg-green-700"
+                        onClick={() => {
+                          setSelectedEstabForGateway(estabelecimento);
+                          setShowGatewayModal(true);
+                        }}
+                      >
+                        <Zap className="w-3.5 h-3.5 mr-2" />
+                        Gateway
+                      </Button>
+                    </div>
                   </CardContent>
                 </Card>
               ))}
@@ -1047,6 +1059,19 @@ export default function EstabelecimentosPage() {
               </CardContent>
             </Card>
           </div>
+        )}
+
+        {/* Modal de Ativar Gateway */}
+        {selectedEstabForGateway && (
+          <AtivarGatewayModal
+            open={showGatewayModal}
+            onClose={() => {
+              setShowGatewayModal(false);
+              setSelectedEstabForGateway(null);
+            }}
+            establishmentId={selectedEstabForGateway.id}
+            establishmentName={selectedEstabForGateway.nome}
+          />
         )}
       </div>
     </ProtectedRoute>

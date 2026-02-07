@@ -49,19 +49,62 @@ export class Fatura {
   @Column({ type: 'varchar', length: 255, nullable: true })
   descricao: string;
 
-  @Column({ type: 'decimal', precision: 10, scale: 2 })
+  @Column({ 
+    type: 'decimal', 
+    precision: 10, 
+    scale: 2,
+    transformer: {
+      to: (value) => value,
+      from: (value) => parseFloat(value) || 0,
+    }
+  })
   valor_original: number;
 
-  @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
+  @Column({ 
+    type: 'decimal', 
+    precision: 10, 
+    scale: 2, 
+    default: 0,
+    transformer: {
+      to: (value) => value,
+      from: (value) => parseFloat(value) || 0,
+    }
+  })
   valor_desconto: number;
 
-  @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
+  @Column({ 
+    type: 'decimal', 
+    precision: 10, 
+    scale: 2, 
+    default: 0,
+    transformer: {
+      to: (value) => value,
+      from: (value) => parseFloat(value) || 0,
+    }
+  })
   valor_acrescimo: number;
 
-  @Column({ type: 'decimal', precision: 10, scale: 2 })
+  @Column({ 
+    type: 'decimal', 
+    precision: 10, 
+    scale: 2,
+    transformer: {
+      to: (value) => value,
+      from: (value) => parseFloat(value) || 0,
+    }
+  })
   valor_total: number;
 
-  @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
+  @Column({ 
+    type: 'decimal', 
+    precision: 10, 
+    scale: 2, 
+    default: 0,
+    transformer: {
+      to: (value) => value,
+      from: (value) => parseFloat(value) || 0,
+    }
+  })
   valor_pago: number;
 
   @Column({ type: 'date' })

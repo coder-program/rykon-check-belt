@@ -69,7 +69,15 @@ export class Assinatura {
   })
   metodo_pagamento: MetodoPagamento;
 
-  @Column({ type: 'decimal', precision: 10, scale: 2 })
+  @Column({ 
+    type: 'decimal', 
+    precision: 10, 
+    scale: 2,
+    transformer: {
+      to: (value) => value,
+      from: (value) => parseFloat(value) || 0,
+    }
+  })
   valor: number;
 
   @Column({ type: 'date' })

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import FinanceiroNav from "@/components/financeiro/FinanceiroNav";
 
 export default function FinanceiroLayout({
@@ -10,6 +10,7 @@ export default function FinanceiroLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
   const [loading, setLoading] = useState(true);
   const [hasAccess, setHasAccess] = useState(false);
 
@@ -23,15 +24,20 @@ export default function FinanceiroLayout({
 
       const isAluno = userPerfis.includes("aluno");
 
+      // Alunos só podem acessar /financeiro/minhas-faturas
       if (isAluno) {
-        router.push("/dashboard");
-        return;
+        if (pathname === "/financeiro/minhas-faturas") {
+          setHasAccess(true);
+        } else {
+          router.push("/dashboard");
+          return;
+        }
+      } else {
+        setHasAccess(true);
       }
-
-      setHasAccess(true);
     }
     setLoading(false);
-  }, [router]);
+  }, [router, pathname]);
 
   if (loading) {
     return (
@@ -48,9 +54,17 @@ export default function FinanceiroLayout({
     return null;
   }
 
+  // Verificar se é aluno para ocultar a navegação lateral
+  const userData = localStorage.getItem("user");
+  const user = userData ? JSON.parse(userData) : null;
+  const userPerfis = (user?.perfis || []).map((p: any) =>
+    typeof p === "string" ? p.toLowerCase() : p?.nome?.toLowerCase()
+  );
+  const isAluno = userPerfis.includes("aluno");
+
   return (
     <div className="flex min-h-screen bg-gray-50">
-      <FinanceiroNav />
+      {!isAluno && <FinanceiroNav />}
       <div className="flex-1">{children}</div>
     </div>
   );

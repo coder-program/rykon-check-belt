@@ -11,14 +11,16 @@ import {
   AlertCircle,
   Calendar,
   ArrowLeft,
+  CreditCard,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import ProcessarPagamentoModal from "@/components/financeiro/ProcessarPagamentoModal";
 
 interface Fatura {
   id: string;
   numero_fatura: string;
-  valor_original: number;
-  valor_pago: number;
+  valor_original?: number | string;
+  valor_pago?: number | string;
   status: "PENDENTE" | "PAGA" | "ATRASADA" | "CANCELADA";
   data_vencimento: string;
   data_pagamento?: string;
@@ -30,6 +32,8 @@ export default function MinhasFaturas() {
   const router = useRouter();
   const [faturas, setFaturas] = useState<Fatura[]>([]);
   const [loading, setLoading] = useState(true);
+  const [faturaParaPagar, setFaturaParaPagar] = useState<Fatura | null>(null);
+  const [modalPagamentoOpen, setModalPagamentoOpen] = useState(false);
 
   useEffect(() => {
     carregarMinhasFaturas();
@@ -50,7 +54,7 @@ export default function MinhasFaturas() {
 
       // Buscar o aluno_id do usuário logado
       const alunoResponse = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/people/alunos?usuario_id=${user.id}`,
+        `${process.env.NEXT_PUBLIC_API_URL}/alunos/usuario/${user.id}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -64,9 +68,7 @@ export default function MinhasFaturas() {
         return;
       }
 
-      const alunoData = await alunoResponse.json();
-
-      const aluno = alunoData.items?.[0];
+      const aluno = await alunoResponse.json();
 
       if (!aluno) {
         console.warn("Nenhum aluno encontrado para este usuário");
@@ -76,7 +78,7 @@ export default function MinhasFaturas() {
 
       // Buscar faturas do aluno
       const faturasResponse = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/financeiro/faturas/aluno/${aluno.id}`,
+        `${process.env.NEXT_PUBLIC_API_URL}/faturas/aluno/${aluno.id}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -109,6 +111,15 @@ export default function MinhasFaturas() {
     return new Date(date).toLocaleDateString("pt-BR");
   };
 
+  const handlePagarOnline = (fatura: Fatura) => {
+    setFaturaParaPagar(fatura);
+    setModalPagamentoOpen(true);
+  };
+
+  const handlePagamentoSuccess = () => {
+    carregarMinhasFaturas();
+  };
+
   const getStatusBadge = (status: string) => {
     const badges = {
       PENDENTE: (
@@ -137,10 +148,10 @@ export default function MinhasFaturas() {
   const totais = {
     pendente: faturas
       .filter((f) => f.status === "PENDENTE")
-      .reduce((sum, f) => sum + f.valor_original, 0),
+      .reduce((sum, f) => sum + (parseFloat(f.valor_original?.toString()) || 0), 0),
     atrasada: faturas
       .filter((f) => f.status === "ATRASADA")
-      .reduce((sum, f) => sum + f.valor_original, 0),
+      .reduce((sum, f) => sum + (parseFloat(f.valor_original?.toString()) || 0), 0),
     proximoVencimento: faturas
       .filter((f) => f.status === "PENDENTE")
       .sort(
@@ -254,8 +265,19 @@ export default function MinhasFaturas() {
                   )}
                 </div>
                 <div className="text-right">
+                {(fatura.status === "PENDENTE" ||
+                  fatura.status === "ATRASADA") && (
+                  <Button
+                    onClick={() => handlePagarOnline(fatura)}
+                    className="ml-4"
+                    variant="default"
+                  >
+                    <CreditCard className="w-4 h-4 mr-2" />
+                    Pagar Online
+                  </Button>
+                )}
                   <p className="text-xl font-bold text-gray-900">
-                    {formatCurrency(fatura.valor_original)}
+                    {formatCurrency(parseFloat(fatura.valor_original?.toString()) || 0)}
                   </p>
                   {fatura.status === "ATRASADA" && (
                     <p className="text-xs text-red-600 mt-1">
@@ -302,6 +324,14 @@ export default function MinhasFaturas() {
           </CardContent>
         </Card>
       )}
+
+      {/* Modal de Pagamento */}
+      <ProcessarPagamentoModal
+        fatura={faturaParaPagar}
+        open={modalPagamentoOpen}
+        onClose={() => setModalPagamentoOpen(false)}
+        onSuccess={handlePagamentoSuccess}
+      />
     </div>
   );
 }

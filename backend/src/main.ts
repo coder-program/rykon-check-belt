@@ -102,7 +102,7 @@ async function bootstrap() {
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'establishment_id'],
     exposedHeaders: ['Authorization'],
     preflightContinue: false,
     optionsSuccessStatus: 204,
@@ -259,8 +259,10 @@ async function bootstrap() {
     });
   });
 
-  // Adiciona prefixo global /api
-  app.setGlobalPrefix('api');
+  // Adiciona prefixo global /api (exceto rotas públicas de webhook)
+  app.setGlobalPrefix('api', {
+    exclude: ['paytime/webhooks'],
+  });
 
   const port = process.env.PORT || 8080;
   const server = await app.listen(port, '0.0.0.0');

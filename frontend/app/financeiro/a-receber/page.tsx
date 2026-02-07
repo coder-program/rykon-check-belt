@@ -448,7 +448,7 @@ export default function ContasAReceber() {
                 </div>
                 <div className="text-right">
                   <p className="text-xl font-bold text-gray-900">
-                    {formatCurrency(fatura.valor_original)}
+                    {formatCurrency(Number(fatura.valor_original) || 0)}
                   </p>
                   {fatura.status === "PAGA" && fatura.data_pagamento && (
                     <p className="text-xs text-gray-500 mt-1">
