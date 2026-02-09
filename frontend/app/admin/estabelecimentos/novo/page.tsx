@@ -328,10 +328,9 @@ export default function NovoEstabelecimentoPage() {
 
     try {
       // Montar payload conforme API Paytime (ordem e formato exatos)
-      const payload = {
+      const payload: any = {
         type: formData.type,
         activity_id: formData.activity_id ? parseInt(formData.activity_id) : 30,
-        notes: formData.notes || undefined,
         visited: formData.visited,
         responsible: {
           email: formData.responsible_email,
@@ -347,7 +346,6 @@ export default function NovoEstabelecimentoPage() {
           city: formData.city,
           state: formData.state.toUpperCase(),
           number: formData.number,
-          complement: formData.complement || undefined,
         },
         first_name: formData.first_name,
         last_name: formData.last_name || formData.first_name,
@@ -359,8 +357,19 @@ export default function NovoEstabelecimentoPage() {
         revenue: formData.revenue ? parseFloat(formData.revenue) : 0,
         format: formData.format,
         gmv: formData.gmv ? parseFloat(formData.gmv) : 0,
-        representative_id: formData.representative_id ? parseInt(formData.representative_id) : undefined,
       };
+
+      // Adicionar campos opcionais apenas se preenchidos
+      if (formData.notes) {
+        payload.notes = formData.notes;
+      }
+      
+      if (formData.complement) {
+        payload.address.complement = formData.complement;
+      }
+      
+      // NÃO enviar representative_id na criação - a API cria automaticamente
+      // baseado nos dados do responsible
 
       const token = localStorage.getItem("token");
       const response = await fetch(
@@ -997,17 +1006,7 @@ export default function NovoEstabelecimentoPage() {
                     />
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="representative_id">ID Representante Comercial</Label>
-                    <Input
-                      id="representative_id"
-                      name="representative_id"
-                      type="number"
-                      value={formData.representative_id}
-                      onChange={handleChange}
-                      placeholder="Ex: 456"
-                    />
-                  </div>
+                  {/* Campo representative_id removido - a API cria automaticamente baseado nos dados do responsible */}
 
                   <div className="space-y-2">
                     <Label htmlFor="visited" className="flex items-center gap-2">

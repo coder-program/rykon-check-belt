@@ -30,6 +30,8 @@ import {
   XCircle,
   Settings,
   AlertCircle,
+  RefreshCw,
+  Trash2,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 
@@ -37,7 +39,7 @@ interface Unidade {
   id: string;
   nome: string;
   cnpj: string;
-  paytime_establishment_id: string | null;
+  paytime_establishment_id: string | number | null;
   paytime_plans: Array<{ id: number; active: boolean; name: string }> | null;
 }
 
@@ -73,6 +75,16 @@ export default function UnidadesPlanosPage() {
   const [selectedPlans, setSelectedPlans] = useState<Array<{ id: number; active: boolean; name: string }>>([]);
   const [saving, setSaving] = useState(false);
 
+  // Helper para mapear gateway_id para nome
+  const getGatewayName = (gateway_id: number): string => {
+    const gateways: Record<number, string> = {
+      4: "PAYTIME",
+      5: "PAGSEGURO", 
+      6: "CELCOIN",
+    };
+    return gateways[gateway_id] || `Gateway ${gateway_id}`;
+  };
+
   useEffect(() => {
     carregarDados();
   }, []);
@@ -95,7 +107,9 @@ export default function UnidadesPlanosPage() {
       setLoading(true);
       const token = localStorage.getItem("token");
 
-      // Buscar todas as unidades
+      console.log("🔄 Carregando dados de unidades e planos...");
+
+      // Buscar todas as unidades (já vem com paytime_plans do banco de dados)
       const unidadesResponse = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/unidades`,
         {
@@ -109,8 +123,28 @@ export default function UnidadesPlanosPage() {
       // O endpoint retorna { items, page, pageSize, total, hasNextPage }
       const unidadesList = unidadesData.items || unidadesData;
       
-      setUnidades(Array.isArray(unidadesList) ? unidadesList : []);
-      setFilteredUnidades(Array.isArray(unidadesList) ? unidadesList : []);
+      console.log("📋 Unidades carregadas:", unidadesList.length);
+      
+      // Deduplica planos que podem estar duplicados no banco
+      const unidadesComPlanosLimpos = unidadesList.map((u: Unidade) => {
+        if (u.paytime_plans && u.paytime_plans.length > 0) {
+          const uniquePlans = Array.from(
+            new Map(u.paytime_plans.map(p => [p.id, p])).values()
+          );
+          
+          if (uniquePlans.length !== u.paytime_plans.length) {
+            console.warn(`⚠️ Planos duplicados encontrados em ${u.nome}: ${u.paytime_plans.length} → ${uniquePlans.length}`);
+          }
+          
+          console.log(`💳 Planos para ${u.nome}:`, uniquePlans);
+          
+          return { ...u, paytime_plans: uniquePlans };
+        }
+        return u;
+      });
+      
+      setUnidades(unidadesComPlanosLimpos);
+      setFilteredUnidades(unidadesComPlanosLimpos);
 
       // Buscar estabelecimentos Paytime
       const establishmentsResponse = await fetch(
@@ -123,6 +157,14 @@ export default function UnidadesPlanosPage() {
       if (establishmentsResponse.ok) {
         const establishmentsData = await establishmentsResponse.json();
         setEstablishments(establishmentsData.data || []);
+        console.log("🏢 Establishments carregados:", establishmentsData.data?.length || 0);
+        console.log("🏢 Detalhes dos establishments:", establishmentsData.data?.map((e: PaytimeEstablishment) => ({
+          id: e.id,
+          first_name: e.first_name,
+          last_name: e.last_name,
+          document: e.document,
+          status: e.status
+        })));
       }
 
       // Buscar planos comerciais Paytime (gateway_id = 4)
@@ -138,9 +180,10 @@ export default function UnidadesPlanosPage() {
       if (plansResponse.ok) {
         const plansData = await plansResponse.json();
         setAvailablePlans(plansData.data || []);
+        console.log("💳 Planos disponíveis:", plansData.data?.length || 0);
       }
     } catch (error) {
-      console.error("Erro ao carregar dados:", error);
+      console.error("❌ Erro ao carregar dados:", error);
       toast.error("Erro ao carregar dados");
     } finally {
       setLoading(false);
@@ -148,9 +191,21 @@ export default function UnidadesPlanosPage() {
   };
 
   const handleOpenModal = (unidade: Unidade) => {
+    console.log("🔍 Abrindo modal para unidade:", unidade.nome);
+    console.log("📌 Establishment ID da unidade:", unidade.paytime_establishment_id);
+    console.log("📋 Establishments disponíveis:", establishments);
+    console.log("📌 Planos da unidade (antes dedup):", unidade.paytime_plans);
+    
+    // Deduplicação dos planos (caso venham duplicados do banco)
+    const uniquePlans = unidade.paytime_plans 
+      ? Array.from(new Map(unidade.paytime_plans.map(p => [p.id, p])).values())
+      : [];
+    
+    console.log("✅ Planos após dedup:", uniquePlans);
+    
     setSelectedUnidade(unidade);
-    setSelectedEstablishment(unidade.paytime_establishment_id || "");
-    setSelectedPlans(unidade.paytime_plans || []);
+    setSelectedEstablishment(unidade.paytime_establishment_id?.toString() || "");
+    setSelectedPlans(uniquePlans);
     setShowModal(true);
   };
 
@@ -176,6 +231,37 @@ export default function UnidadesPlanosPage() {
     }
   };
 
+  // Helper para obter texto do establishment selecionado
+  const getSelectedEstablishmentText = () => {
+    if (!selectedEstablishment) return null;
+    
+    const est = establishments.find(e => e.id.toString() === selectedEstablishment.toString());
+    
+    if (est) {
+      const firstName = est.first_name?.trim() || '';
+      const lastName = est.last_name?.trim() || '';
+      const fullName = `${firstName} ${lastName}`.trim();
+      const document = est.document?.trim() || '';
+      
+      // Se tem nome e CNPJ
+      if (fullName && document) {
+        return `${fullName} - CNPJ: ${document}`;
+      }
+      // Se tem apenas nome
+      if (fullName) {
+        return `${fullName} (ID: ${est.id})`;
+      }
+      // Se tem apenas CNPJ
+      if (document) {
+        return `CNPJ: ${document} (ID: ${est.id})`;
+      }
+      // Se não tem nada
+      return `Estabelecimento #${est.id}`;
+    }
+    
+    return `Establishment ID: ${selectedEstablishment}`;
+  };
+
   const handleSave = async () => {
     if (!selectedUnidade) return;
 
@@ -184,8 +270,8 @@ export default function UnidadesPlanosPage() {
       const token = localStorage.getItem("token");
 
       // 1. Atualizar establishment_id na unidade
-      await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/people/unidades/${selectedUnidade.id}`,
+      const updateResponse = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/unidades/${selectedUnidade.id}`,
         {
           method: "PATCH",
           headers: {
@@ -197,10 +283,21 @@ export default function UnidadesPlanosPage() {
           }),
         }
       );
+      
+      if (!updateResponse.ok) {
+        throw new Error(`Erro ao atualizar unidade: ${updateResponse.status}`);
+      }
 
-      // 2. Atualizar planos selecionados
+      // 2. Atualizar planos selecionados (com deduplicação)
       if (selectedEstablishment) {
-        await fetch(
+        // Deduplica os planos antes de salvar
+        const uniquePlans = Array.from(
+          new Map(selectedPlans.map(p => [p.id, p])).values()
+        );
+        
+        console.log("💾 Salvando planos:", uniquePlans);
+        
+        const plansResponse = await fetch(
           `${process.env.NEXT_PUBLIC_API_URL}/paytime/unidades/${selectedUnidade.id}/plans`,
           {
             method: "PUT",
@@ -208,9 +305,13 @@ export default function UnidadesPlanosPage() {
               Authorization: `Bearer ${token}`,
               "Content-Type": "application/json",
             },
-            body: JSON.stringify({ plans: selectedPlans }),
+            body: JSON.stringify({ plans: uniquePlans }),
           }
         );
+        
+        if (!plansResponse.ok) {
+          throw new Error(`Erro ao atualizar planos: ${plansResponse.status}`);
+        }
       }
 
       toast.success("✅ Configuração salva com sucesso!");
@@ -221,6 +322,49 @@ export default function UnidadesPlanosPage() {
       toast.error("Erro ao salvar configuração");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const limparDuplicatasTodasUnidades = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      let count = 0;
+
+      for (const unidade of unidades) {
+        if (unidade.paytime_plans && unidade.paytime_plans.length > 0) {
+          const uniquePlans = Array.from(
+            new Map(unidade.paytime_plans.map(p => [p.id, p])).values()
+          );
+
+          if (uniquePlans.length !== unidade.paytime_plans.length) {
+            console.log(`🧹 Limpando duplicatas de ${unidade.nome}`);
+            
+            await fetch(
+              `${process.env.NEXT_PUBLIC_API_URL}/paytime/unidades/${unidade.id}/plans`,
+              {
+                method: "PUT",
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ plans: uniquePlans }),
+              }
+            );
+            
+            count++;
+          }
+        }
+      }
+
+      if (count > 0) {
+        toast.success(`✅ Duplicatas removidas de ${count} unidade(s)!`);
+        await carregarDados();
+      } else {
+        toast.success("✨ Nenhuma duplicata encontrada!");
+      }
+    } catch (error) {
+      console.error("Erro ao limpar duplicatas:", error);
+      toast.error("Erro ao limpar duplicatas");
     }
   };
 
@@ -266,14 +410,80 @@ export default function UnidadesPlanosPage() {
     <ProtectedRoute requiredPerfis={["ADMIN_SISTEMA"]}>
       <div className="container mx-auto p-6 space-y-6">
         {/* Header */}
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">
-            🏢 Unidades & Planos Rykon-Pay
-          </h1>
-          <p className="text-gray-600 mt-1">
-            Configure estabelecimentos e planos comerciais para cada unidade
-          </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">
+              🏢 Unidades & Planos Rykon-Pay
+            </h1>
+            <p className="text-gray-600 mt-1">
+              Configure estabelecimentos e planos comerciais para cada unidade
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button 
+              onClick={limparDuplicatasTodasUnidades} 
+              disabled={loading}
+              variant="outline"
+              className="text-orange-600 hover:text-orange-700 hover:bg-orange-50"
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Limpar Duplicatas
+            </Button>
+            <Button onClick={carregarDados} disabled={loading} variant="outline">
+              <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+              Recarregar Dados
+            </Button>
+          </div>
         </div>
+
+        {/* Banner Informativo */}
+        <Card className="border-blue-200 bg-blue-50">
+          <CardContent className="pt-6">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="h-5 w-5 text-blue-600 mt-0.5 shrink-0" />
+              <div>
+                <h3 className="font-semibold text-blue-900 mb-2">
+                  Sobre esta Página
+                </h3>
+                <div className="text-sm text-blue-800 space-y-2">
+                  <p>
+                    Esta página mostra os <b>planos comerciais PayTime associados</b> a cada unidade. 
+                    Os planos são salvos localmente quando você associa um plano na página <b>/admin/plans</b>.
+                  </p>
+                  
+                  <div className="bg-white rounded-lg p-3 mt-3">
+                    <p className="font-semibold mb-2">Como Associar Planos:</p>
+                    <ul className="space-y-1 ml-4 list-disc">
+                      <li>Acesse a página <b>/admin/plans</b></li>
+                      <li>Clique em &quot;Associar Plano&quot; no plano desejado</li>
+                      <li>Selecione a unidade e configure os dados</li>
+                      <li>O plano ficará salvo e aparecerá aqui automaticamente</li>
+                    </ul>
+                  </div>
+                  
+                  <div className="bg-white rounded-lg p-3 mt-3">
+                    <p className="font-semibold mb-2">Status Possíveis:</p>
+                    <ul className="space-y-1 ml-4"
+>
+                      <li className="flex items-center gap-2">
+                        <XCircle className="h-4 w-4 text-gray-500" />
+                        <span><b>Não Configurado</b> - Sem establishment_id vinculado</span>
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <AlertCircle className="h-4 w-4 text-yellow-600" />
+                        <span><b>Sem Planos</b> - Establishment configurado mas sem planos ativos</span>
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <CheckCircle2 className="h-4 w-4 text-green-600" />
+                        <span><b>N Planos</b> - Exibe quantos planos estão associados</span>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Search */}
         <Card>
@@ -322,6 +532,24 @@ export default function UnidadesPlanosPage() {
                   </div>
                 )}
 
+                {/* Mostrar planos associados */}
+                {unidade.paytime_plans && unidade.paytime_plans.length > 0 && (
+                  <div>
+                    <p className="text-xs text-gray-500 mb-2">Planos Associados</p>
+                    <div className="space-y-1">
+                      {unidade.paytime_plans.map((plan) => (
+                        <div key={`unidade-${unidade.id}-plan-${plan.id}`} className="flex items-center gap-2">
+                          <CheckCircle2 className="h-3 w-3 text-green-600 shrink-0" />
+                          <span className="text-xs text-gray-700">{plan.name}</span>
+                          <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-300">
+                            ID: {plan.id}
+                          </Badge>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <Button
                   onClick={() => handleOpenModal(unidade)}
                   variant="outline"
@@ -343,6 +571,12 @@ export default function UnidadesPlanosPage() {
                 <Settings className="h-5 w-5" />
                 Configurar {selectedUnidade?.nome}
               </DialogTitle>
+              <div className="text-sm text-gray-600 mt-2">
+                <div>CNPJ: <span className="font-semibold">{selectedUnidade?.cnpj}</span></div>
+                {selectedUnidade?.paytime_establishment_id && (
+                  <div>Establishment ID Atual: <span className="font-semibold">{selectedUnidade.paytime_establishment_id}</span></div>
+                )}
+              </div>
             </DialogHeader>
 
             <div className="space-y-6">
@@ -351,40 +585,108 @@ export default function UnidadesPlanosPage() {
                 <label className="text-sm font-semibold text-gray-700 block mb-2">
                   🏢 Estabelecimento Rykon-Pay
                 </label>
+                
+                {/* Aviso se establishment atual não está disponível */}
+                {selectedUnidade?.paytime_establishment_id && 
+                 !establishments.find(e => e.id.toString() === selectedUnidade.paytime_establishment_id?.toString() && e.status === "APPROVED") && (
+                  <div className="mb-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                    <div className="flex items-start gap-2">
+                      <AlertCircle className="h-4 w-4 text-yellow-600 mt-0.5 shrink-0" />
+                      <div className="text-sm text-yellow-800">
+                        <p className="font-semibold">Establishment atual não disponível</p>
+                        <p className="text-xs mt-1">
+                          O establishment ID {selectedUnidade.paytime_establishment_id} não está na lista de aprovados. 
+                          Selecione outro ou verifique o status no PayTime.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
                 <Select
                   value={selectedEstablishment}
                   onValueChange={setSelectedEstablishment}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Selecione um estabelecimento" />
+                    <SelectValue placeholder="Selecione um estabelecimento">
+                      {selectedEstablishment ? (
+                        <span className="block truncate text-gray-900">
+                          {getSelectedEstablishmentText()}
+                        </span>
+                      ) : (
+                        <span className="text-gray-500">Selecione um estabelecimento</span>
+                      )}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
-                    {establishments
-                      .filter((e) => e.status === "APPROVED")
-                      .map((establishment) => (
+                    {(() => {
+                      // Se o establishment atual não está em APPROVED, mostrar todos
+                      const currentEstId = selectedUnidade?.paytime_establishment_id?.toString();
+                      const isCurrentApproved = establishments.some(e => 
+                        e.id.toString() === currentEstId && e.status === "APPROVED"
+                      );
+                      
+                      const filteredEstablishments = isCurrentApproved || !currentEstId
+                        ? establishments.filter(e => e.status === "APPROVED")
+                        : establishments; // Mostra todos se o atual não é aprovado
+                      
+                      return filteredEstablishments.map((establishment) => (
                         <SelectItem
                           key={establishment.id}
                           value={establishment.id.toString()}
                         >
-                          {establishment.first_name} - {establishment.document} (ID:{" "}
-                          {establishment.id})
+                          <div className="flex items-center justify-between gap-2 py-1">
+                            <div className="flex flex-col flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="font-semibold text-gray-900">
+                                  {(() => {
+                                    const firstName = establishment.first_name?.trim() || '';
+                                    const lastName = establishment.last_name?.trim() || '';
+                                    const fullName = `${firstName} ${lastName}`.trim();
+                                    return fullName || `Estabelecimento #${establishment.id}`;
+                                  })()}
+                                </span>
+                                {establishment.status !== "APPROVED" && (
+                                  <Badge 
+                                    variant="outline" 
+                                    className="text-xs bg-yellow-50 text-yellow-700 border-yellow-300"
+                                  >
+                                    {establishment.status}
+                                  </Badge>
+                                )}
+                              </div>
+                              <span className="text-xs text-gray-600">
+                                {establishment.document ? `CNPJ: ${establishment.document}` : 'Sem CNPJ'} • ID: {establishment.id}
+                              </span>
+                            </div>
+                          </div>
                         </SelectItem>
-                      ))}
+                      ));
+                    })()}
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-gray-500 mt-1">
-                  Apenas estabelecimentos APROVADOS são listados
+                  {selectedUnidade?.paytime_establishment_id && 
+                   !establishments.find(e => e.id.toString() === selectedUnidade.paytime_establishment_id?.toString() && e.status === "APPROVED")
+                    ? "Mostrando todos os estabelecimentos (incluindo não aprovados)"
+                    : "Apenas estabelecimentos APROVADOS são listados"
+                  }
                 </p>
               </div>
 
               {/* Selecionar Planos */}
               {selectedEstablishment && (
                 <div>
-                  <label className="text-sm font-semibold text-gray-700 block mb-2">
-                    💳 Planos Comerciais Rykon-Pay
-                  </label>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-sm font-semibold text-gray-700">
+                      💳 Planos Comerciais Rykon-Pay
+                    </label>
+                    <Badge variant="outline" className="bg-blue-50 text-blue-700">
+                      {availablePlans.length} {availablePlans.length === 1 ? 'plano disponível' : 'planos disponíveis'}
+                    </Badge>
+                  </div>
                   <p className="text-sm text-gray-600 mb-3">
-                    Selecione os planos comerciais para esta unidade
+                    Selecione os planos comerciais para esta unidade. Os planos marcados serão associados ao estabelecimento no PayTime.
                   </p>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-96 overflow-y-auto p-2 border rounded-lg">
@@ -393,7 +695,7 @@ export default function UnidadesPlanosPage() {
 
                       return (
                         <div
-                          key={plan.id}
+                          key={`plan-grid-${plan.id}`}
                           className={`border-2 rounded-lg p-3 cursor-pointer transition-all ${
                             isSelected
                               ? "border-green-500 bg-green-50"
@@ -416,19 +718,34 @@ export default function UnidadesPlanosPage() {
                                   {plan.name}
                                 </span>
                               </div>
+                              
+                              <div className="text-xs text-gray-600 mb-2">
+                                <div>Gateway: <span className="font-semibold">{getGatewayName(plan.gateway_id)}</span></div>
+                                <div>ID do Plano: <span className="font-semibold">{plan.id}</span></div>
+                              </div>
+                              
                               <div className="flex flex-wrap gap-1">
                                 <Badge
                                   variant="outline"
                                   className="text-xs bg-blue-100 text-blue-700"
                                 >
-                                  {plan.type}
+                                  {plan.type === 'COMMERCIAL' ? '💼 Comercial' : plan.type}
                                 </Badge>
                                 <Badge
                                   variant="outline"
                                   className="text-xs bg-green-100 text-green-700"
                                 >
-                                  {plan.modality}
+                                  {plan.modality === 'ONLINE' ? '🌐 Online' : plan.modality === 'POS' ? '🏪 POS' : plan.modality}
                                 </Badge>
+                                {plan.active ? (
+                                  <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-300">
+                                    ✓ Ativo
+                                  </Badge>
+                                ) : (
+                                  <Badge variant="outline" className="text-xs bg-gray-100 text-gray-600">
+                                    ✗ Inativo
+                                  </Badge>
+                                )}
                               </div>
                             </div>
                           </div>
@@ -444,7 +761,7 @@ export default function UnidadesPlanosPage() {
                       </p>
                       <div className="flex flex-wrap gap-2">
                         {selectedPlans.map((plan) => (
-                          <Badge key={plan.id} className="bg-green-600">
+                          <Badge key={`selected-plan-${plan.id}`} className="bg-green-600">
                             {plan.name}
                           </Badge>
                         ))}

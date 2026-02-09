@@ -1198,4 +1198,266 @@ export class PaytimeController {
       endDate,
     );
   }
+
+  @Get('liquidations')
+  @ApiOperation({
+    summary: 'Listar liquidações completas',
+    description: 'Retorna listagem completa de liquidações do Marketplace com valores, participantes, pagamentos, planos e histórico',
+  })
+  @ApiQuery({
+    name: 'filters',
+    required: false,
+    description: 'JSON com filtros aplicáveis',
+    example: '{"status":"PAID"}',
+  })
+  @ApiQuery({
+    name: 'search',
+    required: false,
+    description: 'Texto de busca',
+  })
+  @ApiQuery({
+    name: 'perPage',
+    required: false,
+    description: 'Registros por página (máximo 100)',
+    example: 20,
+  })
+  @ApiQuery({
+    name: 'page',
+    required: false,
+    description: 'Página atual',
+    example: 1,
+  })
+  @ApiQuery({
+    name: 'sorters',
+    required: false,
+    description: 'JSON com lista de ordenadores',
+    example: '[{"column":"created_at","direction":"DESC"}]',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Liquidações listadas com sucesso',
+  })
+  async listLiquidations(
+    @Query('filters') filters?: string,
+    @Query('search') search?: string,
+    @Query('page') page?: number,
+    @Query('perPage') perPage?: number,
+    @Query('sorters') sorters?: string,
+  ) {
+    this.logger.debug('Listando liquidações Paytime...');
+    
+    let parsedFilters;
+    let parsedSorters;
+
+    try {
+      parsedFilters = filters ? JSON.parse(filters) : undefined;
+    } catch (error) {
+      this.logger.warn('Erro ao parsear filtros:', error);
+      parsedFilters = undefined;
+    }
+
+    try {
+      parsedSorters = sorters ? JSON.parse(sorters) : undefined;
+    } catch (error) {
+      this.logger.warn('Erro ao parsear sorters:', error);
+      parsedSorters = undefined;
+    }
+
+    const result = await this.paytimeService.listLiquidations(
+      parsedFilters,
+      search,
+      page,
+      perPage,
+      parsedSorters,
+    );
+
+    return result;
+  }
+
+  @Get('liquidations/extract')
+  @ApiOperation({
+    summary: 'Listar liquidações sumarizadas',
+    description: 'Retorna listagem resumida de liquidações para relatórios de repasse, conferências financeiras e conciliação bancária',
+  })
+  @ApiQuery({
+    name: 'filters',
+    required: false,
+    description: 'JSON com filtros aplicáveis',
+    example: '{"status":"CREATED"}',
+  })
+  @ApiQuery({
+    name: 'search',
+    required: false,
+    description: 'Texto de busca',
+  })
+  @ApiQuery({
+    name: 'perPage',
+    required: false,
+    description: 'Registros por página (máximo 100)',
+    example: 20,
+  })
+  @ApiQuery({
+    name: 'page',
+    required: false,
+    description: 'Página atual',
+    example: 1,
+  })
+  @ApiQuery({
+    name: 'sorters',
+    required: false,
+    description: 'JSON com lista de ordenadores',
+    example: '[{"column":"liquidation","direction":"DESC"}]',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Liquidações sumarizadas listadas com sucesso',
+  })
+  async listLiquidationsExtract(
+    @Query('filters') filters?: string,
+    @Query('search') search?: string,
+    @Query('page') page?: number,
+    @Query('perPage') perPage?: number,
+    @Query('sorters') sorters?: string,
+  ) {
+    this.logger.debug('Listando extrato de liquidações Paytime...');
+    
+    let parsedFilters;
+    let parsedSorters;
+
+    try {
+      parsedFilters = filters ? JSON.parse(filters) : undefined;
+    } catch (error) {
+      this.logger.warn('Erro ao parsear filtros:', error);
+      parsedFilters = undefined;
+    }
+
+    try {
+      parsedSorters = sorters ? JSON.parse(sorters) : undefined;
+    } catch (error) {
+      this.logger.warn('Erro ao parsear sorters:', error);
+      parsedSorters = undefined;
+    }
+
+    const result = await this.paytimeService.listLiquidationsExtract(
+      parsedFilters,
+      search,
+      page,
+      perPage,
+      parsedSorters,
+    );
+
+    return result;
+  }
+
+  @Get('representatives')
+  @ApiOperation({
+    summary: '👥 Listar representantes comerciais',
+    description: 'Lista representantes cadastrados no Marketplace Paytime com suas regiões e royalties',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Lista de representantes retornada com sucesso',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Token inválido ou expirado',
+  })
+  @ApiQuery({
+    name: 'filters',
+    required: false,
+    description: 'Filtros em JSON. Ex: {"active":true}',
+    example: '{"active":true}',
+  })
+  @ApiQuery({
+    name: 'search',
+    required: false,
+    description: 'Busca textual em first_name, last_name, document',
+    example: 'Tech',
+  })
+  @ApiQuery({
+    name: 'perPage',
+    required: false,
+    description: 'Registros por página (máximo 100)',
+    example: 20,
+  })
+  @ApiQuery({
+    name: 'page',
+    required: false,
+    description: 'Número da página',
+    example: 1,
+  })
+  @ApiQuery({
+    name: 'sorters',
+    required: false,
+    description: 'Ordenação em JSON. Ex: [{"column":"created_at","direction":"DESC"}]',
+    example: '[{"column":"created_at","direction":"DESC"}]',
+  })
+  async listRepresentatives(
+    @Query('filters') filters?: string,
+    @Query('search') search?: string,
+    @Query('page') page?: string,
+    @Query('perPage') perPage?: string,
+    @Query('sorters') sorters?: string,
+  ) {
+    this.logger.debug('Listando representantes comerciais Paytime...');
+    
+    let parsedFilters;
+    let parsedSorters;
+
+    try {
+      parsedFilters = filters ? JSON.parse(filters) : undefined;
+    } catch (error) {
+      this.logger.warn('Erro ao parsear filtros:', error);
+      parsedFilters = undefined;
+    }
+
+    try {
+      parsedSorters = sorters ? JSON.parse(sorters) : undefined;
+    } catch (error) {
+      this.logger.warn('Erro ao parsear sorters:', error);
+      parsedSorters = undefined;
+    }
+
+    // Converter page e perPage para números
+    const pageNumber = page ? parseInt(page, 10) : undefined;
+    const perPageNumber = perPage ? parseInt(perPage, 10) : undefined;
+
+    const result = await this.paytimeService.listRepresentatives(
+      parsedFilters,
+      search,
+      pageNumber,
+      perPageNumber,
+      parsedSorters,
+    );
+
+    return result;
+  }
+
+  @Get('representatives/:id')
+  @ApiOperation({
+    summary: '🔍 Exibir detalhes do representante',
+    description: 'Retorna informações detalhadas de um representante específico',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Detalhes do representante',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Token inválido ou expirado',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Representante não encontrado',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'ID do representante',
+    example: '60030',
+  })
+  async getRepresentativeById(@Param('id') id: string) {
+    this.logger.debug(`Buscando representante ID: ${id}...`);
+    return this.paytimeService.getRepresentativeById(parseInt(id));
+  }
 }
+

@@ -17,9 +17,10 @@ export default function RepresentantesPage() {
   const carregarRepresentantes = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem("rykon_pay_token");
+      const token = localStorage.getItem("token");
+      
       const response = await fetch(
-        "https://rykon-pay-production.up.railway.app/api/representatives",
+        `${process.env.NEXT_PUBLIC_API_URL}/paytime/representatives`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -28,10 +29,20 @@ export default function RepresentantesPage() {
       if (response.ok) {
         const data = await response.json();
         setRepresentantes(data.data || []);
+      } else if (response.status === 404) {
+        console.warn("⚠️ Endpoint /paytime/representatives não implementado");
+        toast.error("🚧 Funcionalidade em desenvolvimento");
+      } else {
+        toast.error("Erro ao carregar representantes");
       }
     } catch (error) {
       console.error("Erro:", error);
-      toast.error("Erro ao carregar representantes");
+      // Não mostra erro se for CORS/Network (endpoint não existe)
+      if (error instanceof TypeError && error.message.includes("fetch")) {
+        console.warn("🚧 Endpoint ainda não implementado no backend");
+      } else {
+        toast.error("Erro ao carregar representantes");
+      }
     } finally {
       setLoading(false);
     }
@@ -41,9 +52,14 @@ export default function RepresentantesPage() {
     carregarRepresentantes();
   }, []);
 
-  const representantesFiltrados = representantes.filter((r) =>
-    r.name?.toLowerCase().includes(busca.toLowerCase())
-  );
+  const representantesFiltrados = representantes.filter((r) => {
+    const searchLower = busca.toLowerCase();
+    return (
+      r.establishment?.first_name?.toLowerCase().includes(searchLower) ||
+      r.establishment?.document?.toLowerCase().includes(searchLower) ||
+      r.id?.toString().includes(searchLower)
+    );
+  });
 
   return (
     <div className="p-8 space-y-6">
@@ -54,21 +70,37 @@ export default function RepresentantesPage() {
           </Button>
           <div>
             <h1 className="text-3xl font-bold">Representantes</h1>
-            <p className="text-gray-600">Gestão de representantes comerciais</p>
+            <p className="text-gray-600">Gestão de representantes comerciais PayTime</p>
           </div>
         </div>
-        <Button onClick={carregarRepresentantes}>
-          <RefreshCw className="h-4 w-4 mr-2" />
+        <Button onClick={carregarRepresentantes} disabled={loading}>
+          <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
           Atualizar
         </Button>
       </div>
+
+      {/* Banner Informativo */}
+      <Card className="border-blue-200 bg-blue-50">
+        <CardContent className="pt-6">
+          <div className="flex items-start gap-3">
+            <Users className="h-5 w-5 text-blue-600 mt-0.5 shrink-0" />
+            <div className="text-sm text-blue-800">
+              <p className="font-semibold mb-1">💼 Representantes Comerciais PayTime</p>
+              <p>
+                Representantes gerenciam estabelecimentos em regiões específicas e recebem comissões (royalties) sobre operações financeiras.
+                Cada representante pode atuar em múltiplos estados e está vinculado a um estabelecimento principal.
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardContent className="pt-6">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
             <Input
-              placeholder="Buscar representante..."
+              placeholder="Buscar por nome, documento ou ID..."
               value={busca}
               onChange={(e) => setBusca(e.target.value)}
               className="pl-10"
@@ -98,29 +130,45 @@ export default function RepresentantesPage() {
                       <Users className="h-6 w-6 text-purple-600" />
                     </div>
                     <div>
-                      <p className="font-medium">{rep.name}</p>
+                      <p className="font-medium">
+                        {rep.establishment?.first_name || "N/A"}
+                      </p>
                       <div className="flex items-center gap-4 mt-1">
-                        <span className="text-sm text-gray-600 flex items-center gap-1">
-                          <Mail className="h-3 w-3" />
-                          {rep.email}
+                        <span className="text-sm text-gray-600">
+                          Doc: {rep.establishment?.document || "N/A"}
                         </span>
-                        {rep.phone && (
-                          <span className="text-sm text-gray-600 flex items-center gap-1">
-                            <Phone className="h-3 w-3" />
-                            {rep.phone}
+                        {rep.states && rep.states.length > 0 && (
+                          <span className="text-sm text-gray-600">
+                            Estados: {rep.states.map((s: any) => s.initials).join(", ")}
                           </span>
                         )}
                       </div>
                     </div>
                   </div>
-                  <p className="text-sm text-gray-500">ID: {rep.id}</p>
+                  <div className="text-right">
+                    <p className="text-sm text-gray-500">ID: {rep.id}</p>
+                    {rep.active !== undefined && (
+                      <span className={`text-xs px-2 py-1 rounded ${rep.active ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-700"}`}>
+                        {rep.active ? "Ativo" : "Inativo"}
+                      </span>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
           ) : (
-            <p className="text-center py-12 text-gray-500">
-              Nenhum representante encontrado
-            </p>
+            <div className="text-center py-12">
+              <Users className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+              <p className="text-gray-500 font-medium mb-2">
+                Nenhum representante encontrado
+              </p>
+              <p className="text-sm text-gray-400 mb-4">
+                🚧 Esta funcionalidade requer implementação do endpoint no backend
+              </p>
+              <p className="text-xs text-gray-400">
+                Endpoint necessário: <code className="bg-gray-100 px-2 py-1 rounded">/paytime/representatives</code>
+              </p>
+            </div>
           )}
         </CardContent>
       </Card>

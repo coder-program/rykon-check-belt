@@ -1,8 +1,9 @@
 import { Injectable, Logger, BadRequestException, NotFoundException, HttpException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, In } from 'typeorm';
 import { Unidade } from '../people/entities/unidade.entity';
+import { Aluno } from '../people/entities/aluno.entity';
 
 interface PaytimeAuthResponse {
   access_token: string;
@@ -105,6 +106,8 @@ export class PaytimeService {
     private configService: ConfigService,
     @InjectRepository(Unidade)
     private unidadeRepository: Repository<Unidade>,
+    @InjectRepository(Aluno)
+    private alunoRepository: Repository<Aluno>,
   ) {
     this.baseUrl = this.configService.get('RYKON_PAY_BASE_URL') || 'https://rykon-pay-production.up.railway.app';
     this.paytimeUsername = this.configService.get('RYKON_PAY_USERNAME') || 'admin';
@@ -396,7 +399,22 @@ export class PaytimeService {
 
     try {
       this.logger.debug(`Atualizando estabelecimento ID: ${id}...`);
-      this.logger.debug('📤 Payload enviado:', JSON.stringify(data, null, 2));
+      
+      // Converter campos numéricos de string para number
+      const sanitizedData = {
+        ...data,
+        revenue: data.revenue ? parseFloat(data.revenue) : undefined,
+        gmv: data.gmv !== undefined ? parseFloat(data.gmv) || 0 : undefined,
+      };
+      
+      // Remover campos undefined
+      Object.keys(sanitizedData).forEach(key => {
+        if (sanitizedData[key] === undefined) {
+          delete sanitizedData[key];
+        }
+      });
+      
+      this.logger.debug('📤 Payload enviado:', JSON.stringify(sanitizedData, null, 2));
       
       const response = await fetch(
         `${this.baseUrl}/api/establishments/${id}`,
@@ -406,7 +424,7 @@ export class PaytimeService {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify(data),
+          body: JSON.stringify(sanitizedData),
         }
       );
 
@@ -1228,6 +1246,104 @@ export class PaytimeService {
     const data = await response.json();
     this.logger.debug(`✅ Transações listadas: ${data.data?.length || 0} encontrada(s)`);
     
+    // Buscar detalhes completos de cada transação para obter dados do cliente
+    if (data.data && Array.isArray(data.data) && data.data.length > 0) {
+      this.logger.debug(`🔍 Buscando detalhes completos de ${data.data.length} transação(ões) da API Paytime...`);
+      
+      const transactionsWithDetails = await Promise.all(
+        data.data.map(async (transaction) => {
+          try {
+            // Buscar detalhes completos da transação individual
+            const detailsUrl = `${this.baseUrl}/api/transactions/${transaction._id}`;
+            const detailsResponse = await fetch(detailsUrl, {
+              method: 'GET',
+              headers: {
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json',
+                'establishment_id': establishmentId.toString(),
+              },
+            });
+
+            if (detailsResponse.ok) {
+              const details = await detailsResponse.json();
+              
+              // Se client for null, tentar extrair de info_additional
+              let clientData = details.client;
+              if (!clientData && details.info_additional && Array.isArray(details.info_additional)) {
+                const infoMap = new Map(details.info_additional.map(item => [item.key, item.value]));
+                if (infoMap.has('aluno_cpf')) {
+                  const alunoNome = String(infoMap.get('aluno_nome') || '');
+                  clientData = {
+                    document: String(infoMap.get('aluno_cpf') || ''),
+                    first_name: alunoNome.split(' ')[0] || '',
+                    last_name: alunoNome.split(' ').slice(1).join(' ') || '',
+                    email: String(infoMap.get('aluno_email') || ''),
+                    phone: String(infoMap.get('aluno_telefone') || ''),
+                  };
+                  this.logger.debug(`✅ Dados do cliente recuperados de info_additional para transação ${transaction._id}`);
+                }
+              }
+              
+              this.logger.debug(`📄 Transação ${transaction._id} - client:`, JSON.stringify(clientData || 'NÃO TEM'));
+              
+              return {
+                ...transaction,
+                client: clientData,
+                info_additional: details.info_additional || [],
+              };
+            } else {
+              this.logger.warn(`⚠️ Erro ao buscar detalhes da transação ${transaction._id}`);
+              return transaction;
+            }
+          } catch (error) {
+            this.logger.error(`❌ Erro ao buscar detalhes da transação ${transaction._id}:`, error.message);
+            return transaction;
+          }
+        })
+      );
+
+      data.data = transactionsWithDetails;
+
+      // Agora enriquecer com dados do aluno do nosso banco
+      const cpfs = [...new Set(
+        data.data
+          .map(t => t.client?.document)
+          .filter(cpf => cpf && cpf.length > 0)
+      )];
+
+      if (cpfs.length > 0) {
+        this.logger.debug(`🔍 Buscando ${cpfs.length} aluno(s) por CPF para enriquecer...`);
+        
+        const alunos = await this.alunoRepository.find({
+          where: { cpf: In(cpfs) },
+          select: ['id', 'cpf', 'nome_completo', 'email', 'telefone', 'unidade_id', 'numero_matricula', 'status'],
+        });
+
+        const alunoMap = new Map(alunos.map(a => [a.cpf, a]));
+
+        data.data = data.data.map(transaction => {
+          const aluno = transaction.client?.document 
+            ? alunoMap.get(transaction.client.document)
+            : null;
+
+          return {
+            ...transaction,
+            aluno: aluno ? {
+              id: aluno.id,
+              nome: aluno.nome_completo,
+              email: aluno.email,
+              telefone: aluno.telefone,
+              unidade_id: aluno.unidade_id,
+              numero_matricula: aluno.numero_matricula,
+              status: aluno.status,
+            } : null,
+          };
+        });
+
+        this.logger.debug(`✅ ${alunos.length} aluno(s) vinculado(s) às transações`);
+      }
+    }
+    
     return data;
   }
 
@@ -1264,6 +1380,7 @@ export class PaytimeService {
 
     const data = await response.json();
     this.logger.debug(`✅ Transação ${transactionId} encontrada - Status: ${data.status}`);
+    this.logger.debug(`🔍 DADOS COMPLETOS DA TRANSAÇÃO: ${JSON.stringify(data, null, 2)}`);
     
     return data;
   }
@@ -1342,6 +1459,20 @@ export class PaytimeService {
     if (!response.ok) {
       const errorText = await response.text();
       this.logger.error(`❌ Erro ao consultar saldo: ${response.status} - ${errorText}`);
+      
+      // Trata especificamente erro de conta bancária não encontrada
+      if (response.status === 403 || response.status === 404) {
+        try {
+          const errorJson = JSON.parse(errorText);
+          if (errorJson?.code === 'BNK000142' || errorJson?.message?.includes('Conta bancária não encontrada')) {
+            throw new BadRequestException('Conta bancária não encontrada. O estabelecimento precisa configurar dados bancários no PayTime.');
+          }
+        } catch (e) {
+          if (e instanceof BadRequestException) throw e;
+          // Se não conseguir parsear, continua com erro genérico
+        }
+      }
+      
       throw new BadRequestException(`Erro ao consultar saldo: ${response.status}`);
     }
 
@@ -1387,6 +1518,217 @@ export class PaytimeService {
 
     const data = await response.json();
     this.logger.debug(`✅ Extrato consultado com sucesso - ${data.data?.length || 0} lançamentos`);
+    return data;
+  }
+
+  async listLiquidations(
+    filters?: any,
+    search?: string,
+    page?: number,
+    perPage?: number,
+    sorters?: any,
+    establishmentId?: number,
+  ) {
+    const token = await this.authenticate();
+    const url = `${this.baseUrl}/api/liquidations`;
+
+    this.logger.debug(
+      `💰 Consultando liquidações - page: ${page || 1}, perPage: ${perPage || 10}`,
+    );
+
+    const queryParams = new URLSearchParams();
+    
+    if (filters) {
+      queryParams.append('filters', JSON.stringify(filters));
+    }
+    if (search) {
+      queryParams.append('search', search);
+    }
+    if (page) {
+      queryParams.append('page', page.toString());
+    }
+    if (perPage) {
+      queryParams.append('per_page', perPage.toString());
+    }
+    if (sorters) {
+      queryParams.append('sorters', JSON.stringify(sorters));
+    }
+
+    const headers: Record<string, string> = {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    };
+
+    if (establishmentId) {
+      headers['establishment_id'] = establishmentId.toString();
+    }
+
+    const response = await fetch(`${url}?${queryParams}`, {
+      method: 'GET',
+      headers,
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      this.logger.error(`❌ Erro ao consultar liquidações: ${response.status} - ${errorText}`);
+      throw new BadRequestException(`Erro ao consultar liquidações: ${response.status}`);
+    }
+
+    const data = await response.json();
+    this.logger.debug(`✅ Liquidações consultadas com sucesso - ${data.data?.length || 0} registros`);
+    return data;
+  }
+
+  async listLiquidationsExtract(
+    filters?: any,
+    search?: string,
+    page?: number,
+    perPage?: number,
+    sorters?: any,
+    establishmentId?: number,
+  ) {
+    const token = await this.authenticate();
+    const url = `${this.baseUrl}/api/liquidations/extract`;
+
+    this.logger.debug(
+      `📊 Consultando extrato de liquidações - page: ${page || 1}, perPage: ${perPage || 10}`,
+    );
+
+    const queryParams = new URLSearchParams();
+    
+    if (filters) {
+      queryParams.append('filters', JSON.stringify(filters));
+    }
+    if (search) {
+      queryParams.append('search', search);
+    }
+    if (page) {
+      queryParams.append('page', page.toString());
+    }
+    if (perPage) {
+      queryParams.append('per_page', perPage.toString());
+    }
+    if (sorters) {
+      queryParams.append('sorters', JSON.stringify(sorters));
+    }
+
+    const headers: Record<string, string> = {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    };
+
+    if (establishmentId) {
+      headers['establishment_id'] = establishmentId.toString();
+    }
+
+    const response = await fetch(`${url}?${queryParams}`, {
+      method: 'GET',
+      headers,
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      this.logger.error(`❌ Erro ao consultar extrato de liquidações: ${response.status} - ${errorText}`);
+      throw new BadRequestException(`Erro ao consultar extrato de liquidações: ${response.status}`);
+    }
+
+    const data = await response.json();
+    this.logger.debug(`✅ Extrato de liquidações consultado com sucesso - ${data.data?.length || 0} registros`);
+    return data;
+  }
+
+  /**
+   * Lista representantes comerciais do Marketplace Paytime
+   * GET /api/representatives
+   */
+  async listRepresentatives(
+    filters?: any,
+    search?: string,
+    page?: number,
+    perPage?: number,
+    sorters?: any[],
+  ) {
+    const token = await this.authenticate();
+    const url = `${this.baseUrl}/api/representatives`;
+
+    // Usar valores padrão se não fornecidos
+    const pageValue = page || 1;
+    const perPageValue = perPage || 20;
+
+    this.logger.debug(
+      `👥 Listando representantes comerciais - page: ${pageValue}, perPage: ${perPageValue}`,
+    );
+
+    const queryParams = new URLSearchParams();
+    
+    if (filters) {
+      queryParams.append('filters', JSON.stringify(filters));
+      this.logger.debug(`🎯 Aplicando filtros: ${JSON.stringify(filters)}`);
+    }
+    
+    if (search) {
+      queryParams.append('search', search);
+      this.logger.debug(`🔍 Aplicando busca: ${search}`);
+    }
+    
+    // Sempre enviar page e perPage como números
+    queryParams.append('page', pageValue.toString());
+    queryParams.append('perPage', perPageValue.toString());
+    
+    if (sorters && sorters.length > 0) {
+      queryParams.append('sorters', JSON.stringify(sorters));
+    }
+
+    const response = await fetch(`${url}?${queryParams}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      this.logger.error(`❌ Erro ao listar representantes: ${response.status} - ${errorText}`);
+      throw new BadRequestException(`Erro ao listar representantes: ${response.status}`);
+    }
+
+    const data = await response.json();
+    this.logger.debug(`✅ Representantes listados com sucesso - Total: ${data.total || 0}, Página: ${data.page || 1}`);
+    return data;
+  }
+
+  /**
+   * Busca detalhes de um representante específico
+   * GET /api/representatives/:id
+   */
+  async getRepresentativeById(id: number) {
+    const token = await this.authenticate();
+    const url = `${this.baseUrl}/api/representatives/${id}`;
+
+    this.logger.debug(`🔍 Buscando detalhes do representante ID: ${id}`);
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      if (response.status === 404) {
+        this.logger.warn(`⚠️ Representante ID ${id} não encontrado`);
+        throw new NotFoundException(`Representante ID ${id} não encontrado`);
+      }
+      
+      const errorText = await response.text();
+      this.logger.error(`❌ Erro ao buscar representante: ${response.status} - ${errorText}`);
+      throw new BadRequestException(`Erro ao buscar representante: ${response.status}`);
+    }
+
+    const data = await response.json();
+    this.logger.debug(`✅ Representante ID ${id} encontrado: ${data.establishment?.first_name || 'N/A'}`);
     return data;
   }
 }

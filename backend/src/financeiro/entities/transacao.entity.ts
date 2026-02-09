@@ -13,6 +13,7 @@ import { Despesa } from './despesa.entity';
 import { Venda } from './venda.entity';
 import { Unidade } from '../../people/entities/unidade.entity';
 import { MetodoPagamento } from './assinatura.entity';
+import { DateTransformer } from '../../common/transformers/date.transformer';
 
 export enum TipoTransacao {
   ENTRADA = 'ENTRADA',
@@ -123,7 +124,10 @@ export class Transacao {
   })
   valor: number;
 
-  @Column({ type: 'date' })
+  @Column({ 
+    type: 'date',
+    transformer: DateTransformer,
+  })
   data: Date;
 
   @Column({

@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { formatarData, formatarMoeda } from "@/lib/utils/dateUtils";
 import {
   Dialog,
   DialogContent,
@@ -71,13 +72,16 @@ export default function ContasAReceber() {
   const [faturas, setFaturas] = useState<Fatura[]>([]);
   const [filteredFaturas, setFilteredFaturas] = useState<Fatura[]>([]);
   const [loading, setLoading] = useState(true);
+  const [gerandoFaturas, setGerandoFaturas] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [selectedFatura, setSelectedFatura] = useState<Fatura | null>(null);
   const [showPagarDialog, setShowPagarDialog] = useState(false);
+  const [showCancelarDialog, setShowCancelarDialog] = useState(false);
   const [metodoPagamento, setMetodoPagamento] = useState("");
   const [valorPago, setValorPago] = useState("");
   const [observacoes, setObservacoes] = useState("");
+  const [motivoCancelamento, setMotivoCancelamento] = useState("");
   const [mensagemModal, setMensagemModal] = useState<{
     aberto: boolean;
     titulo: string;
@@ -219,6 +223,59 @@ export default function ContasAReceber() {
     }
   };
 
+  const handleCancelarFatura = async () => {
+    if (!selectedFatura) return;
+
+    if (!motivoCancelamento.trim()) {
+      mostrarMensagem(
+        "Atenção",
+        "Por favor, informe o motivo do cancelamento.",
+        "erro"
+      );
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/faturas/${selectedFatura.id}/cancelar`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            motivo: motivoCancelamento,
+          }),
+        }
+      );
+
+      if (response.ok) {
+        setShowCancelarDialog(false);
+        setSelectedFatura(null);
+        setMotivoCancelamento("");
+        carregarFaturas();
+        queryClient.invalidateQueries({ queryKey: ["transacoes"] });
+        mostrarMensagem(
+          "Sucesso!",
+          "Fatura cancelada com sucesso!",
+          "sucesso"
+        );
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        mostrarMensagem(
+          "Erro",
+          errorData.message || "Erro ao cancelar fatura",
+          "erro"
+        );
+      }
+    } catch (error) {
+      console.error("Erro ao cancelar fatura:", error);
+      mostrarMensagem("Erro", "Erro ao cancelar fatura", "erro");
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     const badges = {
       PENDENTE: (
@@ -231,16 +288,7 @@ export default function ContasAReceber() {
     return badges[status as keyof typeof badges] || null;
   };
 
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat("pt-BR", {
-      style: "currency",
-      currency: "BRL",
-    }).format(value);
-  };
-
-  const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString("pt-BR");
-  };
+  // Removidas - usando formatarData e formatarMoeda do dateUtils
 
   const totais = {
     pendente: faturas
@@ -277,6 +325,9 @@ export default function ContasAReceber() {
         </div>
         <Button
           onClick={async () => {
+            if (gerandoFaturas) return;
+            
+            setGerandoFaturas(true);
             try {
               const token = localStorage.getItem("token");
               const params = new URLSearchParams();
@@ -328,12 +379,15 @@ export default function ContasAReceber() {
                 `Erro ao gerar faturas: ${error.message}`,
                 "erro"
               );
+            } finally {
+              setGerandoFaturas(false);
             }
           }}
           variant="outline"
+          disabled={gerandoFaturas}
         >
           <Plus className="mr-2 h-4 w-4" />
-          Gerar Faturas das Assinaturas
+          {gerandoFaturas ? "Gerando Faturas..." : "Gerar Faturas das Assinaturas"}
         </Button>
       </div>
 
@@ -353,7 +407,7 @@ export default function ContasAReceber() {
               <div>
                 <p className="text-sm text-gray-600">Pendente</p>
                 <p className="text-2xl font-bold text-yellow-600">
-                  {formatCurrency(totais.pendente)}
+                  {formatarMoeda(totais.pendente)}
                 </p>
               </div>
               <Clock className="h-8 w-8 text-yellow-600" />
@@ -367,7 +421,7 @@ export default function ContasAReceber() {
               <div>
                 <p className="text-sm text-gray-600">Atrasado</p>
                 <p className="text-2xl font-bold text-red-600">
-                  {formatCurrency(totais.atrasada)}
+                  {formatarMoeda(totais.atrasada)}
                 </p>
               </div>
               <AlertCircle className="h-8 w-8 text-red-600" />
@@ -381,7 +435,7 @@ export default function ContasAReceber() {
               <div>
                 <p className="text-sm text-gray-600">Recebido no Mês</p>
                 <p className="text-2xl font-bold text-green-600">
-                  {formatCurrency(totais.paga)}
+                  {formatarMoeda(totais.paga)}
                 </p>
               </div>
               <CheckCircle className="h-8 w-8 text-green-600" />
@@ -443,32 +497,44 @@ export default function ContasAReceber() {
                     Aluno: {fatura.aluno_nome || "N/A"}
                   </p>
                   <p className="text-sm text-gray-500">
-                    Vencimento: {formatDate(fatura.data_vencimento)}
+                    Vencimento: {formatarData(fatura.data_vencimento)}
                   </p>
                 </div>
                 <div className="text-right">
                   <p className="text-xl font-bold text-gray-900">
-                    {formatCurrency(Number(fatura.valor_original) || 0)}
+                    {formatarMoeda(Number(fatura.valor_original) || 0)}
                   </p>
                   {fatura.status === "PAGA" && fatura.data_pagamento && (
                     <p className="text-xs text-gray-500 mt-1">
-                      Pago em {formatDate(fatura.data_pagamento)}
+                      Pago em {formatarData(fatura.data_pagamento)}
                     </p>
                   )}
                   {(fatura.status === "PENDENTE" ||
                     fatura.status === "ATRASADA") && (
-                    <Button
-                      onClick={() => {
-                        setSelectedFatura(fatura);
-                        setValorPago(fatura.valor_original.toString());
-                        setShowPagarDialog(true);
-                      }}
-                      size="sm"
-                      className="mt-2"
-                    >
-                      <DollarSign className="mr-1 h-4 w-4" />
-                      Registrar Pagamento
-                    </Button>
+                    <div className="flex gap-2 mt-2">
+                      <Button
+                        onClick={() => {
+                          setSelectedFatura(fatura);
+                          setValorPago(fatura.valor_original.toString());
+                          setShowPagarDialog(true);
+                        }}
+                        size="sm"
+                      >
+                        <DollarSign className="mr-1 h-4 w-4" />
+                        Registrar Pagamento
+                      </Button>
+                      <Button
+                        onClick={() => {
+                          setSelectedFatura(fatura);
+                          setShowCancelarDialog(true);
+                        }}
+                        size="sm"
+                        variant="destructive"
+                      >
+                        <X className="mr-1 h-4 w-4" />
+                        Cancelar
+                      </Button>
+                    </div>
                   )}
                 </div>
               </div>
@@ -546,6 +612,65 @@ export default function ContasAReceber() {
               Cancelar
             </Button>
             <Button onClick={handlePagarFatura}>Confirmar Pagamento</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de Cancelamento */}
+      <Dialog open={showCancelarDialog} onOpenChange={setShowCancelarDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cancelar Fatura</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium text-gray-700">
+                Fatura
+              </label>
+              <Input value={selectedFatura?.numero_fatura || ""} disabled />
+            </div>
+            <div>
+              <label className="text-sm font-medium text-gray-700">
+                Valor
+              </label>
+              <Input
+                value={
+                  selectedFatura
+                    ? formatarMoeda(Number(selectedFatura.valor_original))
+                    : ""
+                }
+                disabled
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium text-gray-700">
+                Motivo do Cancelamento *
+              </label>
+              <Input
+                value={motivoCancelamento}
+                onChange={(e) => setMotivoCancelamento(e.target.value)}
+                placeholder="Ex: Aluno cancelou matrícula, fatura duplicada, etc."
+              />
+            </div>
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+              <p className="text-sm text-yellow-800">
+                <strong>Atenção:</strong> Esta ação não pode ser desfeita. A fatura será marcada como CANCELADA.
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowCancelarDialog(false);
+                setMotivoCancelamento("");
+              }}
+            >
+              Voltar
+            </Button>
+            <Button variant="destructive" onClick={handleCancelarFatura}>
+              Confirmar Cancelamento
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -57,10 +57,34 @@ export class AssinaturasService {
         aluno_id: createAssinaturaDto.aluno_id,
         status: StatusAssinatura.ATIVA,
       },
+      relations: ['plano'],
     });
 
     if (assinaturaExistente) {
-      throw new BadRequestException('Aluno já possui uma assinatura ativa');
+      // Log para debug
+      console.log('🚨 Assinatura ativa encontrada:', {
+        id: assinaturaExistente.id,
+        aluno_id: assinaturaExistente.aluno_id,
+        status: assinaturaExistente.status,
+        plano_id: assinaturaExistente.plano_id,
+        plano_nome: assinaturaExistente.plano?.nome,
+      });
+      
+      // Buscar TODAS as assinaturas deste aluno para debug
+      const todasAssinaturas = await this.assinaturaRepository.find({
+        where: { aluno_id: createAssinaturaDto.aluno_id },
+      });
+      console.log(`📋 Total de assinaturas do aluno: ${todasAssinaturas.length}`);
+      todasAssinaturas.forEach((a, idx) => {
+        console.log(`  ${idx + 1}. ID: ${a.id}, Status: ${a.status}, Plano: ${a.plano_id}`);
+      });
+
+      const planoNome = assinaturaExistente.plano?.nome || 'não identificado';
+      throw new BadRequestException(
+        `Aluno já possui uma assinatura ativa (Plano: ${planoNome}). ` +
+        `Por favor, cancele a assinatura atual antes de criar uma nova. ` +
+        `ID da assinatura ativa: ${assinaturaExistente.id}`
+      );
     }
 
     // Verificar limite de alunos no plano
@@ -263,12 +287,27 @@ export class AssinaturasService {
       throw new NotFoundException(`Assinatura ${id} não encontrada`);
     }
 
+    console.log('❌ Cancelando assinatura:', {
+      id: assinatura.id,
+      aluno_id: assinatura.aluno_id,
+      status_anterior: assinatura.status,
+      motivo: cancelarDto.motivo_cancelamento,
+    });
+
     assinatura.status = StatusAssinatura.CANCELADA;
     assinatura.cancelado_por = user.id;
     assinatura.cancelado_em = new Date();
     assinatura.motivo_cancelamento = cancelarDto.motivo_cancelamento;
 
-    return await this.assinaturaRepository.save(assinatura);
+    const result = await this.assinaturaRepository.save(assinatura);
+    
+    console.log('✅ Assinatura cancelada com sucesso:', {
+      id: result.id,
+      aluno_id: result.aluno_id,
+      status_novo: result.status,
+    });
+
+    return result;
   }
 
   async pausar(id: string): Promise<Assinatura> {

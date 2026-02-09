@@ -160,11 +160,42 @@ export class PaytimeIntegrationService {
           phone: fatura.aluno.telefone?.replace(/\D/g, '') || '00000000000',
           email: fatura.aluno.email || `aluno${fatura.aluno_id}@teamcruz.com`,
         },
+        info_additional: [
+          {
+            key: 'aluno_id',
+            value: fatura.aluno_id,
+          },
+          {
+            key: 'aluno_cpf',
+            value: fatura.aluno.cpf?.replace(/\D/g, ''),
+          },
+          {
+            key: 'aluno_nome',
+            value: fatura.aluno.nome_completo,
+          },
+          {
+            key: 'aluno_email',
+            value: fatura.aluno.email || `aluno${fatura.aluno_id}@teamcruz.com`,
+          },
+          {
+            key: 'aluno_telefone',
+            value: fatura.aluno.telefone?.replace(/\D/g, '') || '00000000000',
+          },
+          {
+            key: 'numero_matricula',
+            value: fatura.aluno.numero_matricula || '',
+          },
+        ],
       };
 
       this.logger.log(
-        `Criando transação PIX na Paytime - Establishment: ${establishment}, Valor: ${pixData.amount}`,
+        `🚀 Criando transação PIX na Paytime - Establishment: ${establishment}, Valor: ${pixData.amount}`,
       );
+      this.logger.log(`📋 Dados do cliente sendo enviados:`);
+      this.logger.log(`   - Nome: ${pixData.client.first_name} ${pixData.client.last_name}`);
+      this.logger.log(`   - CPF: ${pixData.client.document}`);
+      this.logger.log(`   - Email: ${pixData.client.email}`);
+      this.logger.log(`   - Telefone: ${pixData.client.phone}`);
 
       const paytimeResponse =
         await this.paytimeService.createPixTransaction(
@@ -371,6 +402,32 @@ export class PaytimeIntegrationService {
           expiration_year: parseInt(dto.card.expiration_year, 10),
           security_code: dto.card.cvv,
         },
+        info_additional: [
+          {
+            key: 'aluno_id',
+            value: fatura.aluno_id,
+          },
+          {
+            key: 'aluno_cpf',
+            value: fatura.aluno.cpf?.replace(/\D/g, ''),
+          },
+          {
+            key: 'aluno_nome',
+            value: fatura.aluno.nome_completo,
+          },
+          {
+            key: 'aluno_email',
+            value: fatura.aluno.email || `aluno${fatura.aluno_id}@teamcruz.com`,
+          },
+          {
+            key: 'aluno_telefone',
+            value: fatura.aluno.telefone?.replace(/\D/g, '') || '00000000000',
+          },
+          {
+            key: 'numero_matricula',
+            value: fatura.aluno.numero_matricula || '',
+          },
+        ],
       };
 
       this.logger.log(
@@ -751,6 +808,28 @@ export class PaytimeIntegrationService {
             limit_date: new Date(new Date(dueDate).getTime() - 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 5 dias antes do vencimento
           },
         },
+        info_additional: [
+          {
+            key: 'aluno_id',
+            value: fatura.aluno_id,
+          },
+          {
+            key: 'aluno_cpf',
+            value: dadosBoleto.cpf,
+          },
+          {
+            key: 'aluno_nome',
+            value: dadosBoleto.nome,
+          },
+          {
+            key: 'aluno_email',
+            value: dadosBoleto.email,
+          },
+          {
+            key: 'numero_matricula',
+            value: fatura.aluno.numero_matricula || '',
+          },
+        ],
       };
 
       this.logger.log(

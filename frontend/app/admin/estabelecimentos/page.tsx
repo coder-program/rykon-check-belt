@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import {
   Select,
@@ -197,6 +198,17 @@ export default function EstabelecimentosPage() {
         email: data.email || "",
         gmv: data.gmv || 0,
         birthdate: data.birthdate || "",
+        cnae: data.cnae || "",
+        document: data.document || "",
+        activity_id: data.activity_id || "",
+        visited: data.visited || false,
+        notes: data.notes || "",
+        // Responsável
+        responsible_email: data.responsible?.email || "",
+        responsible_document: data.responsible?.document || "",
+        responsible_first_name: data.responsible?.first_name || "",
+        responsible_phone: data.responsible?.phone || "",
+        responsible_birthdate: data.responsible?.birthdate || "",
       });
 
       // Carregar unidades vinculadas e disponíveis
@@ -217,6 +229,27 @@ export default function EstabelecimentosPage() {
     try {
       setLoadingDetails(true);
       
+      // Preparar payload no formato esperado pela API
+      // IMPORTANTE: API de UPDATE não aceita 'visited' e 'responsible'
+      const payload: any = {
+        access_type: formData.access_type,
+        first_name: formData.first_name,
+        last_name: formData.last_name,
+        phone_number: formData.phone_number,
+        email: formData.email,
+        revenue: formData.revenue,
+        format: formData.format,
+        gmv: formData.gmv,
+        birthdate: formData.birthdate,
+      };
+
+      // Adicionar campos opcionais se preenchidos
+      if (formData.cnae) payload.cnae = formData.cnae;
+      if (formData.activity_id) payload.activity_id = parseInt(formData.activity_id);
+      if (formData.notes) payload.notes = formData.notes;
+      
+      // NÃO enviar 'visited' e 'responsible' no UPDATE - não são aceitos pela API
+      
       const token = localStorage.getItem("token");
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/paytime/establishments/${selectedEstabelecimento.id}`,
@@ -226,7 +259,7 @@ export default function EstabelecimentosPage() {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify(formData),
+          body: JSON.stringify(payload),
         }
       );
 
@@ -237,8 +270,9 @@ export default function EstabelecimentosPage() {
 
       toast.success("Estabelecimento atualizado com sucesso!");
       setEditMode(false);
-      setShowModal(false);
-      carregarEstabelecimentos(currentPage, false);
+      
+      // Recarregar detalhes
+      await verDetalhes(selectedEstabelecimento.id);
     } catch (error: any) {
       console.error("Erro:", error);
       toast.error(error.message || "Erro ao atualizar estabelecimento");
@@ -599,11 +633,13 @@ export default function EstabelecimentosPage() {
                       </Button>
                       <Button
                         size="sm"
-                        className="flex-1 bg-green-600 hover:bg-green-700"
+                        className="flex-1 bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
                         onClick={() => {
                           setSelectedEstabForGateway(estabelecimento);
                           setShowGatewayModal(true);
                         }}
+                        disabled={estabelecimento.status !== 'APPROVED'}
+                        title={estabelecimento.status !== 'APPROVED' ? 'Gateway disponível apenas para estabelecimentos aprovados' : 'Ativar Gateway'}
                       >
                         <Zap className="w-3.5 h-3.5 mr-2" />
                         Gateway
@@ -764,6 +800,16 @@ export default function EstabelecimentosPage() {
                             />
                           </div>
                           <div>
+                            <label className="block text-sm font-medium mb-1">Sobrenome/Nome Fantasia</label>
+                            <Input
+                              value={formData.last_name}
+                              onChange={(e) => setFormData({...formData, last_name: e.target.value})}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
                             <label className="block text-sm font-medium mb-1">Email *</label>
                             <Input
                               type="email"
@@ -771,9 +817,6 @@ export default function EstabelecimentosPage() {
                               onChange={(e) => setFormData({...formData, email: e.target.value})}
                             />
                           </div>
-                        </div>
-
-                        <div className="grid grid-cols-3 gap-4">
                           <div>
                             <label className="block text-sm font-medium mb-1">Telefone *</label>
                             <Input
@@ -781,9 +824,21 @@ export default function EstabelecimentosPage() {
                               onChange={(e) => setFormData({...formData, phone_number: e.target.value})}
                             />
                           </div>
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium mb-1">Data Fundação</label>
+                            <Input
+                              type="date"
+                              value={formData.birthdate}
+                              onChange={(e) => setFormData({...formData, birthdate: e.target.value})}
+                            />
+                          </div>
                           <div>
                             <label className="block text-sm font-medium mb-1">Receita *</label>
                             <Input
+                              type="number"
                               value={formData.revenue}
                               onChange={(e) => setFormData({...formData, revenue: e.target.value})}
                             />
@@ -793,9 +848,58 @@ export default function EstabelecimentosPage() {
                             <Input
                               type="number"
                               value={formData.gmv}
-                              onChange={(e) => setFormData({...formData, gmv: parseInt(e.target.value)})}
+                              onChange={(e) => setFormData({...formData, gmv: e.target.value})}
                             />
                           </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium mb-1">CNPJ/CPF</label>
+                            <Input
+                              value={formData.document}
+                              onChange={(e) => setFormData({...formData, document: e.target.value})}
+                              placeholder="00.000.000/0000-00"
+                              disabled
+                            />
+                            <p className="text-xs text-gray-500 mt-1">Documento não pode ser alterado</p>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium mb-1">CNAE</label>
+                            <Input
+                              value={formData.cnae}
+                              onChange={(e) => setFormData({...formData, cnae: e.target.value})}
+                              placeholder="0000-0/00"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium mb-1">ID Atividade Econômica</label>
+                            <Input
+                              type="number"
+                              value={formData.activity_id}
+                              onChange={(e) => setFormData({...formData, activity_id: e.target.value})}
+                              placeholder="Ex: 123"
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium mb-1">Observações Internas</label>
+                          <Textarea
+                            value={formData.notes}
+                            onChange={(e) => setFormData({...formData, notes: e.target.value})}
+                            placeholder="Observações internas sobre o estabelecimento..."
+                            rows={3}
+                          />
+                        </div>
+
+                        <div className="border-t pt-4 mt-4">
+                          <p className="text-sm text-gray-500 italic">
+                            ℹ️ Campos "Visitado" e "Dados do Responsável" não podem ser alterados após criação.
+                          </p>
                         </div>
 
                         <div className="flex gap-2 pt-4">
@@ -818,10 +922,31 @@ export default function EstabelecimentosPage() {
                             <p><span className="text-gray-600">Telefone:</span> {selectedEstabelecimento.phone_number}</p>
                             <p><span className="text-gray-600">Data Nascimento/Fundação:</span> {selectedEstabelecimento.birthdate || "—"}</p>
                             <p><span className="text-gray-600">Formato:</span> {selectedEstabelecimento.format || "—"}</p>
+                            <p><span className="text-gray-600">CNAE:</span> {selectedEstabelecimento.cnae || "—"}</p>
                             <p><span className="text-gray-600">Tipo de Acesso:</span> {selectedEstabelecimento.access_type}</p>
                             <p><span className="text-gray-600">Atividade Econômica:</span> {selectedEstabelecimento.activity_id || "—"}</p>
+                            <p><span className="text-gray-600">Visitado:</span> {selectedEstabelecimento.visited ? "Sim" : "Não"}</p>
                           </div>
+                          {selectedEstabelecimento.notes && (
+                            <div className="mt-3">
+                              <p className="text-sm"><span className="text-gray-600 font-medium">Observações:</span></p>
+                              <p className="text-sm mt-1 text-gray-700">{selectedEstabelecimento.notes}</p>
+                            </div>
+                          )}
                         </div>
+
+                        {selectedEstabelecimento.responsible && (
+                          <div>
+                            <h3 className="font-semibold mb-2">Dados do Responsável</h3>
+                            <div className="grid grid-cols-2 gap-3 text-sm">
+                              <p><span className="text-gray-600">Nome:</span> {selectedEstabelecimento.responsible.first_name}</p>
+                              <p><span className="text-gray-600">Email:</span> {selectedEstabelecimento.responsible.email}</p>
+                              <p><span className="text-gray-600">Documento:</span> {selectedEstabelecimento.responsible.document}</p>
+                              <p><span className="text-gray-600">Telefone:</span> {selectedEstabelecimento.responsible.phone}</p>
+                              <p><span className="text-gray-600">Data Nascimento:</span> {selectedEstabelecimento.responsible.birthdate || "—"}</p>
+                            </div>
+                          </div>
+                        )}
 
                         {selectedEstabelecimento.legal_representative && (
                           <div>

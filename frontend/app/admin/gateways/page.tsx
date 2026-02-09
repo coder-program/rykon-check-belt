@@ -10,6 +10,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -60,6 +67,11 @@ export default function GatewaysPage() {
   // Filtros
   const [searchTerm, setSearchTerm] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("all");
+  
+  // Modal de detalhes
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [selectedGateway, setSelectedGateway] = useState<any>(null);
+  const [loadingDetails, setLoadingDetails] = useState(false);
 
   const fetchGateways = async () => {
     try {
@@ -131,6 +143,37 @@ export default function GatewaysPage() {
     setSearchTerm("");
     setTypeFilter("all");
     setPage(1);
+  };
+
+  const viewGatewayDetails = async (gatewayId: number) => {
+    try {
+      setLoadingDetails(true);
+      setShowDetailsModal(true);
+      
+      const token = localStorage.getItem("token");
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/paytime/gateways/${gatewayId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Erro ao buscar detalhes do gateway");
+      }
+
+      const data = await response.json();
+      console.log("📋 Detalhes do gateway:", data);
+      setSelectedGateway(data);
+    } catch (error: any) {
+      console.error("❌ Erro ao buscar detalhes:", error);
+      toast.error(error.message || "Erro ao carregar detalhes do gateway");
+      setShowDetailsModal(false);
+    } finally {
+      setLoadingDetails(false);
+    }
   };
 
   const getGatewayIcon = (type: string) => {
@@ -372,9 +415,7 @@ export default function GatewaysPage() {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => {
-                            toast.success(`Gateway: ${gateway.name} (ID: ${gateway.id})`);
-                          }}
+                          onClick={() => viewGatewayDetails(gateway.id)}
                         >
                           <ExternalLink className="h-4 w-4 mr-2" />
                           Ver Detalhes
@@ -412,6 +453,182 @@ export default function GatewaysPage() {
             )}
           </CardContent>
         </Card>
+
+        {/* Modal de Detalhes */}
+        <Dialog open={showDetailsModal} onOpenChange={setShowDetailsModal}>
+          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                {selectedGateway && getGatewayIcon(selectedGateway.type)}
+                Detalhes do Gateway
+              </DialogTitle>
+              <DialogDescription>
+                Informações completas do provedor de pagamento
+              </DialogDescription>
+            </DialogHeader>
+
+            {loadingDetails ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-orange-600" />
+              </div>
+            ) : selectedGateway ? (
+              <div className="space-y-6">
+                {/* Informações Principais */}
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <div className="flex items-start gap-4">
+                    <div className={`p-3 rounded-lg ${getGatewayColor(selectedGateway.type)}`}>
+                      {getGatewayIcon(selectedGateway.type)}
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <h3 className="text-xl font-bold text-gray-900">
+                          {selectedGateway.name}
+                        </h3>
+                        <span className={`px-2 py-1 text-xs font-semibold rounded ${getGatewayColor(selectedGateway.type)}`}>
+                          {selectedGateway.type}
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-600 mb-3">
+                        {getGatewayDescription(selectedGateway.name)}
+                      </p>
+                      <div className="grid grid-cols-2 gap-3 text-sm">
+                        <div>
+                          <span className="text-gray-500">ID:</span>
+                          <span className="ml-2 font-semibold text-gray-900">
+                            {selectedGateway.id}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-gray-500">Status:</span>
+                          <span className="ml-2 font-semibold text-green-600">
+                            Ativo
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Datas */}
+                <div className="grid grid-cols-2 gap-4">
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm font-medium text-gray-600">
+                        Data de Criação
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-lg font-semibold">
+                        {new Date(selectedGateway.created_at).toLocaleDateString("pt-BR", {
+                          day: "2-digit",
+                          month: "long",
+                          year: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit"
+                        })}
+                      </p>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-sm font-medium text-gray-600">
+                        Última Atualização
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-lg font-semibold">
+                        {new Date(selectedGateway.updated_at).toLocaleDateString("pt-BR", {
+                          day: "2-digit",
+                          month: "long",
+                          year: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit"
+                        })}
+                      </p>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Informações Técnicas */}
+                <Card className="border-blue-200 bg-blue-50">
+                  <CardHeader>
+                    <CardTitle className="text-blue-900">
+                      Informações Técnicas
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3 text-sm">
+                    <div>
+                      <strong className="font-semibold text-blue-900">Tipo de Gateway:</strong>
+                      <p className="text-blue-800 mt-1">
+                        {selectedGateway.type === "ACQUIRER" 
+                          ? "🏦 ACQUIRER - Adquirente para processamento de pagamentos com cartão de crédito/débito"
+                          : "💰 BANKING - Serviços bancários para transferências, saques e PIX"}
+                      </p>
+                    </div>
+
+                    {selectedGateway.name === "PAYTIME" && (
+                      <div>
+                        <strong className="font-semibold text-blue-900">Funcionalidades:</strong>
+                        <ul className="mt-1 ml-6 list-disc space-y-1 text-blue-800">
+                          <li>Split de pagamentos automático</li>
+                          <li>Marketplace com múltiplos vendedores</li>
+                          <li>Gestão de repasses (liquidações)</li>
+                          <li>Suporte a PIX, cartão e boleto</li>
+                        </ul>
+                      </div>
+                    )}
+
+                    {selectedGateway.name === "PAGSEGURO" && (
+                      <div>
+                        <strong className="font-semibold text-blue-900">Funcionalidades:</strong>
+                        <ul className="mt-1 ml-6 list-disc space-y-1 text-blue-800">
+                          <li>Processamento de cartões de crédito/débito</li>
+                          <li>Boleto bancário</li>
+                          <li>Transferência online (PIX via PagSeguro)</li>
+                          <li>Antifraude incluído</li>
+                        </ul>
+                      </div>
+                    )}
+
+                    {selectedGateway.name === "CELCOIN" && (
+                      <div>
+                        <strong className="font-semibold text-blue-900">Funcionalidades:</strong>
+                        <ul className="mt-1 ml-6 list-disc space-y-1 text-blue-800">
+                          <li>Transferências bancárias (TED/DOC)</li>
+                          <li>PIX - Pagamentos instantâneos</li>
+                          <li>Saques para contas bancárias</li>
+                          <li>Peer-to-peer (P2P)</li>
+                          <li>Consulta de saldos</li>
+                        </ul>
+                      </div>
+                    )}
+
+                    <div className="pt-2 border-t border-blue-200">
+                      <p className="text-xs italic text-blue-700">
+                        💡 Use o ID <b>{selectedGateway.id}</b> ao ativar este gateway para estabelecimentos via API
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Ações */}
+                <div className="flex justify-end gap-2 pt-4 border-t">
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowDetailsModal(false)}
+                  >
+                    Fechar
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-12 text-gray-500">
+                Erro ao carregar detalhes
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </ProtectedRoute>
   );

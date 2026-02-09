@@ -615,6 +615,7 @@ export class UnidadesService {
       requer_aprovacao_checkin: row.requer_aprovacao_checkin || false,
       // Integração Paytime
       paytime_establishment_id: row.paytime_establishment_id || null,
+      paytime_plans: row.paytime_plans || [],
       // Geolocalização
       latitude: row.latitude ? parseFloat(row.latitude) : null,
       longitude: row.longitude ? parseFloat(row.longitude) : null,

@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { formatarData, formatarMoeda } from "@/lib/utils/dateUtils";
 import {
   DollarSign,
   Clock,
@@ -19,13 +20,22 @@ import ProcessarPagamentoModal from "@/components/financeiro/ProcessarPagamentoM
 interface Fatura {
   id: string;
   numero_fatura: string;
+  descricao?: string;
   valor_original?: number | string;
+  valor_total?: number; // Para compatibilidade com ProcessarPagamentoModal
   valor_pago?: number | string;
   status: "PENDENTE" | "PAGA" | "ATRASADA" | "CANCELADA";
   data_vencimento: string;
   data_pagamento?: string;
   metodo_pagamento?: string;
   observacoes?: string;
+  assinatura?: {
+    plano?: {
+      nome: string;
+      tipo?: string;
+    };
+    metodo_pagamento?: string; // Método de pagamento da assinatura
+  };
 }
 
 export default function MinhasFaturas() {
@@ -100,19 +110,17 @@ export default function MinhasFaturas() {
     }
   };
 
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat("pt-BR", {
-      style: "currency",
-      currency: "BRL",
-    }).format(value);
-  };
-
-  const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString("pt-BR");
-  };
+  // Removidas - usando formatarData e formatarMoeda do dateUtils
 
   const handlePagarOnline = (fatura: Fatura) => {
-    setFaturaParaPagar(fatura);
+    // Preparar fatura com os campos esperados pelo modal
+    const faturaParaModal = {
+      ...fatura,
+      valor_total: parseFloat(fatura.valor_original?.toString() || "0"),
+      // Usar metodo_pagamento da fatura, ou metodo_pagamento da assinatura como fallback
+      metodo_pagamento: fatura.metodo_pagamento || fatura.assinatura?.metodo_pagamento,
+    };
+    setFaturaParaPagar(faturaParaModal as any);
     setModalPagamentoOpen(true);
   };
 
@@ -194,7 +202,7 @@ export default function MinhasFaturas() {
               <div>
                 <p className="text-sm text-gray-600">Pendentes</p>
                 <p className="text-2xl font-bold text-yellow-600">
-                  {formatCurrency(totais.pendente)}
+                  {formatarMoeda(totais.pendente)}
                 </p>
               </div>
               <Clock className="h-8 w-8 text-yellow-600" />
@@ -208,7 +216,7 @@ export default function MinhasFaturas() {
               <div>
                 <p className="text-sm text-gray-600">Em Atraso</p>
                 <p className="text-2xl font-bold text-red-600">
-                  {formatCurrency(totais.atrasada)}
+                  {formatarMoeda(totais.atrasada)}
                 </p>
               </div>
               <AlertCircle className="h-8 w-8 text-red-600" />
@@ -223,7 +231,7 @@ export default function MinhasFaturas() {
                 <p className="text-sm text-gray-600">Próximo Vencimento</p>
                 {totais.proximoVencimento ? (
                   <p className="text-lg font-bold text-blue-600">
-                    {formatDate(totais.proximoVencimento.data_vencimento)}
+                    {formatarData(totais.proximoVencimento.data_vencimento)}
                   </p>
                 ) : (
                   <p className="text-sm text-gray-500">Nenhuma pendente</p>
@@ -254,13 +262,36 @@ export default function MinhasFaturas() {
                     </p>
                     {getStatusBadge(fatura.status)}
                   </div>
+                  
+                  {/* Descrição/Plano */}
+                  {fatura.descricao && (
+                    <p className="text-sm font-medium text-gray-700 mt-2">
+                      {fatura.descricao}
+                    </p>
+                  )}
+                  
+                  {/* Plano da assinatura */}
+                  {fatura.assinatura?.plano?.nome && (
+                    <p className="text-sm text-blue-600 mt-1">
+                      📋 Plano: {fatura.assinatura.plano.nome}
+                      {fatura.assinatura.plano.tipo && ` (${fatura.assinatura.plano.tipo})`}
+                    </p>
+                  )}
+                  
                   <p className="text-sm text-gray-500 mt-1">
-                    Vencimento: {formatDate(fatura.data_vencimento)}
+                    📅 Vencimento: {formatarData(fatura.data_vencimento)}
                   </p>
+                  
                   {fatura.status === "PAGA" && fatura.data_pagamento && (
                     <p className="text-xs text-green-600 mt-1">
-                      Pago em {formatDate(fatura.data_pagamento)} via{" "}
+                      ✅ Pago em {formatarData(fatura.data_pagamento)} via{" "}
                       {fatura.metodo_pagamento}
+                    </p>
+                  )}
+                  
+                  {fatura.status !== "PAGA" && fatura.metodo_pagamento && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      💳 Método: {fatura.metodo_pagamento}
                     </p>
                   )}
                 </div>
@@ -277,7 +308,7 @@ export default function MinhasFaturas() {
                   </Button>
                 )}
                   <p className="text-xl font-bold text-gray-900">
-                    {formatCurrency(parseFloat(fatura.valor_original?.toString()) || 0)}
+                    {formatarMoeda(parseFloat(fatura.valor_original?.toString()) || 0)}
                   </p>
                   {fatura.status === "ATRASADA" && (
                     <p className="text-xs text-red-600 mt-1">

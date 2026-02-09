@@ -34,6 +34,7 @@ interface Fatura {
   valor_total: number;
   data_vencimento: string;
   status: string;
+  metodo_pagamento?: string;
 }
 
 interface ProcessarPagamentoModalProps {
@@ -50,7 +51,24 @@ export default function ProcessarPagamentoModal({
   onSuccess,
 }: ProcessarPagamentoModalProps) {
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState("pix");
+  
+  // Mapear método de pagamento para ID da tab
+  const getTabFromMetodoPagamento = (metodo?: string): string => {
+    if (!metodo) return "pix";
+    const metodoUpper = metodo.toUpperCase();
+    if (metodoUpper === "PIX") return "pix";
+    if (metodoUpper === "BOLETO") return "boleto";
+    if (metodoUpper === "CARTAO" || metodoUpper === "CARTÃO") return "cartao";
+    return "pix"; // Default
+  };
+  
+  // Métodos de pagamento permitidos para pagamento online
+  const metodosOnline = ["PIX", "BOLETO", "CARTAO", "CARTÃO"];
+  const metodoPermitePagamentoOnline = fatura?.metodo_pagamento 
+    ? metodosOnline.includes(fatura.metodo_pagamento.toUpperCase())
+    : true; // Se não tiver método definido, permite todos
+  
+  const [activeTab, setActiveTab] = useState(() => getTabFromMetodoPagamento(fatura?.metodo_pagamento));
   const [transacaoId, setTransacaoId] = useState<string | null>(null);
 
   // Estados PIX
@@ -470,6 +488,52 @@ export default function ProcessarPagamentoModal({
   };
 
   if (!fatura) return null;
+  
+  // Verificar se o método de pagamento permite pagamento online
+  if (!metodoPermitePagamentoOnline) {
+    return (
+      <Dialog open={open} onOpenChange={handleClose}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Pagamento não disponível online</DialogTitle>
+          </DialogHeader>
+          <div className="py-6 text-center space-y-4">
+            <AlertCircle className="h-16 w-16 mx-auto text-yellow-500" />
+            <div>
+              <p className="text-lg font-semibold mb-2">
+                Fatura #{fatura.numero_fatura}
+              </p>
+              <p className="text-muted-foreground">
+                Método de pagamento: <strong>{fatura.metodo_pagamento}</strong>
+              </p>
+            </div>
+            <div className="bg-yellow-50 p-4 rounded-lg text-sm text-yellow-800">
+              <p className="font-semibold mb-1">⚠️ Pagamento Presencial</p>
+              <p>
+                Esta fatura está configurada para pagamento em {fatura.metodo_pagamento}.
+                Por favor, dirija-se à recepção da sua unidade para efetuar o pagamento.
+              </p>
+            </div>
+            <Button onClick={handleClose} className="w-full">
+              Entendi
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+  
+  // Determinar quais tabs mostrar baseado no método de pagamento
+  const metodoPagamentoUpper = fatura.metodo_pagamento?.toUpperCase();
+  const mostrarApenasMetodoDefinido = !!fatura.metodo_pagamento;
+  
+  const mostrarPix = !mostrarApenasMetodoDefinido || metodoPagamentoUpper === "PIX";
+  const mostrarCartao = !mostrarApenasMetodoDefinido || metodoPagamentoUpper === "CARTAO" || metodoPagamentoUpper === "CARTÃO";
+  const mostrarBoleto = !mostrarApenasMetodoDefinido || metodoPagamentoUpper === "BOLETO";
+  
+  // Contar quantas tabs serão mostradas para ajustar o grid
+  const numTabs = [mostrarPix, mostrarCartao, mostrarBoleto].filter(Boolean).length;
+  const gridClass = numTabs === 3 ? "grid-cols-3" : numTabs === 2 ? "grid-cols-2" : "grid-cols-1";
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -478,23 +542,34 @@ export default function ProcessarPagamentoModal({
           <DialogTitle>Pagar Fatura #{fatura.numero_fatura}</DialogTitle>
           <DialogDescription>
             Valor: R$ {Number(fatura.valor_total).toFixed(2)}
+            {fatura.metodo_pagamento && (
+              <span className="block mt-1 text-xs">
+                💳 Método: {fatura.metodo_pagamento}
+              </span>
+            )}
           </DialogDescription>
         </DialogHeader>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="pix">
-              <QrCode className="w-4 h-4 mr-2" />
-              PIX
-            </TabsTrigger>
-            <TabsTrigger value="cartao">
-              <CreditCard className="w-4 h-4 mr-2" />
-              Cartão
-            </TabsTrigger>
-            <TabsTrigger value="boleto">
-              <FileText className="w-4 h-4 mr-2" />
-              Boleto
-            </TabsTrigger>
+          <TabsList className={`grid w-full ${gridClass}`}>
+            {mostrarPix && (
+              <TabsTrigger value="pix">
+                <QrCode className="w-4 h-4 mr-2" />
+                PIX
+              </TabsTrigger>
+            )}
+            {mostrarCartao && (
+              <TabsTrigger value="cartao">
+                <CreditCard className="w-4 h-4 mr-2" />
+                Cartão
+              </TabsTrigger>
+            )}
+            {mostrarBoleto && (
+              <TabsTrigger value="boleto">
+                <FileText className="w-4 h-4 mr-2" />
+                Boleto
+              </TabsTrigger>
+            )}
           </TabsList>
 
           {/* ABA PIX */}

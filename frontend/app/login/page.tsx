@@ -249,6 +249,32 @@ function LoginContent() {
         return;
       }
 
+      // Em desenvolvimento, se o email falhar, usar o token diretamente
+      if (data.token) {
+        const resetUrl = `${window.location.origin}/reset-password?token=${data.token}`;
+        
+        // Copiar para clipboard
+        try {
+          await navigator.clipboard.writeText(resetUrl);
+          toast.success(
+            "⚠️ Email indisponível. Link de reset copiado para área de transferência! Cole no navegador.",
+            { duration: 10000 }
+          );
+        } catch (err) {
+          toast.success(
+            `⚠️ Email indisponível. Use este link para resetar a senha: ${resetUrl}`,
+            { duration: 15000 }
+          );
+        }
+        
+        // Abrir o link automaticamente
+        setTimeout(() => {
+          window.open(resetUrl, '_blank');
+        }, 1000);
+        
+        return;
+      }
+
       // Email encontrado e processado com sucesso
       toast.success(
         data.message ||

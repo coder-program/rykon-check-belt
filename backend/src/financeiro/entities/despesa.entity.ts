@@ -10,6 +10,7 @@ import {
 } from 'typeorm';
 import { Unidade } from '../../people/entities/unidade.entity';
 import { Transacao } from './transacao.entity';
+import { DateTransformer } from '../../common/transformers/date.transformer';
 
 export enum CategoriaDespesa {
   SISTEMA = 'SISTEMA',
@@ -77,10 +78,17 @@ export class Despesa {
   })
   valor: number;
 
-  @Column({ type: 'date' })
+  @Column({ 
+    type: 'date',
+    transformer: DateTransformer,
+  })
   data_vencimento: Date;
 
-  @Column({ type: 'date', nullable: true })
+  @Column({ 
+    type: 'date', 
+    nullable: true,
+    transformer: DateTransformer,
+  })
   data_pagamento: Date;
 
   @Column({
@@ -121,7 +129,11 @@ export class Despesa {
   @Column({ type: 'boolean', default: false })
   lembrete_enviado: boolean;
 
-  @Column({ type: 'date', nullable: true })
+  @Column({ 
+    type: 'date', 
+    nullable: true,
+    transformer: DateTransformer,
+  })
   data_proximo_vencimento: Date;
 
   @CreateDateColumn()

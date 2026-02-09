@@ -381,34 +381,53 @@ export class FaturasService {
 
     const assinaturas = await query.getMany();
 
-    const faturasGeradas: Fatura[] = [];
+    if (assinaturas.length === 0) {
+      return { geradas: 0, faturas: [] };
+    }
+
     const hoje = new Date();
+    const mesAtual = hoje.getMonth();
+    const anoAtual = hoje.getFullYear();
 
-    for (const assinatura of assinaturas) {
-      // Verificar se já existe fatura para o período atual
-      const mesAtual = hoje.getMonth();
-      const anoAtual = hoje.getFullYear();
+    // Primeiro dia do mês atual
+    const inicioMes = new Date(anoAtual, mesAtual, 1);
 
-      const faturaExistente = await this.faturaRepository.findOne({
-        where: {
-          assinatura_id: assinatura.id,
-        },
-        order: {
-          created_at: 'DESC',
-        },
-      });
+    // Buscar TODAS as faturas do mês atual em UMA única query
+    const assinaturaIds = assinaturas.map(a => a.id);
+    const faturasExistentes = await this.faturaRepository
+      .createQueryBuilder('fatura')
+      .where('fatura.assinatura_id IN (:...ids)', { ids: assinaturaIds })
+      .andWhere('fatura.created_at >= :inicioMes', { inicioMes })
+      .getMany();
 
-      // Se já existe fatura deste mês, pular
-      if (faturaExistente) {
-        const dataFatura = new Date(faturaExistente.created_at);
-        if (
-          dataFatura.getMonth() === mesAtual &&
-          dataFatura.getFullYear() === anoAtual
-        ) {
-          continue;
-        }
-      }
+    // Criar um Set com IDs de assinaturas que já têm fatura este mês
+    const assinaturasComFatura = new Set(
+      faturasExistentes.map(f => f.assinatura_id)
+    );
 
+    // Filtrar assinaturas que ainda não têm fatura
+    const assinaturasSemFatura = assinaturas.filter(
+      a => !assinaturasComFatura.has(a.id)
+    );
+
+    if (assinaturasSemFatura.length === 0) {
+      return { geradas: 0, faturas: [] };
+    }
+
+    // Buscar o último número de fatura UMA ÚNICA VEZ para gerar os próximos em sequência
+    const ultimaFatura = await this.faturaRepository
+      .createQueryBuilder('fatura')
+      .orderBy('fatura.created_at', 'DESC')
+      .getOne();
+
+    let proximoNumero = ultimaFatura
+      ? parseInt(ultimaFatura.numero_fatura.split('-')[1]) + 1
+      : 1;
+
+    // Preparar todas as faturas para salvar em lote
+    const faturasParaCriar: Partial<Fatura>[] = [];
+
+    for (const assinatura of assinaturasSemFatura) {
       // Calcular data de vencimento baseada no dia_vencimento da assinatura
       const dataVencimento = new Date(
         anoAtual,
@@ -416,11 +435,12 @@ export class FaturasService {
         assinatura.dia_vencimento || 10,
       );
 
-      // Gerar número da fatura
-      const numeroFatura = await this.gerarNumeroFatura();
+      // Gerar número da fatura sequencialmente
+      const numeroFatura = `FAT-${proximoNumero.toString().padStart(6, '0')}`;
+      proximoNumero++;
 
       // Criar fatura
-      const fatura = this.faturaRepository.create({
+      faturasParaCriar.push({
         numero_fatura: numeroFatura,
         assinatura_id: assinatura.id,
         aluno_id: assinatura.aluno_id,
@@ -434,10 +454,10 @@ export class FaturasService {
         status: StatusFatura.PENDENTE,
         metodo_pagamento: assinatura.metodo_pagamento,
       });
-
-      const faturaSalva = await this.faturaRepository.save(fatura);
-      faturasGeradas.push(faturaSalva);
     }
+
+    // Salvar TODAS as faturas em uma única operação
+    const faturasGeradas = await this.faturaRepository.save(faturasParaCriar);
 
     return {
       geradas: faturasGeradas.length,

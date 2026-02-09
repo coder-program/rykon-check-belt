@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import ProtegerRotaFinanceira from "@/components/financeiro/ProtegerRotaFinanceira";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { formatarData, formatarMoeda, dataAtualISO } from "@/lib/utils/dateUtils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -78,6 +79,7 @@ interface Assinatura {
   data_fim?: string;
   valor_mensal: number;
   metodo_pagamento: string;
+  dia_vencimento: number;
   observacoes?: string;
 }
 
@@ -122,7 +124,7 @@ export default function Assinaturas() {
     aluno_id: "",
     plano_id: "",
     unidade_id: "",
-    data_inicio: new Date().toISOString().split("T")[0],
+    data_inicio: dataAtualISO(),
     metodo_pagamento: "PIX",
     dia_vencimento: "10",
     observacoes: "",
@@ -596,7 +598,7 @@ export default function Assinaturas() {
       aluno_id: "",
       plano_id: "",
       unidade_id: "",
-      data_inicio: new Date().toISOString().split("T")[0],
+      data_inicio: dataAtualISO(),
       metodo_pagamento: "PIX",
       dia_vencimento: "10",
       observacoes: "",
@@ -652,16 +654,9 @@ export default function Assinaturas() {
     return null;
   };
 
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat("pt-BR", {
-      style: "currency",
-      currency: "BRL",
-    }).format(value);
-  };
+  // Removido - usando formatarMoeda do dateUtils
 
-  const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString("pt-BR");
-  };
+  // Removido - usando formatarData do dateUtils
 
   const totais = {
     ativas: assinaturas.filter((a) => a.status === "ATIVA").length,
@@ -763,7 +758,7 @@ export default function Assinaturas() {
               <div>
                 <p className="text-sm text-gray-600">Receita Mensal</p>
                 <p className="text-2xl font-bold text-blue-600">
-                  {formatCurrency(totais.receita)}
+                  {formatarMoeda(totais.receita)}
                 </p>
               </div>
               <Users className="h-8 w-8 text-blue-600" />
@@ -825,9 +820,9 @@ export default function Assinaturas() {
                   </p>
                   <div className="flex items-center gap-2 mt-1">
                     <p className="text-sm text-gray-500">
-                      Início: {formatDate(assinatura.data_inicio)}
+                      Início: {formatarData(assinatura.data_inicio)}
                       {assinatura.data_fim &&
-                        ` • Fim: ${formatDate(assinatura.data_fim)}`}
+                        ` • Fim: ${formatarData(assinatura.data_fim)}`}
                     </p>
                     {assinatura.data_fim &&
                       assinatura.status === "ATIVA" &&
@@ -837,7 +832,7 @@ export default function Assinaturas() {
                 <div className="flex items-center gap-4">
                   <div className="text-right">
                     <p className="text-xl font-bold text-gray-900">
-                      {formatCurrency(assinatura.valor_mensal)}
+                      {formatarMoeda(assinatura.valor_mensal)}
                     </p>
                     <p className="text-xs text-gray-500">/mês</p>
                   </div>
@@ -1076,7 +1071,7 @@ export default function Assinaturas() {
                         >
                           <div className="flex items-center justify-between w-full">
                             <span>
-                              {plano.nome} - {formatCurrency(plano.valor)}
+                              {plano.nome} - {formatarMoeda(plano.valor)}
                             </span>
                             {plano.max_alunos && plano.max_alunos > 0 && (
                               <span
@@ -1227,7 +1222,7 @@ export default function Assinaturas() {
               <div>
                 <p className="text-sm text-gray-600">Valor Mensal</p>
                 <p className="font-semibold">
-                  {formatCurrency(selectedAssinatura.valor_mensal)}
+                  {formatarMoeda(selectedAssinatura.valor_mensal)}
                 </p>
               </div>
               <div>
@@ -1241,11 +1236,17 @@ export default function Assinaturas() {
                 </p>
               </div>
               <div>
+                <p className="text-sm text-gray-600">Dia do Vencimento</p>
+                <p className="font-semibold">
+                  Dia {selectedAssinatura.dia_vencimento} de cada mês
+                </p>
+              </div>
+              <div>
                 <p className="text-sm text-gray-600">Período</p>
                 <p className="font-semibold">
-                  {formatDate(selectedAssinatura.data_inicio)}
+                  {formatarData(selectedAssinatura.data_inicio)}
                   {selectedAssinatura.data_fim &&
-                    ` até ${formatDate(selectedAssinatura.data_fim)}`}
+                    ` até ${formatarData(selectedAssinatura.data_fim)}`}
                 </p>
               </div>
               {selectedAssinatura.observacoes && (

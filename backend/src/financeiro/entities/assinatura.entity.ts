@@ -12,6 +12,7 @@ import { Aluno } from '../../people/entities/aluno.entity';
 import { Plano } from './plano.entity';
 import { Unidade } from '../../people/entities/unidade.entity';
 import { Fatura } from './fatura.entity';
+import { DateTransformer } from '../../common/transformers/date.transformer';
 
 export enum StatusAssinatura {
   ATIVA = 'ATIVA',
@@ -80,13 +81,24 @@ export class Assinatura {
   })
   valor: number;
 
-  @Column({ type: 'date' })
+  @Column({ 
+    type: 'date',
+    transformer: DateTransformer,
+  })
   data_inicio: Date;
 
-  @Column({ type: 'date', nullable: true })
+  @Column({ 
+    type: 'date', 
+    nullable: true,
+    transformer: DateTransformer,
+  })
   data_fim: Date;
 
-  @Column({ type: 'date', nullable: true })
+  @Column({ 
+    type: 'date', 
+    nullable: true,
+    transformer: DateTransformer,
+  })
   proxima_cobranca: Date;
 
   @Column({ type: 'int', default: 0 })

@@ -3,6 +3,7 @@ import {
   UnauthorizedException,
   BadRequestException,
   NotFoundException,
+  Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
@@ -69,6 +70,8 @@ export interface LoginResponse {
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+  
   constructor(
     @InjectRepository(PasswordReset)
     private passwordResetRepository: Repository<PasswordReset>,
@@ -1100,10 +1103,19 @@ export class AuthService {
 
     // Enviar email de recuperação de senha
     try {
-      await this.emailService.sendPasswordResetEmail(email, token);
+      const emailSent = await this.emailService.sendPasswordResetEmail(email, token);
+      
+      if (!emailSent) {
+        this.logger.error(`Falha ao enviar email de recuperação para ${email}`);
+        throw new BadRequestException(
+          'Erro ao enviar email de recuperação. Por favor, tente novamente mais tarde ou contate o suporte.',
+        );
+      }
     } catch (error) {
-      console.error(`Erro ao enviar email de recuperação: ${error.message}`);
-      // Continua mesmo se falhar o envio do email (por segurança não revelar erro)
+      this.logger.error(`Erro ao enviar email de recuperação: ${error.message}`);
+      throw new BadRequestException(
+        `Erro ao enviar email: ${error.message}. Verifique se o email está correto e tente novamente.`,
+      );
     }
 
     return {

@@ -12,6 +12,7 @@ import { Assinatura } from './assinatura.entity';
 import { Aluno } from '../../people/entities/aluno.entity';
 import { Transacao } from './transacao.entity';
 import { MetodoPagamento } from './assinatura.entity';
+import { DateTransformer } from '../../common/transformers/date.transformer';
 
 export enum StatusFatura {
   PENDENTE = 'PENDENTE',
@@ -107,10 +108,17 @@ export class Fatura {
   })
   valor_pago: number;
 
-  @Column({ type: 'date' })
+  @Column({ 
+    type: 'date',
+    transformer: DateTransformer,
+  })
   data_vencimento: Date;
 
-  @Column({ type: 'date', nullable: true })
+  @Column({ 
+    type: 'date', 
+    nullable: true,
+    transformer: DateTransformer,
+  })
   data_pagamento: Date | null;
 
   @Column({

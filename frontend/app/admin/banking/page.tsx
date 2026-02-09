@@ -9,7 +9,6 @@ import {
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
 } from "@/components/ui/select";
 import {
   Wallet,
@@ -25,7 +24,7 @@ import toast from "react-hot-toast";
 
 interface Establishment {
   id: number;
-  name: string;
+  nome: string;
 }
 
 export default function BankingPage() {
@@ -34,9 +33,11 @@ export default function BankingPage() {
   const [extrato, setExtrato] = useState<any[]>([]);
   const [establishments, setEstablishments] = useState<Establishment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingData, setLoadingData] = useState(false);
   const [establishmentId, setEstablishmentId] = useState("");
   const [dataInicio, setDataInicio] = useState("");
   const [dataFim, setDataFim] = useState("");
+  const [autoLoadAttempted, setAutoLoadAttempted] = useState(false);
 
   useEffect(() => {
     carregarEstabelecimentos();
@@ -49,6 +50,15 @@ export default function BankingPage() {
     setDataInicio(mesPassado.toISOString().split("T")[0]);
     setDataFim(hoje.toISOString().split("T")[0]);
   }, []);
+
+  // Auto-carregar dados quando estabelecimento é selecionado
+  useEffect(() => {
+    if (establishmentId && dataInicio && dataFim && !autoLoadAttempted) {
+      console.log("🏦 Auto-carregando dados bancários para estabelecimento:", establishmentId);
+      setAutoLoadAttempted(true);
+      carregarSaldo();
+    }
+  }, [establishmentId, dataInicio, dataFim]);
 
   const carregarEstabelecimentos = async () => {
     try {
@@ -87,9 +97,10 @@ export default function BankingPage() {
     }
 
     try {
-      setLoading(true);
+      setLoadingData(true);
       const token = localStorage.getItem("token");
       
+      console.log("🏦 Buscando saldo para estabelecimento:", establishmentId);
       const saldoResponse = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/paytime/banking/balance?establishment_id=${establishmentId}`,
         {
@@ -99,11 +110,32 @@ export default function BankingPage() {
 
       if (saldoResponse.ok) {
         const saldoData = await saldoResponse.json();
+        console.log("💰 Saldo recebido:", saldoData);
         setSaldo(saldoData);
       } else {
+        const errorText = await saldoResponse.text();
+        console.error("❌ Erro ao buscar saldo:", saldoResponse.status, errorText);
+        
+        // Trata erro específico de conta bancária não encontrada
+        if (saldoResponse.status === 400 || saldoResponse.status === 403) {
+          try {
+            const errorJson = JSON.parse(errorText);
+            if (errorJson.message?.includes("Conta bancária não encontrada") || 
+                errorJson.code === "BNK000142") {
+              toast.error("Este estabelecimento não possui conta bancária configurada no PayTime");
+              setSaldo(null);
+              setExtrato([]);
+              return;
+            }
+          } catch (e) {
+            // Se não conseguir parsear o JSON, continua com erro genérico
+          }
+        }
+        
         throw new Error("Erro ao buscar saldo");
       }
 
+      console.log("📊 Buscando extrato:", { establishmentId, dataInicio, dataFim });
       const extratoResponse = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/paytime/banking/extract?establishment_id=${establishmentId}&start_date=${dataInicio}&end_date=${dataFim}`,
         {
@@ -113,17 +145,25 @@ export default function BankingPage() {
 
       if (extratoResponse.ok) {
         const extratoData = await extratoResponse.json();
+        console.log("📋 Extrato recebido:", extratoData);
+        console.log("📝 Número de lançamentos:", extratoData.data?.length || 0);
         setExtrato(extratoData.data || []);
+        
+        if (!extratoData.data || extratoData.data.length === 0) {
+          toast("ℹ️ Nenhum lançamento encontrado no período selecionado");
+        } else {
+          toast.success(`${extratoData.data.length} lançamento(s) encontrado(s)`);
+        }
       } else {
+        const errorText = await extratoResponse.text();
+        console.error("❌ Erro ao buscar extrato:", extratoResponse.status, errorText);
         throw new Error("Erro ao buscar extrato");
       }
-
-      toast.success("Dados carregados com sucesso!");
     } catch (error) {
-      console.error("Erro:", error);
+      console.error("❌ Erro geral:", error);
       toast.error("Erro ao carregar dados bancários");
     } finally {
-      setLoading(false);
+      setLoadingData(false);
     }
   };
 
@@ -144,21 +184,37 @@ export default function BankingPage() {
       <Card>
         <CardContent className="pt-6">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <Select
-              value={establishmentId}
-              onValueChange={setEstablishmentId}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione estabelecimento" />
-              </SelectTrigger>
-              <SelectContent>
-                {establishments.map((est) => (
-                  <SelectItem key={est.id} value={est.id.toString()}>
-                    {est.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div>
+              {establishments.length > 0 ? (
+                <Select
+                  value={establishmentId}
+                  onValueChange={setEstablishmentId}
+                >
+                  <SelectTrigger className="bg-white text-gray-900 font-medium border-gray-300">
+                    <span className="block truncate text-gray-900 uppercase">
+                      {establishmentId 
+                        ? establishments.find(e => e.id.toString() === establishmentId)?.nome || "Selecione..."
+                        : "Selecione estabelecimento"}
+                    </span>
+                  </SelectTrigger>
+                  <SelectContent className="bg-white z-50 border border-gray-200">
+                    {establishments.map((est) => (
+                      <SelectItem 
+                        key={est.id} 
+                        value={est.id.toString()}
+                        className="text-gray-900 bg-white hover:bg-gray-100 cursor-pointer focus:bg-gray-100 focus:text-gray-900"
+                      >
+                        <span className="text-gray-900 font-medium uppercase">{est.nome}</span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <div className="h-10 flex items-center px-3 bg-gray-100 border border-gray-300 rounded-md">
+                  <span className="text-gray-500 text-sm">Nenhum estabelecimento</span>
+                </div>
+              )}
+            </div>
             <Input
               type="date"
               value={dataInicio}
@@ -169,13 +225,38 @@ export default function BankingPage() {
               value={dataFim}
               onChange={(e) => setDataFim(e.target.value)}
             />
-            <Button onClick={carregarSaldo} disabled={!establishmentId}>
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Consultar
+            <Button onClick={carregarSaldo} disabled={!establishmentId || loadingData}>
+              <RefreshCw className={`h-4 w-4 mr-2 ${loadingData ? 'animate-spin' : ''}`} />
+              {loadingData ? 'Consultando...' : 'Consultar'}
             </Button>
           </div>
         </CardContent>
       </Card>
+
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <div className="flex items-start gap-3">
+          <div className="text-blue-600 text-xl">ℹ️</div>
+          <div>
+            <h3 className="font-semibold text-blue-900 mb-1">Informações Bancárias do PayTime</h3>
+            <p className="text-sm text-blue-800 mb-2">
+              Esta página exibe o <b>saldo bancário</b> e o <b>extrato de movimentações</b> do estabelecimento no PayTime. 
+              O extrato mostra créditos (recebimentos) e débitos (saques, taxas, transferências) no período selecionado.
+            </p>
+            <div className="bg-yellow-100 border-l-4 border-yellow-500 p-3 rounded">
+              <p className="text-sm text-yellow-800">
+                <b>⚠️ Pré-requisito:</b> O estabelecimento precisa ter <b>conta bancária configurada</b> no PayTime para ter saldo e movimentações. 
+                Sem conta bancária vinculada, você verá o erro &quot;Conta bancária não encontrada&quot; (BNK000142).
+              </p>
+            </div>
+            {extrato.length === 0 && saldo && (
+              <p className="text-sm text-orange-700 mt-2 font-medium">
+                ⚠️ Nenhum lançamento encontrado no período. Isso pode significar que não houve movimentações bancárias 
+                ou o estabelecimento ainda não realizou transações que gerassem entradas no extrato.
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
 
       {saldo && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -234,12 +315,17 @@ export default function BankingPage() {
           </div>
         </CardHeader>
         <CardContent>
-          {extrato.length > 0 ? (
+          {loadingData ? (
+            <div className="text-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+              <p className="text-gray-600">Carregando extrato...</p>
+            </div>
+          ) : extrato.length > 0 ? (
             <div className="space-y-3">
               {extrato.map((lancamento: any, index: number) => (
                 <div
                   key={index}
-                  className="flex items-center justify-between p-4 border rounded-lg"
+                  className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors"
                 >
                   <div className="flex items-center gap-4">
                     {lancamento.type === "CREDIT" ? (
@@ -267,10 +353,36 @@ export default function BankingPage() {
                 </div>
               ))}
             </div>
+          ) : !saldo ? (
+            <div className="text-center py-12">
+              <Wallet className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+              <p className="text-gray-600 font-medium mb-2">
+                Clique em &quot;Consultar&quot; para carregar os dados
+              </p>
+              <p className="text-sm text-gray-500">
+                Selecione o estabelecimento e o período desejado acima
+              </p>
+              <div className="mt-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4 max-w-md mx-auto">
+                <p className="text-sm text-yellow-800">
+                  ⚠️ <b>Erro comum:</b> &quot;Conta bancária não encontrada&quot;<br/>
+                  Isso significa que o estabelecimento ainda não configurou dados bancários no PayTime. 
+                  É necessário vincular conta bancária para ter saldo e movimentações.
+                </p>
+              </div>
+            </div>
           ) : (
-            <p className="text-center py-12 text-gray-500">
-              Selecione um estabelecimento e período para ver o extrato
-            </p>
+            <div className="text-center py-12">
+              <Calendar className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+              <p className="text-gray-600 font-medium mb-2">
+                Nenhum lançamento encontrado
+              </p>
+              <p className="text-sm text-gray-500">
+                Não há movimentações bancárias no período de {new Date(dataInicio).toLocaleDateString('pt-BR')} a {new Date(dataFim).toLocaleDateString('pt-BR')}
+              </p>
+              <p className="text-xs text-gray-400 mt-2">
+                Tente selecionar outro período ou estabelecimento
+              </p>
+            </div>
           )}
         </CardContent>
       </Card>

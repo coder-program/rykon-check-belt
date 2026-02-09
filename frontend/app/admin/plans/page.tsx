@@ -115,6 +115,9 @@ export default function PlansPage() {
       const url = `${process.env.NEXT_PUBLIC_API_URL}/paytime/plans?${paramsString}`;
       const token = localStorage.getItem("token");
 
+      console.log("🔍 Buscando planos comerciais...");
+      console.log("📡 URL:", url);
+
       const response = await fetch(url, {
         headers: {
           "Content-Type": "application/json",
@@ -127,6 +130,10 @@ export default function PlansPage() {
       }
 
       const data = await response.json();
+
+      console.log("✅ Planos carregados:", data.data?.length || 0);
+      console.log("📊 Total disponível:", data.total);
+      console.log("📋 Planos:", data.data);
 
       setPlans(data.data || []);
       setTotal(data.total || 0);
@@ -321,7 +328,15 @@ export default function PlansPage() {
 
       const establishmentId = unidade.paytime_establishment_id;
 
+      console.log("🔗 Iniciando associação de plano...");
+      console.log("📋 Plano:", selectedPlan.name, `(ID: ${selectedPlan.id})`);
+      console.log("🏢 Unidade:", unidade.nome);
+      console.log("🆔 Establishment ID:", establishmentId);
+      console.log("📌 Reference ID:", referenceId);
+      console.log("💳 Statement Descriptor:", statementDescriptor);
+
       // 1. Verificar gateways existentes
+      console.log("1️⃣ Verificando gateways existentes...");
       const checkResponse = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/paytime/establishments/${establishmentId}/gateways`,
         {
@@ -336,6 +351,8 @@ export default function PlansPage() {
 
       if (checkResponse.ok) {
         const existingGateways = await checkResponse.json();
+        console.log("📡 Gateways atuais:", existingGateways.data);
+        
         bankingExists = existingGateways.data?.some(
           (g: any) => g.gateway?.id === 6
         );
@@ -343,14 +360,19 @@ export default function PlansPage() {
           (g: any) => g.gateway?.id === 4
         );
 
+        console.log("🏦 Banking (ID: 6) ativo:", bankingExists ? "✅ Sim" : "❌ Não");
+        console.log("💰 SubPaytime (ID: 4) ativo:", gateway4Exists ? "✅ Sim" : "❌ Não");
+
         if (gateway4Exists) {
           toast.error("Gateway SubPaytime (ID 4) já está associado a este estabelecimento");
+          console.log("⚠️ Gateway SubPaytime já existe, abortando...");
           return;
         }
       }
 
       // 2. Ativar Banking (ID 6) se não existir
       if (!bankingExists) {
+        console.log("2️⃣ Gateway Banking não encontrado, ativando...");
         toast.loading("Ativando Gateway Banking...", { id: "banking" });
         
         const bankingBody = {
@@ -359,6 +381,8 @@ export default function PlansPage() {
           active: true,
           form_receipt: "PAYTIME",
         };
+
+        console.log("📤 Body Banking:", bankingBody);
 
         const bankingResponse = await fetch(
           `${process.env.NEXT_PUBLIC_API_URL}/paytime/establishments/${establishmentId}/gateways`,
@@ -375,13 +399,18 @@ export default function PlansPage() {
         if (!bankingResponse.ok) {
           const errorData = await bankingResponse.json().catch(() => null);
           toast.dismiss("banking");
+          console.error("❌ Erro ao ativar Banking:", errorData);
           throw new Error(errorData?.message || "Erro ao ativar Gateway Banking");
         }
 
+        console.log("✅ Gateway Banking ativado com sucesso!");
         toast.success("Gateway Banking ativado!", { id: "banking" });
+      } else {
+        console.log("✅ Gateway Banking já está ativo");
       }
 
       // 3. Ativar SubPaytime (ID 4) com o plano
+      console.log("3️⃣ Associando plano ao Gateway SubPaytime...");
       toast.loading("Associando plano ao estabelecimento...", { id: "plan" });
       
       const body = {
@@ -398,6 +427,9 @@ export default function PlansPage() {
         ],
       };
 
+      console.log("📤 Body SubPaytime:", body);
+      console.log("📤 Body SubPaytime:", body);
+
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/paytime/establishments/${establishmentId}/gateways`,
         {
@@ -413,16 +445,22 @@ export default function PlansPage() {
       if (!response.ok) {
         const errorData = await response.json().catch(() => null);
         toast.dismiss("plan");
+        console.error("❌ Erro ao associar plano:", errorData);
         throw new Error(errorData?.message || "Erro ao associar plano");
       }
+
+      const responseData = await response.json();
+      console.log("✅ Plano associado com sucesso!");
+      console.log("📊 Resposta:", responseData);
 
       toast.success("Plano associado com sucesso!", { id: "plan" });
       handleCloseAssociateModal();
       
       // Recarregar dados para atualizar os cards
+      console.log("🔄 Recarregando lista de estabelecimentos com planos...");
       fetchEstablishmentsWithPlans();
     } catch (error: any) {
-      console.error("Erro ao associar plano:", error);
+      console.error("❌ Erro ao associar plano:", error);
       toast.error(error.message || "Erro ao associar plano");
     } finally {
       setAssociating(false);
@@ -477,6 +515,71 @@ export default function PlansPage() {
             </p>
           </div>
         </div>
+
+        {/* Banner Informativo */}
+        <Card className="border-blue-200 bg-blue-50">
+          <div className="p-6">
+            <h3 className="font-semibold text-blue-900 mb-3 flex items-center gap-2">
+              <CreditCard className="h-5 w-5" />
+              O que são Planos Comerciais?
+            </h3>
+            <div className="space-y-3 text-sm text-blue-800">
+              <p>
+                <strong>Planos Comerciais</strong> são configurações de taxas e condições de pagamento 
+                oferecidas pelo PayTime. Cada plano define as taxas de processamento, prazos de 
+                recebimento e modalidades aceitas (online, presencial ou ambos).
+              </p>
+              
+              <div className="bg-white rounded-lg p-4 space-y-2">
+                <h4 className="font-semibold text-blue-900">Como Funciona a Associação:</h4>
+                <ol className="ml-4 list-decimal space-y-2">
+                  <li>
+                    <strong>Escolha um plano</strong> que atenda às necessidades da unidade
+                  </li>
+                  <li>
+                    <strong>Clique em "Associar ao Estabelecimento"</strong>
+                  </li>
+                  <li>
+                    <strong>Selecione a unidade</strong> que terá o plano (precisa ter establishment_id)
+                  </li>
+                  <li>
+                    <strong>Preencha:</strong>
+                    <ul className="ml-4 list-disc mt-1">
+                      <li><b>Reference ID</b> - Identificador interno (auto-preenchido com nome da unidade)</li>
+                      <li><b>Statement Descriptor</b> - Nome que aparece na fatura do cartão (ex: TEAMCRUZ ACADEMIA)</li>
+                    </ul>
+                  </li>
+                  <li>
+                    O sistema automaticamente:
+                    <ul className="ml-4 list-disc mt-1">
+                      <li>Ativa o <b>Gateway Banking</b> (ID: 6) se não estiver ativo</li>
+                      <li>Ativa o <b>Gateway SubPaytime</b> (ID: 4) com o plano selecionado</li>
+                      <li>Vincula o plano ao estabelecimento</li>
+                    </ul>
+                  </li>
+                </ol>
+              </div>
+
+              <div className="bg-yellow-100 rounded-lg p-3 border border-yellow-300">
+                <p className="text-yellow-800 text-xs">
+                  <strong>⚠️ Importante:</strong> Só é possível associar planos a unidades que já possuem 
+                  <b> establishment_id</b> vinculado. Planos do gateway <b>SubPaytime (ID: 4)</b> 
+                  exigem o <b>Banking ativo (ID: 6)</b> - o sistema ativa automaticamente se necessário.
+                </p>
+              </div>
+
+              <div className="bg-green-100 rounded-lg p-3 border border-green-300">
+                <p className="text-green-800 text-xs flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4" />
+                  <span>
+                    <strong>Planos já associados</strong> são exibidos com destaque verde nos cards, 
+                    mostrando quais unidades estão usando cada plano.
+                  </span>
+                </p>
+              </div>
+            </div>
+          </div>
+        </Card>
 
         {/* Filtros e Busca */}
         <Card className="p-6">

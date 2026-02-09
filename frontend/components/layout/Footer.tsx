@@ -77,6 +77,7 @@ export default function Footer() {
                   width={20}
                   height={20}
                   className="object-contain"
+                  style={{ height: "auto" }}
                 />
                 <span>www.rykon.com.br</span>
               </a>

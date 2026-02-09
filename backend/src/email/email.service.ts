@@ -24,6 +24,30 @@ export class EmailService {
       maxConnections: 3,
       maxMessages: 100,
     });
+    
+    // Verificar conexão SMTP ao inicializar
+    this.verifyConnection();
+  }
+
+  /**
+   * Verifica conexão com servidor SMTP
+   */
+  async verifyConnection(): Promise<boolean> {
+    try {
+      await this.transporter.verify();
+      this.logger.log('✅ Conexão SMTP verificada com sucesso');
+      return true;
+    } catch (error) {
+      this.logger.error(`❌ Erro ao verificar conexão SMTP: ${error.message}`);
+      this.logger.error('⚠️ Emails não poderão ser enviados até resolver este problema');
+      
+      if (error.code === 'EAUTH') {
+        this.logger.error('🔑 Erro de autenticação - Verifique SMTP_USER e SMTP_PASS');
+        this.logger.error('💡 Gmail requer App Password: https://myaccount.google.com/apppasswords');
+      }
+      
+      return false;
+    }
   }
 
   /**
@@ -153,14 +177,25 @@ export class EmailService {
 
       await Promise.race([sendMailPromise, timeoutPromise]);
 
-      this.logger.log(`Email de recuperação de senha enviado para ${email}`);
+      this.logger.log(`✅ Email de recuperação de senha enviado para ${email}`);
       return true;
     } catch (error) {
-      // LOG apenas - NUNCA deixar derrubar o servidor
+      // LOG detalhado do erro
       this.logger.error(
-        `Erro ao enviar email de recuperação: ${error.message}`,
+        `❌ Erro ao enviar email de recuperação: ${error.message}`,
       );
-      this.logger.warn('Email falhou mas sistema continua funcionando');
+      
+      if (error.code === 'ECONNECTION' || error.code === 'ETIMEDOUT') {
+        this.logger.error('⚠️ Problema de conexão com servidor SMTP');
+      } else if (error.code === 'EAUTH') {
+        this.logger.error('⚠️ Falha na autenticação SMTP - verifique SMTP_USER e SMTP_PASS');
+      } else if (error.message === 'Email timeout') {
+        this.logger.error('⚠️ Timeout ao enviar email (> 20s)');
+      }
+      
+      this.logger.warn('Sistema continua funcionando apesar da falha no email');
+      
+      // Retorna false para que o caller possa tratar
       return false;
     }
   }
