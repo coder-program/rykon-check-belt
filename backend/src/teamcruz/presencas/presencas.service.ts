@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Presenca } from '../../presenca/entities/presenca.entity';
 import { Person, TipoCadastro } from '../../people/entities/person.entity';
+import { AlunoFaixa } from '../../graduacao/entities/aluno-faixa.entity';
 import { GraduacaoService } from '../../graduacao/graduacao.service';
 
 @Injectable()
@@ -10,6 +11,7 @@ export class PresencasService {
   constructor(
     @InjectRepository(Presenca) private presencasRepo: Repository<Presenca>,
     @InjectRepository(Person) private personRepo: Repository<Person>,
+    @InjectRepository(AlunoFaixa) private alunoFaixaRepo: Repository<AlunoFaixa>,
     @Inject(forwardRef(() => GraduacaoService))
     private graduacaoService: GraduacaoService,
   ) {}
@@ -86,6 +88,27 @@ export class PresencasService {
 
     console.log(`✅ [DELETAR PRESENÇA] Presença encontrada - Aluno: ${presenca.aluno_id}`);
 
+    // Buscar registro ativo de aluno_faixa para decrementar contadores
+    const alunoFaixa = await this.alunoFaixaRepo.findOne({
+      where: {
+        aluno_id: presenca.aluno_id,
+        ativa: true,
+      },
+    });
+
+    if (alunoFaixa) {
+      console.log(`📊 [DELETAR PRESENÇA] Decrementando contadores - presencas_no_ciclo: ${alunoFaixa.presencas_no_ciclo} → ${Math.max(0, alunoFaixa.presencas_no_ciclo - 1)}, presencas_total_fx: ${alunoFaixa.presencas_total_fx} → ${Math.max(0, alunoFaixa.presencas_total_fx - 1)}`);
+      
+      // Decrementar contadores (nunca deixar negativo)
+      alunoFaixa.presencas_no_ciclo = Math.max(0, alunoFaixa.presencas_no_ciclo - 1);
+      alunoFaixa.presencas_total_fx = Math.max(0, alunoFaixa.presencas_total_fx - 1);
+      
+      await this.alunoFaixaRepo.save(alunoFaixa);
+      console.log(`✅ [DELETAR PRESENÇA] Contadores atualizados em aluno_faixa`);
+    } else {
+      console.log(`⚠️ [DELETAR PRESENÇA] Nenhum registro ativo encontrado em aluno_faixa para aluno ${presenca.aluno_id}`);
+    }
+
     // Deletar presença do banco
     await this.presencasRepo.delete(presencaId);
 
@@ -94,6 +117,7 @@ export class PresencasService {
     return {
       message: 'Presença deletada com sucesso',
       presencaId,
+      alunoFaixaAtualizado: !!alunoFaixa,
     };
   }
 }
