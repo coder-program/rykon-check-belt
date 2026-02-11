@@ -40,9 +40,11 @@ import {
   Filter,
   X,
   Plus,
+  Receipt,
 } from "lucide-react";
 import FiltroUnidade from "@/components/financeiro/FiltroUnidade";
 import { useFiltroUnidade } from "@/hooks/useFiltroUnidade";
+import { toast } from "react-hot-toast";
 
 interface Fatura {
   id: string;
@@ -374,9 +376,10 @@ export default function ContasAReceber() {
               }
             } catch (error) {
               console.error(" Erro ao gerar faturas:", error);
+              const errorMessage = error instanceof Error ? error.message : "Erro desconhecido";
               mostrarMensagem(
                 "Erro",
-                `Erro ao gerar faturas: ${error.message}`,
+                `Erro ao gerar faturas: ${errorMessage}`,
                 "erro"
               );
             } finally {
@@ -505,9 +508,24 @@ export default function ContasAReceber() {
                     {formatarMoeda(Number(fatura.valor_original) || 0)}
                   </p>
                   {fatura.status === "PAGA" && fatura.data_pagamento && (
-                    <p className="text-xs text-gray-500 mt-1">
-                      Pago em {formatarData(fatura.data_pagamento)}
-                    </p>
+                    <div className="mt-1 space-y-2">
+                      <p className="text-xs text-gray-500">
+                        Pago em {formatarData(fatura.data_pagamento)}
+                      </p>
+                      <Button
+                        onClick={() => {
+                          // TODO: Implementar geração de comprovante
+                          toast.success("Gerando comprovante...");
+                          // Pode abrir um PDF em nova aba ou fazer download
+                        }}
+                        size="sm"
+                        variant="outline"
+                        className="w-full"
+                      >
+                        <Receipt className="mr-1 h-4 w-4" />
+                        Gerar Comprovante
+                      </Button>
+                    </div>
                   )}
                   {(fatura.status === "PENDENTE" ||
                     fatura.status === "ATRASADA") && (

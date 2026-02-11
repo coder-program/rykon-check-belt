@@ -25,6 +25,26 @@ export interface HorariosFuncionamento {
   dom?: string;
 }
 
+export interface CatracaConfig {
+  tipo: 'HENRY8X' | 'CONTROLID' | 'INTELBRAS' | 'HIKVISION' | 'ZKTECO';
+  ip: string;
+  porta: number;
+  modelo_placa?: string;
+  sentido?: 'ANTI_HORARIO' | 'HORARIO';
+  giro?: 'ENTRADA' | 'SAIDA' | 'BIDIRECIONAL';
+  qtd_digitos_matricula?: number;
+  tempo_liberacao_segundos?: number;
+  modelo_biometria?: 'PADRAO' | 'FACIAL' | 'DIGITAL';
+  url_callback?: string;
+  api_key?: string;
+  permite_entrada_manual?: boolean;
+  permite_saida_automatica?: boolean;
+  horario_funcionamento?: {
+    inicio: string; // "06:00"
+    fim: string; // "22:00"
+  };
+}
+
 @Entity({ name: 'unidades', schema: 'teamcruz' })
 export class Unidade {
   @PrimaryGeneratedColumn('uuid')
@@ -130,6 +150,17 @@ export class Unidade {
     comment: 'Planos comerciais Paytime selecionados (array de {id, active, name})'
   })
   paytime_plans: Array<{id: number; active: boolean; name: string}> | null;
+
+  // Configuração de Catraca Biométrica
+  @Column({ type: 'boolean', default: false })
+  catraca_habilitada: boolean;
+
+  @Column({ 
+    type: 'jsonb', 
+    nullable: true,
+    comment: 'Configuração da catraca biométrica (Henry8X, ControlID, etc)'
+  })
+  catraca_config: CatracaConfig | null;
 
   // Metadados
   @CreateDateColumn({ name: 'created_at' })

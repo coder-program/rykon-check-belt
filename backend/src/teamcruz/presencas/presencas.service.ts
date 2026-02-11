@@ -1,7 +1,7 @@
-import { Injectable, Inject, forwardRef } from '@nestjs/common';
+import { Injectable, Inject, forwardRef, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Presenca } from './entities/presenca.entity';
+import { Presenca } from '../../presenca/entities/presenca.entity';
 import { Person, TipoCadastro } from '../../people/entities/person.entity';
 import { GraduacaoService } from '../../graduacao/graduacao.service';
 
@@ -47,54 +47,53 @@ export class PresencasService {
     ];
   }
 
+  // MÉTODO DESABILITADO - Usar presenca.service.ts principal
   async checkin(pessoaId: string) {
-    const pessoa = await this.personRepo.findOne({
-      where: {
-        id: pessoaId,
-        tipo_cadastro: TipoCadastro.ALUNO,
-      },
-    });
-    if (!pessoa) throw new Error('Aluno não encontrado');
-
-    // Salvar presença
-    const p = this.presencasRepo.create({
-      aluno_id: pessoaId,
-      aluno: pessoa,
-      data: new Date(),
-    });
-    const presencaSalva = await this.presencasRepo.save(p);
-
-    // Incrementar contador de graduação e verificar se deve conceder grau
-    try {
-      const { grauConcedido, statusAtualizado } =
-        await this.graduacaoService.incrementarPresenca(pessoaId);
-
-      // Retornar presença com informação adicional sobre graduação
-      return {
-        ...presencaSalva,
-        graduacao: {
-          grauConcedido,
-          statusAtual: statusAtualizado,
-        },
-      };
-    } catch (error) {
-      // Se não houver faixa ativa, apenas retornar a presença
-      return presencaSalva;
-    }
+    throw new Error('Método checkin desabilitado neste módulo. Use /presenca/registrar');
   }
 
+  // MÉTODO DESABILITADO - Usar presenca.service.ts principal
   async listarPorData(dateStr?: string) {
-    const date = dateStr ? new Date(dateStr) : new Date();
-    const start = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-    const end = new Date(
-      date.getFullYear(),
-      date.getMonth(),
-      date.getDate() + 1,
+    throw new Error('Método listarPorData desabilitado neste módulo. Use /presenca/relatorio-presencas');
+  }
+
+  async deletarPresenca(presencaId: string, user: any) {
+    console.log(`🗑️  [DELETAR PRESENÇA] ID: ${presencaId}, User: ${user?.id}`);
+
+    // Verificar permissões - apenas franqueado, gerente, recepcionista e professor podem deletar
+    const perfis = user?.perfis?.map((p: any) => 
+      (typeof p === 'string' ? p : p.nome)?.toLowerCase()
+    ) || [];
+
+    const temPermissao = perfis.some((perfil: string) =>
+      ['admin_master', 'franqueado', 'gerente_unidade', 'recepcionista', 'professor', 'instrutor'].includes(perfil)
     );
-    return this.presencasRepo.find({
-      where: { data: (p: any) => p >= start && p < end } as any,
-      relations: ['pessoa'],
-      order: { id: 'DESC' },
+
+    if (!temPermissao) {
+      console.error('🚫 [DELETAR PRESENÇA] Permissão negada para usuário:', user?.id);
+      throw new ForbiddenException('Você não tem permissão para deletar presenças');
+    }
+
+    // Verificar se presença existe
+    const presenca = await this.presencasRepo.findOne({
+      where: { id: presencaId },
     });
+
+    if (!presenca) {
+      console.error('❌ [DELETAR PRESENÇA] Presença não encontrada:', presencaId);
+      throw new NotFoundException('Presença não encontrada');
+    }
+
+    console.log(`✅ [DELETAR PRESENÇA] Presença encontrada - Aluno: ${presenca.aluno_id}`);
+
+    // Deletar presença do banco
+    await this.presencasRepo.delete(presencaId);
+
+    console.log(`✅ [DELETAR PRESENÇA] Presença ${presencaId} deletada com sucesso`);
+
+    return {
+      message: 'Presença deletada com sucesso',
+      presencaId,
+    };
   }
 }

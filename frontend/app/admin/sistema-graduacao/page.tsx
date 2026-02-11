@@ -55,7 +55,10 @@ interface AlunoGraduacao {
   categoria: "ADULTO" | "INFANTIL";
   unidadeId: string;
   unidadeNome: string;
-  podeGraduar: boolean;
+  prontoParaGrau: boolean;
+  prontoParaGraduar: boolean;
+  kids?: boolean;
+  grausMax?: number;
 }
 
 interface FaixaDef {
@@ -213,7 +216,40 @@ export default function SistemaGraduacaoPage() {
     }
   };
 
-  const proximos = proximosQuery.data?.items || [];
+  // DEBUG: Log dos dados da API
+  if (proximosQuery.data?.items && proximosQuery.data.items.length > 0) {
+    console.log('🔍 [DEBUG] Dados da API - primeiro item:', proximosQuery.data.items[0]);
+  }
+
+  const proximos = (proximosQuery.data?.items || []).map((item: any) => {
+    console.log('🔍 [DEBUG] Mapeando aluno:', {
+      nome: item.nomeCompleto,
+      prontoParaGrau: item.prontoParaGrau,
+      prontoParaGraduar: item.prontoParaGraduar,
+      grausAtual: item.grausAtual,
+      grausMax: item.grausMax,
+      faltamAulas: item.faltamAulas,
+      presencas: item.presencasTotalFaixa
+    });
+    
+    return {
+      id: item.alunoId,
+      nome: item.nomeCompleto,
+      faixaAtual: item.faixa,
+      faixaAtualCor: item.corHex,
+      grauAtual: item.grausAtual,
+      tempoNaFaixa: 0, // TODO: calcular a partir de dados
+      aulasRealizadas: item.presencasTotalFaixa || 0,
+      aulasNecessarias: item.grausMax * 40, // Aproximado
+      categoria: item.kids ? "INFANTIL" : "ADULTO",
+      unidadeId: item.unidadeId,
+      unidadeNome: item.unidadeNome,
+      prontoParaGrau: item.prontoParaGrau,
+      prontoParaGraduar: item.prontoParaGraduar,
+      kids: item.kids,
+      grausMax: item.grausMax,
+    };
+  });
   const historico = historicoQuery.data?.items || [];
   const faixas = faixasQuery.data || [];
 
@@ -226,10 +262,10 @@ export default function SistemaGraduacaoPage() {
   const stats = {
     totalProximos: proximos.length,
     prontosPraGrau: proximos.filter(
-      (a: { prontoParaGraduar: boolean; grausAtual: number; grausMax: number }) => a.prontoParaGraduar && a.grausAtual < a.grausMax
+      (a: { prontoParaGrau: boolean; grausAtual: number; grausMax: number }) => a.prontoParaGrau && a.grausAtual < a.grausMax
     ).length,
     prontosPraFaixa: proximos.filter(
-      (a: { prontoParaGraduar: boolean; grausAtual: number; grausMax: number }) => a.prontoParaGraduar && a.grausAtual >= a.grausMax
+      (a: { prontoParaGraduar: boolean }) => a.prontoParaGraduar
     ).length,
     categoriasAdulto: proximos.filter((a: { kids: boolean }) => !a.kids).length,
     categoriasKids: proximos.filter((a: { kids: boolean }) => a.kids).length,
@@ -536,7 +572,7 @@ export default function SistemaGraduacaoPage() {
                     </div>
 
                     <div className="flex items-center gap-2">
-                      {aluno.podeGraduar && aluno.grauAtual < 4 && (
+                      {aluno.prontoParaGrau && aluno.grauAtual < (aluno.grausMax || 4) && (
                         <button
                           onClick={() => abrirModalGraduacao(aluno, "grau")}
                           className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm transition-colors"
@@ -546,7 +582,7 @@ export default function SistemaGraduacaoPage() {
                         </button>
                       )}
 
-                      {aluno.podeGraduar && aluno.grauAtual >= 4 && (
+                      {aluno.prontoParaGraduar && (
                         <button
                           onClick={() => abrirModalGraduacao(aluno, "faixa")}
                           className="flex items-center gap-2 bg-yellow-600 hover:bg-yellow-700 text-white px-3 py-2 rounded-lg text-sm transition-colors"
@@ -556,7 +592,7 @@ export default function SistemaGraduacaoPage() {
                         </button>
                       )}
 
-                      {!aluno.podeGraduar && (
+                      {!aluno.prontoParaGrau && !aluno.prontoParaGraduar && (
                         <span className="text-xs text-gray-500 bg-gray-200 px-3 py-2 rounded-lg">
                           Ainda não elegível
                         </span>

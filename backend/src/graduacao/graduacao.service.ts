@@ -231,6 +231,7 @@ export class GraduacaoService {
       .createQueryBuilder('af')
       .leftJoinAndSelect('af.aluno', 'aluno')
       .leftJoinAndSelect('af.faixaDef', 'faixaDef')
+      .leftJoinAndSelect('aluno.unidade', 'unidade')
       .where('af.ativa = true')
       .andWhere('aluno.id IS NOT NULL'); // Garantir que o aluno existe
     // Removido filtro af.graus_atual < faixaDef.graus_max para incluir alunos prontos para nova faixa
@@ -348,6 +349,7 @@ export class GraduacaoService {
         // REGRA ESPECIAL: Faixa Preta é por TEMPO (36 meses), não por aulas
         const isFaixaPreta = faixaCodigo === 'PRETA';
         let faltamAulas = 0;
+        let prontoParaGrau = false;
         let prontoParaGraduar = false;
         let progressoPercentual = 0;
 
@@ -361,7 +363,8 @@ export class GraduacaoService {
           );
 
           faltamAulas = Math.max(0, tempoMinimoRequerido - mesesNaFaixa);
-          prontoParaGraduar = mesesNaFaixa >= tempoMinimoRequerido;
+          prontoParaGrau = mesesNaFaixa >= tempoMinimoRequerido;
+          prontoParaGraduar = prontoParaGrau && af.graus_atual >= grausMax;
           progressoPercentual = Math.min(
             mesesNaFaixa / tempoMinimoRequerido,
             1.0,
@@ -370,7 +373,9 @@ export class GraduacaoService {
         } else {
           // Para outras faixas: calcular por aulas
           faltamAulas = Math.max(0, aulasPorGrau - af.presencas_no_ciclo);
-          prontoParaGraduar = af.presencas_no_ciclo >= aulasPorGrau;
+          prontoParaGrau = af.presencas_no_ciclo >= aulasPorGrau;
+          // Pronto para graduar faixa = tem graus suficientes
+          prontoParaGraduar = af.graus_atual >= grausMax;
           progressoPercentual = af.presencas_no_ciclo / aulasPorGrau;
 
         }
@@ -383,11 +388,14 @@ export class GraduacaoService {
           grausAtual: af.graus_atual,
           grausMax: grausMax,
           faltamAulas: faltamAulas,
-          prontoParaGraduar: prontoParaGraduar,
+          prontoParaGrau: prontoParaGrau, // Pronto para receber o próximo grau
+          prontoParaGraduar: prontoParaGraduar, // Pronto para mudar de faixa
           progressoPercentual: progressoPercentual,
           presencasTotalFaixa: af.presencas_no_ciclo,
           kids: isKids,
           isFaixaPreta: isFaixaPreta, // Adicionar flag para frontend saber se é tempo ou aulas
+          unidadeId: af.aluno.unidade_id,
+          unidadeNome: af.aluno.unidade?.nome || 'Unidade não encontrada',
         };
       });
 
@@ -560,7 +568,7 @@ export class GraduacaoService {
     // Buscar aluno para obter unidade_id
     const aluno = await this.alunoRepository.findOne({
       where: { id: alunoId },
-      select: ['id', 'unidade_id'],
+      select: ['id', 'unidade_id', 'nome_completo'],
     });
 
     if (!aluno) {
@@ -575,6 +583,11 @@ export class GraduacaoService {
     // Usar aulas_por_grau da configuração da unidade, ou fallback para faixaDef
     const aulasPorGrau = faixaConfig?.aulas_por_grau ?? faixaAtiva.faixaDef.aulas_por_grau;
 
+    console.log(`🎓 [INCREMENTAR PRESENCA] Aluno: ${aluno.nome_completo}`);
+    console.log(`   - Faixa: ${faixaAtiva.faixaDef.nome_exibicao} - Grau ${faixaAtiva.graus_atual}/${faixaAtiva.faixaDef.graus_max}`);
+    console.log(`   - Presenças antes: ${faixaAtiva.presencas_no_ciclo}`);
+    console.log(`   - Aulas por grau (config): ${aulasPorGrau}`);
+
     let grauConcedido = false;
 
     await this.dataSource.transaction(async (manager) => {
@@ -583,10 +596,14 @@ export class GraduacaoService {
       faixaAtiva.presencas_no_ciclo += 1;
       faixaAtiva.presencas_total_fx += 1;
 
+      console.log(`   - Presenças depois: ${faixaAtiva.presencas_no_ciclo}`);
+
       // Verificar se pode conceder grau automaticamente usando configuração da unidade
       const podeReceberGrau = 
         faixaAtiva.graus_atual < faixaAtiva.faixaDef.graus_max &&
         faixaAtiva.presencas_no_ciclo >= aulasPorGrau;
+
+      console.log(`   - Pode receber grau? ${podeReceberGrau} (${faixaAtiva.presencas_no_ciclo} >= ${aulasPorGrau})`);
 
       if (podeReceberGrau) {
         // Incrementar grau e zerar contador do ciclo (mesmo padrão da concederGrau manual)
@@ -604,10 +621,12 @@ export class GraduacaoService {
 
         await manager.save(grau);
 
+        console.log(`   ✅ GRAU CONCEDIDO! Novo grau: ${faixaAtiva.graus_atual}`);
         grauConcedido = true;
       } else {
         // Salvar faixaAtiva apenas com presencas incrementadas
         await manager.save(faixaAtiva);
+        console.log(`   ⏳ Ainda não... faltam ${aulasPorGrau - faixaAtiva.presencas_no_ciclo} aulas`);
       }
 
     });
@@ -2125,6 +2144,212 @@ export class GraduacaoService {
     }
 
     return false;
+  }
+
+  /**
+   * Sincroniza tabela faixa_def com configuração da unidade
+   * Atualiza aulas_por_grau baseado na config customizada
+   */
+  async sincronizarFaixasComConfiguracao(unidadeId: string): Promise<{
+    message: string;
+    faixasAtualizadas: number;
+    detalhes: Array<{ codigo: string; aulasPorGrau: number }>;
+  }> {
+    console.log(`🔄 [SINCRONIZAR FAIXAS] Iniciando sincronização para unidade ${unidadeId}`);
+
+    // Buscar configuração da unidade
+    const config = await this.getConfiguracaoGraduacao(unidadeId);
+
+    if (!config || !config.config_faixas) {
+      throw new NotFoundException('Configuração de graduação não encontrada para esta unidade');
+    }
+
+    const faixasAtualizadas: Array<{ codigo: string; aulasPorGrau: number }> = [];
+    let totalAtualizadas = 0;
+
+    // Iterar sobre cada faixa na configuração
+    for (const [codigoConfig, faixaConfig] of Object.entries(config.config_faixas)) {
+      const aulasPorGrau = (faixaConfig as any).aulas_por_grau;
+
+      if (aulasPorGrau === undefined || aulasPorGrau === null) {
+        console.log(`  ⚠️ Faixa ${codigoConfig} sem aulas_por_grau definido, pulando...`);
+        continue;
+      }
+
+      // Tentar encontrar faixa no banco (pode ter variações de código)
+      // Ex: LARA_BRANCA_INF na config vs LARANJA_BRANCA no banco
+      const codigosSimilares = this.gerarCodigosSimilares(codigoConfig);
+
+      const faixa = await this.faixaDefRepository
+        .createQueryBuilder('faixa')
+        .where('faixa.codigo IN (:...codigos)', { codigos: codigosSimilares })
+        .getOne();
+
+      if (faixa) {
+        // Atualizar aulas_por_grau
+        faixa.aulas_por_grau = aulasPorGrau;
+        await this.faixaDefRepository.save(faixa);
+
+        faixasAtualizadas.push({ codigo: faixa.codigo, aulasPorGrau });
+        totalAtualizadas++;
+
+        console.log(`  ✅ Faixa ${faixa.codigo} atualizada: ${aulasPorGrau} aulas por grau`);
+      } else {
+        console.log(`  ⚠️ Faixa ${codigoConfig} não encontrada no banco, pulando...`);
+      }
+    }
+
+    console.log(`✅ [SINCRONIZAR FAIXAS] ${totalAtualizadas} faixas atualizadas`);
+
+    return {
+      message: `${totalAtualizadas} faixas sincronizadas com sucesso`,
+      faixasAtualizadas: totalAtualizadas,
+      detalhes: faixasAtualizadas,
+    };
+  }
+
+  /**
+   * Gera variações de códigos de faixa para matching
+   * Ex: LARA_BRANCA_INF -> [LARA_BRANCA_INF, LARANJA_BRANCA, LARANJA_BRANCA_INFANTIL]
+   */
+  private gerarCodigosSimilares(codigo: string): string[] {
+    const codigos = [codigo];
+
+    // Remover _INF
+    if (codigo.endsWith('_INF')) {
+      codigos.push(codigo.replace('_INF', ''));
+      codigos.push(codigo.replace('_INF', '_INFANTIL'));
+    }
+
+    // Expandir abreviações
+    const expandido = codigo
+      .replace('LARA_', 'LARANJA_')
+      .replace('_LARA', '_LARANJA')
+      .replace('AMAR_', 'AMARELA_')
+      .replace('_AMAR', '_AMARELA');
+
+    if (expandido !== codigo) {
+      codigos.push(expandido);
+      codigos.push(expandido.replace('_INF', ''));
+      codigos.push(expandido.replace('_INF', '_INFANTIL'));
+    }
+
+    // Tentar sem _INFANTIL
+    if (codigo.endsWith('_INFANTIL')) {
+      codigos.push(codigo.replace('_INFANTIL', ''));
+      codigos.push(codigo.replace('_INFANTIL', '_INF'));
+    }
+
+    return [...new Set(codigos)]; // Remover duplicatas
+  }
+
+  /**
+   * Recalcula graus de todos alunos da unidade
+   * Concede graus retroativamente se tiverem aulas suficientes
+   */
+  async recalcularGrausUnidade(unidadeId: string, user: any): Promise<{
+    message: string;
+    alunosProcessados: number;
+    grausConcedidos: number;
+    detalhes: Array<{
+      alunoNome: string;
+      grausAdicionados: number;
+      presencasRestantes: number;
+    }>;
+  }> {
+    console.log(`🔄 [RECALCULAR GRAUS] Iniciando recálculo para unidade ${unidadeId}`);
+
+    // Buscar configuração da unidade
+    const config = await this.getConfiguracaoGraduacao(unidadeId);
+
+    // Buscar todos alunos ativos da unidade
+    const alunosFaixa = await this.alunoFaixaRepository
+      .createQueryBuilder('af')
+      .leftJoinAndSelect('af.aluno', 'aluno')
+      .leftJoinAndSelect('af.faixaDef', 'faixaDef')
+      .where('af.ativa = true')
+      .andWhere('aluno.unidade_id = :unidadeId', { unidadeId })
+      .getMany();
+
+    console.log(`  📊 Encontrados ${alunosFaixa.length} alunos ativos`);
+
+    const detalhes: Array<{
+      alunoNome: string;
+      grausAdicionados: number;
+      presencasRestantes: number;
+    }> = [];
+
+    let totalGrausConcedidos = 0;
+    let alunosProcessados = 0;
+
+    for (const af of alunosFaixa) {
+      const faixaCodigo = af.faixaDef?.codigo;
+      if (!faixaCodigo) continue;
+
+      // Buscar config da faixa
+      let faixaConfig = config.config_faixas?.[faixaCodigo];
+
+      // Tentar variações se não encontrar diretamente
+      if (!faixaConfig) {
+        const codigosSimilares = this.gerarCodigosSimilares(faixaCodigo);
+        for (const cod of codigosSimilares) {
+          if (config.config_faixas?.[cod]) {
+            faixaConfig = config.config_faixas[cod];
+            break;
+          }
+        }
+      }
+
+      const aulasPorGrau = faixaConfig?.aulas_por_grau || af.faixaDef.aulas_por_grau;
+      const grausMax = faixaConfig?.graus_maximos || af.faixaDef.graus_max;
+
+      // Verificar se aluno precisa receber graus
+      const grausPossiveis = Math.floor(af.presencas_no_ciclo / aulasPorGrau);
+      const grausFaltam = Math.min(grausPossiveis, grausMax - af.graus_atual);
+
+      if (grausFaltam > 0) {
+        alunosProcessados++;
+        const grausAntigos = af.graus_atual;
+
+        // Conceder graus
+        const presencasUsadas = grausFaltam * aulasPorGrau;
+        af.graus_atual += grausFaltam;
+        af.presencas_no_ciclo -= presencasUsadas;
+
+        await this.alunoFaixaRepository.save(af);
+
+        // Registrar histórico de cada grau
+        for (let i = 1; i <= grausFaltam; i++) {
+          const novoGrau = this.alunoFaixaGrauRepository.create({
+            aluno_faixa_id: af.id,
+            grau_num: grausAntigos + i,
+            origem: OrigemGrau.AUTOMATICO,
+            concedido_por: user?.id || null,
+            observacao: 'Grau concedido por recálculo automático do sistema',
+          });
+
+          await this.alunoFaixaGrauRepository.save(novoGrau);
+          totalGrausConcedidos++;
+        }
+
+        detalhes.push({
+          alunoNome: af.aluno.nome_completo,
+          grausAdicionados: grausFaltam,
+          presencasRestantes: af.presencas_no_ciclo,
+        });
+
+        console.log(`  ✅ ${af.aluno.nome_completo}: +${grausFaltam} graus (${af.presencas_no_ciclo} presenças restantes)`);
+      }
+    }
+
+    console.log(`✅ [RECALCULAR GRAUS] ${alunosProcessados} alunos processados, ${totalGrausConcedidos} graus concedidos`);
+
+    return {
+      message: `Recálculo concluído: ${totalGrausConcedidos} graus concedidos para ${alunosProcessados} alunos`,
+      alunosProcessados,
+      grausConcedidos: totalGrausConcedidos,
+      detalhes,
+    };
   }
 
   /**

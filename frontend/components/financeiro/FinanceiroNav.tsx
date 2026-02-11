@@ -72,7 +72,7 @@ const menuItems = [
   {
     title: "Rykon-Pay",
     icon: CreditCard,
-    href: "/financeiro/configuracao-paytime",
+    href: "/financeiro/configuracao-rykon-pay",
     description: "Planos Rykon-Pay",
   },
 ];

@@ -25,7 +25,16 @@ export class ProximoGraduarDto {
   })
   faltamAulas: number;
 
-  @ApiProperty({ example: false })
+  @ApiProperty({ 
+    example: true,
+    description: 'Indica se o aluno está pronto para receber o próximo grau (ponteira)' 
+  })
+  prontoParaGrau: boolean;
+
+  @ApiProperty({ 
+    example: false,
+    description: 'Indica se o aluno está pronto para mudar de faixa (tem graus máximos)' 
+  })
   prontoParaGraduar: boolean;
 
   @ApiProperty({ example: 0.95, description: 'Percentual de progresso (0-1)' })

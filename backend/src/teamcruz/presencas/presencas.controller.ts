@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Body, Query, Param, UseGuards, Request, ParseUUIDPipe } from '@nestjs/common';
 import { PresencasService } from './presencas.service';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 
@@ -12,13 +12,15 @@ export class PresencasController {
     return this.service.aulasAbertas();
   }
 
-  @Post('presencas/checkin')
-  checkin(@Body() body: { alunoId: string }) {
-    return this.service.checkin(body.alunoId);
-  }
+  // ENDPOINTS DESABILITADOS - Usar módulo presenca principal
+  // @Post('presencas/checkin')
+  // @Get('presencas')
 
-  @Get('presencas')
-  listar(@Query('date') date?: string) {
-    return this.service.listarPorData(date);
+  @Delete('presencas/:id')
+  async deletarPresenca(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Request() req: any
+  ) {
+    return this.service.deletarPresenca(id, req.user);
   }
 }

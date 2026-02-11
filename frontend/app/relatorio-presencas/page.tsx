@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/app/auth/AuthContext";
 import { useRouter } from "next/navigation";
 import {
@@ -16,9 +16,15 @@ import {
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
+  Trash2,
+  AlertTriangle,
+  X,
 } from "lucide-react";
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, startOfDay, endOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import axios from "axios";
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
 interface PresencaData {
   id: string;
@@ -53,6 +59,8 @@ export default function RelatorioPresencasPage() {
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [sortFieldUnidade, setSortFieldUnidade] = useState<string | null>(null);
   const [sortDirectionUnidade, setSortDirectionUnidade] = useState<"asc" | "desc">("asc");
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [presencaToDelete, setPresencaToDelete] = useState<PresencaData | null>(null);
 
   console.log('👤 [RELATÓRIO] User completo:', user);
   console.log('🔐 [RELATÓRIO] User.perfis:', user?.perfis);
@@ -249,6 +257,45 @@ export default function RelatorioPresencasPage() {
       return data;
     },
   });
+
+  const queryClient = useQueryClient();
+
+  // Mutation para deletar presença
+  const deletarPresencaMutation = useMutation({
+    mutationFn: async (presencaId: string) => {
+      const token = localStorage.getItem("token");
+      const response = await axios.delete(
+        `${API_URL}/teamcruz/presencas/${presencaId}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      return response.data;
+    },
+    onSuccess: () => {
+      setShowDeleteModal(false);
+      setPresencaToDelete(null);
+      queryClient.invalidateQueries({ queryKey: ["relatorio-presencas"] });
+      alert("✅ Presença deletada com sucesso!");
+    },
+    onError: (error: any) => {
+      console.error("Erro ao deletar presença:", error);
+      alert(
+        `❌ Erro ao deletar presença: ${error.response?.data?.message || error.message}`
+      );
+    },
+  });
+
+  const handleDeletarPresenca = (presenca: PresencaData) => {
+    setPresencaToDelete(presenca);
+    setShowDeleteModal(true);
+  };
+
+  const confirmarDelecao = () => {
+    if (presencaToDelete) {
+      deletarPresencaMutation.mutate(presencaToDelete.id);
+    }
+  };
 
   const estatisticasGerais = relatorio?.estatisticas || {
     total_presencas: 0,
@@ -666,6 +713,7 @@ export default function RelatorioPresencasPage() {
                       </div>
                     </th>
                     <th>Instrutor</th>
+                    <th className="text-center">Ações</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -691,11 +739,21 @@ export default function RelatorioPresencasPage() {
                       </td>
                       <td>{presenca.unidade_nome}</td>
                       <td>{presenca.instrutor_nome}</td>
+                      <td className="text-center">
+                        <button
+                          onClick={() => handleDeletarPresenca(presenca)}
+                          disabled={deletarPresencaMutation.isPending}
+                          className="btn btn-ghost btn-sm text-red-600 hover:bg-red-50 disabled:opacity-50"
+                          title="Deletar presença"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </td>
                     </tr>
                   ))}
                   {(!presencasOrdenadas || presencasOrdenadas.length === 0) && (
                     <tr>
-                      <td colSpan={6} className="text-center text-gray-500 py-8">
+                      <td colSpan={7} className="text-center text-gray-500 py-8">
                         Nenhuma presença registrada no período selecionado
                       </td>
                     </tr>
@@ -706,6 +764,104 @@ export default function RelatorioPresencasPage() {
           )}
         </div>
       </div>
+
+      {/* Modal de Confirmação de Exclusão */}
+      {showDeleteModal && presencaToDelete && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md">
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
+                  <AlertTriangle className="h-5 w-5 text-red-600" />
+                  Confirmar Exclusão
+                </h2>
+                <button
+                  onClick={() => {
+                    setShowDeleteModal(false);
+                    setPresencaToDelete(null);
+                  }}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6">
+              <p className="text-gray-700 mb-4">
+                Tem certeza que deseja deletar esta presença?
+              </p>
+
+              <div className="bg-gray-50 rounded-lg p-4 space-y-2">
+                <div className="flex items-center gap-2">
+                  <Users className="h-4 w-4 text-gray-500" />
+                  <span className="text-sm font-medium text-gray-700">
+                    Aluno:
+                  </span>
+                  <span className="text-sm text-gray-900">
+                    {presencaToDelete.aluno_nome}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4 text-gray-500" />
+                  <span className="text-sm font-medium text-gray-700">
+                    Data:
+                  </span>
+                  <span className="text-sm text-gray-900">
+                    {format(
+                      new Date(presencaToDelete.data_presenca),
+                      "dd/MM/yyyy",
+                      { locale: ptBR }
+                    )}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-gray-500" />
+                  <span className="text-sm font-medium text-gray-700">
+                    Horário:
+                  </span>
+                  <span className="text-sm text-gray-900">
+                    {presencaToDelete.horario}
+                  </span>
+                </div>
+              </div>
+
+              <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-sm text-red-800 flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4" />
+                  Esta ação não pode ser desfeita
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-200">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowDeleteModal(false);
+                  setPresencaToDelete(null);
+                }}
+                disabled={deletarPresencaMutation.isPending}
+                className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium transition-colors disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={confirmarDelecao}
+                disabled={deletarPresencaMutation.isPending}
+                className="flex items-center gap-2 px-4 py-2 text-white bg-red-600 hover:bg-red-700 rounded-lg font-medium transition-colors disabled:opacity-50"
+              >
+                {deletarPresencaMutation.isPending && (
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                )}
+                {deletarPresencaMutation.isPending ? "Deletando..." : "Confirmar Exclusão"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

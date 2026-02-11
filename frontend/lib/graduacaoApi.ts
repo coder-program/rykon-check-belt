@@ -41,6 +41,7 @@ export interface ProximoGraduar {
   grausAtual: number;
   grausMax: number;
   faltamAulas: number;
+  prontoParaGrau: boolean;
   prontoParaGraduar: boolean;
   progressoPercentual: number;
   unidadeId?: string;

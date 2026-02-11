@@ -104,7 +104,8 @@ export default function ConfiguracaoGraduacaoPage() {
       });
       return response.data;
     },
-    enabled: !!user && temPermissao,
+    staleTime: 5 * 60 * 1000, // Cache por 5 minutos
+    retry: 1,
   });
 
   const unidades: Unidade[] = unidadesResponse?.items || [];
@@ -153,15 +154,83 @@ export default function ConfiguracaoGraduacaoPage() {
       );
       return response.data;
     },
-    onSuccess: () => {
+    onSuccess: async (data) => {
       queryClient.invalidateQueries({
         queryKey: ["configuracao-graduacao", selectedUnidade],
       });
-      alert("Configuração salva com sucesso!");
+      
+      // Sincronizar faixas automaticamente após salvar
+      if (selectedUnidade) {
+        try {
+          const token = localStorage.getItem("token");
+          await axios.post(
+            `${API_URL}/graduacao/sincronizar-faixas/${selectedUnidade}`,
+            {},
+            {
+              headers: { Authorization: `Bearer ${token}` },
+            }
+          );
+          alert("✅ Configuração salva e faixas sincronizadas com sucesso!");
+        } catch (error) {
+          console.error("Erro ao sincronizar faixas:", error);
+          alert("⚠️ Configuração salva, mas houve erro ao sincronizar faixas automaticamente. Use o botão manual se necessário.");
+        }
+      } else {
+        alert("✅ Configuração salva com sucesso!");
+      }
     },
     onError: (error: { response?: { data?: { message?: string } }; message?: string }) => {
       alert(
         `Erro ao salvar: ${error.response?.data?.message || error.message}`
+      );
+    },
+  });
+
+  const sincronizarMutation = useMutation({
+    mutationFn: async (unidadeId: string) => {
+      const token = localStorage.getItem("token");
+      const response = await axios.post(
+        `${API_URL}/graduacao/sincronizar-faixas/${unidadeId}`,
+        {},
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      return response.data;
+    },
+    onSuccess: (data) => {
+      alert(`✅ ${data.message}\n\nFaixas atualizadas: ${data.faixasAtualizadas}`);
+    },
+    onError: (error: { response?: { data?: { message?: string } }; message?: string }) => {
+      alert(
+        `Erro ao sincronizar: ${error.response?.data?.message || error.message}`
+      );
+    },
+  });
+
+  const recalcularMutation = useMutation({
+    mutationFn: async (unidadeId: string) => {
+      const token = localStorage.getItem("token");
+      const response = await axios.post(
+        `${API_URL}/graduacao/recalcular-graus/${unidadeId}`,
+        {},
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      return response.data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({
+        queryKey: ["configuracao-graduacao", selectedUnidade],
+      });
+      alert(
+        `✅ ${data.message}\n\nAlunos processados: ${data.alunosProcessados}\nGraus concedidos: ${data.grausConcedidos}`
+      );
+    },
+    onError: (error: { response?: { data?: { message?: string } }; message?: string }) => {
+      alert(
+        `Erro ao recalcular: ${error.response?.data?.message || error.message}`
       );
     },
   });
@@ -434,6 +503,86 @@ export default function ConfiguracaoGraduacaoPage() {
                     Aluno precisa ter pelo menos {percentualFrequencia}% de
                     frequência
                   </p>
+                </div>
+              </div>
+
+              {/* Botões de Manutenção */}
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 space-y-4">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                    🔧 Ferramentas de Manutenção
+                  </h3>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Use estas funções para corrigir dados existentes quando necessário
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!selectedUnidade) {
+                          alert("Selecione uma unidade primeiro");
+                          return;
+                        }
+                        if (confirm(
+                          "Isso vai atualizar a tabela de faixas (faixa_def) com os valores desta configuração.\n\nContinuar?"
+                        )) {
+                          sincronizarMutation.mutate(selectedUnidade);
+                        }
+                      }}
+                      disabled={!selectedUnidade || sincronizarMutation.isPending}
+                      className="w-full bg-yellow-600 text-white py-3 px-6 rounded-md hover:bg-yellow-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors font-medium flex items-center justify-center gap-2"
+                    >
+                      {sincronizarMutation.isPending ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                          Sincronizando...
+                        </>
+                      ) : (
+                        <>
+                          🔄 Sincronizar Faixas
+                        </>
+                      )}
+                    </button>
+                    <p className="text-xs text-gray-600">
+                      Atualiza os valores padrão das faixas no banco de dados
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!selectedUnidade) {
+                          alert("Selecione uma unidade primeiro");
+                          return;
+                        }
+                        if (confirm(
+                          "Isso vai recalcular os graus de TODOS os alunos desta unidade e conceder graus retroativamente se necessário.\n\nContinuar?"
+                        )) {
+                          recalcularMutation.mutate(selectedUnidade);
+                        }
+                      }}
+                      disabled={!selectedUnidade || recalcularMutation.isPending}
+                      className="w-full bg-orange-600 text-white py-3 px-6 rounded-md hover:bg-orange-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors font-medium flex items-center justify-center gap-2"
+                    >
+                      {recalcularMutation.isPending ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                          Recalculando...
+                        </>
+                      ) : (
+                        <>
+                          ⚡ Recalcular Graus
+                        </>
+                      )}
+                    </button>
+                    <p className="text-xs text-gray-600">
+                      Concede graus retroativamente para alunos que já atingiram o número de aulas
+                    </p>
+                  </div>
                 </div>
               </div>
 

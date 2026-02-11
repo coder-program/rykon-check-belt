@@ -567,4 +567,35 @@ export class GraduacaoController {
   async listarConfiguracoes(@Request() req: any) {
     return await this.graduacaoService.listarConfiguracoes(req.user);
   }
+
+  @Post('sincronizar-faixas/:unidadeId')
+  @ApiOperation({ 
+    summary: 'Sincronizar faixa_def com configuração da unidade',
+    description: 'Atualiza os valores de aulas_por_grau na tabela faixa_def baseado na configuração customizada da unidade'
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Faixas sincronizadas com sucesso',
+  })
+  async sincronizarFaixas(
+    @Param('unidadeId', ParseUUIDPipe) unidadeId: string,
+  ) {
+    return await this.graduacaoService.sincronizarFaixasComConfiguracao(unidadeId);
+  }
+
+  @Post('recalcular-graus/:unidadeId')
+  @ApiOperation({ 
+    summary: 'Recalcular graus de todos alunos da unidade',
+    description: 'Analisa todos alunos e concede graus retroativamente se tiverem aulas suficientes'
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Graus recalculados com sucesso',
+  })
+  async recalcularGraus(
+    @Param('unidadeId', ParseUUIDPipe) unidadeId: string,
+    @Request() req: any,
+  ) {
+    return await this.graduacaoService.recalcularGrausUnidade(unidadeId, req.user);
+  }
 }

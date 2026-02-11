@@ -2,6 +2,8 @@ import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { PresencaController } from './presenca.controller';
 import { PresencaService } from './presenca.service';
+import { CatracaController } from './catraca.controller';
+import { CatracaService } from './catraca.service';
 import { Person } from '../people/entities/person.entity';
 import { Presenca } from './entities/presenca.entity';
 import { Aula } from './entities/aula.entity';
@@ -24,8 +26,8 @@ import { GraduacaoModule } from '../graduacao/graduacao.module';
     ]),
     forwardRef(() => GraduacaoModule),
   ],
-  controllers: [PresencaController],
-  providers: [PresencaService],
-  exports: [PresencaService],
+  controllers: [PresencaController, CatracaController],
+  providers: [PresencaService, CatracaService],
+  exports: [PresencaService, CatracaService],
 })
 export class PresencaModule {}
