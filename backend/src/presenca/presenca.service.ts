@@ -17,9 +17,6 @@ import {
   IsNull,
   Not,
 } from 'typeorm';
-import * as dayjs from 'dayjs';
-import * as utc from 'dayjs/plugin/utc';
-import * as timezone from 'dayjs/plugin/timezone';
 import {
   Presenca,
   PresencaMetodo,
@@ -31,10 +28,6 @@ import { Aluno, StatusAluno } from '../people/entities/aluno.entity';
 import { Responsavel } from '../people/entities/responsavel.entity';
 import { AlunoFaixa } from '../graduacao/entities/aluno-faixa.entity';
 import { Unidade } from '../people/entities/unidade.entity';
-
-// Configurar dayjs para usar timezone
-dayjs.extend(utc);
-dayjs.extend(timezone);
 import { GraduacaoService } from '../graduacao/graduacao.service';
 
 export interface AulaAtiva {

@@ -71,14 +71,25 @@ export class Aula {
   data_hora_fim: Date;
 
   // Propriedades calculadas para compatibilidade
+  // Força retorno no timezone de São Paulo independente do servidor
   get hora_inicio(): string {
     if (!this.data_hora_inicio) return '00:00';
-    return this.data_hora_inicio.toTimeString().slice(0, 5);
+    return this.data_hora_inicio.toLocaleTimeString('pt-BR', {
+      timeZone: 'America/Sao_Paulo',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    });
   }
 
   get hora_fim(): string {
     if (!this.data_hora_fim) return '00:00';
-    return this.data_hora_fim.toTimeString().slice(0, 5);
+    return this.data_hora_fim.toLocaleTimeString('pt-BR', {
+      timeZone: 'America/Sao_Paulo',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    });
   }
 
   @Column({ type: 'int', default: 30 })
