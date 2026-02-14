@@ -18,6 +18,7 @@ import {
   Download,
   ArrowLeft,
   Calendar,
+  Building2,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
@@ -38,6 +39,7 @@ export default function BankingPage() {
   const [dataInicio, setDataInicio] = useState("");
   const [dataFim, setDataFim] = useState("");
   const [autoLoadAttempted, setAutoLoadAttempted] = useState(false);
+  const [semContaBancaria, setSemContaBancaria] = useState(false);
 
   useEffect(() => {
     carregarEstabelecimentos();
@@ -98,6 +100,7 @@ export default function BankingPage() {
 
     try {
       setLoadingData(true);
+      setSemContaBancaria(false);
       const token = localStorage.getItem("token");
       
       console.log("🏦 Buscando saldo para estabelecimento:", establishmentId);
@@ -112,6 +115,7 @@ export default function BankingPage() {
         const saldoData = await saldoResponse.json();
         console.log("💰 Saldo recebido:", saldoData);
         setSaldo(saldoData);
+        setSemContaBancaria(false);
       } else {
         const errorText = await saldoResponse.text();
         console.error("❌ Erro ao buscar saldo:", saldoResponse.status, errorText);
@@ -121,10 +125,14 @@ export default function BankingPage() {
           try {
             const errorJson = JSON.parse(errorText);
             if (errorJson.message?.includes("Conta bancária não encontrada") || 
+                errorJson.message?.includes("dados bancários") ||
                 errorJson.code === "BNK000142") {
+              console.log("🏦 Estabelecimento sem conta bancária configurada");
               toast.error("Este estabelecimento não possui conta bancária configurada no PayTime");
               setSaldo(null);
               setExtrato([]);
+              setSemContaBancaria(true);
+              setLoadingData(false);
               return;
             }
           } catch (e) {
@@ -353,6 +361,63 @@ export default function BankingPage() {
                 </div>
               ))}
             </div>
+          ) : semContaBancaria ? (
+            <div className="text-center py-12">
+              <div className="bg-red-50 border-2 border-red-200 rounded-lg p-8 max-w-2xl mx-auto">
+                <div className="flex justify-center mb-4">
+                  <div className="h-20 w-20 bg-red-100 rounded-full flex items-center justify-center">
+                    <Wallet className="h-10 w-10 text-red-600" />
+                  </div>
+                </div>
+                <h3 className="text-xl font-bold text-red-900 mb-3">
+                  🏦 Conta Bancária Não Configurada
+                </h3>
+                <p className="text-red-800 mb-4">
+                  O estabelecimento selecionado não possui conta bancária vinculada no PayTime.
+                </p>
+                <div className="bg-red-100 border border-red-300 rounded-lg p-4 text-left">
+                  <p className="text-sm text-red-900 font-semibold mb-2">📋 O que isso significa?</p>
+                  <ul className="text-sm text-red-800 space-y-1 list-disc list-inside">
+                    <li>Sem conta bancária vinculada, não é possível ter saldo</li>
+                    <li>Não haverá movimentações (créditos/débitos) para exibir</li>
+                    <li>É necessário configurar dados bancários primeiro</li>
+                  </ul>
+                </div>
+                <div className="bg-yellow-50 border border-yellow-300 rounded-lg p-4 text-left mt-4">
+                  <p className="text-sm text-yellow-900 font-semibold mb-2">⚙️ Como resolver?</p>
+                  <ol className="text-sm text-yellow-800 space-y-1 list-decimal list-inside">
+                    <li>
+                      Vá para{" "}
+                      <button
+                        onClick={() => router.push("/admin/estabelecimentos")}
+                        className="underline font-semibold hover:text-yellow-900"
+                      >
+                        Estabelecimentos Paytime
+                      </button>
+                    </li>
+                    <li>Localize o estabelecimento desejado na lista</li>
+                    <li>Clique no botão verde <span className="font-mono bg-yellow-200 px-1">⚡ Gateway</span></li>
+                    <li>No modal que abrir, selecione a aba <span className="font-semibold">BankAccount</span></li>
+                    <li>Preencha: banco, agência, conta, tipo de conta, planos</li>
+                    <li>Clique em "Ativar BankAccount" para salvar</li>
+                    <li>Volte aqui e consulte novamente o saldo</li>
+                  </ol>
+                  <p className="text-xs text-yellow-700 mt-2">
+                    💡 O estabelecimento deve estar <span className="font-semibold">APPROVED</span> (aprovado) para poder ativar o gateway com conta bancária.
+                  </p>
+                </div>
+                <p className="text-xs text-red-600 mt-4 font-mono">
+                  Código: BNK000142 - Conta bancária não encontrada
+                </p>
+                <Button
+                  onClick={() => router.push("/admin/estabelecimentos")}
+                  className="w-full mt-4 bg-blue-600 hover:bg-blue-700"
+                >
+                  <Building2 className="w-4 h-4 mr-2" />
+                  Ir para Estabelecimentos
+                </Button>
+              </div>
+            </div>
           ) : !saldo ? (
             <div className="text-center py-12">
               <Wallet className="h-16 w-16 text-gray-300 mx-auto mb-4" />
@@ -362,13 +427,6 @@ export default function BankingPage() {
               <p className="text-sm text-gray-500">
                 Selecione o estabelecimento e o período desejado acima
               </p>
-              <div className="mt-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4 max-w-md mx-auto">
-                <p className="text-sm text-yellow-800">
-                  ⚠️ <b>Erro comum:</b> &quot;Conta bancária não encontrada&quot;<br/>
-                  Isso significa que o estabelecimento ainda não configurou dados bancários no PayTime. 
-                  É necessário vincular conta bancária para ter saldo e movimentações.
-                </p>
-              </div>
             </div>
           ) : (
             <div className="text-center py-12">

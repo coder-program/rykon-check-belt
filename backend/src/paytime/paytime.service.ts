@@ -4,6 +4,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
 import { Unidade } from '../people/entities/unidade.entity';
 import { Aluno } from '../people/entities/aluno.entity';
+import { Transacao } from '../financeiro/entities/transacao.entity';
 
 interface PaytimeAuthResponse {
   access_token: string;
@@ -108,6 +109,8 @@ export class PaytimeService {
     private unidadeRepository: Repository<Unidade>,
     @InjectRepository(Aluno)
     private alunoRepository: Repository<Aluno>,
+    @InjectRepository(Transacao)
+    private transacaoRepository: Repository<Transacao>,
   ) {
     this.baseUrl = this.configService.get('RYKON_PAY_BASE_URL') || 'https://rykon-pay-production.up.railway.app';
     this.paytimeUsername = this.configService.get('RYKON_PAY_USERNAME') || 'admin';
@@ -797,12 +800,14 @@ export class PaytimeService {
       if (filtered.length !== data.data.length) {
         this.logger.debug(`📊 [PLANS] Aplicando filtros client-side: ${data.data.length} → ${filtered.length} planos`);
         
-        return {
+        const enrichedData = {
           ...data,
           total: filtered.length,
           data: filtered,
           lastPage: Math.ceil(filtered.length / perPage),
         };
+        
+        return enrichedData;
       }
     }
     
@@ -1155,7 +1160,13 @@ export class PaytimeService {
     }
 
     const data = JSON.parse(responseText);
-    this.logger.debug(`✅ Boleto criado: ${data.id} - Status: ${data.status}`);
+    this.logger.debug(`✅ Boleto criado com SUCESSO na Paytime!`);
+    this.logger.debug(`   🆔 Transaction ID: ${data._id || data.id}`);
+    this.logger.debug(`   📊 Status: ${data.status}`);
+    this.logger.debug(`   💰 Valor: ${data.amount}`);
+    this.logger.debug(`   📅 Vencimento: ${data.expiration_at || data.due_date}`);
+    this.logger.debug(`   🔢 Barcode: ${data.barcode ? 'SIM' : 'NÃO'}`);
+    this.logger.debug(`   📄 PDF URL: ${data.url ? 'SIM' : 'NÃO'}`);
     
     return data;
   }
@@ -1209,9 +1220,12 @@ export class PaytimeService {
   ) {
     const token = await this.authenticate();
 
+    // Aumentar limite para pegar mais transações
+    const requestPerPage = Math.max(perPage, 100);
+
     const params = new URLSearchParams({
       page: page.toString(),
-      perPage: perPage.toString(),
+      perPage: requestPerPage.toString(),
     });
 
     if (filters) {
@@ -1225,6 +1239,8 @@ export class PaytimeService {
     const url = `${this.baseUrl}/api/transactions?${params.toString()}`;
     
     this.logger.debug(`📋 Listando transações do estabelecimento ${establishmentId}`);
+    this.logger.debug(`🔗 URL da requisição: ${url}`);
+    this.logger.debug(`📤 Headers: establishment_id=${establishmentId}, page=${page}, perPage=${requestPerPage}`);
 
     const response = await fetch(url, {
       method: 'GET',
@@ -1245,6 +1261,42 @@ export class PaytimeService {
 
     const data = await response.json();
     this.logger.debug(`✅ Transações listadas: ${data.data?.length || 0} encontrada(s)`);
+    this.logger.debug(`📊 Total de transações: ${data.total || 0}, Página: ${data.page || 1}, Páginas: ${data.lastPage || 1}`);
+    
+    // Log dos tipos de transação retornados
+    if (data.data && data.data.length > 0) {
+      const tipos = [...new Set(data.data.map(t => t.type))];
+      this.logger.debug(`📋 Tipos de transação retornados: ${tipos.join(', ')}`);
+      
+      const tipoCount = {};
+      data.data.forEach(t => {
+        tipoCount[t.type] = (tipoCount[t.type] || 0) + 1;
+      });
+      this.logger.debug(`📊 Contagem por tipo: ${JSON.stringify(tipoCount)}`);
+      
+      // VERIFICAR se API Paytime está respeitando o establishment_id
+      const establishments = [...new Set(data.data.map(t => t.establishment?.id).filter(Boolean))];
+      this.logger.debug(`🏢 Establishments nas transações retornadas: [${establishments.join(', ')}]`);
+      
+      if (establishments.length > 1 || (establishments.length === 1 && establishments[0] !== establishmentId)) {
+        this.logger.warn(`⚠️ BUG CONFIRMADO: Solicitado establishment ${establishmentId}, mas API retornou transações de: [${establishments.join(', ')}]`);
+        this.logger.warn(`⚠️ Aplicando filtro FORÇADO no backend para corrigir...`);
+        
+        // WORKAROUND: Filtrar manualmente as transações pelo establishment correto
+        const transacoesAntes = data.data.length;
+        data.data = data.data.filter(t => t.establishment?.id === establishmentId);
+        this.logger.warn(`⚠️ Transações filtradas: ${transacoesAntes} → ${data.data.length} (removidas ${transacoesAntes - data.data.length} transações de outros establishments)`);
+        data.total = data.data.length;
+      }
+    }
+    
+    // Log dos IDs e datas das transações retornadas
+    if (data.data && data.data.length > 0) {
+      this.logger.debug(`📋 IDs das transações retornadas:`);
+      data.data.forEach((t, index) => {
+        this.logger.debug(`  ${index + 1}. ID: ${t._id} | Tipo: ${t.type} | Status: ${t.status} | Data: ${t.created_at} | Valor: ${t.amount}`);
+      });
+    }
     
     // Buscar detalhes completos de cada transação para obter dados do cliente
     if (data.data && Array.isArray(data.data) && data.data.length > 0) {
@@ -1342,6 +1394,103 @@ export class PaytimeService {
 
         this.logger.debug(`✅ ${alunos.length} aluno(s) vinculado(s) às transações`);
       }
+    }
+    
+    // ADICIONAR BOLETOS DO BANCO LOCAL (Paytime API não retorna boletos na listagem - BUG conhecido)
+    this.logger.debug(`🔍 Verificando se precisa buscar boletos do banco local...`);
+    
+    const temBillets = data.data?.some(t => t.type === 'BILLET');
+    this.logger.debug(`💳 API Paytime retornou boletos? ${temBillets ? 'SIM' : 'NÃO'}`);
+    
+    if (!temBillets) {
+      this.logger.debug(`🔍 Buscando boletos do banco local para estabelecimento ${establishmentId}...`);
+      try {
+        const unidades = await this.unidadeRepository.find({
+          where: { paytime_establishment_id: establishmentId.toString() },
+          select: ['id', 'nome', 'paytime_establishment_id'],
+        });
+        
+        this.logger.debug(`📍 Query: SELECT id, nome, paytime_establishment_id FROM unidades WHERE paytime_establishment_id = '${establishmentId}'`);
+        this.logger.debug(`📍 Resultado: ${unidades.length} unidade(s) encontrada(s)`);
+        
+        if (unidades.length > 0) {
+          const unidadeIds = unidades.map(u => u.id);
+          
+          // Log detalhado das unidades
+          unidades.forEach(u => {
+            this.logger.debug(`   - Unidade: ${u.nome} (ID: ${u.id}, Establishment: ${u.paytime_establishment_id})`);
+          });
+          
+          this.logger.debug(`🔍 Buscando boletos das unidades: [${unidadeIds.join(', ')}]`);
+          
+          const boletos = await this.transacaoRepository
+            .createQueryBuilder('t')
+            .leftJoinAndSelect('t.aluno', 'aluno')
+            .where('t.unidade_id IN (:...unidadeIds)', { unidadeIds })
+            .andWhere('t.paytime_payment_type = :type', { type: 'BILLET' })
+            .andWhere('t.paytime_transaction_id IS NOT NULL')
+            .orderBy('t.created_at', 'DESC')
+            .limit(50)
+            .getMany();
+          
+          this.logger.debug(`💳 Encontrados ${boletos.length} boleto(s) no banco local para estabelecimento ${establishmentId}`);
+          
+          if (boletos.length > 0) {
+            boletos.slice(0, 3).forEach((b, i) => {
+              this.logger.debug(`   ${i + 1}. Boleto: ${b.paytime_transaction_id} | Unidade: ${b.unidade_id} | Valor: ${b.valor} | Data: ${b.created_at}`);
+            });
+          }
+          
+          // Converter boletos para formato Paytime
+          const boletosFormatted = boletos.map(boleto => ({
+            _id: boleto.paytime_transaction_id,
+            status: boleto.status === 'PENDENTE' ? 'PENDING' : 
+                    boleto.status === 'CONFIRMADA' ? 'PAID' : 
+                    boleto.status === 'CANCELADA' ? 'CANCELED' : 'PENDING',
+            type: 'BILLET',
+            amount: Math.round(boleto.valor * 100), // Converter para centavos
+            created_at: boleto.created_at,
+            establishment: {
+              id: establishmentId,
+              type: 'BUSINESS',
+            },
+            client: boleto.aluno ? {
+              document: boleto.aluno.cpf,
+              first_name: boleto.aluno.nome_completo?.split(' ')[0] || '',
+              last_name: boleto.aluno.nome_completo?.split(' ').slice(1).join(' ') || '',
+              email: boleto.aluno.email,
+              phone: boleto.aluno.telefone,
+            } : null,
+            aluno: boleto.aluno ? {
+              id: boleto.aluno.id,
+              nome: boleto.aluno.nome_completo,
+              email: boleto.aluno.email,
+              telefone: boleto.aluno.telefone,
+              unidade_id: boleto.unidade_id,
+              numero_matricula: boleto.aluno.numero_matricula,
+              status: boleto.aluno.status,
+            } : null,
+            paytime_metadata: boleto.paytime_metadata,
+            billet_barcode: boleto.paytime_metadata?.barcode,
+            billet_digitable_line: boleto.paytime_metadata?.digitable_line,
+            billet_url: boleto.paytime_metadata?.pdf_url,
+            billet_due_date: boleto.paytime_metadata?.due_date,
+          }));
+          
+          if (boletosFormatted.length > 0) {
+            // Combinar boletos com transações da Paytime (boletos primeiro, mais recentes)
+            data.data = [...boletosFormatted, ...(data.data || [])];
+            data.total = (data.total || 0) + boletos.length;
+            
+            this.logger.debug(`✅ Total de transações após adicionar boletos: ${data.data.length}`);
+          }
+        }
+      } catch (error) {
+        this.logger.error(`❌ Erro ao buscar boletos do banco local: ${error.message}`);
+        // Não falhar a requisição, apenas logar o erro
+      }
+    } else {
+      this.logger.debug(`✅ API Paytime já retornou boletos, não precisa buscar do banco local`);
     }
     
     return data;
@@ -1729,6 +1878,225 @@ export class PaytimeService {
 
     const data = await response.json();
     this.logger.debug(`✅ Representante ID ${id} encontrado: ${data.establishment?.first_name || 'N/A'}`);
+    return data;
+  }
+
+  // ==================== MÉTODOS DE ANTIFRAUDE ====================
+
+  /**
+   * Obter configuração do SDK IDPAY (Unico)
+   * GET /api/antifraud/idpay/sdk-config
+   */
+  async getIdpaySdkConfig() {
+    const token = await this.authenticate();
+    const url = `${this.baseUrl}/api/antifraud/idpay/sdk-config`;
+
+    this.logger.debug('🔐 Obtendo configuração SDK IDPAY...');
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      this.logger.error(`❌ Erro ao obter SDK config IDPAY: ${response.status} - ${errorText}`);
+      throw new BadRequestException(`Erro ao obter SDK config IDPAY: ${response.status}`);
+    }
+
+    const data = await response.json();
+    this.logger.debug('✅ SDK config IDPAY obtido com sucesso');
+    return data;
+  }
+
+  /**
+   * Autenticar transação com IDPAY (Unico)
+   * POST /api/antifraud/idpay/:id/authenticate
+   */
+  async authenticateIdpay(transactionId: string, authData: {
+    encrypted: string;
+    jwt?: string;
+    uniqueness_id: string;
+  }) {
+    const token = await this.authenticate();
+    const url = `${this.baseUrl}/api/antifraud/idpay/${transactionId}/authenticate`;
+
+    this.logger.debug(`🔐 Autenticando transação IDPAY - ID: ${transactionId}`);
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(authData),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      this.logger.error(`❌ Erro ao autenticar IDPAY: ${response.status} - ${errorText}`);
+      throw new BadRequestException(`Erro ao autenticar IDPAY: ${response.status}`);
+    }
+
+    const data = await response.json();
+    this.logger.debug(`✅ Autenticação IDPAY concluída - Status: ${data.status}`);
+    return data;
+  }
+
+  /**
+   * Obter configuração do SDK 3DS (PagBank)
+   * GET /api/antifraud/threeds/sdk-config
+   */
+  async getThreeDsSdkConfig() {
+    const token = await this.authenticate();
+    const url = `${this.baseUrl}/api/antifraud/threeds/sdk-config`;
+
+    this.logger.debug('🔐 Obtendo configuração SDK 3DS...');
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      this.logger.error(`❌ Erro ao obter SDK config 3DS: ${response.status} - ${errorText}`);
+      throw new BadRequestException(`Erro ao obter SDK config 3DS: ${response.status}`);
+    }
+
+    const data = await response.json();
+    this.logger.debug('✅ SDK config 3DS obtido com sucesso');
+    return data;
+  }
+
+  /**
+   * Obter cartões de teste do 3DS
+   * GET /api/antifraud/threeds/test-cards
+   */
+  async getThreeDsTestCards() {
+    const token = await this.authenticate();
+    const url = `${this.baseUrl}/api/antifraud/threeds/test-cards`;
+
+    this.logger.debug('🔐 Obtendo cartões de teste 3DS...');
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      this.logger.error(`❌ Erro ao obter cartões teste 3DS: ${response.status} - ${errorText}`);
+      throw new BadRequestException(`Erro ao obter cartões teste 3DS: ${response.status}`);
+    }
+
+    const data = await response.json();
+    this.logger.debug('✅ Cartões teste 3DS obtidos com sucesso');
+    return data;
+  }
+
+  /**
+   * Autenticar transação com 3DS (PagBank)
+   * POST /api/antifraud/threeds/:id/authenticate
+   */
+  async authenticateThreeDs(transactionId: string, authData: {
+    authentication_token: string;
+    redirect_url?: string;
+  }) {
+    const token = await this.authenticate();
+    const url = `${this.baseUrl}/api/antifraud/threeds/${transactionId}/authenticate`;
+
+    this.logger.debug(`🔐 Autenticando transação 3DS - ID: ${transactionId}`);
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(authData),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      this.logger.error(`❌ Erro ao autenticar 3DS: ${response.status} - ${errorText}`);
+      throw new BadRequestException(`Erro ao autenticar 3DS: ${response.status}`);
+    }
+
+    const data = await response.json();
+    this.logger.debug(`✅ Autenticação 3DS concluída - Status: ${data.status}`);
+    return data;
+  }
+
+  /**
+   * Gerar Session ID para ClearSale
+   * POST /api/antifraud/session
+   */
+  async generateSessionId(sessionData: {
+    user_id: string;
+    ip_address?: string;
+    user_agent?: string;
+  }) {
+    const token = await this.authenticate();
+    const url = `${this.baseUrl}/api/antifraud/session`;
+
+    this.logger.debug('🔐 Gerando Session ID ClearSale...');
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(sessionData),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      this.logger.error(`❌ Erro ao gerar Session ID: ${response.status} - ${errorText}`);
+      throw new BadRequestException(`Erro ao gerar Session ID: ${response.status}`);
+    }
+
+    const data = await response.json();
+    this.logger.debug(`✅ Session ID gerado: ${data.session_id}`);
+    return data;
+  }
+
+  /**
+   * Obter configuração do script ClearSale
+   * GET /api/antifraud/script-config
+   */
+  async getClearSaleScriptConfig() {
+    const token = await this.authenticate();
+    const url = `${this.baseUrl}/api/antifraud/script-config`;
+
+    this.logger.debug('🔐 Obtendo configuração ClearSale...');
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      this.logger.error(`❌ Erro ao obter config ClearSale: ${response.status} - ${errorText}`);
+      throw new BadRequestException(`Erro ao obter config ClearSale: ${response.status}`);
+    }
+
+    const data = await response.json();
+    this.logger.debug('✅ Config ClearSale obtido com sucesso');
     return data;
   }
 }

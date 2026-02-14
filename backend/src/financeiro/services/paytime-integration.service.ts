@@ -49,6 +49,9 @@ export interface ProcessarPagamentoCartaoDto {
     zip_code: string;
     complement?: string;
   };
+  // Campos de antifraude
+  session_id?: string; // Session ID do ClearSale
+  antifraud_type?: 'IDPAY' | 'THREEDS' | 'CLEARSALE'; // Tipo de antifraude utilizado
 }
 
 export interface ProcessarPagamentoBoletoDto {
@@ -402,6 +405,10 @@ export class PaytimeIntegrationService {
           expiration_year: parseInt(dto.card.expiration_year, 10),
           security_code: dto.card.cvv,
         },
+        // Campos de antifraude (incluídos apenas se fornecidos)
+        // session_id do ClearSale é suficiente - Paytime detecta automaticamente
+        ...(dto.session_id && { session_id: dto.session_id }),
+        // antifraud_type removido - Paytime não aceita esse campo para cartão
         info_additional: [
           {
             key: 'aluno_id',
@@ -433,6 +440,9 @@ export class PaytimeIntegrationService {
       this.logger.log(
         `Criando transação Cartão na Paytime - Establishment: ${establishment}, Valor: ${cardData.amount}`,
       );
+      if (dto.session_id) {
+        this.logger.log(`🔐 Session ID ClearSale presente: ${dto.session_id.substring(0, 20)}...`);
+      }
 
       const paytimeResponse =
         await this.paytimeService.createCardTransaction(
@@ -808,28 +818,8 @@ export class PaytimeIntegrationService {
             limit_date: new Date(new Date(dueDate).getTime() - 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 5 dias antes do vencimento
           },
         },
-        info_additional: [
-          {
-            key: 'aluno_id',
-            value: fatura.aluno_id,
-          },
-          {
-            key: 'aluno_cpf',
-            value: dadosBoleto.cpf,
-          },
-          {
-            key: 'aluno_nome',
-            value: dadosBoleto.nome,
-          },
-          {
-            key: 'aluno_email',
-            value: dadosBoleto.email,
-          },
-          {
-            key: 'numero_matricula',
-            value: fatura.aluno.numero_matricula || '',
-          },
-        ],
+        // info_additional não é aceito pela API de boletos do Paytime
+        // Removido conforme erro: "property info_additional should not exist"
       };
 
       this.logger.log(
@@ -858,11 +848,18 @@ export class PaytimeIntegrationService {
         gateway_key: paytimeResponse.gateway_key,
         establishment_id: paytimeResponse.establishment_id,
       };
+      
+      this.logger.log(`💾 Salvando transação no banco local...`);
+      this.logger.log(`   🆔 Transação Local ID: ${transacaoSalva.id}`);
+      this.logger.log(`   🆔 Paytime Transaction ID: ${paytimeResponse._id || paytimeResponse.id}`);
+      this.logger.log(`   🏢 Unidade ID: ${transacaoSalva.unidade_id}`);
+      this.logger.log(`   📊 Status: ${transacaoSalva.status}`);
+      this.logger.log(`   💰 Valor: ${transacaoSalva.valor}`);
+      
       await this.transacaoRepository.save(transacaoSalva);
 
-      this.logger.log(
-        `Boleto criado com sucesso - ID Paytime: ${paytimeResponse._id || paytimeResponse.id}`,
-      );
+      this.logger.log(`✅ Transação salva com SUCESSO no banco local!`);
+      this.logger.log(`✅ Boleto criado com sucesso - ID Paytime: ${paytimeResponse._id || paytimeResponse.id}`);
 
       return {
         transacao_id: transacaoSalva.id,

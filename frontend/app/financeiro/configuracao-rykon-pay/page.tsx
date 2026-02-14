@@ -33,6 +33,13 @@ interface PaytimePlan {
   active: boolean;
   type: string;
   modality: string;
+  rates?: {
+    debit_rate: number;
+    credit_rate: number;
+    installment_base_rate: number;
+    installment_additional_rate: number;
+    pix_rate: number | null;
+  } | null;
 }
 
 interface SelectedPlan {
@@ -319,45 +326,39 @@ export default function ConfiguracaoRykonPay() {
     const planoEncontrado = availablePlans.find(p => p.id.toString() === planoSelecionadoSim);
     console.log("🔍 Plano encontrado:", planoEncontrado);
     
-    if (planoEncontrado) {
-      console.log("📊 Dados do plano:");
-      console.log("   - ID:", planoEncontrado.id);
-      console.log("   - Nome:", planoEncontrado.name);
-      console.log("   - Objeto completo:", planoEncontrado);
-      
-      // Verificar se tem campos de taxas
-      const possibleFeeFields = ['fees', 'rates', 'charges', 'debit_fee', 'credit_fee', 'installment_fee', 'taxa', 'taxas'];
-      const feesFound = {} as any;
-      possibleFeeFields.forEach(field => {
-        if ((planoEncontrado as any)[field] !== undefined) {
-          feesFound[field] = (planoEncontrado as any)[field];
-        }
-      });
-      console.log("💳 Campos de taxas no plano:", feesFound);
+    if (!planoEncontrado) {
+      toast.error("⚠️ Plano não encontrado!");
+      console.error("❌ Plano não encontrado:", planoSelecionadoSim);
+      return;
     }
 
-    // ⚠️ TAXAS HARDCODED - TEMPORÁRIO
-    console.warn("⚠️ USANDO TAXAS HARDCODED - NÃO É DADO REAL!");
-    const taxasPorPlano: Record<string, { debito: number; credito: number; credito_parcelado: number }> = {
-      "1": { debito: 2.5, credito: 3.5, credito_parcelado: parcelas > 1 ? 3.5 + (parcelas - 1) * 0.5 : 3.5 },
-      "2": { debito: 2.0, credito: 3.0, credito_parcelado: parcelas > 1 ? 3.0 + (parcelas - 1) * 0.4 : 3.0 },
-    };
+    // Verificar se o plano tem taxas configuradas
+    if (!planoEncontrado.rates) {
+      toast.error("⚠️ Taxas não configuradas para este plano. Entre em contato com o suporte.");
+      console.error("❌ Plano sem taxas configuradas:", planoEncontrado);
+      return;
+    }
 
-    const taxas = taxasPorPlano[planoSelecionadoSim] || { debito: 0, credito: 0, credito_parcelado: 0 };
-    console.log("📊 Taxas aplicadas:", taxas);
+    console.log("✅ Usando taxas reais do plano:", planoEncontrado.rates);
+    const taxas = planoEncontrado.rates;
     
-    const valorDebito = valor - (valor * taxas.debito / 100);
-    const valorCredito = valor - (valor * taxas.credito / 100);
-    const valorCreditoParcelado = valor - (valor * taxas.credito_parcelado / 100);
+    // Calcular taxa de crédito parcelado (taxa base + adicional por parcela)
+    const taxaCreditoParcelado = parcelas > 1 
+      ? taxas.installment_base_rate + (parcelas - 1) * taxas.installment_additional_rate
+      : taxas.credit_rate;
+    
+    const valorDebito = valor - (valor * taxas.debit_rate / 100);
+    const valorCredito = valor - (valor * taxas.credit_rate / 100);
+    const valorCreditoParcelado = valor - (valor * taxaCreditoParcelado / 100);
     const valorParcela = valorCreditoParcelado / parcelas;
 
     console.log("💰 Resultado da simulação:");
-    console.log("   - Débito: R$", valorDebito.toFixed(2), `(taxa ${taxas.debito}%)`);
-    console.log("   - Crédito: R$", valorCredito.toFixed(2), `(taxa ${taxas.credito}%)`);
-    console.log("   - Parcelado:", `${parcelas}x R$ ${valorParcela.toFixed(2)}`, `(taxa ${taxas.credito_parcelado}%)`);
+    console.log("   - Débito: R$", valorDebito.toFixed(2), `(taxa ${taxas.debit_rate}%)`);
+    console.log("   - Crédito: R$", valorCredito.toFixed(2), `(taxa ${taxas.credit_rate}%)`);
+    console.log("   - Parcelado:", `${parcelas}x R$ ${valorParcela.toFixed(2)}`, `(taxa ${taxaCreditoParcelado.toFixed(2)}%)`);
 
     toast.success(
-      `Simulação:\n📱 Débito: R$ ${valorDebito.toFixed(2)} (taxa ${taxas.debito}%)\n💳 Crédito: R$ ${valorCredito.toFixed(2)} (taxa ${taxas.credito}%)\n💳 ${parcelas}x: ${parcelas}x R$ ${valorParcela.toFixed(2)} (taxa ${taxas.credito_parcelado}%)`,
+      `Simulação:\n📱 Débito: R$ ${valorDebito.toFixed(2)} (taxa ${taxas.debit_rate}%)\n💳 Crédito: R$ ${valorCredito.toFixed(2)} (taxa ${taxas.credit_rate}%)\n💳 ${parcelas}x: ${parcelas}x R$ ${valorParcela.toFixed(2)} (taxa ${taxaCreditoParcelado.toFixed(2)}%)`,
       { duration: 8000 }
     );
   };

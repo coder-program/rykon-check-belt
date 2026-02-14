@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   Dialog,
@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { QRCodeSVG } from "qrcode.react";
+import { useAntifraud } from "@/hooks/useAntifraud";
 
 interface Fatura {
   id: string;
@@ -51,6 +52,7 @@ export default function ProcessarPagamentoModal({
   onSuccess,
 }: ProcessarPagamentoModalProps) {
   const queryClient = useQueryClient();
+  const { generateSessionId, loadClearSaleScript, sessionId } = useAntifraud();
   
   // Mapear método de pagamento para ID da tab
   const getTabFromMetodoPagamento = (metodo?: string): string => {
@@ -87,6 +89,22 @@ export default function ProcessarPagamentoModal({
 
   // Estados Boleto
   const [boletoData, setBoletoData] = useState<any>(null);
+
+  // Carregar ClearSale quando modal abrir
+  useEffect(() => {
+    if (open) {
+      const initAntifraud = async () => {
+        try {
+          await loadClearSaleScript();
+          await generateSessionId();
+          console.log("✅ ClearSale Session ID gerado");
+        } catch (error) {
+          console.error("⚠️ Erro ao carregar ClearSale:", error);
+        }
+      };
+      initAntifraud();
+    }
+  }, [open, loadClearSaleScript, generateSessionId]);
   
   // Estado para erro de dados faltantes
   const [dadosFaltantesError, setDadosFaltantesError] = useState<{
@@ -177,6 +195,9 @@ export default function ProcessarPagamentoModal({
               state: "ES",
               zip_code: "29090000",
             },
+            // Campos de antifraude
+            session_id: sessionId,
+            antifraud_type: "CLEARSALE",
           }),
         }
       );

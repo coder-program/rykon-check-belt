@@ -17,6 +17,9 @@ import {
   IsNull,
   Not,
 } from 'typeorm';
+import * as dayjs from 'dayjs';
+import * as utc from 'dayjs/plugin/utc';
+import * as timezone from 'dayjs/plugin/timezone';
 import {
   Presenca,
   PresencaMetodo,
@@ -28,6 +31,10 @@ import { Aluno, StatusAluno } from '../people/entities/aluno.entity';
 import { Responsavel } from '../people/entities/responsavel.entity';
 import { AlunoFaixa } from '../graduacao/entities/aluno-faixa.entity';
 import { Unidade } from '../people/entities/unidade.entity';
+
+// Configurar dayjs para usar timezone
+dayjs.extend(utc);
+dayjs.extend(timezone);
 import { GraduacaoService } from '../graduacao/graduacao.service';
 
 export interface AulaAtiva {
@@ -334,13 +341,21 @@ export class PresencaService {
       await this.aulaRepository.save(aulaEscolhida);
     }
 
+    // Formatar horários para timezone de São Paulo usando dayjs
+    const hoje = dayjs().tz('America/Sao_Paulo');
+    const [horaInicio, minInicio] = aulaEscolhida.hora_inicio.split(':').map(Number);
+    const [horaFim, minFim] = aulaEscolhida.hora_fim.split(':').map(Number);
+    
+    const horarioInicioFormatado = hoje.hour(horaInicio).minute(minInicio).format('HH:mm');
+    const horarioFimFormatado = hoje.hour(horaFim).minute(minFim).format('HH:mm');
+
     return {
       id: aulaEscolhida.id,
       nome: aulaEscolhida.nome,
       professor: aulaEscolhida.professor?.nome_completo || 'Professor',
       unidade: aulaEscolhida.unidade?.nome || 'Unidade',
-      horarioInicio: aulaEscolhida.hora_inicio,
-      horarioFim: aulaEscolhida.hora_fim,
+      horarioInicio: horarioInicioFormatado,
+      horarioFim: horarioFimFormatado,
       qrCode: aulaEscolhida.qr_code,
     };
   }

@@ -1011,14 +1011,19 @@ export class PaytimeController {
       parsedFilters = undefined;
     }
 
-    this.logger.debug(`📋 Listando transações do estabelecimento ${establishmentId}...`);
-    return this.paytimeService.listTransactions(
+    this.logger.debug(`📋 [CONTROLLER] Listando transações do estabelecimento ${establishmentId}...`);
+    this.logger.debug(`📋 [CONTROLLER] Parâmetros: page=${page || 1}, perPage=${perPage || 20}, filters=${filters || 'nenhum'}`);
+    
+    const result = await this.paytimeService.listTransactions(
       parseInt(establishmentId, 10),
       page || 1,
       perPage || 20,
       parsedFilters,
       search,
     );
+    
+    this.logger.debug(`✅ [CONTROLLER] Retornando ${result.data?.length || 0} transações para o frontend`);
+    return result;
   }
 
   @Get('transactions/:id')
@@ -1458,6 +1463,170 @@ export class PaytimeController {
   async getRepresentativeById(@Param('id') id: string) {
     this.logger.debug(`Buscando representante ID: ${id}...`);
     return this.paytimeService.getRepresentativeById(parseInt(id));
+  }
+
+  // ==================== ENDPOINTS DE ANTIFRAUDE ====================
+
+  @Get('antifraud/idpay/sdk-config')
+  @ApiOperation({
+    summary: '🔐 Obter configuração SDK IDPAY',
+    description: 'Retorna configuração necessária para carregar SDK IDPAY (Unico) no frontend',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Configuração SDK retornada com sucesso',
+  })
+  async getIdpaySdkConfig() {
+    this.logger.debug('Obtendo SDK config IDPAY...');
+    return this.paytimeService.getIdpaySdkConfig();
+  }
+
+  @Post('antifraud/idpay/:id/authenticate')
+  @ApiOperation({
+    summary: '🔐 Autenticar transação com IDPAY',
+    description: 'Envia dados de autenticação biométrica IDPAY para validação da transação',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Autenticação processada com sucesso',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'ID da transação Paytime',
+    example: '123456',
+  })
+  @ApiBody({
+    description: 'Dados de autenticação IDPAY',
+    schema: {
+      type: 'object',
+      properties: {
+        encrypted: { type: 'string', description: 'Dados criptografados do SDK' },
+        jwt: { type: 'string', description: 'JWT retornado pelo SDK (opcional)' },
+        uniqueness_id: { type: 'string', description: 'ID único da captura' },
+      },
+      required: ['encrypted', 'uniqueness_id'],
+    },
+  })
+  async authenticateIdpay(
+    @Param('id') id: string,
+    @Body() authData: {
+      encrypted: string;
+      jwt?: string;
+      uniqueness_id: string;
+    },
+  ) {
+    this.logger.debug(`Autenticando IDPAY para transação ${id}...`);
+    return this.paytimeService.authenticateIdpay(id, authData);
+  }
+
+  @Get('antifraud/threeds/sdk-config')
+  @ApiOperation({
+    summary: '🔐 Obter configuração SDK 3DS',
+    description: 'Retorna configuração necessária para carregar SDK 3DS (PagBank) no frontend',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Configuração SDK retornada com sucesso',
+  })
+  async getThreeDsSdkConfig() {
+    this.logger.debug('Obtendo SDK config 3DS...');
+    return this.paytimeService.getThreeDsSdkConfig();
+  }
+
+  @Get('antifraud/threeds/test-cards')
+  @ApiOperation({
+    summary: '🔐 Obter cartões de teste 3DS',
+    description: 'Retorna lista de cartões de teste para validação 3DS em homologação',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Cartões de teste retornados com sucesso',
+  })
+  async getThreeDsTestCards() {
+    this.logger.debug('Obtendo cartões teste 3DS...');
+    return this.paytimeService.getThreeDsTestCards();
+  }
+
+  @Post('antifraud/threeds/:id/authenticate')
+  @ApiOperation({
+    summary: '🔐 Autenticar transação com 3DS',
+    description: 'Envia token de autenticação 3DS para validação da transação',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Autenticação processada com sucesso',
+  })
+  @ApiParam({
+    name: 'id',
+    description: 'ID da transação Paytime',
+    example: '123456',
+  })
+  @ApiBody({
+    description: 'Dados de autenticação 3DS',
+    schema: {
+      type: 'object',
+      properties: {
+        authentication_token: { type: 'string', description: 'Token retornado pelo SDK 3DS' },
+        redirect_url: { type: 'string', description: 'URL de redirecionamento (opcional)' },
+      },
+      required: ['authentication_token'],
+    },
+  })
+  async authenticateThreeDs(
+    @Param('id') id: string,
+    @Body() authData: {
+      authentication_token: string;
+      redirect_url?: string;
+    },
+  ) {
+    this.logger.debug(`Autenticando 3DS para transação ${id}...`);
+    return this.paytimeService.authenticateThreeDs(id, authData);
+  }
+
+  @Post('antifraud/session')
+  @ApiOperation({
+    summary: '🔐 Gerar Session ID ClearSale',
+    description: 'Gera Session ID único para rastreamento ClearSale',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Session ID gerado com sucesso',
+  })
+  @ApiBody({
+    description: 'Dados para geração de Session ID',
+    schema: {
+      type: 'object',
+      properties: {
+        user_id: { type: 'string', description: 'ID do usuário' },
+        ip_address: { type: 'string', description: 'IP do usuário (opcional)' },
+        user_agent: { type: 'string', description: 'User Agent do navegador (opcional)' },
+      },
+      required: ['user_id'],
+    },
+  })
+  async generateSessionId(
+    @Body() sessionData: {
+      user_id: string;
+      ip_address?: string;
+      user_agent?: string;
+    },
+  ) {
+    this.logger.debug('Gerando Session ID ClearSale...');
+    return this.paytimeService.generateSessionId(sessionData);
+  }
+
+  @Get('antifraud/script-config')
+  @ApiOperation({
+    summary: '🔐 Obter configuração ClearSale',
+    description: 'Retorna configuração do script ClearSale para carregar no frontend',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Configuração retornada com sucesso',
+  })
+  async getClearSaleScriptConfig() {
+    this.logger.debug('Obtendo config ClearSale...');
+    return this.paytimeService.getClearSaleScriptConfig();
   }
 }
 

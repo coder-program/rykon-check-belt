@@ -41,25 +41,81 @@ import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 
 interface Transaction {
+  _id?: string;
   id: string;
   status: string;
   amount: number;
+  original_amount?: number;
+  fees?: number;
+  interest?: string;
   payment_type: string;
+  type?: string;
   created_at: string;
   updated_at?: string;
   description?: string;
+  reference_id?: string;
+  gateway_key?: string;
+  gateway_authorization?: string;
   customer_name?: string;
   customer_email?: string;
   customer_document?: string;
   installments?: number;
   pix_qr_code?: string;
   pix_copy_paste?: string;
+  emv?: string;
   billet_url?: string;
   billet_barcode?: string;
   card_brand?: string;
   card_last_digits?: string;
+  card?: {
+    brand_name?: string;
+    first4_digits?: string;
+    last4_digits?: string;
+    holder_name?: string;
+    expiration_month?: string;
+    expiration_year?: string;
+    bin?: string;
+  };
   establishment?: any;
   metadata?: any;
+  customer?: {
+    first_name?: string;
+    last_name?: string;
+    document?: string;
+    email?: string;
+    phone?: string;
+    address?: any;
+  };
+  acquirer?: {
+    name?: string;
+    acquirer_nsu?: number;
+    gateway_key?: string;
+    mid?: string;
+  };
+  payment_response?: {
+    code?: string;
+    message?: string;
+    authorization_code?: string;
+    nsu?: string;
+    reason_code?: string;
+    reference?: string;
+  };
+  expected_on?: Array<{
+    installment: number;
+    date: string;
+    amount: number;
+    status: string;
+    paid_at?: string;
+  }>;
+  antifraud?: Array<{
+    analyse_required?: string;
+    analyse_status?: string;
+    antifraud_id?: string;
+  }>;
+  point_of_sale?: {
+    type?: string;
+    identification_type?: string;
+  };
   aluno?: {
     id: string;
     nome: string;
@@ -120,13 +176,12 @@ export default function TransacoesPage() {
         console.log('📍 Lista de estabelecimentos:', estabs);
         setEstablishments(estabs);
         
-        // Seleciona o primeiro estabelecimento automaticamente
-        if (estabs.length > 0) {
-          setSelectedEstablishment(estabs[0].id.toString());
-          console.log('✅ Estabelecimento selecionado:', estabs[0].id, estabs[0].nome);
-        } else {
+        // NÃO seleciona automaticamente - usuário deve escolher
+        if (estabs.length === 0) {
           console.warn('⚠️ Nenhum estabelecimento encontrado');
           toast.error("Nenhum estabelecimento encontrado");
+        } else {
+          console.log(`✅ ${estabs.length} estabelecimento(s) disponível(is). Selecione um no combo.`);
         }
       } else {
         console.error('❌ Erro na resposta:', response.status, response.statusText);
@@ -142,11 +197,13 @@ export default function TransacoesPage() {
 
   const carregarTransacoes = async () => {
     if (!selectedEstablishment) {
+      console.log('⚠️ Nenhum estabelecimento selecionado');
       return;
     }
 
     try {
       setLoading(true);
+      console.log(`🔄 Carregando transações do estabelecimento ${selectedEstablishment}...`);
       const token = localStorage.getItem("token");
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/paytime/transactions`,
@@ -203,8 +260,35 @@ export default function TransacoesPage() {
 
   const transacoesFiltradas = transactions.filter((t) => {
     if (filtroStatus !== "all" && t.status !== filtroStatus) return false;
-    if (filtroTipo !== "all" && t.payment_type !== filtroTipo) return false;
-    if (busca && !t.id.toLowerCase().includes(busca.toLowerCase())) return false;
+    if (filtroTipo !== "all" && (t.type || t.payment_type) !== filtroTipo) return false;
+    if (busca) {
+      const buscaLower = busca.toLowerCase();
+      const camposBusca = [
+        t._id,
+        t.id,
+        t.reference_id,
+        t.customer_name,
+        t.customer_email,
+        t.customer_document,
+        t.aluno?.nome,
+        t.aluno?.numero_matricula,
+        t.aluno?.email,
+        t.customer?.first_name,
+        t.customer?.last_name,
+        t.customer?.email,
+        t.customer?.document,
+        t.acquirer?.acquirer_nsu?.toString(),
+        t.payment_response?.authorization_code,
+        t.payment_response?.nsu,
+        t.gateway_key,
+      ].filter(Boolean);
+      
+      const encontrado = camposBusca.some(campo => 
+        campo?.toString().toLowerCase().includes(buscaLower)
+      );
+      
+      if (!encontrado) return false;
+    }
     return true;
   });
 
@@ -237,27 +321,63 @@ export default function TransacoesPage() {
 
   const exportarTransacoes = () => {
     const csv = [
-      ["ID", "Status", "Tipo", "Valor", "Cliente", "Email", "Data"].join(","),
+      [
+        "ID_MongoDB",
+        "ID",
+        "Reference_ID",
+        "Status",
+        "Tipo",
+        "Valor_Liquido",
+        "Valor_Bruto",
+        "Taxas",
+        "Gateway",
+        "Parcelas",
+        "Cliente",
+        "CPF/CNPJ",
+        "Email",
+        "Telefone",
+        "Aluno",
+        "Matricula",
+        "Estabelecimento",
+        "NSU_Adquirente",
+        "Codigo_Autorizacao",
+        "Data_Criacao",
+        "Data_Atualizacao"
+      ].join(","),
       ...transacoesFiltradas.map((t) =>
         [
+          t._id || t.id,
           t.id,
+          t.reference_id || "-",
           t.status,
-          t.payment_type,
+          t.type || t.payment_type,
           (t.amount / 100).toFixed(2),
-          t.customer_name || "-",
-          t.customer_email || "-",
+          (t.original_amount ? (t.original_amount / 100).toFixed(2) : (t.amount / 100).toFixed(2)),
+          (t.fees ? (t.fees / 100).toFixed(2) : "0.00"),
+          t.gateway_authorization || "-",
+          t.installments || 1,
+          t.customer_name || t.customer?.first_name || t.aluno?.nome || "-",
+          t.customer_document || t.customer?.document || "-",
+          t.customer_email || t.customer?.email || t.aluno?.email || "-",
+          t.customer?.phone || t.aluno?.telefone || "-",
+          t.aluno?.nome || "-",
+          t.aluno?.numero_matricula || "-",
+          t.establishment?.first_name || t.establishment?.name || "-",
+          t.acquirer?.acquirer_nsu || "-",
+          t.payment_response?.authorization_code || "-",
           new Date(t.created_at).toLocaleString("pt-BR"),
+          t.updated_at ? new Date(t.updated_at).toLocaleString("pt-BR") : "-",
         ].join(",")
       ),
     ].join("\n");
 
-    const blob = new Blob([csv], { type: "text/csv" });
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
     a.download = `transacoes-${new Date().toISOString().split("T")[0]}.csv`;
     a.click();
-    toast.success("Transações exportadas!");
+    toast.success("Transações exportadas com mais detalhes!");
   };
 
   if (loadingEstabelecimentos) {
@@ -443,16 +563,34 @@ export default function TransacoesPage() {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {transacoesFiltradas.length === 0 ? (
+              {!selectedEstablishment ? (
+                <div className="col-span-full">
+                  <Card className="border-2 border-dashed border-yellow-300 bg-yellow-50">
+                    <CardContent className="py-12">
+                      <div className="text-center">
+                        <Building2 className="h-16 w-16 text-yellow-600 mx-auto mb-4" />
+                        <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                          Selecione um Estabelecimento
+                        </h3>
+                        <p className="text-gray-600 mb-4">
+                          Escolha um estabelecimento no filtro acima para visualizar as transações
+                        </p>
+                        <div className="flex items-center justify-center gap-2 text-sm text-yellow-700 bg-yellow-100 px-4 py-2 rounded-lg inline-block">
+                          <AlertCircle className="h-4 w-4" />
+                          <span>Use o combo de estabelecimentos para começar</span>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              ) : transacoesFiltradas.length === 0 ? (
                 <div className="col-span-full text-center py-8 text-gray-500">
-                  {selectedEstablishment 
-                    ? "Nenhuma transação encontrada"
-                    : "Selecione um estabelecimento para ver as transações"}
+                  Nenhuma transação encontrada
                 </div>
               ) : (
                 transacoesFiltradas.map((transacao, index) => (
                 <Card
-                  key={`${transacao.id}-${index}`}
+                  key={`${transacao._id || transacao.id}-${index}`}
                   className="hover:shadow-md transition-shadow cursor-pointer"
                   onClick={() => verDetalhes(transacao)}
                 >
@@ -461,20 +599,34 @@ export default function TransacoesPage() {
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex items-center gap-3">
                         <div className="h-12 w-12 rounded-full bg-gray-100 flex items-center justify-center">
-                          {getPaymentIcon(transacao.payment_type)}
+                          {getPaymentIcon(transacao.type || transacao.payment_type)}
                         </div>
                         <div>
-                          <div className="flex items-center gap-2 mb-1">
-                            <p className="font-semibold text-sm text-gray-900">ID: {transacao.id}</p>
-                            <Badge className={getStatusBadge(transacao.status)}>
-                              {transacao.status}
-                            </Badge>
+                          <div className="flex flex-col gap-0.5 mb-1">
+                            <div className="flex items-center gap-2">
+                              <p className="font-mono text-xs text-gray-600">
+                                {transacao._id ? transacao._id.substring(0, 12) + '...' : transacao.id}
+                              </p>
+                              <Badge className={getStatusBadge(transacao.status)}>
+                                {transacao.status}
+                              </Badge>
+                            </div>
+                            {transacao.reference_id && (
+                              <p className="text-xs text-blue-600 font-medium">
+                                Ref: {transacao.reference_id}
+                              </p>
+                            )}
                           </div>
-                          <div className="flex items-center gap-2 text-sm">
-                            <span className="font-medium text-gray-700">{transacao.payment_type}</span>
+                          <div className="flex items-center gap-2 text-sm flex-wrap">
+                            <span className="font-medium text-gray-700">{transacao.type || transacao.payment_type}</span>
                             {transacao.installments && transacao.installments > 1 && (
                               <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded font-medium">
                                 {transacao.installments}x
+                              </span>
+                            )}
+                            {transacao.gateway_authorization && (
+                              <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded font-medium">
+                                {transacao.gateway_authorization}
                               </span>
                             )}
                           </div>
@@ -489,17 +641,45 @@ export default function TransacoesPage() {
                             {transacao.installments}x R$ {(transacao.amount / 100 / transacao.installments).toFixed(2)}
                           </p>
                         )}
+                        {transacao.original_amount && transacao.original_amount !== transacao.amount && (
+                          <p className="text-xs text-gray-400 line-through">
+                            R$ {(transacao.original_amount / 100).toFixed(2)}
+                          </p>
+                        )}
                       </div>
                     </div>
 
                     {/* Informações de Pagamento */}
-                    {transacao.card_brand && (
+                    {(transacao.card || transacao.card_brand) && (
                       <div className="mb-2 pb-2 border-b">
                         <div className="flex items-center gap-2">
                           <CreditCard className="h-4 w-4 text-gray-400" />
                           <span className="text-sm text-gray-700 font-medium">
-                            {transacao.card_brand} •••• {transacao.card_last_digits}
+                            {transacao.card?.brand_name || transacao.card_brand} {transacao.card?.first4_digits || '••••'} •••• {transacao.card?.last4_digits || transacao.card_last_digits}
                           </span>
+                        </div>
+                        {transacao.card?.holder_name && (
+                          <p className="text-xs text-gray-500 ml-6 mt-1">
+                            {transacao.card.holder_name}
+                          </p>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Autorização/NSU */}
+                    {(transacao.acquirer?.acquirer_nsu || transacao.payment_response?.authorization_code) && (
+                      <div className="mb-2 pb-2 border-b">
+                        <div className="flex items-center gap-2 text-xs text-gray-600">
+                          {transacao.acquirer?.acquirer_nsu && (
+                            <span className="font-mono">
+                              NSU: {transacao.acquirer.acquirer_nsu}
+                            </span>
+                          )}
+                          {transacao.payment_response?.authorization_code && (
+                            <span className="font-mono">
+                              Auth: {transacao.payment_response.authorization_code}
+                            </span>
+                          )}
                         </div>
                       </div>
                     )}
@@ -609,9 +789,39 @@ export default function TransacoesPage() {
             <CardHeader className="flex flex-row items-center justify-between space-y-0">
               <div>
                 <CardTitle className="text-2xl">Detalhes da Transação</CardTitle>
-                <CardDescription className="flex items-center gap-2 mt-2">
-                  <Hash className="h-4 w-4" />
-                  ID: {selectedTransaction.id}
+                <CardDescription className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <Hash className="h-4 w-4" />
+                    <span className="font-mono text-xs">{selectedTransaction._id || selectedTransaction.id}</span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 w-6 p-0"
+                      onClick={() => copiarTexto(
+                        selectedTransaction._id || selectedTransaction.id,
+                        "ID copiado!"
+                      )}
+                    >
+                      <Copy className="h-3 w-3" />
+                    </Button>
+                  </div>
+                  {selectedTransaction.reference_id && (
+                    <div className="flex items-center gap-2 text-xs text-gray-500">
+                      <LinkIcon className="h-3 w-3" />
+                      Ref: {selectedTransaction.reference_id}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-5 w-5 p-0"
+                        onClick={() => copiarTexto(
+                          selectedTransaction.reference_id!,
+                          "Reference ID copiado!"
+                        )}
+                      >
+                        <Copy className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  )}
                 </CardDescription>
               </div>
               <Button 
@@ -623,19 +833,35 @@ export default function TransacoesPage() {
               </Button>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* Status e Valor */}
-              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+              {/* Status e Valores */}
+              <div className="grid grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg">
                 <div>
-                  <p className="text-sm text-gray-600">Status</p>
+                  <p className="text-sm text-gray-600 mb-1">Status</p>
                   <Badge className={getStatusBadge(selectedTransaction.status)}>
                     {selectedTransaction.status}
                   </Badge>
+                  {selectedTransaction.gateway_authorization && (
+                    <p className="text-xs text-gray-500 mt-2">
+                      Gateway: <span className="font-medium">{selectedTransaction.gateway_authorization}</span>
+                    </p>
+                  )}
                 </div>
                 <div className="text-right">
-                  <p className="text-sm text-gray-600">Valor</p>
-                  <p className="text-3xl font-bold text-gray-900">
+                  <p className="text-sm text-gray-600">Valor Líquido</p>
+                  <p className="text-3xl font-bold text-green-600">
                     R$ {(selectedTransaction.amount / 100).toFixed(2)}
                   </p>
+                  {selectedTransaction.original_amount && selectedTransaction.original_amount !== selectedTransaction.amount && (
+                    <div className="text-xs text-gray-500 mt-1 space-y-0.5">
+                      <p>Bruto: R$ {(selectedTransaction.original_amount / 100).toFixed(2)}</p>
+                      {selectedTransaction.fees && (
+                        <p className="text-red-600">Taxas: -R$ {(selectedTransaction.fees / 100).toFixed(2)}</p>
+                      )}
+                      {selectedTransaction.interest && (
+                        <p className="text-xs">Taxas: {selectedTransaction.interest === 'CLIENT' ? 'Cliente' : 'Loja'}</p>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -679,30 +905,59 @@ export default function TransacoesPage() {
                   <CreditCard className="h-4 w-4" />
                   Informações do Pagamento
                 </h3>
-                <div className="grid grid-cols-2 gap-3 text-sm">
+                <div className="grid grid-cols-2 gap-3 text-sm bg-purple-50 p-4 rounded-lg">
                   <div>
                     <p className="text-gray-600">Tipo de Pagamento</p>
                     <div className="flex items-center gap-2 mt-1">
-                      {getPaymentIcon(selectedTransaction.payment_type)}
-                      <span className="font-medium">{selectedTransaction.payment_type}</span>
+                      {getPaymentIcon(selectedTransaction.type || selectedTransaction.payment_type)}
+                      <span className="font-medium">{selectedTransaction.type || selectedTransaction.payment_type}</span>
                     </div>
                   </div>
+                  {selectedTransaction.point_of_sale?.type && (
+                    <div>
+                      <p className="text-gray-600">Ponto de Venda</p>
+                      <p className="font-medium">{selectedTransaction.point_of_sale.type}</p>
+                      {selectedTransaction.point_of_sale.identification_type && (
+                        <p className="text-xs text-gray-500">{selectedTransaction.point_of_sale.identification_type}</p>
+                      )}
+                    </div>
+                  )}
                   {selectedTransaction.installments && (
                     <div>
                       <p className="text-gray-600">Parcelas</p>
                       <p className="font-medium">{selectedTransaction.installments}x de R$ {(selectedTransaction.amount / 100 / selectedTransaction.installments).toFixed(2)}</p>
                     </div>
                   )}
-                  {selectedTransaction.card_brand && (
+                  {(selectedTransaction.card || selectedTransaction.card_brand) && (
                     <>
                       <div>
                         <p className="text-gray-600">Bandeira</p>
-                        <p className="font-medium">{selectedTransaction.card_brand}</p>
+                        <p className="font-medium">{selectedTransaction.card?.brand_name || selectedTransaction.card_brand}</p>
                       </div>
                       <div>
-                        <p className="text-gray-600">Final do Cartão</p>
-                        <p className="font-medium">•••• {selectedTransaction.card_last_digits}</p>
+                        <p className="text-gray-600">Cartão</p>
+                        <p className="font-medium font-mono">
+                          {selectedTransaction.card?.first4_digits || '••••'} •••• •••• {selectedTransaction.card?.last4_digits || selectedTransaction.card_last_digits}
+                        </p>
                       </div>
+                      {selectedTransaction.card?.holder_name && (
+                        <div className="col-span-2">
+                          <p className="text-gray-600">Portador</p>
+                          <p className="font-medium">{selectedTransaction.card.holder_name}</p>
+                        </div>
+                      )}
+                      {selectedTransaction.card?.expiration_month && (
+                        <div>
+                          <p className="text-gray-600">Validade</p>
+                          <p className="font-medium">{selectedTransaction.card.expiration_month}/{selectedTransaction.card.expiration_year}</p>
+                        </div>
+                      )}
+                      {selectedTransaction.card?.bin && (
+                        <div>
+                          <p className="text-gray-600">BIN</p>
+                          <p className="font-medium font-mono">{selectedTransaction.card.bin}</p>
+                        </div>
+                      )}
                     </>
                   )}
                   <div>
@@ -718,8 +973,139 @@ export default function TransacoesPage() {
                 </div>
               </div>
 
+              {/* Informações da Adquirente/Autorização */}
+              {(selectedTransaction.acquirer || selectedTransaction.payment_response || selectedTransaction.gateway_key) && (
+                <div>
+                  <h3 className="font-semibold mb-3 flex items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4" />
+                    Autorização e Processamento
+                  </h3>
+                  <div className="grid grid-cols-2 gap-3 text-sm bg-green-50 p-4 rounded-lg">
+                    {selectedTransaction.acquirer?.name && (
+                      <div>
+                        <p className="text-gray-600">Adquirente</p>
+                        <p className="font-medium">{selectedTransaction.acquirer.name}</p>
+                      </div>
+                    )}
+                    {selectedTransaction.acquirer?.acquirer_nsu && (
+                      <div>
+                        <p className="text-gray-600">NSU Adquirente</p>
+                        <p className="font-medium font-mono">{selectedTransaction.acquirer.acquirer_nsu}</p>
+                      </div>
+                    )}
+                    {selectedTransaction.acquirer?.mid && (
+                      <div>
+                        <p className="text-gray-600">MID</p>
+                        <p className="font-medium font-mono">{selectedTransaction.acquirer.mid}</p>
+                      </div>
+                    )}
+                    {selectedTransaction.gateway_key && (
+                      <div className="col-span-2">
+                        <p className="text-gray-600">Gateway Key</p>
+                        <p className="font-medium font-mono text-xs break-all">{selectedTransaction.gateway_key}</p>
+                      </div>
+                    )}
+                    {selectedTransaction.payment_response?.authorization_code && (
+                      <div>
+                        <p className="text-gray-600">Código de Autorização</p>
+                        <p className="font-medium font-mono">{selectedTransaction.payment_response.authorization_code}</p>
+                      </div>
+                    )}
+                    {selectedTransaction.payment_response?.nsu && (
+                      <div>
+                        <p className="text-gray-600">NSU</p>
+                        <p className="font-medium font-mono">{selectedTransaction.payment_response.nsu}</p>
+                      </div>
+                    )}
+                    {selectedTransaction.payment_response?.code && (
+                      <div>
+                        <p className="text-gray-600">Código Resposta</p>
+                        <p className="font-medium">{selectedTransaction.payment_response.code}</p>
+                      </div>
+                    )}
+                    {selectedTransaction.payment_response?.message && (
+                      <div className="col-span-2">
+                        <p className="text-gray-600">Mensagem</p>
+                        <p className="font-medium">{selectedTransaction.payment_response.message}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Antifraude */}
+              {selectedTransaction.antifraud && selectedTransaction.antifraud.length > 0 && (
+                <div>
+                  <h3 className="font-semibold mb-3 flex items-center gap-2">
+                    <AlertCircle className="h-4 w-4" />
+                    Análise Antifraude
+                  </h3>
+                  <div className="space-y-2">
+                    {selectedTransaction.antifraud.map((af, idx) => (
+                      <div key={idx} className="p-3 bg-yellow-50 rounded-lg">
+                        <div className="grid grid-cols-2 gap-2 text-sm">
+                          {af.analyse_required && (
+                            <div>
+                              <p className="text-gray-600">Tipo</p>
+                              <p className="font-medium">{af.analyse_required}</p>
+                            </div>
+                          )}
+                          {af.analyse_status && (
+                            <div>
+                              <p className="text-gray-600">Status</p>
+                              <Badge variant={af.analyse_status === 'APPROVED' ? 'default' : 'secondary'}>
+                                {af.analyse_status}
+                              </Badge>
+                            </div>
+                          )}
+                          {af.antifraud_id && (
+                            <div className="col-span-2">
+                              <p className="text-gray-600">ID Antifraude</p>
+                              <p className="font-medium font-mono text-xs">{af.antifraud_id}</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Previsão de Recebimento */}
+              {selectedTransaction.expected_on && selectedTransaction.expected_on.length > 0 && (
+                <div>
+                  <h3 className="font-semibold mb-3 flex items-center gap-2">
+                    <Calendar className="h-4 w-4" />
+                    Previsão de Recebimento
+                  </h3>
+                  <div className="space-y-2">
+                    {selectedTransaction.expected_on.map((exp, idx) => (
+                      <div key={idx} className="flex items-center justify-between p-3 bg-blue-50 rounded-lg text-sm">
+                        <div>
+                          <p className="font-medium">Parcela {exp.installment}/{selectedTransaction.expected_on!.length}</p>
+                          <p className="text-xs text-gray-500">
+                            {new Date(exp.date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                          </p>
+                          {exp.paid_at && (
+                            <p className="text-xs text-green-600 mt-1">
+                              Pago em {new Date(exp.paid_at).toLocaleDateString('pt-BR')}
+                            </p>
+                          )}
+                        </div>
+                        <div className="text-right">
+                          <p className="font-bold text-blue-900">R$ {(exp.amount / 100).toFixed(2)}</p>
+                          <Badge variant={exp.status === 'PAID' ? 'default' : 'secondary'} className="text-xs mt-1">
+                            {exp.status}
+                          </Badge>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Informações do Aluno/Cliente */}
-              {(selectedTransaction.aluno || selectedTransaction.customer_name || selectedTransaction.customer_email) && (
+              {(selectedTransaction.aluno || selectedTransaction.customer || selectedTransaction.customer_name || selectedTransaction.customer_email) && (
                 <div>
                   <h3 className="font-semibold mb-3 flex items-center gap-2">
                     <User className="h-4 w-4" />
@@ -740,10 +1126,10 @@ export default function TransacoesPage() {
                             <p className="font-medium">{selectedTransaction.aluno.email}</p>
                           </div>
                         )}
-                        {selectedTransaction.customer_document && (
+                        {(selectedTransaction.customer_document || selectedTransaction.customer?.document) && (
                           <div>
                             <p className="text-xs text-gray-600 mb-1">🆔 CPF</p>
-                            <p className="font-medium">{selectedTransaction.customer_document}</p>
+                            <p className="font-medium">{selectedTransaction.customer_document || selectedTransaction.customer?.document}</p>
                           </div>
                         )}
                         {selectedTransaction.aluno.numero_matricula && (
@@ -752,10 +1138,10 @@ export default function TransacoesPage() {
                             <p className="font-medium">{selectedTransaction.aluno.numero_matricula}</p>
                           </div>
                         )}
-                        {selectedTransaction.aluno.telefone && (
+                        {(selectedTransaction.aluno.telefone || selectedTransaction.customer?.phone) && (
                           <div>
                             <p className="text-xs text-gray-600 mb-1">📱 Telefone</p>
-                            <p className="font-medium">{selectedTransaction.aluno.telefone}</p>
+                            <p className="font-medium">{selectedTransaction.aluno.telefone || selectedTransaction.customer?.phone}</p>
                           </div>
                         )}
                         {selectedTransaction.aluno.status && (
@@ -769,22 +1155,46 @@ export default function TransacoesPage() {
                       </>
                     ) : (
                       <>
-                        {selectedTransaction.customer_name && (
+                        {(selectedTransaction.customer?.first_name || selectedTransaction.customer_name) && (
                           <div>
                             <p className="text-gray-600">Nome</p>
-                            <p className="font-medium">{selectedTransaction.customer_name}</p>
+                            <p className="font-medium">
+                              {selectedTransaction.customer?.first_name 
+                                ? `${selectedTransaction.customer.first_name} ${selectedTransaction.customer.last_name || ''}`.trim()
+                                : selectedTransaction.customer_name
+                              }
+                            </p>
                           </div>
                         )}
-                        {selectedTransaction.customer_email && (
+                        {(selectedTransaction.customer?.email || selectedTransaction.customer_email) && (
                           <div>
                             <p className="text-gray-600">Email</p>
-                            <p className="font-medium">{selectedTransaction.customer_email}</p>
+                            <p className="font-medium">{selectedTransaction.customer?.email || selectedTransaction.customer_email}</p>
                           </div>
                         )}
-                        {selectedTransaction.customer_document && (
+                        {(selectedTransaction.customer?.document || selectedTransaction.customer_document) && (
                           <div>
                             <p className="text-gray-600">Documento</p>
-                            <p className="font-medium">{selectedTransaction.customer_document}</p>
+                            <p className="font-medium">{selectedTransaction.customer?.document || selectedTransaction.customer_document}</p>
+                          </div>
+                        )}
+                        {selectedTransaction.customer?.phone && (
+                          <div>
+                            <p className="text-gray-600">Telefone</p>
+                            <p className="font-medium">{selectedTransaction.customer.phone}</p>
+                          </div>
+                        )}
+                        {selectedTransaction.customer?.address && (
+                          <div className="col-span-2">
+                            <p className="text-gray-600 mb-1">Endereço</p>
+                            <p className="font-medium text-sm">
+                              {selectedTransaction.customer.address.street}, {selectedTransaction.customer.address.number}
+                              {selectedTransaction.customer.address.complement && ` - ${selectedTransaction.customer.address.complement}`}
+                              <br />
+                              {selectedTransaction.customer.address.neighborhood} - {selectedTransaction.customer.address.city}/{selectedTransaction.customer.address.state}
+                              <br />
+                              CEP: {selectedTransaction.customer.address.zip_code}
+                            </p>
                           </div>
                         )}
                       </>
@@ -804,82 +1214,87 @@ export default function TransacoesPage() {
               )}
 
               {/* PIX QR Code e Copia e Cola */}
-              {selectedTransaction.payment_type === "PIX" && (
+              {(selectedTransaction.type === "PIX" || selectedTransaction.payment_type === "PIX") && (
                 <div>
                   <h3 className="font-semibold mb-3 flex items-center gap-2">
                     <QrCode className="h-4 w-4" />
                     Informações PIX
                   </h3>
-                  {selectedTransaction.pix_qr_code && (
-                    <div className="mb-3">
-                      <p className="text-sm text-gray-600 mb-2">QR Code</p>
-                      <img 
-                        src={selectedTransaction.pix_qr_code} 
-                        alt="QR Code PIX" 
-                        className="w-48 h-48 border rounded"
-                      />
-                    </div>
-                  )}
-                  {selectedTransaction.pix_copy_paste && (
-                    <div>
-                      <p className="text-sm text-gray-600 mb-2">Copia e Cola</p>
-                      <div className="flex gap-2">
-                        <Input 
-                          value={selectedTransaction.pix_copy_paste} 
-                          readOnly 
-                          className="font-mono text-xs"
+                  <div className="space-y-3">
+                    {selectedTransaction.pix_qr_code && (
+                      <div>
+                        <p className="text-sm text-gray-600 mb-2">QR Code</p>
+                        <img 
+                          src={selectedTransaction.pix_qr_code} 
+                          alt="QR Code PIX" 
+                          className="w-48 h-48 border rounded mx-auto"
                         />
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => copiarTexto(selectedTransaction.pix_copy_paste!, "Código PIX copiado!")}
-                        >
-                          <Copy className="h-4 w-4" />
-                        </Button>
                       </div>
-                    </div>
-                  )}
+                    )}
+                    {(selectedTransaction.pix_copy_paste || selectedTransaction.emv) && (
+                      <div>
+                        <p className="text-sm text-gray-600 mb-2">Copia e Cola (EMV)</p>
+                        <div className="flex gap-2">
+                          <Input 
+                            value={selectedTransaction.pix_copy_paste || selectedTransaction.emv} 
+                            readOnly 
+                            className="font-mono text-xs"
+                          />
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => copiarTexto(
+                              selectedTransaction.pix_copy_paste || selectedTransaction.emv!,
+                              "Código PIX copiado!"
+                            )}
+                          >
+                            <Copy className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
 
               {/* Boleto */}
-              {selectedTransaction.payment_type === "BILLET" && (
+              {(selectedTransaction.type === "BILLET" || selectedTransaction.payment_type === "BILLET") && (
                 <div>
                   <h3 className="font-semibold mb-3 flex items-center gap-2">
                     <FileText className="h-4 w-4" />
                     Informações do Boleto
                   </h3>
-                  {selectedTransaction.billet_url && (
-                    <div className="mb-3">
+                  <div className="space-y-3">
+                    {selectedTransaction.billet_url && (
                       <Button 
                         variant="outline" 
                         className="w-full"
                         onClick={() => window.open(selectedTransaction.billet_url, '_blank')}
                       >
                         <LinkIcon className="h-4 w-4 mr-2" />
-                        Abrir Boleto
+                        Abrir Boleto PDF
                       </Button>
-                    </div>
-                  )}
-                  {selectedTransaction.billet_barcode && (
-                    <div>
-                      <p className="text-sm text-gray-600 mb-2">Código de Barras</p>
-                      <div className="flex gap-2">
-                        <Input 
-                          value={selectedTransaction.billet_barcode} 
-                          readOnly 
-                          className="font-mono text-xs"
-                        />
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => copiarTexto(selectedTransaction.billet_barcode!, "Código de barras copiado!")}
-                        >
-                          <Copy className="h-4 w-4" />
-                        </Button>
+                    )}
+                    {selectedTransaction.billet_barcode && (
+                      <div>
+                        <p className="text-sm text-gray-600 mb-2">Código de Barras</p>
+                        <div className="flex gap-2">
+                          <Input 
+                            value={selectedTransaction.billet_barcode} 
+                            readOnly 
+                            className="font-mono text-xs"
+                          />
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => copiarTexto(selectedTransaction.billet_barcode!, "Código de barras copiado!")}
+                          >
+                            <Copy className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
               )}
 
