@@ -1628,5 +1628,179 @@ export class PaytimeController {
     this.logger.debug('Obtendo config ClearSale...');
     return this.paytimeService.getClearSaleScriptConfig();
   }
+
+  @Get('establishments/:establishmentId/splits')
+  @ApiOperation({
+    summary: '💰 Listar regras de split',
+    description: 'Lista todas as regras de split pré-configuradas do estabelecimento',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Lista de splits retornada com sucesso',
+  })
+  @ApiParam({
+    name: 'establishmentId',
+    description: 'ID do estabelecimento no Paytime',
+    example: 156655,
+  })
+  async listSplits(@Param('establishmentId') establishmentId: string) {
+    this.logger.debug(`Listando splits do estabelecimento ${establishmentId}...`);
+    return this.paytimeService.listSplitPre(Number(establishmentId));
+  }
+
+  @Get('establishments/:establishmentId/splits/:splitId')
+  @ApiOperation({
+    summary: '💰 Buscar split',
+    description: 'Retorna detalhes de uma regra de split específica',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Split encontrado',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Split não encontrado',
+  })
+  @ApiParam({
+    name: 'establishmentId',
+    description: 'ID do estabelecimento no Paytime',
+    example: 156655,
+  })
+  @ApiParam({
+    name: 'splitId',
+    description: 'ID do split',
+    example: '123e4567-e89b-12d3-a456-426614174000',
+  })
+  async getSplit(
+    @Param('establishmentId') establishmentId: string,
+    @Param('splitId') splitId: string,
+  ) {
+    this.logger.debug(`Buscando split ${splitId}...`);
+    return this.paytimeService.getSplitPre(splitId);
+  }
+
+  @Post('establishments/:establishmentId/splits')
+  @ApiOperation({
+    summary: '💰 Criar regra de split',
+    description: 'Cria uma nova regra de split pré-configurada',
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'Split criado com sucesso',
+  })
+  @ApiParam({
+    name: 'establishmentId',
+    description: 'ID do estabelecimento no Paytime',
+    example: 156655,
+  })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        name: { type: 'string', description: 'Nome da regra de split', example: 'Comissão Instrutor' },
+        description: { type: 'string', description: 'Descrição da regra', example: 'Split automático para instrutores' },
+        percentage: { type: 'number', description: 'Percentual do split (0-100)', example: 10 },
+        establishments: {
+          type: 'array',
+          description: 'Estabelecimentos participantes',
+          items: {
+            type: 'object',
+            properties: {
+              establishment_id: { type: 'number', description: 'ID do estabelecimento', example: 156656 },
+              percentage: { type: 'number', description: 'Percentual (0-100)', example: 10 },
+            },
+          },
+        },
+      },
+      required: ['name', 'establishments'],
+    },
+  })
+  async createSplit(
+    @Param('establishmentId') establishmentId: string,
+    @Body() data: any,
+  ) {
+    this.logger.debug(`Criando split para estabelecimento ${establishmentId}...`);
+    return this.paytimeService.createSplitPre(Number(establishmentId), data);
+  }
+
+  @Put('establishments/:establishmentId/splits/:splitId')
+  @ApiOperation({
+    summary: '💰 Atualizar regra de split',
+    description: 'Atualiza uma regra de split existente',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Split atualizado com sucesso',
+  })
+  @ApiParam({
+    name: 'establishmentId',
+    description: 'ID do estabelecimento no Paytime',
+    example: 156655,
+  })
+  @ApiParam({
+    name: 'splitId',
+    description: 'ID do split',
+    example: '123e4567-e89b-12d3-a456-426614174000',
+  })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        name: { type: 'string', description: 'Nome da regra de split' },
+        description: { type: 'string', description: 'Descrição da regra' },
+        percentage: { type: 'number', description: 'Percentual do split (0-100)' },
+        establishments: {
+          type: 'array',
+          description: 'Estabelecimentos participantes',
+          items: {
+            type: 'object',
+            properties: {
+              establishment_id: { type: 'number', description: 'ID do estabelecimento' },
+              percentage: { type: 'number', description: 'Percentual (0-100)' },
+            },
+          },
+        },
+      },
+    },
+  })
+  async updateSplit(
+    @Param('establishmentId') establishmentId: string,
+    @Param('splitId') splitId: string,
+    @Body() data: any,
+  ) {
+    this.logger.debug(`Atualizando split ${splitId}...`);
+    return this.paytimeService.updateSplitPre(splitId, data);
+  }
+
+  @Post('establishments/:establishmentId/splits/:splitId/delete')
+  @ApiOperation({
+    summary: '💰 Deletar regra de split',
+    description: 'Remove uma regra de split pré-configurada',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Split deletado com sucesso',
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'Split não encontrado',
+  })
+  @ApiParam({
+    name: 'establishmentId',
+    description: 'ID do estabelecimento no Paytime',
+    example: 156655,
+  })
+  @ApiParam({
+    name: 'splitId',
+    description: 'ID do split',
+    example: '123e4567-e89b-12d3-a456-426614174000',
+  })
+  async deleteSplit(
+    @Param('establishmentId') establishmentId: string,
+    @Param('splitId') splitId: string,
+  ) {
+    this.logger.debug(`Deletando split ${splitId}...`);
+    return this.paytimeService.deleteSplitPre(splitId);
+  }
 }
 

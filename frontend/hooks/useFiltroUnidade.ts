@@ -31,7 +31,13 @@ export function useFiltroUnidade(): UseFiltroUnidadeReturn {
       );
 
       setIsFranqueado(isFranqueadoUser);
-      setUnidadeIdUsuario(user.unidade_id || "");
+      const userUnidadeId = user.unidade_id || "";
+      setUnidadeIdUsuario(userUnidadeId);
+
+      // Se não for franqueado, inicializa com a unidade do usuário
+      if (!isFranqueadoUser && userUnidadeId) {
+        setUnidadeSelecionada(userUnidadeId);
+      }
 
       if (isFranqueadoUser) {
         carregarUnidades();
@@ -61,10 +67,11 @@ export function useFiltroUnidade(): UseFiltroUnidadeReturn {
     }
   };
 
-  const unidadeIdAtual =
-    unidadeSelecionada === "todas"
-      ? ""
-      : unidadeSelecionada || unidadeIdUsuario;
+  // Para franqueados: retorna a unidade selecionada (se não for "todas")
+  // Para não-franqueados: sempre retorna a unidade do usuário
+  const unidadeIdAtual = isFranqueado
+    ? (unidadeSelecionada === "todas" ? "" : unidadeSelecionada)
+    : unidadeIdUsuario;
 
   return {
     isFranqueado,

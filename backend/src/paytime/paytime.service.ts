@@ -1626,7 +1626,9 @@ export class PaytimeService {
     }
 
     const data = await response.json();
-    this.logger.debug(`✅ Saldo consultado com sucesso`);
+    this.logger.log(`🔍 [SALDO] Dados recebidos da API rykon-pay:`);
+    this.logger.log(JSON.stringify(data, null, 2));
+    this.logger.log(`✅ Saldo consultado com sucesso`);
     return data;
   }
 
@@ -1645,12 +1647,9 @@ export class PaytimeService {
       `📋 Consultando extrato bancário do estabelecimento ${establishmentId} de ${startDate} a ${endDate}...`,
     );
 
-    const queryParams = new URLSearchParams({
-      start_date: startDate,
-      end_date: endDate,
-    });
-
-    const response = await fetch(`${url}?${queryParams}`, {
+    // A API do rykon-pay NÃO aceita start_date/end_date como query params
+    // Envia apenas establishment_id no header
+    const response = await fetch(url, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -1666,8 +1665,47 @@ export class PaytimeService {
     }
 
     const data = await response.json();
-    this.logger.debug(`✅ Extrato consultado com sucesso - ${data.data?.length || 0} lançamentos`);
-    return data;
+    
+    this.logger.log(`🔍 [EXTRATO] Dados brutos recebidos da API rykon-pay:`);
+    this.logger.log(`🔍 [EXTRATO] Total de lançamentos retornados pela API: ${data.data?.length || 0}`);
+    
+    if (data.data && data.data.length > 0) {
+      this.logger.log(`🔍 [EXTRATO] Primeiro lançamento (exemplo):`);
+      this.logger.log(JSON.stringify(data.data[0], null, 2));
+      this.logger.log(`🔍 [EXTRATO] Último lançamento (exemplo):`);
+      this.logger.log(JSON.stringify(data.data[data.data.length - 1], null, 2));
+    }
+    
+    // Filtrar os dados localmente por data se necessário
+    let lancamentos = data.data || [];
+    const totalOriginal = lancamentos.length;
+    
+    if (startDate || endDate) {
+      const inicio = startDate ? new Date(startDate) : new Date('1900-01-01');
+      const fim = endDate ? new Date(endDate) : new Date('2100-12-31');
+      inicio.setHours(0, 0, 0, 0);
+      fim.setHours(23, 59, 59, 999);
+      
+      this.logger.log(`🔍 [EXTRATO] Filtro de datas:`);
+      this.logger.log(`  - Data início: ${inicio.toISOString()} (${startDate})`);
+      this.logger.log(`  - Data fim: ${fim.toISOString()} (${endDate})`);
+      
+      lancamentos = lancamentos.filter((item: any, index: number) => {
+        const dataItem = new Date(item.created_at || item.date || item.created);
+        const dentroRange = dataItem >= inicio && dataItem <= fim;
+        
+        if (index < 3 || !dentroRange) {
+          this.logger.log(`🔍 [EXTRATO] Item ${index}: ${item.created_at || item.date || item.created} - ${dentroRange ? '✅ INCLUÍDO' : '❌ FILTRADO'}`);
+        }
+        
+        return dentroRange;
+      });
+      
+      this.logger.log(`🔍 [EXTRATO] Resultado do filtro: ${lancamentos.length} de ${totalOriginal} lançamentos mantidos`);
+    }
+    
+    this.logger.log(`✅ Extrato consultado com sucesso - ${lancamentos.length} lançamentos`);
+    return { ...data, data: lancamentos };
   }
 
   async listLiquidations(
@@ -2098,6 +2136,222 @@ export class PaytimeService {
     const data = await response.json();
     this.logger.debug('✅ Config ClearSale obtido com sucesso');
     return data;
+  }
+
+  /**
+   * Lista splits pré-configurados do estabelecimento
+   */
+  async listSplitPre(establishmentId: number, retry = true): Promise<any> {
+    const token = await this.authenticate();
+
+    try {
+      this.logger.debug(`Listando splits pré-configurados do estabelecimento ${establishmentId}...`);
+      
+      const filters = JSON.stringify({ 'establishment.id': establishmentId });
+      const url = `${this.baseUrl}/api/transactions/split/pre?filters=${encodeURIComponent(filters)}`;
+      
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        if (response.status === 401 && retry) {
+          this.token = null;
+          this.tokenExpires = 0;
+          return this.listSplitPre(establishmentId, false);
+        }
+        
+        const errorText = await response.text();
+        this.logger.error(`❌ Erro ao listar splits: ${response.status} - ${errorText}`);
+        throw new BadRequestException(`Erro ao listar splits: ${response.status}`);
+      }
+
+      const data = await response.json();
+      this.logger.debug(`✅ ${data.data?.length || 0} splits encontrados`);
+      return data;
+    } catch (error) {
+      this.logger.error('❌ Erro ao listar splits:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Busca detalhes de um split pré-configurado
+   */
+  async getSplitPre(splitId: string, retry = true): Promise<any> {
+    const token = await this.authenticate();
+
+    try {
+      this.logger.debug(`Buscando split pré-configurado ${splitId}...`);
+      
+      const response = await fetch(
+        `${this.baseUrl}/api/transactions/split/pre/${splitId}`,
+        {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      if (!response.ok) {
+        if (response.status === 401 && retry) {
+          this.token = null;
+          this.tokenExpires = 0;
+          return this.getSplitPre(splitId, false);
+        }
+
+        if (response.status === 404) {
+          throw new NotFoundException(`Split ${splitId} não encontrado`);
+        }
+        
+        const errorText = await response.text();
+        this.logger.error(`❌ Erro ao buscar split: ${response.status} - ${errorText}`);
+        throw new BadRequestException(`Erro ao buscar split: ${response.status}`);
+      }
+
+      const result = await response.json();
+      this.logger.debug('✅ Split encontrado');
+      return result;
+    } catch (error) {
+      this.logger.error('❌ Erro ao buscar split:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Cria um novo split pré-configurado
+   */
+  async createSplitPre(establishmentId: number, data: any, retry = true): Promise<any> {
+    const token = await this.authenticate();
+
+    try {
+      this.logger.debug(`Criando split pré-configurado para estabelecimento ${establishmentId}...`);
+      
+      const response = await fetch(
+        `${this.baseUrl}/api/transactions/split/pre`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+            'establishment_id': establishmentId.toString(),
+          },
+          body: JSON.stringify(data),
+        }
+      );
+
+      if (!response.ok) {
+        if (response.status === 401 && retry) {
+          this.token = null;
+          this.tokenExpires = 0;
+          return this.createSplitPre(establishmentId, data, false);
+        }
+        
+        const errorText = await response.text();
+        this.logger.error(`❌ Erro ao criar split: ${response.status} - ${errorText}`);
+        throw new BadRequestException(`Erro ao criar split: ${response.status} - ${errorText}`);
+      }
+
+      const result = await response.json();
+      this.logger.debug('✅ Split criado com sucesso');
+      return result;
+    } catch (error) {
+      this.logger.error('❌ Erro ao criar split:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Atualiza um split pré-configurado existente
+   */
+  async updateSplitPre(splitId: string, data: any, retry = true): Promise<any> {
+    const token = await this.authenticate();
+
+    try {
+      this.logger.debug(`Atualizando split ${splitId}...`);
+      
+      const response = await fetch(
+        `${this.baseUrl}/api/transactions/split/pre/${splitId}`,
+        {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(data),
+        }
+      );
+
+      if (!response.ok) {
+        if (response.status === 401 && retry) {
+          this.token = null;
+          this.tokenExpires = 0;
+          return this.updateSplitPre(splitId, data, false);
+        }
+        
+        const errorText = await response.text();
+        this.logger.error(`❌ Erro ao atualizar split: ${response.status} - ${errorText}`);
+        throw new BadRequestException(`Erro ao atualizar split: ${response.status}`);
+      }
+
+      const result = await response.json();
+      this.logger.debug('✅ Split atualizado com sucesso');
+      return result;
+    } catch (error) {
+      this.logger.error('❌ Erro ao atualizar split:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Deleta um split pré-configurado
+   */
+  async deleteSplitPre(splitId: string, retry = true): Promise<any> {
+    const token = await this.authenticate();
+
+    try {
+      this.logger.debug(`Deletando split ${splitId}...`);
+      
+      const response = await fetch(
+        `${this.baseUrl}/api/transactions/split/pre/${splitId}`,
+        {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      if (!response.ok) {
+        if (response.status === 401 && retry) {
+          this.token = null;
+          this.tokenExpires = 0;
+          return this.deleteSplitPre(splitId, false);
+        }
+
+        if (response.status === 404) {
+          throw new NotFoundException(`Split ${splitId} não encontrado`);
+        }
+        
+        const errorText = await response.text();
+        this.logger.error(`❌ Erro ao deletar split: ${response.status} - ${errorText}`);
+        throw new BadRequestException(`Erro ao deletar split: ${response.status}`);
+      }
+
+      const result = await response.json();
+      this.logger.debug('✅ Split deletado com sucesso');
+      return result;
+    } catch (error) {
+      this.logger.error('❌ Erro ao deletar split:', error);
+      throw error;
+    }
   }
 }
 

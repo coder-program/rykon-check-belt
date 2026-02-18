@@ -110,4 +110,58 @@ export class UnidadesController {
   async remover(@Param('id') id: string, @Request() req) {
     return this.unidadesService.remover(id, req.user);
   }
+
+  @UseGuards(JwtAuthGuard)
+  @Get(':id/transaction-limits')
+  @ApiOperation({ 
+    summary: 'Buscar limites de transação da unidade',
+    description: `
+      Retorna os limites configurados para transações financeiras da unidade.
+      
+      **Limites incluídos:**
+      - daily_limit: Limite diário em reais
+      - transaction_limit: Valor máximo por transação
+      - monthly_transactions: Quantidade máxima de transações mensais
+      - chargeback_limit: Limite de chargebacks permitidos
+    `
+  })
+  @ApiParam({ name: 'id', type: String, description: 'ID da unidade' })
+  async getTransactionLimits(@Param('id') id: string, @Request() req) {
+    return this.unidadesService.getTransactionLimits(id, req.user);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('master', 'franqueado')
+  @Patch(':id/transaction-limits')
+  @ApiOperation({ 
+    summary: 'Atualizar limites de transação da unidade',
+    description: `
+      Atualiza os limites configurados para transações financeiras.
+      
+      **Campos atualizáveis:**
+      - daily_limit: Limite diário em reais (número decimal)
+      - transaction_limit: Valor máximo por transação (número decimal)
+      - monthly_transactions: Quantidade máxima de transações mensais (inteiro)
+      - chargeback_limit: Limite de chargebacks permitidos (inteiro)
+    `
+  })
+  @ApiParam({ name: 'id', type: String, description: 'ID da unidade' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        daily_limit: { type: 'number', example: 50000.00 },
+        transaction_limit: { type: 'number', example: 5000.00 },
+        monthly_transactions: { type: 'number', example: 300 },
+        chargeback_limit: { type: 'number', example: 5 },
+      },
+    },
+  })
+  async updateTransactionLimits(
+    @Param('id') id: string,
+    @Body() limits: any,
+    @Request() req,
+  ) {
+    return this.unidadesService.updateTransactionLimits(id, limits, req.user);
+  }
 }

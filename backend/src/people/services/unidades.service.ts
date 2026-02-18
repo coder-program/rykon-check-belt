@@ -631,4 +631,119 @@ export class UnidadesService {
       updated_at: new Date(row.updated_at),
     } as Unidade;
   }
+
+  /**
+   * Buscar limites de transação configurados para a unidade
+   */
+  async getTransactionLimits(id: string, user: any): Promise<any> {
+    // Verificar permissões
+    if (user.role !== 'master' && user.role !== 'franqueado') {
+      const checkQuery = `
+        SELECT u.id FROM teamcruz.unidades u
+        WHERE u.id = $1 
+        AND (u.franqueado_id = $2 OR EXISTS(
+          SELECT 1 FROM teamcruz.funcionarios f 
+          WHERE f.user_id = $2 AND f.unidade_id = u.id
+        ))
+      `;
+      const check = await this.dataSource.query(checkQuery, [id, user.id]);
+      if (check.length === 0) {
+        throw new ForbiddenException('Sem permissão para visualizar esta unidade');
+      }
+    }
+
+    const query = `
+      SELECT 
+        nome,
+        transaction_limits
+      FROM teamcruz.unidades 
+      WHERE id = $1
+    `;
+    
+    const result = await this.dataSource.query(query, [id]);
+    
+    if (result.length === 0) {
+      throw new BadRequestException('Unidade não encontrada');
+    }
+
+    // Retorna limites com valores padrão se não configurado
+    const defaultLimits = {
+      daily_limit: 50000.00,
+      transaction_limit: 5000.00,
+      monthly_transactions: 300,
+      chargeback_limit: 5,
+    };
+
+    return {
+      unidade_id: id,
+      unidade_nome: result[0].nome,
+      limits: result[0].transaction_limits || defaultLimits,
+    };
+  }
+
+  /**
+   * Atualizar limites de transação da unidade
+   */
+  async updateTransactionLimits(
+    id: string,
+    limits: any,
+    user: any,
+  ): Promise<any> {
+    // Verificar permissões - apenas master e franqueado podem alterar limites
+    if (user.role !== 'master' && user.role !== 'franqueado') {
+      throw new ForbiddenException('Sem permissão para alterar limites');
+    }
+
+    if (user.role === 'franqueado') {
+      // Franqueado só pode alterar suas próprias unidades
+      const checkQuery = `
+        SELECT id FROM teamcruz.unidades
+        WHERE id = $1 AND franqueado_id = $2
+      `;
+      const check = await this.dataSource.query(checkQuery, [id, user.id]);
+      if (check.length === 0) {
+        throw new ForbiddenException('Sem permissão para alterar esta unidade');
+      }
+    }
+
+    // Validar valores
+    if (limits.daily_limit && (limits.daily_limit < 0 || limits.daily_limit > 1000000)) {
+      throw new BadRequestException('Limite diário deve estar entre R$ 0 e R$ 1.000.000');
+    }
+    if (limits.transaction_limit && (limits.transaction_limit < 0 || limits.transaction_limit > 100000)) {
+      throw new BadRequestException('Limite por transação deve estar entre R$ 0 e R$ 100.000');
+    }
+    if (limits.monthly_transactions && (limits.monthly_transactions < 0 || limits.monthly_transactions > 10000)) {
+      throw new BadRequestException('Limite mensal deve estar entre 0 e 10.000 transações');
+    }
+    if (limits.chargeback_limit && (limits.chargeback_limit < 0 || limits.chargeback_limit > 100)) {
+      throw new BadRequestException('Limite de chargebacks deve estar entre 0 e 100');
+    }
+
+    // Atualizar apenas os campos fornecidos
+    const updateQuery = `
+      UPDATE teamcruz.unidades
+      SET 
+        transaction_limits = COALESCE(transaction_limits, '{}'::jsonb) || $1::jsonb,
+        updated_at = NOW()
+      WHERE id = $2
+      RETURNING id, nome, transaction_limits
+    `;
+
+    const result = await this.dataSource.query(updateQuery, [
+      JSON.stringify(limits),
+      id,
+    ]);
+
+    if (result.length === 0) {
+      throw new BadRequestException('Unidade não encontrada');
+    }
+
+    return {
+      success: true,
+      unidade_id: result[0].id,
+      unidade_nome: result[0].nome,
+      limits: result[0].transaction_limits,
+    };
+  }
 }

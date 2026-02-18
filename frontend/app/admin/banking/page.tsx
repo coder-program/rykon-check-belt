@@ -38,7 +38,6 @@ export default function BankingPage() {
   const [establishmentId, setEstablishmentId] = useState("");
   const [dataInicio, setDataInicio] = useState("");
   const [dataFim, setDataFim] = useState("");
-  const [autoLoadAttempted, setAutoLoadAttempted] = useState(false);
   const [semContaBancaria, setSemContaBancaria] = useState(false);
 
   useEffect(() => {
@@ -53,14 +52,7 @@ export default function BankingPage() {
     setDataFim(hoje.toISOString().split("T")[0]);
   }, []);
 
-  // Auto-carregar dados quando estabelecimento é selecionado
-  useEffect(() => {
-    if (establishmentId && dataInicio && dataFim && !autoLoadAttempted) {
-      console.log("🏦 Auto-carregando dados bancários para estabelecimento:", establishmentId);
-      setAutoLoadAttempted(true);
-      carregarSaldo();
-    }
-  }, [establishmentId, dataInicio, dataFim]);
+  // Removido auto-carregamento - usuário deve clicar no botão Consultar
 
   const carregarEstabelecimentos = async () => {
     try {
@@ -78,11 +70,7 @@ export default function BankingPage() {
         const data = await response.json();
         const estabs = data.data || [];
         setEstablishments(estabs);
-        
-        // Seleciona o primeiro estabelecimento automaticamente
-        if (estabs.length > 0) {
-          setEstablishmentId(estabs[0].id.toString());
-        }
+        // Não seleciona automaticamente - usuário deve escolher
       }
     } catch (error) {
       console.error("Erro ao carregar estabelecimentos:", error);
@@ -113,7 +101,11 @@ export default function BankingPage() {
 
       if (saldoResponse.ok) {
         const saldoData = await saldoResponse.json();
-        console.log("💰 Saldo recebido:", saldoData);
+        console.log("💰 Saldo recebido (objeto completo):", saldoData);
+        console.log("💰 Campos disponíveis:", Object.keys(saldoData));
+        console.log("💰 Saldo disponível (balance):", saldoData.balance);
+        console.log("💰 Saldo bloqueado (blocked_balance):", saldoData.blocked_balance);
+        console.log("💰 Saldo total (total_balance):", saldoData.total_balance);
         setSaldo(saldoData);
         setSemContaBancaria(false);
       } else {
@@ -153,8 +145,15 @@ export default function BankingPage() {
 
       if (extratoResponse.ok) {
         const extratoData = await extratoResponse.json();
-        console.log("📋 Extrato recebido:", extratoData);
+        console.log("📋 Extrato recebido (objeto completo):", extratoData);
         console.log("📝 Número de lançamentos:", extratoData.data?.length || 0);
+        console.log("📝 Estrutura dos dados:", extratoData.data);
+        
+        if (extratoData.data && extratoData.data.length > 0) {
+          console.log("📝 Primeiro lançamento:", extratoData.data[0]);
+          console.log("📝 Último lançamento:", extratoData.data[extratoData.data.length - 1]);
+        }
+        
         setExtrato(extratoData.data || []);
         
         if (!extratoData.data || extratoData.data.length === 0) {
@@ -274,7 +273,7 @@ export default function BankingPage() {
                 <div>
                   <p className="text-sm text-gray-600">Saldo Disponível</p>
                   <p className="text-2xl font-bold text-green-600">
-                    R$ {((saldo.available || 0) / 100).toFixed(2)}
+                    R$ {((saldo.balance || 0) / 100).toFixed(2)}
                   </p>
                 </div>
                 <Wallet className="h-8 w-8 text-green-600" />
@@ -288,7 +287,7 @@ export default function BankingPage() {
                 <div>
                   <p className="text-sm text-gray-600">Bloqueado</p>
                   <p className="text-2xl font-bold text-yellow-600">
-                    R$ {((saldo.blocked || 0) / 100).toFixed(2)}
+                    R$ {((saldo.blocked_balance || 0) / 100).toFixed(2)}
                   </p>
                 </div>
                 <TrendingDown className="h-8 w-8 text-yellow-600" />
@@ -302,7 +301,7 @@ export default function BankingPage() {
                 <div>
                   <p className="text-sm text-gray-600">Total</p>
                   <p className="text-2xl font-bold text-blue-600">
-                    R$ {((saldo.total || 0) / 100).toFixed(2)}
+                    R$ {((saldo.total_balance || 0) / 100).toFixed(2)}
                   </p>
                 </div>
                 <TrendingUp className="h-8 w-8 text-blue-600" />

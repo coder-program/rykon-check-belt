@@ -11,11 +11,15 @@ import {
   UseGuards,
   Request,
   Inject,
+  Res,
+  HttpStatus,
 } from '@nestjs/common';
+import { Response } from 'express';
 import { DataSource } from 'typeorm';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { FaturasService } from '../services/faturas.service';
 import { NotificacoesService } from '../services/notificacoes.service';
+import { RecibosService } from '../services/recibos.service';
 import {
   CreateFaturaDto,
   UpdateFaturaDto,
@@ -28,6 +32,7 @@ export class FaturasController {
   constructor(
     private readonly faturasService: FaturasService,
     private readonly notificacoesService: NotificacoesService,
+    private readonly recibosService: RecibosService,
     @Inject(DataSource) private dataSource: DataSource,
   ) {}
 
@@ -172,5 +177,29 @@ export class FaturasController {
   @Post('gerar-faturas-assinaturas')
   async gerarFaturasAssinaturas(@Query('unidade_id') unidade_id?: string) {
     return this.faturasService.gerarFaturasAssinaturas(unidade_id);
+  }
+
+  @Get(':id/recibo')
+  async gerarRecibo(@Param('id') id: string, @Res() res: Response) {
+    try {
+      const pdfBuffer = await this.recibosService.gerarReciboPDF(id);
+      
+      // Buscar fatura para nome do arquivo
+      const fatura = await this.faturasService.findOne(id);
+      const nomeArquivo = `recibo-${fatura.numero_fatura}.pdf`;
+
+      res.set({
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': `attachment; filename="${nomeArquivo}"`,
+        'Content-Length': pdfBuffer.length,
+      });
+
+      res.status(HttpStatus.OK).send(pdfBuffer);
+    } catch (error) {
+      res.status(HttpStatus.BAD_REQUEST).json({
+        statusCode: HttpStatus.BAD_REQUEST,
+        message: error.message || 'Erro ao gerar recibo',
+      });
+    }
   }
 }

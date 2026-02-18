@@ -513,10 +513,38 @@ export default function ContasAReceber() {
                         Pago em {formatarData(fatura.data_pagamento)}
                       </p>
                       <Button
-                        onClick={() => {
-                          // TODO: Implementar geração de comprovante
-                          toast.success("Gerando comprovante...");
-                          // Pode abrir um PDF em nova aba ou fazer download
+                        onClick={async () => {
+                          try {
+                            const token = localStorage.getItem("token");
+                            const response = await fetch(
+                              `${process.env.NEXT_PUBLIC_API_URL}/faturas/${fatura.id}/recibo`,
+                              {
+                                headers: {
+                                  Authorization: `Bearer ${token}`,
+                                },
+                              }
+                            );
+
+                            if (!response.ok) {
+                              throw new Error("Erro ao gerar recibo");
+                            }
+
+                            // Converter resposta para blob e fazer download
+                            const blob = await response.blob();
+                            const url = window.URL.createObjectURL(blob);
+                            const a = document.createElement("a");
+                            a.href = url;
+                            a.download = `recibo-${fatura.numero_fatura}.pdf`;
+                            document.body.appendChild(a);
+                            a.click();
+                            window.URL.revokeObjectURL(url);
+                            document.body.removeChild(a);
+
+                            toast.success("Recibo gerado com sucesso!");
+                          } catch (error) {
+                            console.error("Erro ao gerar recibo:", error);
+                            toast.error("Erro ao gerar recibo");
+                          }
                         }}
                         size="sm"
                         variant="outline"

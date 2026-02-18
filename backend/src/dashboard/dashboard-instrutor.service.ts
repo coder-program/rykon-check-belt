@@ -4,6 +4,13 @@ import { Repository, In, Between } from 'typeorm';
 import { Person, TipoCadastro } from '../people/entities/person.entity';
 import { Aula } from '../presenca/entities/aula.entity';
 import { Presenca } from '../presenca/entities/presenca.entity';
+import * as dayjs from 'dayjs';
+import * as utc from 'dayjs/plugin/utc';
+import * as timezone from 'dayjs/plugin/timezone';
+
+// Configurar dayjs com plugins de timezone
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 export interface InstrutorDashboardStats {
   meusAlunos: number;
@@ -274,12 +281,12 @@ export class DashboardInstrutorService {
             where: { aula_id: aula.id },
           });
 
-          // Extrair horário da data_hora_inicio e data_hora_fim
+          // Extrair horário da data_hora_inicio e data_hora_fim usando dayjs com timezone
           const horaInicio = aula.data_hora_inicio 
-            ? new Date(aula.data_hora_inicio).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+            ? dayjs(aula.data_hora_inicio).tz('America/Sao_Paulo').format('HH:mm')
             : '00:00';
           const horaFim = aula.data_hora_fim 
-            ? new Date(aula.data_hora_fim).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+            ? dayjs(aula.data_hora_fim).tz('America/Sao_Paulo').format('HH:mm')
             : '00:00';
 
           return {

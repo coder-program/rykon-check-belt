@@ -15,6 +15,8 @@ import { AlunoConvenio } from './entities/aluno-convenio.entity';
 import { ConfiguracaoConvenioUnidade } from './entities/configuracao-convenio-unidade.entity';
 import { EventoConvenio } from './entities/evento-convenio.entity';
 import { UnidadeConvenio } from './entities/unidade-convenio.entity';
+import { BankAccount } from './entities/bank-account.entity';
+import { Contract } from './entities/contract.entity';
 
 // Entities externas necessárias
 import { Aluno } from '../people/entities/aluno.entity';
@@ -37,6 +39,9 @@ import { NotificacoesService } from './services/notificacoes.service';
 import { WhatsappService } from './services/whatsapp.service';
 import { GympassService } from './services/gympass.service';
 import { AnexosService } from './services/anexos.service';
+import { RecibosService } from './services/recibos.service';
+import { BankAccountsService } from './services/bank-accounts.service';
+import { ContractsService } from './services/contracts.service';
 
 // Controllers
 import { PlanosController } from './controllers/planos.controller';
@@ -50,6 +55,8 @@ import { VendasController } from './controllers/vendas.controller';
 import { AutomacoesController } from './controllers/automacoes.controller';
 import { GympassController } from './controllers/gympass.controller';
 import { AnexosController } from './controllers/anexos.controller';
+import { BankAccountsController } from './controllers/bank-accounts.controller';
+import { ContractsController } from './controllers/contracts.controller';
 import { PagamentosOnlineController } from './controllers/pagamentos-online.controller';
 import { WebhooksController } from './controllers/webhooks.controller';
 
@@ -73,6 +80,8 @@ import { PaytimeWebhookService } from './services/paytime-webhook.service';
       Convenio,
       AlunoConvenio,
       ConfiguracaoConvenioUnidade,
+      BankAccount,
+      Contract,
       EventoConvenio,
       UnidadeConvenio,
       // Entities externas
@@ -93,6 +102,8 @@ import { PaytimeWebhookService } from './services/paytime-webhook.service';
     DashboardFinanceiroController,
     VendasController,
     AutomacoesController,
+    BankAccountsController,
+    ContractsController,
     GympassController,
     AnexosController,
     PagamentosOnlineController,
@@ -112,9 +123,12 @@ import { PaytimeWebhookService } from './services/paytime-webhook.service';
     WhatsappService,
     PaytimeService,
     PaytimeIntegrationService,
+    BankAccountsService,
+    ContractsService,
     PaytimeWebhookService,
     GympassService,
     AnexosService,
+    RecibosService,
   ],
   exports: [
     PlanosService,

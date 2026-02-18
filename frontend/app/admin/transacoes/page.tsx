@@ -789,7 +789,7 @@ export default function TransacoesPage() {
             <CardHeader className="flex flex-row items-center justify-between space-y-0">
               <div>
                 <CardTitle className="text-2xl">Detalhes da Transação</CardTitle>
-                <CardDescription className="space-y-1">
+                <div className="text-sm text-muted-foreground space-y-1">
                   <div className="flex items-center gap-2">
                     <Hash className="h-4 w-4" />
                     <span className="font-mono text-xs">{selectedTransaction._id || selectedTransaction.id}</span>
@@ -822,7 +822,7 @@ export default function TransacoesPage() {
                       </Button>
                     </div>
                   )}
-                </CardDescription>
+                </div>
               </div>
               <Button 
                 variant="ghost" 
