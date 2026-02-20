@@ -17,6 +17,12 @@ import {
   IsNull,
   Not,
 } from 'typeorm';
+import * as dayjs from 'dayjs';
+import * as utc from 'dayjs/plugin/utc';
+import * as timezone from 'dayjs/plugin/timezone';
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
 import {
   Presenca,
   PresencaMetodo,
@@ -75,24 +81,13 @@ export class PresencaService {
    * Retorna datas em UTC que representam 00:00 e 23:59:59 do Brasil
    */
   private getHojeBrasil(): { hoje: Date; amanha: Date } {
-    const agora = new Date();
-    const offsetBrasil = -3 * 60; // UTC-3 em minutos
-    const offsetAtual = agora.getTimezoneOffset();
-    const diffMinutos = offsetAtual - offsetBrasil;
-    const agoraBrasil = new Date(agora.getTime() - (diffMinutos * 60 * 1000));
+    const hojeBrasil = dayjs().tz('America/Sao_Paulo').startOf('day');
+    const amanhaBrasil = hojeBrasil.add(1, 'day');
     
-    // 00:00 Brasil = 03:00 UTC
-    const hoje = new Date(Date.UTC(
-      agoraBrasil.getUTCFullYear(),
-      agoraBrasil.getUTCMonth(),
-      agoraBrasil.getUTCDate(),
-      3, 0, 0, 0
-    ));
-    
-    const amanha = new Date(hoje);
-    amanha.setDate(amanha.getDate() + 1);
-    
-    return { hoje, amanha };
+    return { 
+      hoje: hojeBrasil.toDate(), 
+      amanha: amanhaBrasil.toDate() 
+    };
   }
 
   /**
@@ -171,10 +166,9 @@ export class PresencaService {
     }
 
     // Usar toLocaleString para obter hora de São Paulo
-    const agora = new Date();
-    const spDate = new Date(agora.toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
-    const diaHoje = spDate.getDay();
-    const horaAgora = `${String(spDate.getHours()).padStart(2, '0')}:${String(spDate.getMinutes()).padStart(2, '0')}`;
+    const spDate = dayjs().tz('America/Sao_Paulo');
+    const diaHoje = spDate.day();
+    const horaAgora = spDate.format('HH:mm');
     
     // Detectar unidade(s) do usuário baseado no perfil
     let unidadesPermitidas: string[] = [];
@@ -278,7 +272,7 @@ export class PresencaService {
 
     // Filtrar aulas que estão acontecendo agora e priorizar por relevância
     const aulasAtivas: Array<{ aula: any; priority: number }> = [];
-    const horaAtualMinutos = spDate.getHours() * 60 + spDate.getMinutes();
+    const horaAtualMinutos = spDate.hour() * 60 + spDate.minute();
 
     for (const aula of aulas) {
       const estaAtiva = aula.estaAtiva();
@@ -330,7 +324,7 @@ export class PresencaService {
 
     if (precisaNovoQR) {
       aulaEscolhida.qr_code = aulaEscolhida.gerarQRCode();
-      aulaEscolhida.qr_code_gerado_em = new Date();
+      aulaEscolhida.qr_code_gerado_em = dayjs().tz('America/Sao_Paulo').toDate();
       await this.aulaRepository.save(aulaEscolhida);
     }
 
@@ -391,9 +385,10 @@ export class PresencaService {
       }
 
       // Buscar aula ativa na unidade agora
-      const agora = new Date();
-      const inicioHoje = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate());
-      const fimHoje = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate() + 1);
+      const hojeBrasil = dayjs().tz('America/Sao_Paulo').startOf('day');
+      const amanhaBrasil = hojeBrasil.add(1, 'day');
+      const inicioHoje = hojeBrasil.toDate();
+      const fimHoje = amanhaBrasil.toDate();
       
       const aulasAtivas = await this.aulaRepository.find({
         where: {
@@ -481,13 +476,13 @@ export class PresencaService {
       status: PresencaStatus.PRESENTE,
       modo_registro: PresencaMetodo.QR_CODE,
       status_aprovacao: statusAprovacao,
-      hora_checkin: new Date(),
+      hora_checkin: dayjs().tz('America/Sao_Paulo').toDate(),
       observacoes: `QR Code: ${qrCode}`,
       created_by: user.id,
       // Se aprovação automática, preencher campos de aprovação
       ...(statusAprovacao === 'APROVADO' && {
         aprovado_por_id: user.id,
-        aprovado_em: new Date(),
+        aprovado_em: dayjs().tz('America/Sao_Paulo').toDate(),
         observacao_aprovacao: 'Aprovado automaticamente (unidade não requer aprovação)',
       }),
     });
@@ -583,13 +578,13 @@ export class PresencaService {
       status: PresencaStatus.PRESENTE,
       modo_registro: PresencaMetodo.MANUAL,
       status_aprovacao: statusAprovacao,
-      hora_checkin: new Date(),
+      hora_checkin: dayjs().tz('America/Sao_Paulo').toDate(),
       observacoes: `Check-in manual - Aula: ${aula.nome}`,
       created_by: user.id,
       // Se aprovação automática, preencher campos de aprovação
       ...(statusAprovacao === 'APROVADO' && {
         aprovado_por_id: user.id,
-        aprovado_em: new Date(),
+        aprovado_em: dayjs().tz('America/Sao_Paulo').toDate(),
         observacao_aprovacao: 'Aprovado automaticamente (unidade não requer aprovação)',
       }),
     });
@@ -663,9 +658,10 @@ export class PresencaService {
       } else if (qrCode.startsWith('QR-UNIDADE-')) {
         const unidadeId = qrCode.replace('QR-UNIDADE-', '');
         
-        const agora = new Date();
-        const inicioHoje = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate());
-        const fimHoje = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate() + 1);
+        const hojeBrasil = dayjs().tz('America/Sao_Paulo').startOf('day');
+        const amanhaBrasil = hojeBrasil.add(1, 'day');
+        const inicioHoje = hojeBrasil.toDate();
+        const fimHoje = amanhaBrasil.toDate();
         
         const aulasAtivas = await this.aulaRepository.find({
           where: {
@@ -753,13 +749,13 @@ export class PresencaService {
       status: PresencaStatus.PRESENTE,
       modo_registro: PresencaMetodo.MANUAL,
       status_aprovacao: statusAprovacao,
-      hora_checkin: new Date(),
+      hora_checkin: dayjs().tz('America/Sao_Paulo').toDate(),
       observacoes: `Check-in pelo responsável - Aula: ${aula.nome}`,
       created_by: user.id,
       // Se for aprovação automática, já preencher campos de aprovação
       ...(statusAprovacao === 'APROVADO' && {
         aprovado_por_id: user.id,
-        aprovado_em: new Date(),
+        aprovado_em: dayjs().tz('America/Sao_Paulo').toDate(),
         observacao_aprovacao:
           'Aprovado automaticamente (unidade não requer aprovação)',
       }),
@@ -816,9 +812,9 @@ export class PresencaService {
       };
     }
 
-    const agora = new Date();
-    const inicioMes = new Date(agora.getFullYear(), agora.getMonth(), 1);
-    const fimMes = new Date(agora.getFullYear(), agora.getMonth() + 1, 0);
+    const agora = dayjs().tz('America/Sao_Paulo');
+    const inicioMes = agora.startOf('month').toDate();
+    const fimMes = agora.endOf('month').toDate();
 
     // Presenças do mês atual
     const presencasMes = await this.presencaRepository.count({
@@ -1072,13 +1068,13 @@ export class PresencaService {
       status: PresencaStatus.PRESENTE,
       modo_registro: metodo as PresencaMetodo,
       status_aprovacao: statusAprovacao,
-      hora_checkin: new Date(),
+      hora_checkin: dayjs().tz('America/Sao_Paulo').toDate(),
       observacoes: `Registrado por: ${adminUser.id}`,
       created_by: adminUser.id,
       // Se aprovação automática, preencher campos de aprovação
       ...(statusAprovacao === 'APROVADO' && {
         aprovado_por_id: adminUser.id,
-        aprovado_em: new Date(),
+        aprovado_em: dayjs().tz('America/Sao_Paulo').toDate(),
         observacao_aprovacao: 'Aprovado automaticamente (unidade não requer aprovação)',
       }),
     });
@@ -1105,24 +1101,20 @@ export class PresencaService {
 
   async getEstatisticasAdmin(user: any, periodo: string = 'hoje') {
     let dataInicio: Date;
-    let dataFim: Date = new Date();
+    let dataFim: Date = dayjs().tz('America/Sao_Paulo').toDate();
 
     switch (periodo) {
       case 'hoje':
-        dataInicio = new Date();
-        dataInicio.setHours(0, 0, 0, 0);
+        dataInicio = dayjs().tz('America/Sao_Paulo').startOf('day').toDate();
         break;
       case 'semana':
-        dataInicio = new Date();
-        dataInicio.setDate(dataInicio.getDate() - 7);
+        dataInicio = dayjs().tz('America/Sao_Paulo').subtract(7, 'day').toDate();
         break;
       case 'mes':
-        dataInicio = new Date();
-        dataInicio.setMonth(dataInicio.getMonth() - 1);
+        dataInicio = dayjs().tz('America/Sao_Paulo').subtract(1, 'month').toDate();
         break;
       default:
-        dataInicio = new Date();
-        dataInicio.setHours(0, 0, 0, 0);
+        dataInicio = dayjs().tz('America/Sao_Paulo').startOf('day').toDate();
     }
 
     const totalPresencas = await this.presencaRepository.count({
@@ -1219,18 +1211,16 @@ export class PresencaService {
     if (dataInicio) {
       // Parse date string in local timezone
       const [year, month, day] = dataInicio.split('-').map(Number);
-      inicio = new Date(year, month - 1, day, 0, 0, 0, 0);
+      inicio = dayjs().tz('America/Sao_Paulo').year(year).month(month - 1).date(day).startOf('day').toDate();
     } else {
-      inicio = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-      inicio.setHours(0, 0, 0, 0);
+      inicio = dayjs().tz('America/Sao_Paulo').subtract(30, 'day').startOf('day').toDate();
     }
 
     if (dataFim) {
       const [year, month, day] = dataFim.split('-').map(Number);
-      fim = new Date(year, month - 1, day, 23, 59, 59, 999);
+      fim = dayjs().tz('America/Sao_Paulo').year(year).month(month - 1).date(day).endOf('day').toDate();
     } else {
-      fim = new Date();
-      fim.setHours(23, 59, 59, 999);
+      fim = dayjs().tz('America/Sao_Paulo').endOf('day').toDate();
     }
 
     const query = this.presencaRepository
@@ -1336,9 +1326,8 @@ export class PresencaService {
   }
 
   async getFrequenciaUltimos30Dias(user: any, unidadeId?: string) {
-    const hoje = new Date();
-    const tresDiasAtras = new Date(hoje);
-    tresDiasAtras.setDate(hoje.getDate() - 30);
+    const hoje = dayjs().tz('America/Sao_Paulo').startOf('day');
+    const trintaDiasAtras = hoje.subtract(30, 'day');
 
     // Query SQL para contar presenças por dia
     let query = `
@@ -1350,7 +1339,7 @@ export class PresencaService {
       WHERE p.hora_checkin >= $1 AND p.hora_checkin <= $2
     `;
 
-    const params: any[] = [tresDiasAtras, hoje];
+    const params: any[] = [trintaDiasAtras.toDate(), hoje.toDate()];
 
     if (unidadeId) {
       query += ` AND a.unidade_id = $3`;
@@ -1376,21 +1365,19 @@ export class PresencaService {
       presencas: number;
     }> = [];
     for (let i = 29; i >= 0; i--) {
-      const data = new Date(hoje);
-      data.setDate(hoje.getDate() - i);
-      data.setHours(0, 0, 0, 0);
-
-      const dataStr = data.toISOString().split('T')[0];
+      const data = hoje.subtract(i, 'day');
+      const dataStr = data.format('YYYY-MM-DD');
+      
       const registro = resultado.find((r: any) => {
-        const rData = new Date(r.data);
-        return rData.toISOString().split('T')[0] === dataStr;
+        const rData = dayjs(r.data).tz('America/Sao_Paulo').format('YYYY-MM-DD');
+        return rData === dataStr;
       });
 
       frequenciaPorDia.push({
         data: dataStr,
-        dia: data.getDate(),
-        mes: data.getMonth() + 1,
-        diaSemana: data.getDay(),
+        dia: data.date(),
+        mes: data.month() + 1,
+        diaSemana: data.day(),
         presencas: registro ? parseInt(registro.total_presencas) : 0,
       });
     }
@@ -1423,8 +1410,7 @@ export class PresencaService {
   }
 
   async getAlunosAusentes(user: any, unidadeId?: string, dias: number = 30) {
-    const dataLimite = new Date();
-    dataLimite.setDate(dataLimite.getDate() - dias);
+    const dataLimite = dayjs().tz('America/Sao_Paulo').subtract(dias, 'day').toDate();
 
     // Se não forneceu unidadeId, detectar automaticamente baseado no usuário
     let unidadeFiltro = unidadeId;
@@ -1538,17 +1524,17 @@ export class PresencaService {
         nome: r.nome_completo || r.nome,
         cpf: r.cpf,
         dataMatricula: r.data_matricula
-          ? new Date(r.data_matricula).toISOString()
+          ? dayjs(r.data_matricula).tz('America/Sao_Paulo').toISOString()
           : null,
         ultimaPresenca: r.ultima_presenca
-          ? new Date(r.ultima_presenca).toISOString()
+          ? dayjs(r.ultima_presenca).tz('America/Sao_Paulo').toISOString()
           : null,
         totalPresencas,
         ausencias,
         diasDesdeMatricula,
         diasSemTreino: r.ultima_presenca
           ? Math.floor(
-              (Date.now() - new Date(r.ultima_presenca).getTime()) /
+              (Date.now() - dayjs(r.ultima_presenca).toDate().getTime()) /
                 (1000 * 60 * 60 * 24),
             )
           : diasDesdeMatricula,
@@ -1557,8 +1543,7 @@ export class PresencaService {
   }
 
   async getRankingProfessoresPresenca(user: any, unidadeId?: string) {
-    const dataLimite = new Date();
-    dataLimite.setDate(dataLimite.getDate() - 30);
+    const dataLimite = dayjs().tz('America/Sao_Paulo').subtract(30, 'day').toDate();
 
     // Se não forneceu unidadeId, detectar automaticamente baseado no usuário
     let unidadeFiltro = unidadeId;
@@ -1662,8 +1647,7 @@ export class PresencaService {
     unidadeId?: string,
     limit: number = 10,
   ) {
-    const dataLimite = new Date();
-    dataLimite.setDate(dataLimite.getDate() - 30);
+    const dataLimite = dayjs().tz('America/Sao_Paulo').subtract(30, 'day').toDate();
 
     // Se não forneceu unidadeId, detectar automaticamente baseado no usuário
     let unidadeFiltro = unidadeId;
@@ -1785,7 +1769,7 @@ export class PresencaService {
   }
 
   async getAulasDisponiveis(user: any, data?: string, alunoId?: string) {
-    const hoje = data ? new Date(data) : new Date();
+    const hoje = data ? dayjs(data).tz('America/Sao_Paulo').toDate() : dayjs().tz('America/Sao_Paulo').toDate();
     const diaSemana = hoje.getDay();
 
     try {
@@ -1869,7 +1853,7 @@ export class PresencaService {
         if (aula.dia_semana === null || aula.dia_semana === undefined) {
           // Aula única - usar data original
           if (aula.data_hora_inicio) {
-            dataAula = new Date(aula.data_hora_inicio);
+            dataAula = dayjs(aula.data_hora_inicio).tz('America/Sao_Paulo').toDate();
           }
         }
         // Se é aula recorrente, dataAula já é hoje (correto!)
@@ -1931,10 +1915,8 @@ export class PresencaService {
 
   async checkInFacial(foto: string, aulaId: string, user: any) {
     // Verificar se já fez check-in hoje
-    const hoje = new Date();
-    hoje.setHours(0, 0, 0, 0);
-    const amanha = new Date(hoje);
-    amanha.setDate(amanha.getDate() + 1);
+    const hoje = dayjs().tz('America/Sao_Paulo').startOf('day').toDate();
+    const amanha = dayjs().tz('America/Sao_Paulo').add(1, 'day').startOf('day').toDate();
 
     const presencaHoje = await this.presencaRepository.findOne({
       where: {
@@ -1959,7 +1941,7 @@ export class PresencaService {
       aula_id: aulaId,
       status: PresencaStatus.PRESENTE,
       modo_registro: PresencaMetodo.FACIAL,
-      hora_checkin: new Date(),
+      hora_checkin: dayjs().tz('America/Sao_Paulo').toDate(),
       observacoes: 'Check-in via reconhecimento facial',
       created_by: user.id,
       peso_presenca: 1.0,
@@ -2000,10 +1982,8 @@ export class PresencaService {
     // Por enquanto, vamos permitir apenas se o usuário for da mesma unidade ou for admin
 
     // Verificar se já fez check-in hoje
-    const hoje = new Date();
-    hoje.setHours(0, 0, 0, 0);
-    const amanha = new Date(hoje);
-    amanha.setDate(amanha.getDate() + 1);
+    const hoje = dayjs().tz('America/Sao_Paulo').startOf('day').toDate();
+    const amanha = dayjs().tz('America/Sao_Paulo').add(1, 'day').startOf('day').toDate();
 
     const presencaHoje = await this.presencaRepository.findOne({
       where: {
@@ -2022,7 +2002,7 @@ export class PresencaService {
       aula_id: aulaId,
       status: PresencaStatus.PRESENTE,
       modo_registro: PresencaMetodo.RESPONSAVEL,
-      hora_checkin: new Date(),
+      hora_checkin: dayjs().tz('America/Sao_Paulo').toDate(),
       observacoes: `Check-in realizado pelo responsável: ${responsavelUser.name || responsavelUser.email}`,
       created_by: responsavelUser.id,
     });
@@ -2062,10 +2042,8 @@ export class PresencaService {
     });
 
     // Verificar quais já fizeram check-in hoje
-    const hoje = new Date();
-    hoje.setHours(0, 0, 0, 0);
-    const amanha = new Date(hoje);
-    amanha.setDate(amanha.getDate() + 1);
+    const hoje = dayjs().tz('America/Sao_Paulo').startOf('day').toDate();
+    const amanha = dayjs().tz('America/Sao_Paulo').add(1, 'day').startOf('day').toDate();
 
     if (alunos.length === 0) {
       return [];
@@ -2113,16 +2091,16 @@ export class PresencaService {
       }
 
       // Usar mês e ano atuais se não foram fornecidos
-      const dataRef = new Date();
-      const mesRef = mes !== undefined ? mes : dataRef.getMonth() + 1; // 1-12
-      const anoRef = ano !== undefined ? ano : dataRef.getFullYear();
+      const dataRef = dayjs().tz('America/Sao_Paulo');
+      const mesRef = mes !== undefined ? mes : dataRef.month() + 1; // 1-12
+      const anoRef = ano !== undefined ? ano : dataRef.year();
 
       // Calcular primeiro e último dia do mês
-      const primeiroDia = new Date(anoRef, mesRef - 1, 1);
-      const ultimoDia = new Date(anoRef, mesRef, 0, 23, 59, 59);
+      const primeiroDia = dayjs().tz('America/Sao_Paulo').year(anoRef).month(mesRef - 1).startOf('month').toDate();
+      const ultimoDia = dayjs().tz('America/Sao_Paulo').year(anoRef).month(mesRef - 1).endOf('month').toDate();
 
       // Determinar categoria do aluno atual (INFANTIL: até 15 anos no ano atual, ADULTO: 16+)
-      const anoNascimentoAluno = new Date(aluno.data_nascimento).getFullYear();
+      const anoNascimentoAluno = dayjs(aluno.data_nascimento).year();
       const idadeNoAnoAtual = anoRef - anoNascimentoAluno;
       const categoriaAluno = idadeNoAnoAtual <= 15 ? 'INFANTIL' : 'ADULTO';
 
@@ -2322,10 +2300,8 @@ export class PresencaService {
     }
 
     // Verificar se já existe presença para este aluno hoje (independente da aula)
-    const hoje = new Date();
-    hoje.setHours(0, 0, 0, 0);
-    const amanha = new Date(hoje);
-    amanha.setDate(amanha.getDate() + 1);
+    const hoje = dayjs().tz('America/Sao_Paulo').startOf('day').toDate();
+    const amanha = dayjs().tz('America/Sao_Paulo').add(1, 'day').startOf('day').toDate();
 
     const presencaExistente = await this.presencaRepository.findOne({
       where: {
@@ -2351,9 +2327,9 @@ export class PresencaService {
       metodo: metodo as PresencaMetodo,
       status: PresencaStatus.PRESENTE,
       status_aprovacao: statusAprovacao,
-      data_presenca: new Date(),
+      data_presenca: dayjs().tz('America/Sao_Paulo').toDate(),
       aprovado_por_id: user.id,
-      aprovado_em: new Date(),
+      aprovado_em: dayjs().tz('America/Sao_Paulo').toDate(),
       observacao_aprovacao: 'Aprovado automaticamente via tablet',
     });
 
@@ -2433,10 +2409,8 @@ export class PresencaService {
     };
 
     if (data) {
-      const dataFiltro = new Date(data);
-      dataFiltro.setHours(0, 0, 0, 0);
-      const dataFim = new Date(dataFiltro);
-      dataFim.setDate(dataFim.getDate() + 1);
+      const dataFiltro = dayjs(data).tz('America/Sao_Paulo').startOf('day').toDate();
+      const dataFim = dayjs(data).tz('America/Sao_Paulo').add(1, 'day').startOf('day').toDate();
       where.created_at = Between(dataFiltro, dataFim);
     }
 
@@ -2459,7 +2433,7 @@ export class PresencaService {
       .where('p.status_aprovacao = :status', { status: 'PENDENTE' })
       .andWhere('unidade.id = :unidadeId', { unidadeId })
       .andWhere(data ? 'DATE(p.created_at) = :data' : '1=1', {
-        data: data ? new Date(data) : undefined,
+        data: data ? dayjs(data).tz('America/Sao_Paulo').toDate() : undefined,
       })
       .andWhere(aulaId ? 'p.aula_id = :aulaId' : '1=1', { aulaId })
       .orderBy('p.created_at', 'DESC')
@@ -2474,21 +2448,10 @@ export class PresencaService {
       let horarioFormatado = '';
       
       if (p.aula && p.aula.hora_inicio && p.aula.hora_fim) {
-        const inicioDate = new Date(p.aula.hora_inicio);
-        const fimDate = new Date(p.aula.hora_fim);
+        const inicioDate = dayjs(p.aula.hora_inicio).tz('America/Sao_Paulo');
+        const fimDate = dayjs(p.aula.hora_fim).tz('America/Sao_Paulo');
         
-       
-        
-        // Converter para São Paulo e extrair apenas HH:MM
-        const spInicio = new Date(inicioDate.toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
-        const spFim = new Date(fimDate.toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
-        
-        const horaInicio = spInicio.getHours().toString().padStart(2, '0');
-        const minInicio = spInicio.getMinutes().toString().padStart(2, '0');
-        const horaFim = spFim.getHours().toString().padStart(2, '0');
-        const minFim = spFim.getMinutes().toString().padStart(2, '0');
-        
-        horarioFormatado = `${horaInicio}:${minInicio} - ${horaFim}:${minFim}`;
+        horarioFormatado = `${inicioDate.format('HH:mm')} - ${fimDate.format('HH:mm')}`;
         
       } else {
         console.warn('⚠️ [getPresencasPendentes] Aula sem horários:', {
@@ -2581,7 +2544,7 @@ export class PresencaService {
     const updateData: any = {
       status_aprovacao: 'APROVADO',
       aprovado_por_id: user.id,
-      aprovado_em: new Date(),
+      aprovado_em: dayjs().tz('America/Sao_Paulo').toDate(),
     };
 
     if (observacao) {
@@ -2674,7 +2637,7 @@ export class PresencaService {
       aluno_id: presenca.aluno_id,
       aula_id: presenca.aula_id,
       rejeitadoPor: user.nome,
-      rejeitadoEm: new Date(),
+      rejeitadoEm: dayjs().tz('America/Sao_Paulo').toDate(),
       motivo: observacao,
     };
 
@@ -2882,9 +2845,9 @@ export class PresencaService {
       );
     }
 
-    const agora = new Date();
-    const inicioMes = new Date(agora.getFullYear(), agora.getMonth(), 1);
-    const fimMes = new Date(agora.getFullYear(), agora.getMonth() + 1, 0);
+    const agora = dayjs().tz('America/Sao_Paulo');
+    const inicioMes = agora.startOf('month').toDate();
+    const fimMes = agora.endOf('month').toDate();
 
     // Presenças do mês atual (apenas aprovadas para estatísticas)
     const presencasMes = await this.presencaRepository.count({

@@ -78,6 +78,7 @@ export default function ProcessarPagamentoModal({
 
   // Estados Cartão
   const [cardData, setCardData] = useState({
+    cpf: "",
     number: "",
     holder_name: "",
     expiration_month: "",
@@ -167,6 +168,48 @@ export default function ProcessarPagamentoModal({
   const pagarComCartaoMutation = useMutation({
     mutationFn: async () => {
       const token = localStorage.getItem("token");
+      
+      const requestBody = {
+        faturaId: fatura?.id,
+        cpf: cardData.cpf.replace(/\D/g, ""),
+        paymentType: cardData.payment_type,
+        installments: cardData.installments,
+        interest: "ESTABLISHMENT",
+        card: {
+          number: cardData.number.replace(/\s/g, ""),
+          holder_name: cardData.holder_name,
+          expiration_month: cardData.expiration_month,
+          expiration_year: cardData.expiration_year,
+          cvv: cardData.cvv,
+        },
+        billing_address: {
+          street: "Rua Principal",
+          number: "123",
+          neighborhood: "Centro",
+          city: "Vitória",
+          state: "ES",
+          zip_code: "29090000",
+        },
+        // Session ID do ClearSale (suficiente para antifraude)
+        session_id: sessionId,
+      };
+      
+      console.log("💳 [FRONTEND] Enviando pagamento com cartão:");
+      console.log("   - Fatura ID:", fatura?.id);
+      console.log("   - Valor:", fatura?.valor_total);
+      console.log("   - Tipo:", cardData.payment_type);
+      console.log("   - Parcelas:", cardData.installments);
+      console.log("   - Session ID:", sessionId);
+      console.log("   - Body (dados sensíveis omitidos):", {
+        ...requestBody,
+        cpf: requestBody.cpf.substring(0, 3) + "*****" + requestBody.cpf.slice(-2),
+        card: {
+          ...requestBody.card,
+          number: requestBody.card.number.substring(0, 6) + "******" + requestBody.card.number.slice(-4),
+          cvv: "***"
+        }
+      });
+      
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/financeiro/pagamentos-online/cartao`,
         {
@@ -175,41 +218,26 @@ export default function ProcessarPagamentoModal({
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify({
-            faturaId: fatura?.id,
-            paymentType: cardData.payment_type,
-            installments: cardData.installments,
-            interest: "ESTABLISHMENT",
-            card: {
-              number: cardData.number.replace(/\s/g, ""),
-              holder_name: cardData.holder_name,
-              expiration_month: cardData.expiration_month,
-              expiration_year: cardData.expiration_year,
-              cvv: cardData.cvv,
-            },
-            billing_address: {
-              street: "Rua Principal",
-              number: "123",
-              neighborhood: "Centro",
-              city: "Vitória",
-              state: "ES",
-              zip_code: "29090000",
-            },
-            // Campos de antifraude
-            session_id: sessionId,
-            antifraud_type: "CLEARSALE",
-          }),
+          body: JSON.stringify(requestBody),
         }
       );
 
+      console.log("📥 [FRONTEND] Resposta recebida:");
+      console.log("   - Status HTTP:", response.status);
+      console.log("   - OK:", response.ok);
+
       if (!response.ok) {
         const error = await response.json();
+        console.error("❌ [FRONTEND] Erro no pagamento:", error);
         throw new Error(error.message || "Erro ao processar pagamento");
       }
 
-      return response.json();
+      const data = await response.json();
+      console.log("✅ [FRONTEND] Dados da resposta:", data);
+      return data;
     },
     onSuccess: (data) => {
+      console.log("🎉 [FRONTEND] Pagamento processado com sucesso:", data);
       if (data.status === "PAID" || data.status === "APPROVED") {
         toast.success(
           `✅ Pagamento aprovado! Cartão final ${data.card?.last4_digits || "****"}`
@@ -497,6 +525,7 @@ export default function ProcessarPagamentoModal({
       estado: "",
     });
     setCardData({
+      cpf: "",
       number: "",
       holder_name: "",
       expiration_month: "",
@@ -666,6 +695,24 @@ export default function ProcessarPagamentoModal({
           <TabsContent value="cartao" className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="col-span-2">
+                <Label htmlFor="cpf">CPF do Titular</Label>
+                <Input
+                  id="cpf"
+                  placeholder="000.000.000-00"
+                  value={cardData.cpf}
+                  onChange={(e) => {
+                    const value = e.target.value
+                      .replace(/\D/g, "")
+                      .replace(/(\d{3})(\d)/, "$1.$2")
+                      .replace(/(\d{3})(\d)/, "$1.$2")
+                      .replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+                    setCardData({ ...cardData, cpf: value });
+                  }}
+                  maxLength={14}
+                />
+              </div>
+
+              <div className="col-span-2">
                 <Label htmlFor="card_number">Número do Cartão</Label>
                 <Input
                   id="card_number"
@@ -802,6 +849,7 @@ export default function ProcessarPagamentoModal({
               onClick={() => pagarComCartaoMutation.mutate()}
               disabled={
                 pagarComCartaoMutation.isPending ||
+                !cardData.cpf ||
                 !cardData.number ||
                 !cardData.holder_name ||
                 !cardData.expiration_month ||

@@ -238,30 +238,30 @@ export class DashboardService {
       ).length;
 
       // Novos este mês
-      const mesAtual = new Date().getMonth();
-      const anoAtual = new Date().getFullYear();
+      const agora = dayjs().tz('America/Sao_Paulo');
+      const mesAtual = agora.month(); // dayjs retorna 0-11
+      const anoAtual = agora.year();
       novosEsteMes = todosAlunos.filter((a) => {
         if (!a.data_matricula) return false;
-        const dtMatricula = new Date(a.data_matricula);
+        const dtMatricula = dayjs(a.data_matricula).tz('America/Sao_Paulo');
         return (
-          dtMatricula.getMonth() === mesAtual &&
-          dtMatricula.getFullYear() === anoAtual
+          dtMatricula.month() === mesAtual &&
+          dtMatricula.year() === anoAtual
         );
       }).length;
 
       // Taxa de retenção (alunos com mais de 3 meses que ainda estão ativos)
-      const tresMesesAtras = new Date();
-      tresMesesAtras.setMonth(tresMesesAtras.getMonth() - 3);
+      const tresMesesAtras = dayjs().tz('America/Sao_Paulo').subtract(3, 'month').toDate();
 
       const alunosElegiveis = todosAlunos.filter((a) => {
         if (!a.data_matricula) return false;
-        const dtMatricula = new Date(a.data_matricula);
+        const dtMatricula = dayjs(a.data_matricula).toDate();
         return dtMatricula <= tresMesesAtras;
       }).length;
 
       const alunosRetidos = todosAlunos.filter((a) => {
         if (!a.data_matricula) return false;
-        const dtMatricula = new Date(a.data_matricula);
+        const dtMatricula = dayjs(a.data_matricula).toDate();
         return dtMatricula <= tresMesesAtras && a.status === StatusAluno.ATIVO;
       }).length;
 
@@ -314,8 +314,8 @@ export class DashboardService {
 
   private async getAulasHoje(unidadeId?: string, unidadesDoFranqueado?: string[]): Promise<number> {
     try {
-      const hoje = new Date();
-      const diaSemanaHoje = hoje.getDay();
+      const hoje = dayjs().tz('America/Sao_Paulo');
+      const diaSemanaHoje = hoje.day();
 
       let query = `
         SELECT COUNT(*) as total

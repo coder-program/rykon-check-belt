@@ -19,6 +19,12 @@ import {
   UpdateVendaDto,
   FiltroVendasDto,
 } from '../dto/venda.dto';
+import * as dayjs from 'dayjs';
+import * as utc from 'dayjs/plugin/utc';
+import * as timezone from 'dayjs/plugin/timezone';
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 @Injectable()
 export class VendasService {
@@ -92,8 +98,8 @@ export class VendasService {
 
     if (filtro.dataInicio && filtro.dataFim) {
       query.andWhere('venda.created_at BETWEEN :dataInicio AND :dataFim', {
-        dataInicio: new Date(filtro.dataInicio),
-        dataFim: new Date(filtro.dataFim),
+        dataInicio: dayjs(filtro.dataInicio).tz('America/Sao_Paulo').toDate(),
+        dataFim: dayjs(filtro.dataFim).tz('America/Sao_Paulo').toDate(),
       });
     }
 
@@ -121,7 +127,7 @@ export class VendasService {
     Object.assign(venda, updateVendaDto);
 
     if (updateVendaDto.status === StatusVenda.PAGO && !venda.data_pagamento) {
-      venda.data_pagamento = new Date();
+      venda.data_pagamento = dayjs().tz('America/Sao_Paulo').toDate();
     }
 
     await this.vendasRepository.save(venda);
@@ -147,7 +153,7 @@ export class VendasService {
     if (transacaoExistente) {
       // Se já existe transação, apenas atualizar o status da venda
       venda.status = StatusVenda.PAGO;
-      venda.data_pagamento = new Date();
+      venda.data_pagamento = dayjs().tz('America/Sao_Paulo').toDate();
 
       if (dados.metodo_pagamento) {
         venda.metodo_pagamento = dados.metodo_pagamento as any;
@@ -158,7 +164,7 @@ export class VendasService {
     }
 
     venda.status = StatusVenda.PAGO;
-    venda.data_pagamento = new Date();
+    venda.data_pagamento = dayjs().tz('America/Sao_Paulo').toDate();
 
     if (dados.metodo_pagamento) {
       venda.metodo_pagamento = dados.metodo_pagamento as any;
@@ -176,7 +182,7 @@ export class VendasService {
       unidade_id: venda.unidade_id,
       venda_id: id,
       valor: Number(venda.valor),
-      data: new Date(),
+      data: dayjs().tz('America/Sao_Paulo').toDate(),
       status: StatusTransacao.CONFIRMADA,
       metodo_pagamento: venda.metodo_pagamento as any,
       criado_por: user.id,
@@ -310,7 +316,7 @@ ${linkPagamento ? `🔗 *Link de Pagamento:*\n${linkPagamento}\n\n` : ''}Qualque
   }
 
   private async gerarNumeroVenda(): Promise<string> {
-    const ano = new Date().getFullYear();
+    const ano = dayjs().tz('America/Sao_Paulo').year();
 
     // Buscar a última venda do ano para pegar o último número
     const ultimaVenda = await this.vendasRepository

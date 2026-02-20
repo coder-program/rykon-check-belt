@@ -13,6 +13,7 @@ import {
   Inject,
   Res,
   HttpStatus,
+  Logger,
 } from '@nestjs/common';
 import { Response } from 'express';
 import { DataSource } from 'typeorm';
@@ -29,6 +30,8 @@ import {
 @Controller('faturas')
 @UseGuards(JwtAuthGuard)
 export class FaturasController {
+  private readonly logger = new Logger(FaturasController.name);
+
   constructor(
     private readonly faturasService: FaturasService,
     private readonly notificacoesService: NotificacoesService,
@@ -152,6 +155,7 @@ export class FaturasController {
 
   @Get('aluno/:alunoId')
   findByAluno(@Param('alunoId') alunoId: string) {
+    this.logger.log(`📥 [GET] /faturas/aluno/${alunoId}`);
     return this.faturasService.findByAluno(alunoId);
   }
 

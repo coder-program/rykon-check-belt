@@ -9,6 +9,13 @@ import { AlunoConvenio, AlunoConvenioStatus } from '../entities/aluno-convenio.e
 import { EventoConvenio } from '../entities/evento-convenio.entity';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
+import * as dayjs from 'dayjs';
+import * as utc from 'dayjs/plugin/utc';
+import * as timezone from 'dayjs/plugin/timezone';
+
+// Configurar dayjs com plugins de timezone
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 // ====== INTERFACES BASEADAS NA DOCUMENTAÇÃO OFICIAL GYMPASS/WELLHUB ======
 // https://partners-docs.gympass.com
@@ -147,7 +154,7 @@ export class GympassService {
         // Se estava cancelado, reativar
         if (vinculoExistente.status !== AlunoConvenioStatus.ATIVO) {
           vinculoExistente.status = AlunoConvenioStatus.ATIVO;
-          vinculoExistente.data_ativacao = new Date();
+          vinculoExistente.data_ativacao = dayjs().tz('America/Sao_Paulo').toDate();
           vinculoExistente.data_cancelamento = null as any;
           await this.alunoConvenioRepository.save(vinculoExistente);
         }
@@ -298,7 +305,7 @@ export class GympassService {
 
         // 7. Atualizar evento como enviado
         eventoConvenio.enviado = true;
-        eventoConvenio.data_envio = new Date();
+        eventoConvenio.data_envio = dayjs().tz('America/Sao_Paulo').toDate();
         eventoConvenio.response_status = response.status;
         eventoConvenio.response_body = response.data;
         eventoConvenio.tentativas += 1;
@@ -365,12 +372,12 @@ export class GympassService {
       // 3. Atualizar status baseado no webhook
       if (dados.status === 'active') {
         alunoConvenio.status = AlunoConvenioStatus.ATIVO;
-        alunoConvenio.data_ativacao = new Date(dados.timestamp);
+        alunoConvenio.data_ativacao = dayjs(dados.timestamp).tz('America/Sao_Paulo').toDate();
         alunoConvenio.data_cancelamento = null as any;
       } else {
         // canceled, paused, downgraded
         alunoConvenio.status = AlunoConvenioStatus.CANCELADO;
-        alunoConvenio.data_cancelamento = new Date(dados.timestamp);
+        alunoConvenio.data_cancelamento = dayjs(dados.timestamp).tz('America/Sao_Paulo').toDate();
       }
 
       // Adicionar ao metadata
@@ -441,8 +448,8 @@ export class GympassService {
 
     if (mes) {
       const [ano, mesNum] = mes.split('-');
-      const dataInicio = new Date(parseInt(ano), parseInt(mesNum) - 1, 1);
-      const dataFim = new Date(parseInt(ano), parseInt(mesNum), 0);
+      const dataInicio = dayjs(`${ano}-${mesNum}-01`).tz('America/Sao_Paulo').startOf('month').toDate();
+      const dataFim = dayjs(`${ano}-${mesNum}-01`).tz('America/Sao_Paulo').endOf('month').toDate();
 
       query.andWhere('presenca.created_at BETWEEN :dataInicio AND :dataFim', {
         dataInicio,

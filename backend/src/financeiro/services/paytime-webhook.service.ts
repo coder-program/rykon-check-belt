@@ -5,6 +5,12 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import * as dayjs from 'dayjs';
+import * as utc from 'dayjs/plugin/utc';
+import * as timezone from 'dayjs/plugin/timezone';
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
 import { Fatura, StatusFatura } from '../entities/fatura.entity';
 import {
   Transacao,
@@ -90,7 +96,7 @@ export class PaytimeWebhookService {
     transacao.status = StatusTransacao.CONFIRMADA;
     transacao.paytime_metadata = {
       ...transacao.paytime_metadata,
-      webhook_received_at: new Date(),
+      webhook_received_at: dayjs().tz('America/Sao_Paulo').toDate(),
       paytime_status: data.status,
     };
     await this.transacaoRepository.save(transacao);
@@ -123,7 +129,7 @@ export class PaytimeWebhookService {
     transacao.observacoes = `Pagamento falhou: ${data.status_reason || 'Sem motivo informado'}`;
     transacao.paytime_metadata = {
       ...transacao.paytime_metadata,
-      webhook_received_at: new Date(),
+      webhook_received_at: dayjs().tz('America/Sao_Paulo').toDate(),
       paytime_status: data.status,
       failure_reason: data.status_reason,
     };
@@ -151,7 +157,7 @@ export class PaytimeWebhookService {
     transacaoOriginal.status = StatusTransacao.ESTORNADA;
     transacaoOriginal.paytime_metadata = {
       ...transacaoOriginal.paytime_metadata,
-      webhook_received_at: new Date(),
+      webhook_received_at: dayjs().tz('America/Sao_Paulo').toDate(),
       paytime_status: data.status,
       refunded_at: data.refunded_at,
     };
@@ -171,7 +177,7 @@ export class PaytimeWebhookService {
       unidade_id: transacaoOriginal.unidade_id,
       fatura_id: transacaoOriginal.fatura_id,
       valor: transacaoOriginal.valor,
-      data: new Date(),
+      data: dayjs().tz('America/Sao_Paulo').toDate(),
       status: StatusTransacao.CONFIRMADA,
       metodo_pagamento: transacaoOriginal.metodo_pagamento,
       paytime_transaction_id: `refund_${data.id}`,
@@ -210,7 +216,7 @@ export class PaytimeWebhookService {
     transacao.paytime_metadata = {
       ...transacao.paytime_metadata,
       chargeback: true,
-      chargeback_at: new Date(),
+      chargeback_at: dayjs().tz('America/Sao_Paulo').toDate(),
       chargeback_reason: data.chargeback_reason,
     };
     transacao.observacoes = `CHARGEBACK: ${data.chargeback_reason || 'Sem motivo informado'}`;
@@ -252,7 +258,7 @@ export class PaytimeWebhookService {
 
     // Atualizar valor pago
     fatura.valor_pago = (fatura.valor_pago || 0) + transacao.valor;
-    fatura.data_pagamento = new Date();
+    fatura.data_pagamento = dayjs().tz('America/Sao_Paulo').toDate();
 
     // Verificar se está totalmente paga
     if (fatura.valor_pago >= fatura.valor_total) {

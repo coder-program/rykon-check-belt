@@ -19,9 +19,16 @@ import {
 } from '../entities/transacao.entity';
 import { Unidade } from '../../people/entities/unidade.entity';
 import { Aluno } from '../../people/entities/aluno.entity';
+import { Assinatura } from '../entities/assinatura.entity';
 import { Endereco } from '../../enderecos/endereco.entity';
 import { PaytimeService } from '../../paytime/paytime.service';
 import { CompletarDadosBoletoDto } from '../dto/completar-dados-boleto.dto';
+import * as dayjs from 'dayjs';
+import * as utc from 'dayjs/plugin/utc';
+import * as timezone from 'dayjs/plugin/timezone';
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 export interface ProcessarPagamentoPixDto {
   faturaId: string;
@@ -30,6 +37,7 @@ export interface ProcessarPagamentoPixDto {
 
 export interface ProcessarPagamentoCartaoDto {
   faturaId: string;
+  cpf?: string; // CPF do titular do cartão (opcional, se não enviado usa o CPF do aluno)
   paymentType: 'CREDIT' | 'DEBIT';
   installments?: number;
   interest?: 'ESTABLISHMENT' | 'CUSTOMER';
@@ -50,8 +58,8 @@ export interface ProcessarPagamentoCartaoDto {
     complement?: string;
   };
   // Campos de antifraude
-  session_id?: string; // Session ID do ClearSale
-  antifraud_type?: 'IDPAY' | 'THREEDS' | 'CLEARSALE'; // Tipo de antifraude utilizado
+  session_id?: string; // Session ID do ClearSale (Paytime detecta automaticamente o tipo)
+  antifraud_type?: 'IDPAY' | 'THREEDS' | 'CLEARSALE'; // NÃO USADO - mantido para compatibilidade
 }
 
 export interface ProcessarPagamentoBoletoDto {
@@ -68,6 +76,8 @@ export class PaytimeIntegrationService {
     private faturaRepository: Repository<Fatura>,
     @InjectRepository(Transacao)
     private transacaoRepository: Repository<Transacao>,
+    @InjectRepository(Assinatura)
+    private assinaturaRepository: Repository<Assinatura>,
     @InjectRepository(Unidade)
     private unidadeRepository: Repository<Unidade>,
     @InjectRepository(Aluno)
@@ -139,7 +149,7 @@ export class PaytimeIntegrationService {
       unidade_id: fatura.assinatura.unidade.id,
       fatura_id: fatura.id,
       valor: fatura.valor_total,
-      data: new Date(),
+      data: dayjs().tz('America/Sao_Paulo').toDate(),
       status: StatusTransacao.PENDENTE,
       metodo_pagamento: 'PIX',
       paytime_payment_type: 'PIX',
@@ -308,7 +318,7 @@ export class PaytimeIntegrationService {
       unidade_id: fatura.assinatura.unidade.id,
       fatura_id: fatura.id,
       valor: fatura.valor_total,
-      data: new Date(),
+      data: dayjs().tz('America/Sao_Paulo').toDate(),
       status: StatusTransacao.PENDENTE,
       metodo_pagamento: 'CARTAO', // Valor único CARTAO (constraint do banco)
       paytime_payment_type: dto.paymentType, // CREDIT ou DEBIT (detalhado para Paytime)
@@ -318,15 +328,24 @@ export class PaytimeIntegrationService {
     const transacaoSalva = await this.transacaoRepository.save(transacao);
 
     try {
-      // 3.5. Validar CPF do aluno
-      if (!fatura.aluno.cpf || fatura.aluno.cpf.replace(/\D/g, '').length !== 11) {
+      // 3.5. Validar CPF - usar CPF enviado ou CPF do aluno
+      const cpfParaUsar = dto.cpf || fatura.aluno.cpf;
+      
+      if (!cpfParaUsar || cpfParaUsar.replace(/\D/g, '').length !== 11) {
         throw new BadRequestException({
           tipo_erro: 'DADOS_FALTANTES',
-          message: 'CPF do aluno não cadastrado ou inválido.',
-          campos_faltantes: ['aluno.cpf'],
-          sugestao: 'Complete seu cadastro com um CPF válido para processar pagamento.',
+          message: dto.cpf 
+            ? 'CPF fornecido é inválido. Informe um CPF válido com 11 dígitos.'
+            : 'CPF do aluno não cadastrado ou inválido.',
+          campos_faltantes: ['cpf'],
+          sugestao: dto.cpf
+            ? 'Verifique o CPF informado e tente novamente.'
+            : 'Complete seu cadastro com um CPF válido para processar pagamento.',
         });
       }
+      
+      this.logger.log(`💳 CPF para pagamento: ${cpfParaUsar.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4')}`);
+      this.logger.log(`   Origem: ${dto.cpf ? 'Fornecido no formulário' : 'Cadastro do aluno'}`);
 
       // 3.6. Obter endereço - usar billing_address fornecido ou buscar do cadastro
       let address = dto.billing_address;
@@ -384,13 +403,12 @@ export class PaytimeIntegrationService {
           last_name:
             fatura.aluno.nome_completo.split(' ').slice(1).join(' ') ||
             'Cliente',
-          document: fatura.aluno.cpf?.replace(/\D/g, ''),
+          document: cpfParaUsar.replace(/\D/g, ''),
           phone: fatura.aluno.telefone?.replace(/\D/g, '') || '00000000000',
           email: fatura.aluno.email || `aluno${fatura.aluno_id}@teamcruz.com`,
           address: {
             street: address.street,
             number: address.number,
-            complement: address.complement || '',
             neighborhood: address.neighborhood,
             city: address.city,
             state: address.state,
@@ -399,50 +417,36 @@ export class PaytimeIntegrationService {
         },
         card: {
           holder_name: dto.card.holder_name,
-          holder_document: fatura.aluno.cpf?.replace(/\D/g, ''),
+          holder_document: cpfParaUsar.replace(/\D/g, ''),
           card_number: dto.card.number,
           expiration_month: parseInt(dto.card.expiration_month, 10),
           expiration_year: parseInt(dto.card.expiration_year, 10),
           security_code: dto.card.cvv,
         },
-        // Campos de antifraude (incluídos apenas se fornecidos)
-        // session_id do ClearSale é suficiente - Paytime detecta automaticamente
+        // Session ID do ClearSale (Paytime detecta automaticamente o tipo de antifraude)
         ...(dto.session_id && { session_id: dto.session_id }),
-        // antifraud_type removido - Paytime não aceita esse campo para cartão
-        info_additional: [
-          {
-            key: 'aluno_id',
-            value: fatura.aluno_id,
-          },
-          {
-            key: 'aluno_cpf',
-            value: fatura.aluno.cpf?.replace(/\D/g, ''),
-          },
-          {
-            key: 'aluno_nome',
-            value: fatura.aluno.nome_completo,
-          },
-          {
-            key: 'aluno_email',
-            value: fatura.aluno.email || `aluno${fatura.aluno_id}@teamcruz.com`,
-          },
-          {
-            key: 'aluno_telefone',
-            value: fatura.aluno.telefone?.replace(/\D/g, '') || '00000000000',
-          },
-          {
-            key: 'numero_matricula',
-            value: fatura.aluno.numero_matricula || '',
-          },
-        ],
       };
 
       this.logger.log(
-        `Criando transação Cartão na Paytime - Establishment: ${establishment}, Valor: ${cardData.amount}`,
+        `💳 Criando transação Cartão na Paytime - Establishment: ${establishment}`,
       );
+      this.logger.log(`   - Valor: R$ ${(cardData.amount / 100).toFixed(2)} (${cardData.amount} centavos)`);
+      this.logger.log(`   - Tipo: ${cardData.payment_type}`);
+      this.logger.log(`   - Parcelas: ${cardData.installments}x`);
       if (dto.session_id) {
-        this.logger.log(`🔐 Session ID ClearSale presente: ${dto.session_id.substring(0, 20)}...`);
+        this.logger.log(`   - Session ID ClearSale: ${dto.session_id.substring(0, 20)}...`);
       }
+      
+      // Log do body completo (omitindo dados sensíveis)
+      this.logger.debug('📦 Body completo (dados sensíveis omitidos):');
+      this.logger.debug(JSON.stringify({
+        ...cardData,
+        card: {
+          ...cardData.card,
+          card_number: cardData.card.card_number.substring(0, 6) + '******' + cardData.card.card_number.slice(-4),
+          security_code: '***',
+        }
+      }, null, 2));
 
       const paytimeResponse =
         await this.paytimeService.createCardTransaction(
@@ -625,9 +629,9 @@ export class PaytimeIntegrationService {
 
         // Verificar se boleto está travado em PROCESSING há muito tempo
         if (paytimeBoleto.status === 'PROCESSING') {
-          const transacaoCriadaEm = new Date(transacaoExistente.created_at);
-          const agora = new Date();
-          const minutosEmProcessing = (agora.getTime() - transacaoCriadaEm.getTime()) / 1000 / 60;
+          const transacaoCriadaEm = dayjs(transacaoExistente.created_at).tz('America/Sao_Paulo');
+          const agora = dayjs().tz('America/Sao_Paulo');
+          const minutosEmProcessing = agora.diff(transacaoCriadaEm, 'minute', true);
           
           this.logger.log(
             `⏱️  Transação criada em: ${transacaoCriadaEm.toISOString()}, Agora: ${agora.toISOString()}, Minutos em PROCESSING: ${minutosEmProcessing.toFixed(2)}`,
@@ -716,7 +720,7 @@ export class PaytimeIntegrationService {
       unidade_id: fatura.assinatura.unidade.id,
       fatura_id: fatura.id,
       valor: fatura.valor_total,
-      data: new Date(),
+      data: dayjs().tz('America/Sao_Paulo').toDate(),
       status: StatusTransacao.PENDENTE,
       metodo_pagamento: 'BOLETO',
       paytime_payment_type: 'BILLET',
@@ -728,7 +732,7 @@ export class PaytimeIntegrationService {
     try {
       // 4. Calcular data de vencimento (padrão: +3 dias úteis)
       const dueDate =
-        dto.dueDate || this.calcularDataVencimentoBoleto(new Date(), 3);
+        dto.dueDate || this.calcularDataVencimentoBoleto(dayjs().tz('America/Sao_Paulo').toDate(), 3);
 
       // 4.5. Buscar dados para o boleto (com fallback para responsável)
       const dadosBoleto = this.obterDadosParaBoleto(fatura.aluno);
@@ -776,7 +780,7 @@ export class PaytimeIntegrationService {
 
       // Calcular payment_limit_date (2 dias úteis após vencimento)
       const paymentLimitDate = this.calcularDataVencimentoBoleto(
-        new Date(dueDate),
+        dayjs(dueDate).tz('America/Sao_Paulo').toDate(),
         2,
       );
 
@@ -815,7 +819,7 @@ export class PaytimeIntegrationService {
           discount: {
             mode: 'PERCENTAGE',
             amount: 1,
-            limit_date: new Date(new Date(dueDate).getTime() - 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 5 dias antes do vencimento
+            limit_date: dayjs(dueDate).tz('America/Sao_Paulo').subtract(5, 'day').format('YYYY-MM-DD'), // 5 dias antes do vencimento
           },
         },
         // info_additional não é aceito pela API de boletos do Paytime
@@ -960,9 +964,9 @@ export class PaytimeIntegrationService {
         
         // ⏱️ TIMEOUT: Verificar se boleto está travado em PROCESSING há mais de 2 minutos
         if (paytimeTransaction.status === 'PROCESSING') {
-          const transacaoCriadaEm = new Date(transacao.created_at);
-          const agora = new Date();
-          const minutosEmProcessing = Math.abs((agora.getTime() - transacaoCriadaEm.getTime()) / 1000 / 60);
+          const transacaoCriadaEm = dayjs(transacao.created_at).tz('America/Sao_Paulo');
+          const agora = dayjs().tz('America/Sao_Paulo');
+          const minutosEmProcessing = Math.abs(agora.diff(transacaoCriadaEm, 'minute', true));
           
           this.logger.log(
             `⏱️  [STATUS CHECK] Boleto ${transacao.paytime_transaction_id} - Criado em: ${transacaoCriadaEm.toISOString()}, Agora: ${agora.toISOString()}, Minutos em PROCESSING: ${minutosEmProcessing.toFixed(2)}`,
@@ -1007,7 +1011,7 @@ export class PaytimeIntegrationService {
         return {
           status: 'CONFIRMADA',
           pago: true,
-          data_pagamento: new Date(),
+          data_pagamento: dayjs().tz('America/Sao_Paulo').toDate(),
           paytime_metadata: novaMetadata,
         };
       }
@@ -1105,7 +1109,7 @@ export class PaytimeIntegrationService {
     transacao: Transacao,
   ): Promise<void> {
     fatura.valor_pago = (fatura.valor_pago || 0) + transacao.valor;
-    fatura.data_pagamento = new Date();
+    fatura.data_pagamento = dayjs().tz('America/Sao_Paulo').toDate();
 
     if (fatura.valor_pago >= fatura.valor_total) {
       fatura.status = StatusFatura.PAGA;
@@ -1292,24 +1296,393 @@ export class PaytimeIntegrationService {
   }
 
   /**
+   * 🔥 RECORRÊNCIA: Processar primeira cobrança com tokenização
+   * Usado na assinatura inicial para salvar token do cartão
+   */
+  async processarPrimeiraCobrancaComToken(
+    dto: ProcessarPagamentoCartaoDto,
+    assinaturaId: string,
+    userId: string,
+  ): Promise<any> {
+    this.logger.log(
+      `💳 TOKENIZAÇÃO: Processando primeira cobrança com create_token para assinatura ${assinaturaId}`,
+    );
+
+    // 1. Validar fatura e assinatura
+    const fatura = await this.validarFatura(dto.faturaId, userId);
+    
+    const assinatura = await this.assinaturaRepository.findOne({
+      where: { id: assinaturaId },
+      relations: ['aluno', 'plano', 'unidade'],
+    });
+
+    if (!assinatura) {
+      throw new NotFoundException('Assinatura não encontrada');
+    }
+
+    // 2. Buscar establishment
+    const establishment = await this.obterEstablishmentDaUnidade(
+      fatura.assinatura.unidade.id,
+    );
+
+    // 3. Criar transação PENDENTE
+    const transacao = this.transacaoRepository.create({
+      tipo: TipoTransacao.ENTRADA,
+      origem: OrigemTransacao.FATURA,
+      categoria: CategoriaTransacao.MENSALIDADE,
+      descricao: `Primeira Cobrança (Tokenização) - ${fatura.descricao || fatura.numero_fatura}`,
+      aluno_id: fatura.aluno_id,
+      unidade_id: fatura.assinatura.unidade.id,
+      fatura_id: fatura.id,
+      valor: fatura.valor_total,
+      data: dayjs().tz('America/Sao_Paulo').toDate(),
+      status: StatusTransacao.PENDENTE,
+      metodo_pagamento: 'CARTAO',
+      paytime_payment_type: dto.paymentType,
+      criado_por: userId,
+    });
+
+    const transacaoSalva = await this.transacaoRepository.save(transacao);
+
+    try {
+      // 4. Validar dados obrigatórios
+      if (!fatura.aluno.cpf || fatura.aluno.cpf.replace(/\D/g, '').length !== 11) {
+        throw new BadRequestException('CPF do aluno não cadastrado ou inválido.');
+      }
+
+      // 5. Obter endereço
+      let address = dto.billing_address;
+      
+      if (!address || !address.street || !address.number || !address.city || !address.state || !address.zip_code) {
+        if (fatura.aluno.endereco) {
+          address = {
+            street: fatura.aluno.endereco.logradouro,
+            number: fatura.aluno.endereco.numero,
+            complement: fatura.aluno.endereco.complemento || '',
+            neighborhood: fatura.aluno.endereco.bairro,
+            city: fatura.aluno.endereco.cidade,
+            state: fatura.aluno.endereco.estado,
+            zip_code: fatura.aluno.endereco.cep,
+          };
+        } else if (fatura.aluno.responsavel?.endereco) {
+          address = {
+            street: fatura.aluno.responsavel.endereco.logradouro,
+            number: fatura.aluno.responsavel.endereco.numero,
+            complement: fatura.aluno.responsavel.endereco.complemento || '',
+            neighborhood: fatura.aluno.responsavel.endereco.bairro,
+            city: fatura.aluno.responsavel.endereco.cidade,
+            state: fatura.aluno.responsavel.endereco.estado,
+            zip_code: fatura.aluno.responsavel.endereco.cep,
+          };
+        } else {
+          throw new BadRequestException('Endereço não encontrado. Complete seu cadastro.');
+        }
+      }
+
+      // 6. Criar payload COM create_token: true
+      const paymentData = {
+        payment_type: dto.paymentType,
+        amount: Math.round(fatura.valor_total * 100),
+        installments: dto.installments || 1,
+        interest: dto.interest || 'ESTABLISHMENT',
+        client: {
+          first_name: fatura.aluno.nome_completo.split(' ')[0],
+          last_name: fatura.aluno.nome_completo.split(' ').slice(1).join(' ') || 'Cliente',
+          document: fatura.aluno.cpf?.replace(/\D/g, ''),
+          phone: fatura.aluno.telefone?.replace(/\D/g, '') || '00000000000',
+          email: fatura.aluno.email || `aluno${fatura.aluno_id}@teamcruz.com`,
+          address: {
+            street: address.street,
+            number: address.number,
+            complement: address.complement || '',
+            neighborhood: address.neighborhood,
+            city: address.city,
+            state: address.state,
+            country: 'BR',
+            zip_code: address.zip_code.replace(/\D/g, ''),
+          },
+        },
+        card: {
+          card_number: dto.card.number.replace(/\D/g, ''),
+          holder_name: dto.card.holder_name,
+          holder_document: fatura.aluno.cpf?.replace(/\D/g, ''),
+          expiration_month: parseInt(dto.card.expiration_month),
+          expiration_year: parseInt(dto.card.expiration_year),
+          security_code: dto.card.cvv,
+          create_token: true, // ← CAMPO CRÍTICO PARA TOKENIZAÇÃO
+        },
+        info_additional: [
+          { key: 'aluno_id', value: fatura.aluno_id },
+          { key: 'assinatura_id', value: assinaturaId },
+          { key: 'tokenizacao', value: 'true' },
+        ],
+      };
+
+      // Adicionar antifraude se fornecido
+      if (dto.session_id && dto.antifraud_type) {
+        paymentData['antifraud'] = {
+          session_id: dto.session_id,
+          type: dto.antifraud_type,
+        };
+      }
+
+      this.logger.log(`📤 Enviando para Paytime com create_token: true`);
+
+      // 7. Enviar para Paytime
+      const paytimeResponse = await this.paytimeService.createCardTransaction(
+        parseInt(establishment, 10),
+        paymentData,
+      );
+
+      // 8. Salvar TRANSACTION ID e METADATA
+      transacaoSalva.paytime_transaction_id = paytimeResponse._id || paytimeResponse.id;
+      transacaoSalva.paytime_metadata = paytimeResponse;
+
+      // 9. SALVAR TOKEN retornado (SE HOUVER)
+      if (paytimeResponse.card?.token) {
+        this.logger.log(`🔑 TOKEN RECEBIDO: ${paytimeResponse.card.token.substring(0, 20)}...`);
+        
+        assinatura.token_cartao = paytimeResponse.card.token;
+        assinatura.dados_pagamento = {
+          last4: paytimeResponse.card.last4_digits || paytimeResponse.card.last4,
+          brand: paytimeResponse.card.brand_name || paytimeResponse.card.brand,
+          exp_month: dto.card.expiration_month,
+          exp_year: dto.card.expiration_year,
+          holder_name: dto.card.holder_name,
+          tokenized_at: dayjs().tz('America/Sao_Paulo').toISOString(),
+        };
+        
+        await this.assinaturaRepository.save(assinatura);
+        this.logger.log(`✅ TOKEN salvo na assinatura ${assinaturaId}`);
+      } else {
+        this.logger.warn(`⚠️ Paytime NÃO retornou token no response`);
+      }
+
+      // 10. Atualizar status da transação
+      if (paytimeResponse.status === 'PAID' || paytimeResponse.status === 'APPROVED') {
+        transacaoSalva.status = StatusTransacao.CONFIRMADA;
+        await this.transacaoRepository.save(transacaoSalva);
+        await this.baixarFatura(fatura, transacaoSalva);
+        this.logger.log(`✅ Primeira cobrança CONFIRMADA e TOKEN salvo`);
+      } else if (paytimeResponse.status === 'FAILED' || paytimeResponse.status === 'CANCELED') {
+        transacaoSalva.status = StatusTransacao.CANCELADA;
+        transacaoSalva.observacoes = `Pagamento ${paytimeResponse.status}`;
+        await this.transacaoRepository.save(transacaoSalva);
+        this.logger.warn(`⚠️ Primeira cobrança ${paytimeResponse.status}`);
+      } else {
+        transacaoSalva.status = StatusTransacao.PENDENTE;
+        await this.transacaoRepository.save(transacaoSalva);
+        this.logger.log(`⏳ Primeira cobrança em processamento: ${paytimeResponse.status}`);
+      }
+
+      return {
+        transacao_id: transacaoSalva.id,
+        paytime_transaction_id: paytimeResponse._id || paytimeResponse.id,
+        status: paytimeResponse.status,
+        token_salvo: !!paytimeResponse.card?.token,
+        card: {
+          brand: assinatura.dados_pagamento?.brand,
+          last4: assinatura.dados_pagamento?.last4,
+        },
+        valor: fatura.valor_total,
+        fatura_numero: fatura.numero_fatura,
+      };
+
+    } catch (error) {
+      transacaoSalva.status = StatusTransacao.CANCELADA;
+      transacaoSalva.observacoes = `Erro ao processar: ${error.message}`;
+      await this.transacaoRepository.save(transacaoSalva);
+
+      this.logger.error(`❌ Erro ao processar primeira cobrança com token: ${error.message}`);
+      throw error;
+    }
+  }
+
+  /**
+   * 🔥 RECORRÊNCIA: Cobrar usando token salvo (sem dados do cartão)
+   * Usado nas cobranças automáticas mensais pelo scheduler
+   */
+  async cobrarComToken(
+    assinatura: Assinatura,
+    fatura: Fatura,
+  ): Promise<any> {
+    this.logger.log(
+      `💳 RECORRÊNCIA: Cobrando fatura ${fatura.numero_fatura} com token da assinatura ${assinatura.id}`,
+    );
+
+    // 1. Validar que tem token
+    if (!assinatura.token_cartao) {
+      throw new BadRequestException(
+        'Assinatura não possui token de cartão salvo. Atualize o cartão.',
+      );
+    }
+
+    // 2. Buscar establishment
+    const establishment = await this.obterEstablishmentDaUnidade(
+      assinatura.unidade_id,
+    );
+
+    // 3. Buscar dados do aluno (pode não estar em relations)
+    if (!fatura.aluno && fatura.aluno_id) {
+      const aluno = await this.alunoRepository.findOne({
+        where: { id: fatura.aluno_id },
+      });
+      if (aluno) {
+        fatura.aluno = aluno;
+      }
+    }
+
+    // 4. Criar transação PENDENTE
+    const transacao = this.transacaoRepository.create({
+      tipo: TipoTransacao.ENTRADA,
+      origem: OrigemTransacao.FATURA,
+      categoria: CategoriaTransacao.MENSALIDADE,
+      descricao: `Cobrança Recorrente - ${fatura.numero_fatura}`,
+      aluno_id: fatura.aluno_id,
+      unidade_id: assinatura.unidade_id,
+      fatura_id: fatura.id,
+      valor: fatura.valor_total,
+      data: dayjs().tz('America/Sao_Paulo').toDate(),
+      status: StatusTransacao.PENDENTE,
+      metodo_pagamento: 'CARTAO',
+      paytime_payment_type: 'CREDIT',
+    });
+
+    const transacaoSalva = await this.transacaoRepository.save(transacao);
+
+    try {
+      // 5. Criar payload SOMENTE COM TOKEN
+      const paymentData = {
+        payment_type: 'CREDIT',
+        amount: Math.round(fatura.valor_total * 100),
+        installments: 1,
+        interest: 'ESTABLISHMENT',
+        client: {
+          first_name: fatura.aluno.nome_completo.split(' ')[0],
+          last_name: fatura.aluno.nome_completo.split(' ').slice(1).join(' ') || 'Cliente',
+          document: fatura.aluno.cpf?.replace(/\D/g, ''),
+          phone: fatura.aluno.telefone?.replace(/\D/g, '') || '00000000000',
+          email: fatura.aluno.email || `aluno${fatura.aluno_id}@teamcruz.com`,
+        },
+        card: {
+          token: assinatura.token_cartao, // ← SÓ O TOKEN, SEM DADOS DO CARTÃO
+        },
+        info_additional: [
+          { key: 'aluno_id', value: fatura.aluno_id },
+          { key: 'assinatura_id', value: assinatura.id },
+          { key: 'cobranca_recorrente', value: 'true' },
+          { key: 'fatura_numero', value: fatura.numero_fatura },
+        ],
+      };
+      // ❌ SEM antifraude na recorrência
+      // ❌ SEM dados completos do cartão
+      // ❌ SEM create_token (já temos)
+
+      this.logger.log(`📤 Enviando para Paytime com token (sem dados do cartão)`);
+
+      // 6. Enviar para Paytime
+      const paytimeResponse = await this.paytimeService.createCardTransaction(
+        parseInt(establishment, 10),
+        paymentData,
+      );
+
+      // 7. Salvar metadata
+      transacaoSalva.paytime_transaction_id = paytimeResponse._id || paytimeResponse.id;
+      transacaoSalva.paytime_metadata = {
+        ...paytimeResponse,
+        cobrado_com_token: true,
+        brand: assinatura.dados_pagamento?.brand,
+        last4: assinatura.dados_pagamento?.last4,
+      };
+
+      // 8. Atualizar status
+      if (paytimeResponse.status === 'PAID' || paytimeResponse.status === 'APPROVED') {
+        transacaoSalva.status = StatusTransacao.CONFIRMADA;
+        await this.transacaoRepository.save(transacaoSalva);
+        
+        // Baixar fatura
+        fatura.status = StatusFatura.PAGA;
+        fatura.data_pagamento = dayjs().tz('America/Sao_Paulo').toDate();
+        fatura.valor_pago = fatura.valor_total;
+        await this.faturaRepository.save(fatura);
+        
+        this.logger.log(`✅ Cobrança recorrente APROVADA - Fatura ${fatura.numero_fatura} paga`);
+
+        return {
+          success: true,
+          transacao_id: transacaoSalva.id,
+          paytime_transaction_id: paytimeResponse._id || paytimeResponse.id,
+          status: paytimeResponse.status,
+        };
+
+      } else if (paytimeResponse.status === 'FAILED' || paytimeResponse.status === 'CANCELED') {
+        transacaoSalva.status = StatusTransacao.CANCELADA;
+        transacaoSalva.observacoes = `Cobrança recorrente ${paytimeResponse.status}`;
+        await this.transacaoRepository.save(transacaoSalva);
+        
+        this.logger.warn(`⚠️ Cobrança recorrente ${paytimeResponse.status}`);
+
+        return {
+          success: false,
+          transacao_id: transacaoSalva.id,
+          paytime_transaction_id: paytimeResponse._id || paytimeResponse.id,
+          status: paytimeResponse.status,
+          error: `Pagamento ${paytimeResponse.status}`,
+        };
+
+      } else {
+        // PENDING ou outros
+        transacaoSalva.status = StatusTransacao.PENDENTE;
+        await this.transacaoRepository.save(transacaoSalva);
+        
+        this.logger.log(`⏳ Cobrança recorrente em processamento: ${paytimeResponse.status}`);
+
+        return {
+          success: false,
+          transacao_id: transacaoSalva.id,
+          paytime_transaction_id: paytimeResponse._id || paytimeResponse.id,
+          status: paytimeResponse.status,
+          error: 'Pagamento em processamento',
+        };
+      }
+
+    } catch (error) {
+      transacaoSalva.status = StatusTransacao.CANCELADA;
+      transacaoSalva.observacoes = `Erro: ${error.message}`;
+      await this.transacaoRepository.save(transacaoSalva);
+
+      this.logger.error(
+        `❌ Erro ao cobrar com token (assinatura ${assinatura.id}): ${error.message}`,
+      );
+
+      return {
+        success: false,
+        transacao_id: transacaoSalva.id,
+        error: error.message,
+        status: 'FAILED',
+      };
+    }
+  }
+
+  /**
    * Calcular data de vencimento do boleto (dias úteis)
    */
   private calcularDataVencimentoBoleto(
     dataBase: Date,
     diasUteis: number,
   ): string {
-    const data = new Date(dataBase);
+    let data = dayjs(dataBase).tz('America/Sao_Paulo');
     let diasAdicionados = 0;
 
     while (diasAdicionados < diasUteis) {
-      data.setDate(data.getDate() + 1);
-      const diaSemana = data.getDay();
+      data = data.add(1, 'day');
+      const diaSemana = data.day();
       // Pular sábado (6) e domingo (0)
       if (diaSemana !== 0 && diaSemana !== 6) {
         diasAdicionados++;
       }
     }
 
-    return data.toISOString().split('T')[0]; // Formato: YYYY-MM-DD
+    return data.format('YYYY-MM-DD'); // Formato: YYYY-MM-DD
   }
 }

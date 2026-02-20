@@ -119,10 +119,9 @@ export class DashboardInstrutorService {
     console.log('🎓 [INSTRUTOR STATS] Alunos únicos:', alunosUnicos.size);
 
     // Aulas desta semana
-    const hoje = new Date();
-    const inicioSemana = new Date(hoje.setDate(hoje.getDate() - hoje.getDay()));
-    const fimSemana = new Date(inicioSemana);
-    fimSemana.setDate(inicioSemana.getDate() + 6);
+    const hoje = dayjs().tz('America/Sao_Paulo');
+    const inicioSemana = hoje.startOf('week').toDate();
+    const fimSemana = hoje.endOf('week').toDate();
 
     const aulasSemana = aulasProfessor.filter((aula) => {
       if (!aula.data_hora_inicio) return false;
@@ -133,8 +132,8 @@ export class DashboardInstrutorService {
     console.log('📅 [INSTRUTOR STATS] Aulas desta semana:', aulasSemana.length);
 
     // Próximas aulas (hoje)
-    const hojeDate = new Date();
-    const hojeStr = hojeDate.toISOString().split('T')[0];
+    const hojeDate = dayjs().tz('America/Sao_Paulo');
+    const hojeStr = hojeDate.format('YYYY-MM-DD');
     
     console.log('📆 [INSTRUTOR STATS] Data de hoje (ISO):', hojeStr);
     console.log('📚 [INSTRUTOR STATS] Analisando', aulasProfessor.length, 'aulas para encontrar as de hoje');
@@ -144,8 +143,8 @@ export class DashboardInstrutorService {
         console.log('⚠️ [INSTRUTOR STATS] Aula sem data_hora_inicio:', aula.id);
         return false;
       }
-      const dataAula = new Date(aula.data_hora_inicio);
-      const dataAulaStr = dataAula.toISOString().split('T')[0];
+      const dataAula = dayjs(aula.data_hora_inicio).tz('America/Sao_Paulo');
+      const dataAulaStr = dataAula.format('YYYY-MM-DD');
       const isToday = dataAulaStr === hojeStr;
       
       if (isToday) {
@@ -188,13 +187,12 @@ export class DashboardInstrutorService {
     console.log('📊 [INSTRUTOR STATS] Presença média:', presencaMedia + '%');
 
     // Alunos ativos (com presença nos últimos 30 dias)
-    const dataLimite = new Date();
-    dataLimite.setDate(dataLimite.getDate() - 30);
+    const dataLimite = dayjs().tz('America/Sao_Paulo').subtract(30, 'day').toDate();
 
     // Buscar aulas do professor nos últimos 30 dias
     const aulasRecentes = aulasProfessor.filter((aula) => {
       if (!aula.data_hora_inicio) return false;
-      return new Date(aula.data_hora_inicio) >= dataLimite;
+      return dayjs(aula.data_hora_inicio).tz('America/Sao_Paulo').toDate() >= dataLimite;
     });
 
     console.log('🕐 [INSTRUTOR STATS] Aulas recentes (últimos 30 dias):', aulasRecentes.length);
@@ -295,7 +293,7 @@ export class DashboardInstrutorService {
             tipo: aula.tipo || 'Jiu-Jitsu',
             alunos: numAlunos,
             local: aula.unidade?.nome || 'Tatame Principal',
-            data: new Date(), // Data de hoje
+            data: dayjs().tz('America/Sao_Paulo').toDate(), // Data de hoje
           };
         }),
       );
@@ -363,7 +361,7 @@ export class DashboardInstrutorService {
         const dados = alunosMap.get(alunoId);
         dados.presencas++;
 
-        if (new Date(presenca.created_at) > new Date(dados.ultimaPresenca)) {
+        if (dayjs(presenca.created_at).tz('America/Sao_Paulo').isAfter(dayjs(dados.ultimaPresenca).tz('America/Sao_Paulo'))) {
           dados.ultimaPresenca = presenca.created_at;
         }
       }

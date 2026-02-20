@@ -41,8 +41,10 @@ import {
   XCircle,
   RefreshCw,
   Eye,
+  CreditCard,
 } from "lucide-react";
 import FiltroUnidade from "@/components/financeiro/FiltroUnidade";
+import AtualizarCartaoModal from "@/components/financeiro/AtualizarCartaoModal";
 
 interface Plano {
   id: string;
@@ -107,6 +109,10 @@ export default function Assinaturas() {
   const [showDetalhesDialog, setShowDetalhesDialog] = useState(false);
   const [selectedAssinatura, setSelectedAssinatura] =
     useState<Assinatura | null>(null);
+  const [modalCartao, setModalCartao] = useState<{
+    open: boolean;
+    assinatura: Assinatura | null;
+  }>({ open: false, assinatura: null });
   const [mensagemModal, setMensagemModal] = useState<{
     aberto: boolean;
     titulo: string;
@@ -1255,6 +1261,23 @@ export default function Assinaturas() {
                   <p className="text-sm">{selectedAssinatura.observacoes}</p>
                 </div>
               )}
+
+              {/* Botão Atualizar Cartão */}
+              {selectedAssinatura.metodo_pagamento === "CARTAO" && (
+                <div className="pt-4 border-t">
+                  <Button
+                    onClick={() => {
+                      setModalCartao({ open: true, assinatura: selectedAssinatura });
+                      setShowDetalhesDialog(false);
+                    }}
+                    variant="outline"
+                    className="w-full"
+                  >
+                    <CreditCard className="h-4 w-4 mr-2" />
+                    Atualizar Cartão de Crédito
+                  </Button>
+                </div>
+              )}
             </div>
           )}
         </DialogContent>
@@ -1299,6 +1322,17 @@ export default function Assinaturas() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Modal Atualizar Cartão */}
+      <AtualizarCartaoModal
+        assinatura={modalCartao.assinatura}
+        open={modalCartao.open}
+        onClose={() => setModalCartao({ open: false, assinatura: null })}
+        onSuccess={() => {
+          carregarDados();
+          setModalCartao({ open: false, assinatura: null });
+        }}
+      />
     </div>
   );
 }

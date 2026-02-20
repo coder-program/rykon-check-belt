@@ -6,6 +6,12 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource, EntityManager, In } from 'typeorm';
+import * as dayjs from 'dayjs';
+import * as utc from 'dayjs/plugin/utc';
+import * as timezone from 'dayjs/plugin/timezone';
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
 import { FaixaDef, CategoriaFaixa } from './entities/faixa-def.entity';
 import { AlunoFaixa } from './entities/aluno-faixa.entity';
 import { AlunoFaixaGrau, OrigemGrau } from './entities/aluno-faixa-grau.entity';
@@ -60,15 +66,13 @@ export class GraduacaoService {
    * Calcula o número de meses entre duas datas
    */
   private calcularMesesEntreDatas(dataInicio: Date, dataFim: Date): number {
-    const inicio = new Date(dataInicio);
-    const fim = new Date(dataFim);
+    const inicio = dayjs(dataInicio).tz('America/Sao_Paulo');
+    const fim = dayjs(dataFim).tz('America/Sao_Paulo');
 
-    let meses =
-      (fim.getFullYear() - inicio.getFullYear()) * 12 +
-      (fim.getMonth() - inicio.getMonth());
+    let meses = fim.diff(inicio, 'month');
 
     // Se o dia final for menor que o dia inicial, subtrair 1 mês
-    if (fim.getDate() < inicio.getDate()) {
+    if (fim.date() < inicio.date()) {
       meses--;
     }
 
@@ -144,14 +148,10 @@ export class GraduacaoService {
 
     // Calcular tempo na faixa
     // Usar dt_inicio da faixa ativa como referência
-    const agora = new Date();
-    const dataInicio =
-      faixaAtiva.dt_inicio instanceof Date
-        ? faixaAtiva.dt_inicio
-        : new Date(faixaAtiva.dt_inicio);
+    const agora = dayjs().tz('America/Sao_Paulo');
+    const dataInicio = dayjs(faixaAtiva.dt_inicio).tz('America/Sao_Paulo');
 
-    const tempoNaFaixa = agora.getTime() - dataInicio.getTime();
-    const diasNaFaixa = Math.floor(tempoNaFaixa / (1000 * 60 * 60 * 24));
+    const diasNaFaixa = agora.diff(dataInicio, 'day');
 
     // Buscar tempo mínimo baseado na configuração da unidade do aluno
     const tempoMinimo = await this.getTempoMinimoDiasPorFaixa(
@@ -179,7 +179,7 @@ export class GraduacaoService {
       diasRestantes,
       tempoMinimoAnos,
       proximaFaixa: proximaFaixa?.nome_exibicao,
-      dtInicioFaixa: dataInicio,
+      dtInicioFaixa: dataInicio.toDate(),
       alunoFaixaId: faixaAtiva.id,
     };
   }
@@ -303,9 +303,9 @@ export class GraduacaoService {
       .filter((af) => af.aluno != null) // Filtrar registros sem aluno
       .map((af) => {
         // Calcular idade do aluno
-        const hoje = new Date();
-        const nascimento = new Date(af.aluno.data_nascimento);
-        const idade = hoje.getFullYear() - nascimento.getFullYear();
+        const hoje = dayjs().tz('America/Sao_Paulo');
+        const nascimento = dayjs(af.aluno.data_nascimento).tz('America/Sao_Paulo');
+        const idade = hoje.diff(nascimento, 'year');
         const isKids = idade < 16;
 
         // Buscar configuração personalizada da unidade para esta faixa
@@ -359,7 +359,7 @@ export class GraduacaoService {
           const dataInicioFaixa = af.dt_inicio || af.created_at;
           const mesesNaFaixa = this.calcularMesesEntreDatas(
             dataInicioFaixa,
-            hoje,
+            hoje.toDate(),
           );
 
           faltamAulas = Math.max(0, tempoMinimoRequerido - mesesNaFaixa);
@@ -518,7 +518,7 @@ export class GraduacaoService {
       graduacao.tamanho_faixa = dto.tamanhoFaixa || null;
       graduacao.concedido_por = dto.concedidoPor || null;
       graduacao.aprovado = aprovado;
-      graduacao.dt_aprovacao = aprovado ? new Date() : null;
+      graduacao.dt_aprovacao = aprovado ? dayjs().tz('America/Sao_Paulo').toDate() : null;
       graduacao.aprovado_por = aprovado ? dto.concedidoPor || null : null;
 
       const graduacaoSalva = await manager.save(graduacao);
@@ -527,7 +527,7 @@ export class GraduacaoService {
       if (aprovado) {
         // Finalizar faixa atual
         faixaAtiva.ativa = false;
-        faixaAtiva.dt_fim = new Date();
+        faixaAtiva.dt_fim = dayjs().tz('America/Sao_Paulo').toDate();
         await manager.save(faixaAtiva);
 
         // Criar nova faixa ativa
@@ -535,7 +535,7 @@ export class GraduacaoService {
           aluno_id: alunoId,
           faixa_def_id: dto.faixaDestinoId,
           ativa: true,
-          dt_inicio: new Date(),
+          dt_inicio: dayjs().tz('America/Sao_Paulo').toDate(),
           graus_atual: 0,
           presencas_no_ciclo: 0,
           presencas_total_fx: 0,
@@ -675,7 +675,7 @@ export class GraduacaoService {
       aluno_id: alunoId,
       faixa_def_id: dto.faixaDefId,
       ativa: true,
-      dt_inicio: dto.dtInicio || new Date(),
+      dt_inicio: dto.dtInicio || dayjs().tz('America/Sao_Paulo').toDate(),
       graus_atual: dto.grausInicial || 0,
       presencas_no_ciclo: 0,
       presencas_total_fx: 0,
@@ -796,17 +796,9 @@ export class GraduacaoService {
     const dataNascimento = aluno.data_nascimento;
     let idade = 0;
     if (dataNascimento) {
-      const hoje = new Date();
-      const nascimento = new Date(dataNascimento);
-      idade = hoje.getFullYear() - nascimento.getFullYear();
-      const mesAtual = hoje.getMonth();
-      const mesNascimento = nascimento.getMonth();
-      if (
-        mesAtual < mesNascimento ||
-        (mesAtual === mesNascimento && hoje.getDate() < nascimento.getDate())
-      ) {
-        idade--;
-      }
+      const hoje = dayjs().tz('America/Sao_Paulo');
+      const nascimento = dayjs(dataNascimento).tz('America/Sao_Paulo');
+      idade = hoje.diff(nascimento, 'year');
     }
 
     // Determinar categoria baseado na idade
@@ -932,7 +924,7 @@ export class GraduacaoService {
         id: null,
         faixa: 'Branca',
         grau: 1,
-        dataConcessao: new Date().toISOString(),
+        dataConcessao: dayjs().tz('America/Sao_Paulo').toISOString(),
         pontosAtuais: 0,
         pontosNecessarios: 100,
         proximaFaixa: 'Azul',
@@ -1068,9 +1060,7 @@ export class GraduacaoService {
         id: '2',
         titulo: 'Consistência nas Aulas',
         descricao: 'Manter 80% de presença mensal',
-        prazo: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
-          .toISOString()
-          .split('T')[0],
+        prazo: dayjs().tz('America/Sao_Paulo').add(30, 'day').format('YYYY-MM-DD'),
         progresso: Math.min(
           Math.round((statusAtual.presencasNoCiclo / 20) * 100),
           100,
@@ -1105,10 +1095,10 @@ export class GraduacaoService {
   }
 
   private calcularTempoNaGraduacao(dataConcessao: Date): string {
-    const agora = new Date();
-    const diffMs = agora.getTime() - dataConcessao.getTime();
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-    const meses = Math.floor(diffDays / 30);
+    const agora = dayjs().tz('America/Sao_Paulo');
+    const concessao = dayjs(dataConcessao).tz('America/Sao_Paulo');
+    const diffDays = agora.diff(concessao, 'day');
+    const meses = agora.diff(concessao, 'month');
 
     if (meses === 0) {
       return `${diffDays} dias`;
@@ -1120,10 +1110,9 @@ export class GraduacaoService {
   private calcularPrazoEstimado(presencasRestantes: number): string {
     // Assumindo 3 aulas por semana, calcular prazo estimado
     const semanasNecessarias = Math.ceil(presencasRestantes / 3);
-    const prazoEstimado = new Date();
-    prazoEstimado.setDate(prazoEstimado.getDate() + semanasNecessarias * 7);
+    const prazoEstimado = dayjs().tz('America/Sao_Paulo').add(semanasNecessarias * 7, 'day');
 
-    return prazoEstimado.toISOString().split('T')[0];
+    return prazoEstimado.format('YYYY-MM-DD');
   }
 
   /**
@@ -1158,7 +1147,7 @@ export class GraduacaoService {
     const graduacoesEsteAno = await this.alunoGraduacaoRepository
       .createQueryBuilder('ag')
       .where('EXTRACT(YEAR FROM ag.dt_graduacao) = :ano', {
-        ano: new Date().getFullYear(),
+        ano: dayjs().tz('America/Sao_Paulo').year(),
       })
       .getCount();
 
@@ -1217,7 +1206,7 @@ export class GraduacaoService {
       // Desativar faixa atual
       await queryRunner.manager.update(AlunoFaixa, faixaAtiva.id, {
         ativa: false,
-        dt_fim: new Date(),
+        dt_fim: dayjs().tz('America/Sao_Paulo').toDate(),
       });
 
       // Criar nova faixa
@@ -1225,7 +1214,7 @@ export class GraduacaoService {
         aluno_id: alunoId,
         faixa_def_id: proximaFaixa.id,
         ativa: true,
-        dt_inicio: new Date(),
+        dt_inicio: dayjs().tz('America/Sao_Paulo').toDate(),
         graus_atual: 1, // Começa com primeiro grau da nova faixa
         presencas_no_ciclo: 0,
         presencas_total_fx: 0,
@@ -1238,7 +1227,7 @@ export class GraduacaoService {
         aluno_id: alunoId,
         faixa_origem_id: faixaAtiva.faixa_def_id,
         faixa_destino_id: proximaFaixa.id,
-        dt_graduacao: new Date(),
+        dt_graduacao: dayjs().tz('America/Sao_Paulo').toDate(),
         observacao: observacao || 'Graduação automática',
       });
 
@@ -1300,7 +1289,7 @@ export class GraduacaoService {
       const grau = queryRunner.manager.create(AlunoFaixaGrau, {
         aluno_faixa_id: faixaAtiva.id,
         grau_num: novoGrau,
-        dt_concessao: new Date(),
+        dt_concessao: dayjs().tz('America/Sao_Paulo').toDate(),
         observacao,
         origem: OrigemGrau.MANUAL,
       });

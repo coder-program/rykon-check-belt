@@ -22,6 +22,12 @@ import {
   UpdateDespesaDto,
   BaixarDespesaDto,
 } from '../dto/despesa.dto';
+import * as dayjs from 'dayjs';
+import * as utc from 'dayjs/plugin/utc';
+import * as timezone from 'dayjs/plugin/timezone';
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 @Injectable()
 export class DespesasService {
@@ -105,16 +111,14 @@ export class DespesasService {
     const despesas = await query.getMany();
 
     // Atualizar status de despesas atrasadas automaticamente
-    const hoje = new Date();
-    hoje.setHours(0, 0, 0, 0);
+    const hoje = dayjs().tz('America/Sao_Paulo').startOf('day');
 
     const despesasParaAtualizar = despesas.filter((despesa) => {
       if (despesa.status !== StatusDespesa.A_PAGAR) return false;
       
-      const dataVencimento = new Date(despesa.data_vencimento);
-      dataVencimento.setHours(0, 0, 0, 0);
+      const dataVencimento = dayjs(despesa.data_vencimento).tz('America/Sao_Paulo').startOf('day');
       
-      return dataVencimento < hoje;
+      return dataVencimento.isBefore(hoje);
     });
 
     if (despesasParaAtualizar.length > 0) {
@@ -175,8 +179,8 @@ export class DespesasService {
       if (despesa.status !== StatusDespesa.PAGA) {
         despesa.status = StatusDespesa.PAGA;
         despesa.data_pagamento = baixarDto.data_pagamento
-          ? new Date(baixarDto.data_pagamento)
-          : new Date();
+          ? dayjs(baixarDto.data_pagamento).tz('America/Sao_Paulo').toDate()
+          : dayjs().tz('America/Sao_Paulo').toDate();
         despesa.pago_por = user?.id || null;
         if (baixarDto.observacoes) {
           despesa.observacoes = baixarDto.observacoes;
@@ -187,8 +191,8 @@ export class DespesasService {
     }
 
     const dataPagamento = baixarDto.data_pagamento
-      ? new Date(baixarDto.data_pagamento)
-      : new Date();
+      ? dayjs(baixarDto.data_pagamento).tz('America/Sao_Paulo').toDate()
+      : dayjs().tz('America/Sao_Paulo').toDate();
 
     despesa.data_pagamento = dataPagamento;
     despesa.status = StatusDespesa.PAGA;
@@ -233,8 +237,7 @@ await this.transacaoRepository.save(transacao);
   }
 
   async verificarVencimentos(): Promise<void> {
-    const hoje = new Date();
-    hoje.setHours(0, 0, 0, 0);
+    const hoje = dayjs().tz('America/Sao_Paulo').startOf('day').toDate();
 
     await this.despesaRepository
       .createQueryBuilder()

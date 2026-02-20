@@ -18,6 +18,12 @@ import { Aluno, StatusAluno, Genero } from './entities/aluno.entity';
 import { AlunoConvenio, AlunoConvenioStatus } from '../financeiro/entities/aluno-convenio.entity';
 import { Convenio } from '../financeiro/entities/convenio.entity';
 import * as bcrypt from 'bcrypt';
+import * as dayjs from 'dayjs';
+import * as utc from 'dayjs/plugin/utc';
+import * as timezone from 'dayjs/plugin/timezone';
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 @Injectable()
 export class ConviteCadastroService {
@@ -101,7 +107,7 @@ export class ConviteCadastroService {
       };
     }
 
-    if (new Date() > convite.data_expiracao) {
+    if (dayjs().tz('America/Sao_Paulo').isAfter(dayjs(convite.data_expiracao).tz('America/Sao_Paulo'))) {
       return {
         valido: false,
         mensagem: 'Este convite expirou',
@@ -138,7 +144,7 @@ export class ConviteCadastroService {
       throw new BadRequestException('Este convite já foi utilizado');
     }
 
-    if (new Date() > convite.data_expiracao) {
+    if (dayjs().tz('America/Sao_Paulo').isAfter(dayjs(convite.data_expiracao).tz('America/Sao_Paulo'))) {
       throw new BadRequestException('Este convite expirou');
     }
 
@@ -169,10 +175,8 @@ export class ConviteCadastroService {
 
     // Criar usuário se for responsável ou aluno adulto (18+)
     let usuarioId: string | null = null;
-    const dataNasc = new Date(dto.data_nascimento);
-    const idade = Math.floor(
-      (Date.now() - dataNasc.getTime()) / (365.25 * 24 * 60 * 60 * 1000),
-    );
+    const dataNasc = dayjs(dto.data_nascimento).tz('America/Sao_Paulo');
+    const idade = dayjs().tz('America/Sao_Paulo').diff(dataNasc, 'year');
 
     if (convite.tipo_cadastro === 'RESPONSAVEL' || idade >= 18) {
       // Verificar se email já existe
@@ -215,14 +219,14 @@ export class ConviteCadastroService {
       cpf: dto.cpf,
       email: dto.email,
       telefone_whatsapp: dto.telefone,
-      data_nascimento: dataNasc,
+      data_nascimento: dataNasc.toDate(),
       genero: dto.genero as any,
       endereco_id: enderecoId || undefined,
       unidade_id: convite.unidade_id || undefined,
       usuario_id: usuarioId || undefined,
       status: 'ATIVO' as any,
       data_matricula:
-        convite.tipo_cadastro === 'ALUNO' ? new Date() : undefined,
+        convite.tipo_cadastro === 'ALUNO' ? dayjs().tz('America/Sao_Paulo').toDate() : undefined,
       faixa_atual: dto.faixa_atual || undefined,
       grau_atual: dto.grau_atual ? parseInt(dto.grau_atual) : undefined,
       responsavel_nome: dto.responsavel_nome || undefined,
@@ -234,7 +238,7 @@ export class ConviteCadastroService {
 
     // Marcar convite como usado
     convite.usado = true;
-    convite.usado_em = new Date();
+    convite.usado_em = dayjs().tz('America/Sao_Paulo').toDate();
     if (usuarioId) {
       convite.usuario_criado_id = usuarioId;
     }
@@ -276,7 +280,7 @@ export class ConviteCadastroService {
     }
 
     // Estender expiração por mais 7 dias
-    convite.data_expiracao = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    convite.data_expiracao = dayjs().tz('America/Sao_Paulo').add(7, 'day').toDate();
     await this.conviteRepository.save(convite);
 
     const link = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/cadastro/${convite.token}`;
@@ -352,12 +356,12 @@ export class ConviteCadastroService {
       cpf: dto.cpf,
       email: dto.email,
       telefone: dto.telefone,
-      data_nascimento: new Date(dto.data_nascimento),
+      data_nascimento: dayjs(dto.data_nascimento).tz('America/Sao_Paulo').toDate(),
       genero: (dto.genero as Genero) || Genero.MASCULINO,
       unidade_id: dto.unidade_id,
       usuario_id: usuarioSalvo.id,
       status: StatusAluno.ATIVO,
-      data_matricula: new Date(),
+      data_matricula: dayjs().tz('America/Sao_Paulo').toDate(),
     });
 
     const alunoSalvo = await this.alunoRepository.save(aluno);
@@ -375,7 +379,7 @@ export class ConviteCadastroService {
           unidade_id: dto.unidade_id,
           convenio_user_id: dto.convenio_user_id,
           status: AlunoConvenioStatus.ATIVO,
-          data_ativacao: new Date(),
+          data_ativacao: dayjs().tz('America/Sao_Paulo').toDate(),
           metadata: {
             email: dto.email,
             telefone: dto.telefone,

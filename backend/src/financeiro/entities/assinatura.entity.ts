@@ -110,6 +110,9 @@ export class Assinatura {
   @Column({ type: 'jsonb', nullable: true })
   dados_pagamento: any;
 
+  @Column({ type: 'int', default: 0 })
+  retry_count: number;
+
   @OneToMany(() => Fatura, (fatura) => fatura.assinatura)
   faturas: Fatura[];
 

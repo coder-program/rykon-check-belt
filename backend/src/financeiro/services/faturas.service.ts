@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between } from 'typeorm';
@@ -20,9 +21,18 @@ import {
   UpdateFaturaDto,
   BaixarFaturaDto,
 } from '../dto/fatura.dto';
+import * as dayjs from 'dayjs';
+import * as utc from 'dayjs/plugin/utc';
+import * as timezone from 'dayjs/plugin/timezone';
+
+// Configurar dayjs com plugins de timezone
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 @Injectable()
 export class FaturasService {
+  private readonly logger = new Logger(FaturasService.name);
+
   constructor(
     @InjectRepository(Fatura)
     private faturaRepository: Repository<Fatura>,
@@ -103,8 +113,8 @@ export class FaturasService {
 
     if (mes) {
       const [ano, mesNum] = mes.split('-');
-      const dataInicio = new Date(parseInt(ano), parseInt(mesNum) - 1, 1);
-      const dataFim = new Date(parseInt(ano), parseInt(mesNum), 0);
+      const dataInicio = dayjs(`${ano}-${mesNum}-01`).tz('America/Sao_Paulo').startOf('month').toDate();
+      const dataFim = dayjs(`${ano}-${mesNum}-01`).tz('America/Sao_Paulo').endOf('month').toDate();
 
       query.andWhere(
         'fatura.data_vencimento BETWEEN :dataInicio AND :dataFim',
@@ -181,8 +191,8 @@ export class FaturasService {
     }
 
     const dataPagamento = baixarDto.data_pagamento
-      ? new Date(baixarDto.data_pagamento)
-      : new Date();
+      ? dayjs(baixarDto.data_pagamento).tz('America/Sao_Paulo').toDate()
+      : dayjs().tz('America/Sao_Paulo').toDate();
 
     fatura.valor_pago = valorPago;
     fatura.data_pagamento = dataPagamento;
@@ -228,8 +238,7 @@ export class FaturasService {
 
   async verificarVencimentos(): Promise<void> {
     // Job para marcar faturas vencidas
-    const hoje = new Date();
-    hoje.setHours(0, 0, 0, 0);
+    const hoje = dayjs().tz('America/Sao_Paulo').startOf('day').toDate();
 
     await this.faturaRepository
       .createQueryBuilder()
@@ -289,11 +298,27 @@ export class FaturasService {
   }
 
   async findByAluno(alunoId: string): Promise<Fatura[]> {
-    return await this.faturaRepository.find({
+    this.logger.log(`🔍 Buscando faturas para aluno: ${alunoId}`);
+    
+    const faturas = await this.faturaRepository.find({
       where: { aluno_id: alunoId },
       relations: ['assinatura', 'assinatura.plano'],
       order: { data_vencimento: 'DESC' },
     });
+    
+    this.logger.log(`📄 Encontradas ${faturas.length} faturas para o aluno ${alunoId}`);
+    
+    if (faturas.length > 0) {
+      faturas.forEach((f, idx) => {
+        this.logger.log(
+          `  ${idx + 1}. ${f.numero_fatura} - ${f.status} - R$ ${f.valor_total} - Venc: ${f.data_vencimento}`
+        );
+      });
+    } else {
+      this.logger.warn(`⚠️ Nenhuma fatura encontrada para o aluno ${alunoId}`);
+    }
+    
+    return faturas;
   }
 
   async parcelarFatura(
@@ -323,8 +348,10 @@ export class FaturasService {
     const parcelas: Fatura[] = [];
 
     for (let i = 0; i < numeroParcelas; i++) {
-      const dataVencimento = new Date(faturaOriginal.data_vencimento);
-      dataVencimento.setMonth(dataVencimento.getMonth() + i);
+      const dataVencimento = dayjs(faturaOriginal.data_vencimento)
+        .tz('America/Sao_Paulo')
+        .add(i, 'month')
+        .toDate();
 
       const numeroFatura = await this.gerarNumeroFatura();
 
@@ -388,12 +415,12 @@ export class FaturasService {
       return { geradas: 0, faturas: [] };
     }
 
-    const hoje = new Date();
+    const hoje = dayjs().tz('America/Sao_Paulo').toDate();
     const mesAtual = hoje.getMonth();
     const anoAtual = hoje.getFullYear();
 
     // Primeiro dia do mês atual
-    const inicioMes = new Date(anoAtual, mesAtual, 1);
+    const inicioMes = dayjs().tz('America/Sao_Paulo').startOf('month').toDate();
 
     // Buscar TODAS as faturas do mês atual em UMA única query
     const assinaturaIds = assinaturas.map(a => a.id);
@@ -451,11 +478,13 @@ export class FaturasService {
 
       for (const assinatura of assinaturasSemFatura) {
         // Calcular data de vencimento baseada no dia_vencimento da assinatura
-        const dataVencimento = new Date(
-          anoAtual,
-          mesAtual,
-          assinatura.dia_vencimento || 10,
-        );
+        const dataVencimento = dayjs()
+          .tz('America/Sao_Paulo')
+          .year(anoAtual)
+          .month(mesAtual)
+          .date(assinatura.dia_vencimento || 10)
+          .startOf('day')
+          .toDate();
 
         // Gerar número da fatura sequencialmente, pulando duplicados
         let numeroFatura: string;

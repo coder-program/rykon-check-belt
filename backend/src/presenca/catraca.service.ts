@@ -1,6 +1,12 @@
 import { Injectable, Logger, BadRequestException, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import * as dayjs from 'dayjs';
+import * as utc from 'dayjs/plugin/utc';
+import * as timezone from 'dayjs/plugin/timezone';
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
 import { Unidade, CatracaConfig } from '../people/entities/unidade.entity';
 import { Person } from '../people/entities/person.entity';
 import { Aluno } from '../people/entities/aluno.entity';
@@ -201,8 +207,8 @@ export class CatracaService {
       return true; // Sem restrição de horário
     }
 
-    const agora = new Date();
-    const horaAtual = agora.getHours() * 60 + agora.getMinutes(); // Minutos desde meia-noite
+    const agora = dayjs().tz('America/Sao_Paulo');
+    const horaAtual = agora.hour() * 60 + agora.minute(); // Minutos desde meia-noite
 
     const [horaInicio, minInicio] = config.horario_funcionamento.inicio.split(':').map(Number);
     const [horaFim, minFim] = config.horario_funcionamento.fim.split(':').map(Number);
@@ -217,8 +223,7 @@ export class CatracaService {
    * Verifica se já fez check-in hoje
    */
   private async verificarCheckinHoje(aluno_id: string, unidade_id: string): Promise<boolean> {
-    const hoje = new Date();
-    hoje.setHours(0, 0, 0, 0);
+    const hoje = dayjs().tz('America/Sao_Paulo').startOf('day').toDate();
 
     const presenca = await this.presencaRepository
       .createQueryBuilder('presenca')
@@ -244,8 +249,8 @@ export class CatracaService {
       status: PresencaStatus.PRESENTE,
       modo_registro: PresencaMetodo.FACIAL,
       metodo: 'CATRACA_BIOMETRICA',
-      hora_checkin: new Date(),
-      data_presenca: new Date(),
+      hora_checkin: dayjs().tz('America/Sao_Paulo').toDate(),
+      data_presenca: dayjs().tz('America/Sao_Paulo').toDate(),
       observacoes: `Check-in via catraca ${unidade.catraca_config?.tipo || 'biométrica'} - Dispositivo: ${data.dispositivo_id || 'N/A'}`,
       peso_presenca: 1.0,
       status_aprovacao: unidade.requer_aprovacao_checkin ? 'PENDENTE' : 'APROVADO',

@@ -1,11 +1,18 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, LessThan } from 'typeorm';
+import { Repository, LessThan, Not, IsNull, Between } from 'typeorm';
 import { Fatura, StatusFatura } from '../entities/fatura.entity';
-import { Assinatura, StatusAssinatura } from '../entities/assinatura.entity';
+import { Assinatura, StatusAssinatura, MetodoPagamento } from '../entities/assinatura.entity';
 import { ConfiguracaoCobranca } from '../entities/configuracao-cobranca.entity';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { NotificacoesService } from './notificacoes.service';
+import { PaytimeIntegrationService } from './paytime-integration.service';
+import * as dayjs from 'dayjs';
+import * as utc from 'dayjs/plugin/utc';
+import * as timezone from 'dayjs/plugin/timezone';
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 @Injectable()
 export class AutomacoesService {
@@ -19,6 +26,7 @@ export class AutomacoesService {
     @InjectRepository(ConfiguracaoCobranca)
     private configRepository: Repository<ConfiguracaoCobranca>,
     private notificacoesService: NotificacoesService,
+    private paytimeIntegrationService: PaytimeIntegrationService,
   ) {}
 
   /**
@@ -289,6 +297,14 @@ export class AutomacoesService {
   }
 
   /**
+   * ⚠️ CRON REMOVIDO: verificarCartoesVencendo
+   * ⚠️ CRON REMOVIDO: processarCobrancasRecorrentes
+   * 
+   * Esses crons foram movidos para um serviço scheduler separado.
+   * Ver: SERVICO_SCHEDULER_RECORRENCIA.md
+   */
+
+  /**
    * Executa todas as automações manualmente
    */
   async executarTodasAutomacoes(): Promise<any> {
@@ -299,12 +315,15 @@ export class AutomacoesService {
     await this.gerarFaturasRecorrentes();
     await this.enviarLembretesVencimento();
 
+    // ⚠️ REMOVIDO: processarCobrancasRecorrentes() - agora roda em serviço separado
+
     const duracao = Date.now() - inicio;
 
     return {
-      message: 'Automações executadas com sucesso',
+      message: 'Automações executadas com sucesso (exceto cobranças recorrentes)',
       duracao_ms: duracao,
       timestamp: new Date(),
+      observacao: 'Cobranças recorrentes e cartões vencendo rodam em serviço scheduler separado',
     };
   }
 }

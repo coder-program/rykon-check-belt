@@ -13,6 +13,7 @@ import {
   Calendar,
   ArrowLeft,
   CreditCard,
+  Loader2,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import ProcessarPagamentoModal from "@/components/financeiro/ProcessarPagamentoModal";
@@ -44,6 +45,7 @@ export default function MinhasFaturas() {
   const [loading, setLoading] = useState(true);
   const [faturaParaPagar, setFaturaParaPagar] = useState<Fatura | null>(null);
   const [modalPagamentoOpen, setModalPagamentoOpen] = useState(false);
+  const [faturasComPagamentoPendente, setFaturasComPagamentoPendente] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     carregarMinhasFaturas();
@@ -54,15 +56,19 @@ export default function MinhasFaturas() {
       const token = localStorage.getItem("token");
       const userData = localStorage.getItem("user");
 
+      console.log("🔍 [FRONTEND] Iniciando busca de faturas...");
+
       if (!token || !userData) {
-        console.error("Token ou usuário não encontrado");
+        console.error("❌ Token ou usuário não encontrado");
         setLoading(false);
         return;
       }
 
       const user = JSON.parse(userData);
+      console.log("👤 Usuário logado:", { id: user.id, nome: user.nome, email: user.email });
 
       // Buscar o aluno_id do usuário logado
+      console.log(`🔎 Buscando dados do aluno para usuário ID: ${user.id}`);
       const alunoResponse = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/alunos/usuario/${user.id}`,
         {
@@ -73,20 +79,22 @@ export default function MinhasFaturas() {
       );
 
       if (!alunoResponse.ok) {
-        console.error("Erro ao buscar aluno:", alunoResponse.statusText);
+        console.error("❌ Erro ao buscar aluno:", alunoResponse.status, alunoResponse.statusText);
         setLoading(false);
         return;
       }
 
       const aluno = await alunoResponse.json();
+      console.log("✅ Aluno encontrado:", { id: aluno.id, nome: aluno.nome });
 
       if (!aluno) {
-        console.warn("Nenhum aluno encontrado para este usuário");
+        console.warn("⚠️ Nenhum aluno encontrado para este usuário");
         setLoading(false);
         return;
       }
 
       // Buscar faturas do aluno
+      console.log(`💰 Buscando faturas para aluno ID: ${aluno.id}`);
       const faturasResponse = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/faturas/aluno/${aluno.id}`,
         {
@@ -98,15 +106,54 @@ export default function MinhasFaturas() {
 
       if (faturasResponse.ok) {
         const faturasData = await faturasResponse.json();
+        console.log(`✅ ${faturasData.length} faturas encontradas:`, faturasData);
         setFaturas(faturasData);
+        console.log(`📝 Estado 'faturas' atualizado com ${faturasData.length} itens`);
+        
+        // Buscar transações pendentes para cada fatura
+        await verificarTransacoesPendentes(faturasData, token);
       } else {
-        console.error("Erro ao buscar faturas:", faturasResponse.statusText);
+        console.error("❌ Erro ao buscar faturas:", faturasResponse.status, faturasResponse.statusText);
       }
 
       setLoading(false);
+      console.log(`🏁 Loading finalizado: false`);
     } catch (error) {
-      console.error(" Erro ao carregar faturas:", error);
+      console.error("💥 Erro ao carregar faturas:", error);
       setLoading(false);
+    }
+  };
+
+  const verificarTransacoesPendentes = async (faturasData: Fatura[], token: string) => {
+    try {
+      console.log("🔍 Verificando transações pendentes...");
+      const faturaIds = faturasData
+        .filter(f => f.status === "PENDENTE" || f.status === "ATRASADA")
+        .map(f => f.id);
+      
+      if (faturaIds.length === 0) return;
+
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/transacoes?status=PENDENTE`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (response.ok) {
+        const transacoes = await response.json();
+        const faturasComPendente = new Set(
+          transacoes
+            .filter((t: any) => t.fatura_id && faturaIds.includes(t.fatura_id))
+            .map((t: any) => t.fatura_id)
+        );
+        setFaturasComPagamentoPendente(faturasComPendente);
+        console.log(`💳 ${faturasComPendente.size} faturas com pagamento pendente`);
+      }
+    } catch (error) {
+      console.error("⚠️ Erro ao verificar transações:", error);
     }
   };
 
@@ -168,6 +215,8 @@ export default function MinhasFaturas() {
           new Date(b.data_vencimento).getTime()
       )[0],
   };
+
+  console.log(`🎨 [RENDER] Estado atual:`, { loading, faturasCount: faturas.length, faturas });
 
   if (loading) {
     return (
@@ -256,11 +305,18 @@ export default function MinhasFaturas() {
                 className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors"
               >
                 <div className="flex-1">
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 flex-wrap">
                     <p className="font-semibold text-gray-900">
                       {fatura.numero_fatura}
                     </p>
                     {getStatusBadge(fatura.status)}
+                    {/* Badge de pagamento em processamento */}
+                    {faturasComPagamentoPendente.has(fatura.id) && (
+                      <Badge className="bg-blue-100 text-blue-800">
+                        <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                        Pagamento em Processamento
+                      </Badge>
+                    )}
                   </div>
                   
                   {/* Descrição/Plano */}

@@ -6,6 +6,12 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource, ILike } from 'typeorm';
+import * as dayjs from 'dayjs';
+import * as utc from 'dayjs/plugin/utc';
+import * as timezone from 'dayjs/plugin/timezone';
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
 import { Aluno, StatusAluno, FaixaEnum } from '../entities/aluno.entity';
 import { Person } from '../entities/person.entity';
 import { CreateAlunoDto } from '../dto/create-aluno.dto';
@@ -164,7 +170,7 @@ export class AlunosService {
 
     // Filtro por categoria (kids/adulto baseado na idade)
     if (params.categoria && params.categoria !== 'todos') {
-      const anoAtual = new Date().getFullYear();
+      const anoAtual = dayjs().tz('America/Sao_Paulo').year();
 
       if (params.categoria.toLowerCase() === 'kids') {
         // Kids: menores de 16 anos no ano atual
@@ -483,12 +489,12 @@ export class AlunosService {
         dataNascimento = dto.data_nascimento;
       } else {
         // É uma string, converter
-        const testDate = new Date(String(dto.data_nascimento));
-        if (isNaN(testDate.getTime())) {
+        const testDate = dayjs(String(dto.data_nascimento));
+        if (!testDate.isValid()) {
           console.error('[ALUNOS SERVICE] Data de nascimento inválida');
           throw new BadRequestException('Data de nascimento inválida');
         }
-        dataNascimento = new Date(String(dto.data_nascimento) + 'T12:00:00');
+        dataNascimento = dayjs(String(dto.data_nascimento)).tz('America/Sao_Paulo').hour(12).minute(0).second(0).toDate();
       }
       
       const idade = this.calcularIdade(dataNascimento);
@@ -541,26 +547,17 @@ export class AlunosService {
         status: dto.status || StatusAluno.ATIVO,
         // Garantir que data_matricula seja sempre a data local atual (horário Brasil UTC-3)
         data_matricula: dto.data_matricula
-          ? (dto.data_matricula instanceof Date ? dto.data_matricula : new Date(dto.data_matricula + 'T12:00:00'))
-          : (() => {
-              // Calcular data atual no horário do Brasil (UTC-3)
-              const agora = new Date();
-              const offsetBrasil = -3 * 60;
-              const offsetAtual = agora.getTimezoneOffset();
-              const diffMinutos = offsetAtual - offsetBrasil;
-              const agoraBrasil = new Date(agora.getTime() - (diffMinutos * 60 * 1000));
-              const dataStr = agoraBrasil.toISOString().split('T')[0];
-              return new Date(dataStr + 'T12:00:00');
-            })(),
+          ? (dto.data_matricula instanceof Date ? dto.data_matricula : dayjs(dto.data_matricula).tz('America/Sao_Paulo').hour(12).minute(0).second(0).toDate())
+          : dayjs().tz('America/Sao_Paulo').toDate(),
         data_nascimento: dataNascimento, // Usar a data já processada acima
         data_ultima_graduacao: dto.data_ultima_graduacao
-          ? new Date(dto.data_ultima_graduacao + 'T12:00:00')
+          ? dayjs(dto.data_ultima_graduacao).tz('America/Sao_Paulo').hour(12).minute(0).second(0).toDate()
           : undefined,
         // Converter strings vazias para null em campos de data
         atestado_medico_validade:
           dto.atestado_medico_validade &&
           dto.atestado_medico_validade.trim() !== ''
-            ? new Date(dto.atestado_medico_validade)
+            ? dayjs(dto.atestado_medico_validade).tz('America/Sao_Paulo').toDate()
             : null,
         // Converter strings vazias para null em campos de texto
         telefone:
@@ -649,11 +646,7 @@ export class AlunosService {
       const aluno = queryRunner.manager.create(Aluno, alunoData);
       
       // Sobrescrever created_at e updated_at com horário do Brasil
-      const agora = new Date();
-      const offsetBrasil = -3 * 60;
-      const offsetAtual = agora.getTimezoneOffset();
-      const diffMinutos = offsetAtual - offsetBrasil;
-      const agoraBrasil = new Date(agora.getTime() - (diffMinutos * 60 * 1000));
+      const agoraBrasil = dayjs().tz('America/Sao_Paulo').toDate();
       
       aluno.created_at = agoraBrasil;
       aluno.updated_at = agoraBrasil;
@@ -738,7 +731,7 @@ export class AlunosService {
         aluno_id: savedAluno.id,
         faixa_def_id: faixaDef.id,
         ativa: true,
-        dt_inicio: new Date(),
+        dt_inicio: dayjs().tz('America/Sao_Paulo').toDate(),
         graus_atual: dto.graus || 0,
         presencas_no_ciclo: 0,
         presencas_total_fx: 0,
@@ -756,7 +749,7 @@ export class AlunosService {
           const grau = queryRunner.manager.create(AlunoFaixaGrau, {
             aluno_faixa_id: savedAlunoFaixa.id,
             grau_num: i,
-            dt_concessao: new Date(),
+            dt_concessao: dayjs().tz('America/Sao_Paulo').toDate(),
             origem: OrigemGrau.MANUAL,
             observacao: 'Grau inicial do cadastro',
           });
@@ -772,8 +765,8 @@ export class AlunosService {
             aluno_id: savedAluno.id,
             unidade_id: unidadeDto.unidade_id,
             data_matricula: unidadeDto.data_matricula
-              ? new Date(unidadeDto.data_matricula)
-              : new Date(),
+              ? dayjs(unidadeDto.data_matricula).tz('America/Sao_Paulo').toDate()
+              : dayjs().tz('America/Sao_Paulo').toDate(),
             is_principal: unidadeDto.is_principal || false,
             observacoes: unidadeDto.observacoes,
             ativo: true,
@@ -794,8 +787,8 @@ export class AlunosService {
           aluno_id: savedAluno.id,
           unidade_id: dto.unidade_id,
           data_matricula: dto.data_matricula
-            ? new Date(dto.data_matricula)
-            : new Date(),
+            ? dayjs(dto.data_matricula).tz('America/Sao_Paulo').toDate()
+            : dayjs().tz('America/Sao_Paulo').toDate(),
           is_principal: true,
           ativo: true,
         });
@@ -919,7 +912,7 @@ export class AlunosService {
         throw new BadRequestException('Data de nascimento inválida');
       }
 
-      const dataNascimento = new Date(dto.data_nascimento + 'T12:00:00');
+      const dataNascimento = dayjs(dto.data_nascimento).tz('America/Sao_Paulo').hour(12).minute(0).second(0).toDate();
       const idade = this.calcularIdade(dataNascimento);
 
       if (idade <= 15) {
@@ -955,7 +948,7 @@ export class AlunosService {
     function parseDateField(val: any, fallback: any = null) {
       if (val === undefined) return fallback;
       if (val === null || String(val).trim() === '') return null;
-      return new Date(val + 'T12:00:00');
+      return dayjs(val).tz('America/Sao_Paulo').hour(12).minute(0).second(0).toDate();
     }
 
     updateData.data_nascimento = parseDateField(dto.data_nascimento, aluno.data_nascimento);
@@ -966,7 +959,7 @@ export class AlunosService {
       if (dto.atestado_medico_validade === undefined || dto.atestado_medico_validade === null || String(dto.atestado_medico_validade).trim() === '') {
         updateData.atestado_medico_validade = null;
       } else {
-        updateData.atestado_medico_validade = new Date(dto.atestado_medico_validade + 'T12:00:00');
+        updateData.atestado_medico_validade = dayjs(dto.atestado_medico_validade).tz('America/Sao_Paulo').hour(12).minute(0).second(0).toDate();
       }
     }
     // Do NOT set atestado_medico_validade here, as it's not in the DTO and may cause empty string errors
