@@ -15,34 +15,31 @@ export default function AntifraudePage() {
     loadThreeDsSdk, 
     loadClearSaleScript,
     generateSessionId,
-    checkSdkStatus 
+    checkSdkStatus,
+    idpayReady,
+    threeDsLoaded,
+    clearSaleLoaded,
+    sessionId,
   } = useAntifraud();
 
   const [loading, setLoading] = useState(true);
   const [sdkStatus, setSdkStatus] = useState({
     idpay: { loaded: false, available: false },
     threeds: { loaded: false, available: false },
-    clearsale: { loaded: false, available: false, session_id: null },
+    clearsale: { loaded: false, available: false, session_id: null as string | null },
   });
 
+  // Inicializar SDKs ao montar
   useEffect(() => {
     const initAntifraud = async () => {
       setLoading(true);
       try {
-        // Tentar carregar todos os SDKs
         await Promise.allSettled([
           loadIdpaySdk(),
           loadThreeDsSdk(),
           loadClearSaleScript(),
         ]);
-
-        // Gerar Session ID ClearSale
         await generateSessionId();
-
-        // Atualizar status
-        const status = checkSdkStatus();
-        setSdkStatus(status);
-        
         toast.success("✅ Verificação de antifraude concluída");
       } catch (error: any) {
         console.error("Erro ao inicializar antifraude:", error);
@@ -55,6 +52,14 @@ export default function AntifraudePage() {
     initAntifraud();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Atualizar status REATIVAMENTE quando os estados dos SDKs mudarem
+  useEffect(() => {
+    if (!loading) {
+      setSdkStatus(checkSdkStatus());
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [idpayReady, threeDsLoaded, clearSaleLoaded, sessionId, loading]);
 
   const getStatusDisplay = (loaded: boolean, available: boolean) => {
     if (loading) {
@@ -213,6 +218,9 @@ export default function AntifraudePage() {
                   <li>• Biometria facial</li>
                   <li>• Validação de documentos</li>
                   <li>• Prova de vida</li>
+                  <li>• SDK: <code className="bg-gray-100 px-1 rounded text-xs">idpay-b2b-sdk@2.1.2</code></li>
+                  <li>• Modo: <code className="bg-gray-100 px-1 rounded text-xs">IFRAME / UAT</code></li>
+                  <li>• Trigger: <code className="bg-gray-100 px-1 rounded text-xs">analyse_required = IDPAY</code></li>
                 </ul>
               </div>
             </div>

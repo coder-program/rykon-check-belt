@@ -1,24 +1,29 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { IDPaySDK } from "idpay-b2b-sdk";
 
 declare global {
   interface Window {
-    // IDPAY (Unico) SDK
-    AcessoBioListener?: unknown;
-    AcessoBio?: unknown;
-    // 3DS SDK  
+    // 3DS SDK
     PagSeguro?: unknown;
     // ClearSale
     csdm?: unknown;
   }
 }
 
+/** Dados retornados pelo callback onFinish do SDK IDPAY */
+export interface IdpayFinishData {
+  id: string;            // antifraud_id
+  concluded: boolean;
+  captureConcluded: boolean;
+}
+
 interface IdpayConfig {
   npmPackage: string;
-  environment: string;
-  initCode: string;
-  openCode: string;
+  environment: string;  // 'uat' | 'prod'
+  initCode?: string;
+  openCode?: string;
 }
 
 interface ThreeDsConfig {
@@ -42,10 +47,11 @@ interface SessionIdResponse {
 }
 
 export function useAntifraud() {
-  const [idpayLoaded, setIdpayLoaded] = useState(false);
+  const [idpayReady, setIdpayReady] = useState(false);
   const [threeDsLoaded, setThreeDsLoaded] = useState(false);
   const [clearSaleLoaded, setClearSaleLoaded] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const [idpaySdkConfig, setIdpaySdkConfig] = useState<IdpayConfig | null>(null);
 
   /**
    * Carregar configuração do SDK IDPAY
@@ -69,36 +75,92 @@ export function useAntifraud() {
   }, []);
 
   /**
-   * Carregar SDK IDPAY (Unico)
+   * Inicializar SDK IDPAY (idpay-b2b-sdk)
+   * Deve ser chamado assim que o componente montar para pré-carregar o iframe
    */
   const loadIdpaySdk = useCallback(async () => {
-    if (idpayLoaded || window.AcessoBio) {
-      console.log("✅ SDK IDPAY já carregado");
+    if (idpayReady) {
+      console.log("✅ SDK IDPAY já inicializado");
       return;
     }
 
     try {
-      console.log("🔐 Carregando SDK IDPAY...");
+      console.log("🔐 Buscando configuração SDK IDPAY...");
       const config = await loadIdpaySdkConfig();
+      setIdpaySdkConfig(config);
 
-      // IDPAY retorna código pronto (initCode/openCode)
-      // Não precisa carregar script via URL
-      console.log("✅ IDPAY configuração recebida:", config.environment);
-      setIdpayLoaded(true);
+      console.log("📦 SDK IDPAY config recebida:", {
+        environment: config.environment,
+      });
+
+      // Inicializar SDK — pré-carrega o iframe para experiência mais fluida
+      const env = (config.environment?.toLowerCase() === "prod" || config.environment?.toLowerCase() === "production")
+        ? undefined  // produção: não passa env
+        : "uat";    // sandbox/homologação
+
+      IDPaySDK.init({
+        type: "IFRAME",
+        ...(env ? { env } : {}),
+      } as Parameters<typeof IDPaySDK.init>[0]);
+
+      console.log("✅ SDK IDPAY inicializado com type=IFRAME, env=", env ?? "prod");
+      setIdpayReady(true);
     } catch (error) {
-      console.error("❌ Erro ao carregar configuração IDPAY:", error);
+      console.error("❌ Erro ao inicializar SDK IDPAY:", error);
       throw error;
     }
-  }, [idpayLoaded, loadIdpaySdkConfig]);
+  }, [idpayReady, loadIdpaySdkConfig]);
 
   /**
-   * Autenticar com IDPAY
+   * Abrir iframe biométrico do IDPAY (idpay-b2b-sdk)
+   * @param antifraudId  - antifraud_id retornado pelo Paytime na criação da transação
+   * @param sessionToken - session retornado pelo Paytime na criação da transação
+   * @returns dados do callback onFinish: { id, concluded, captureConcluded }
+   */
+  const openIdpayIframe = useCallback(
+    async (antifraudId: string, sessionToken: string): Promise<IdpayFinishData> => {
+      console.log("🪪 [IDPAY] Abrindo iframe biométrico...", { antifraudId });
+
+      return new Promise((resolve, reject) => {
+        try {
+          IDPaySDK.open({
+            transactionId: antifraudId,
+            token: sessionToken,
+            onFinish: (transaction: IdpayFinishData, type: string) => {
+              console.log("📸 [IDPAY] onFinish:", { transaction, type });
+              if (type === "ERROR") {
+                // Swagger: "Se type === 'ERROR': Não chamar authenticate"
+                // Rejeitar para que o caller possa tratar e oferecer nova tentativa
+                console.warn("⚠️ [IDPAY] Fluxo interrompido por erro");
+                reject(new Error("IDPAY_ERROR: fluxo interrompido. O usuário pode tentar novamente."));
+              } else {
+                // type === 'FINISH' — captura concluída: chamar authenticate
+                resolve(transaction);
+              }
+            },
+          } as Parameters<typeof IDPaySDK.open>[0]);
+        } catch (error) {
+          console.error("❌ [IDPAY] Erro ao abrir iframe:", error);
+          reject(error);
+        }
+      });
+    },
+    []
+  );
+
+  /** @deprecated Use openIdpayIframe */
+  const openIdpayCamera = openIdpayIframe;
+
+  /**
+   * Autenticar com IDPAY — envia resultado do SDK para o backend
+   * @param transactionId - _id da transação (usado na URL)
+   * @param authData - dados retornados pelo onFinish do IDPaySDK
    */
   const authenticateIdpay = useCallback(
     async (transactionId: string, authData: {
-      encrypted: string;
-      jwt?: string;
-      uniqueness_id: string;
+      id: string;                // antifraud_id
+      concluded: boolean;
+      capture_concluded: boolean;
     }) => {
       const token = localStorage.getItem("token");
       const response = await fetch(
@@ -191,7 +253,7 @@ export function useAntifraud() {
         setThreeDsLoaded(true);
       };
       script.onerror = () => {
-        console.error("❌ Erro ao carregar SDK 3DS da URL:", config.sdkUrl);
+        console.error("❌ Erro ao carregar SDK 3DS da URL:", config.scriptUrl);
       };
       document.body.appendChild(script);
     } catch (error) {
@@ -317,8 +379,8 @@ export function useAntifraud() {
   const checkSdkStatus = useCallback(() => {
     return {
       idpay: {
-        loaded: idpayLoaded || !!window.AcessoBio,
-        available: !!window.AcessoBio,
+        loaded: idpayReady,
+        available: idpayReady,
       },
       threeds: {
         loaded: threeDsLoaded || !!window.PagSeguro,
@@ -330,13 +392,17 @@ export function useAntifraud() {
         session_id: sessionId,
       },
     };
-  }, [idpayLoaded, threeDsLoaded, clearSaleLoaded, sessionId]);
+  }, [idpayReady, threeDsLoaded, clearSaleLoaded, sessionId]);
 
   return {
-    // IDPAY (Unico)
-    idpayLoaded,
+    // IDPAY (idpay-b2b-sdk)
+    idpayLoaded: idpayReady,
+    idpayReady,
+    idpaySdkConfig,
     loadIdpaySdk,
     loadIdpaySdkConfig,
+    openIdpayIframe,
+    openIdpayCamera, // alias deprecated
     authenticateIdpay,
 
     // 3DS (PagBank)

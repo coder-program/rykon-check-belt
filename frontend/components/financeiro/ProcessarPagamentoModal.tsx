@@ -52,7 +52,24 @@ export default function ProcessarPagamentoModal({
   onSuccess,
 }: ProcessarPagamentoModalProps) {
   const queryClient = useQueryClient();
-  const { generateSessionId, loadClearSaleScript, sessionId } = useAntifraud();
+  const {
+    generateSessionId,
+    loadClearSaleScript,
+    sessionId,
+    loadIdpaySdk,
+    openIdpayIframe,
+    authenticateIdpay,
+  } = useAntifraud();
+
+  // Estados IDPAY
+  const [antifraudStep, setAntifraudStep] = useState<null | "IDPAY">(null);
+  const [idpayTransactionId, setIdpayTransactionId] = useState<string | null>(null);
+  /** antifraud_id retornado pelo Paytime — usado no SDK e no body de auth */
+  const [idpayAntifraudId, setIdpayAntifraudId] = useState<string | null>(null);
+  /** session retornado pelo Paytime — token para o IDPaySDK.open() */
+  const [idpaySession, setIdpaySession] = useState<string | null>(null);
+  const [idpayProcessing, setIdpayProcessing] = useState(false);
+  const [idpayResult, setIdpayResult] = useState<{ status: string; message: string } | null>(null);
   
   // Mapear método de pagamento para ID da tab
   const getTabFromMetodoPagamento = (metodo?: string): string => {
@@ -106,6 +123,22 @@ export default function ProcessarPagamentoModal({
       initAntifraud();
     }
   }, [open, loadClearSaleScript, generateSessionId]);
+
+  // Carregar SDK IDPAY quando antifraude for requerido
+  useEffect(() => {
+    if (antifraudStep === "IDPAY") {
+      const initIdpay = async () => {
+        try {
+          console.log("🔐 Iniciando carregamento SDK IDPAY...");
+          await loadIdpaySdk();
+          console.log("✅ SDK IDPAY pronto");
+        } catch (error) {
+          console.error("❌ Erro ao carregar SDK IDPAY:", error);
+        }
+      };
+      initIdpay();
+    }
+  }, [antifraudStep, loadIdpaySdk]);
   
   // Estado para erro de dados faltantes
   const [dadosFaltantesError, setDadosFaltantesError] = useState<{
@@ -246,6 +279,29 @@ export default function ProcessarPagamentoModal({
           onSuccess();
           handleClose();
         }, 2000);
+      } else if (
+        data.antifraud_required === "IDPAY" ||
+        data.analyse_required === "IDPAY" ||
+        data.antifraud?.[0]?.analyse_required === "IDPAY"
+      ) {
+        // Paytime exige validação biométrica IDPAY
+        const tid = data._id || data.transaction_id;
+        // antifraud_id e session vêm do array antifraud[] conforme doc Paytime
+        const antifraudEntry = data.antifraud?.[0] ?? data;
+        const afId = antifraudEntry.antifraud_id ?? antifraudEntry.id ?? tid;
+        const afSession = antifraudEntry.session ?? data.session ?? "";
+
+        console.log("🔐 [IDPAY] Antifraude requerido:", { tid, afId, hasSession: !!afSession });
+
+        setIdpayTransactionId(tid);
+        setIdpayAntifraudId(afId);
+        setIdpaySession(afSession);
+        setTransacaoId(tid);
+        setAntifraudStep("IDPAY");
+        toast("🔐 Verificação biométrica necessária. Aguarde...", {
+          icon: "🪪",
+          duration: 4000,
+        });
       } else if (data.status === "PENDING") {
         toast.success(
           `✅ Pagamento enviado com sucesso! Aguardando confirmação da operadora.`,
@@ -493,10 +549,7 @@ export default function ProcessarPagamentoModal({
 
   // Verificar se PIX foi pago
   if (statusPix?.pago && pixData) {
-    toast({
-      title: "Pagamento confirmado!",
-      description: "Seu PIX foi recebido com sucesso",
-    });
+    toast.success("✅ Pagamento confirmado! Seu PIX foi recebido com sucesso.");
     setTimeout(() => {
       onSuccess();
       handleClose();
@@ -514,6 +567,12 @@ export default function ProcessarPagamentoModal({
     setTransacaoId(null);
     setDadosFaltantesError(null);
     setMostrarFormularioCompleto(false);
+    setAntifraudStep(null);
+    setIdpayTransactionId(null);
+    setIdpayAntifraudId(null);
+    setIdpaySession(null);
+    setIdpayProcessing(false);
+    setIdpayResult(null);
     setDadosCompletos({
       cpf: "",
       cep: "",
@@ -693,6 +752,175 @@ export default function ProcessarPagamentoModal({
 
           {/* ABA CARTÃO */}
           <TabsContent value="cartao" className="space-y-4">
+
+            {/* ========= STEP IDPAY (Biometria Facial) ========= */}
+            {antifraudStep === "IDPAY" && (
+              <div className="space-y-4">
+                {idpayResult ? (
+                  /* Resultado da validação IDPAY */
+                  <div className={`rounded-lg p-6 text-center space-y-3 ${
+                    idpayResult.status === "APPROVED"
+                      ? "bg-green-50 border border-green-200"
+                      : idpayResult.status === "INCONCLUSIVE"
+                      ? "bg-yellow-50 border border-yellow-200"
+                      : "bg-red-50 border border-red-200"
+                  }`}>
+                    <div className="text-4xl">
+                      {idpayResult.status === "APPROVED" ? "✅" : idpayResult.status === "INCONCLUSIVE" ? "⚠️" : "❌"}
+                    </div>
+                    <p className={`font-semibold text-lg ${
+                      idpayResult.status === "APPROVED"
+                        ? "text-green-800"
+                        : idpayResult.status === "INCONCLUSIVE"
+                        ? "text-yellow-800"
+                        : "text-red-800"
+                    }`}>
+                      {idpayResult.status === "APPROVED"
+                        ? "Identidade Verificada!"
+                        : idpayResult.status === "INCONCLUSIVE"
+                        ? "Verificação Inconclusiva"
+                        : "Verificação Recusada"}
+                    </p>
+                    <p className="text-sm text-muted-foreground">{idpayResult.message}</p>
+                    {idpayTransactionId && (
+                      <p className="text-xs font-mono bg-white px-3 py-1 rounded border">
+                        ID: {idpayTransactionId}
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  /* Instruções de biometria IDPAY */
+                  <div className="space-y-4">
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-5 space-y-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center shrink-0">
+                          <User className="w-5 h-5 text-white" />
+                        </div>
+                        <div>
+                          <p className="font-semibold text-blue-900">Verificação de Identidade Requerida</p>
+                          <p className="text-sm text-blue-700">A operadora solicitou biometria facial via IDPAY (Unico)</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="bg-gray-50 rounded-lg p-4 space-y-2">
+                      <p className="text-sm font-medium text-gray-700">📋 Como realizar a verificação:</p>
+                      <ol className="text-sm text-gray-600 space-y-1 list-decimal list-inside">
+                        <li>Clique em <strong>"Iniciar Biometria"</strong> abaixo</li>
+                        <li>O SDK de biometria será aberto em tela cheia</li>
+                        <li>Posicione seu rosto na moldura indicada</li>
+                        <li>Mantenha o rosto firme e bem iluminado</li>
+                        <li>Siga as instruções de prova de vida (piscar, virar o rosto)</li>
+                        <li>Após captura, a transação será processada automaticamente</li>
+                      </ol>
+                    </div>
+
+                    {idpayTransactionId && (
+                      <div className="text-xs text-muted-foreground font-mono bg-gray-50 px-3 py-2 rounded border">
+                        🔗 Transaction ID: {idpayTransactionId}
+                      </div>
+                    )}
+
+                    <div className="flex gap-3">
+                      <Button
+                        className="flex-1"
+                        size="lg"
+                        disabled={idpayProcessing}
+                        onClick={async () => {
+                          if (!idpayTransactionId || !idpayAntifraudId) return;
+                          setIdpayProcessing(true);
+                          try {
+                            // 1. Garantir SDK inicializado
+                            console.log("🔐 [IDPAY] Inicializando SDK...");
+                            await loadIdpaySdk();
+
+                            // 2. Abrir iframe biométrico (tela fullscreen do IDPay)
+                            console.log("📷 [IDPAY] Abrindo iframe para antifraud_id:", idpayAntifraudId);
+                            toast("🪪 Realize a biometria facial na tela que irá abrir...", { duration: 6000 });
+
+                            const finishData = await openIdpayIframe(
+                              idpayAntifraudId,
+                              idpaySession ?? ""
+                            );
+
+                            console.log("✅ [IDPAY] onFinish recebido:", finishData);
+
+                            // 3. Enviar resultado do SDK para autenticação na Paytime
+                            toast("🔄 Validando identidade com a operadora...", { duration: 4000 });
+                            const authResult = await authenticateIdpay(idpayTransactionId, {
+                              id: finishData.id || idpayAntifraudId,
+                              concluded: finishData.concluded,
+                              capture_concluded: finishData.captureConcluded,
+                            });
+
+                            console.log("📊 [IDPAY] Resultado da autenticação:", authResult);
+                            // concluded=false → INCONCLUSIVE (biometria abandonada/erro)
+
+                            // 4. Exibir resultado
+                            const status = authResult.status || authResult.antifraud_result || "UNKNOWN";
+                            setIdpayResult({
+                              status,
+                              message:
+                                status === "APPROVED"
+                                  ? "Identidade verificada com sucesso. Pagamento aprovado!"
+                                  : status === "INCONCLUSIVE"
+                                  ? "A verificação não foi conclusiva. A transação ficará pendente de revisão."
+                                  : status === "DECLINED"
+                                  ? "Identidade não verificada. Transação recusada."
+                                  : `Resultado: ${status}`,
+                            });
+
+                            // 5. Se aprovado, fechar modal após delay
+                            if (status === "APPROVED") {
+                              toast.success("✅ Identidade verificada! Pagamento aprovado.");
+                              setTimeout(() => {
+                                onSuccess();
+                                handleClose();
+                              }, 3000);
+                            }
+                          } catch (error: any) {
+                            console.error("❌ [IDPAY] Erro:", error);
+                            const isIdpayError = error?.message?.startsWith("IDPAY_ERROR");
+                            if (isIdpayError) {
+                              // Fluxo interrompido — permitir retry
+                              toast.error("⚠️ Verificação não concluída. Clique em \"Iniciar Biometria\" para tentar novamente.", { duration: 6000 });
+                            } else {
+                              toast.error(`Erro na verificação biométrica: ${error.message || "Tente novamente"}`);
+                            }
+                          } finally {
+                            setIdpayProcessing(false);
+                          }
+                        }}
+                      >
+                        {idpayProcessing ? (
+                          <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Verificando identidade...</>
+                        ) : (
+                          <><User className="mr-2 h-4 w-4" /> Iniciar Biometria IDPAY</>
+                        )}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="lg"
+                        onClick={() => {
+                          setAntifraudStep(null);
+                          setIdpayTransactionId(null);
+                          setIdpayAntifraudId(null);
+                          setIdpaySession(null);
+                          setIdpayProcessing(false);
+                        }}
+                        disabled={idpayProcessing}
+                      >
+                        Cancelar
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ========= FORMULÁRIO NORMAL DO CARTÃO ========= */}
+            {antifraudStep === null && (
+            <>
             <div className="grid grid-cols-2 gap-4">
               <div className="col-span-2">
                 <Label htmlFor="cpf">CPF do Titular</Label>
@@ -862,6 +1090,8 @@ export default function ProcessarPagamentoModal({
               )}
               Pagar R$ {Number(fatura.valor_total).toFixed(2)}
             </Button>
+            </>
+            )} {/* fim do bloco antifraudStep === null */}
           </TabsContent>
 
           {/* ABA BOLETO */}
@@ -870,7 +1100,7 @@ export default function ProcessarPagamentoModal({
             {dadosFaltantesError && (
               <div className="bg-amber-50 border-2 border-amber-200 rounded-lg p-6 space-y-4">
                 <div className="flex items-start gap-3">
-                  <AlertCircle className="h-6 w-6 text-amber-600 flex-shrink-0 mt-0.5" />
+                  <AlertCircle className="h-6 w-6 text-amber-600 shrink-0 mt-0.5" />
                   <div className="flex-1 space-y-3">
                     <div>
                       <h3 className="font-semibold text-amber-900 text-lg">
