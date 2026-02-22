@@ -567,7 +567,7 @@ export class AssinaturasService {
             card: dto.card,
             billing_address: dto.billing_address,
             session_id: dto.session_id,
-            antifraud_type: dto.antifraud_type || 'CLEARSALE',
+            antifraud_type: (dto.antifraud_type === 'THREEDS' ? 'THREEDS' : 'IDPAY') as 'IDPAY' | 'THREEDS',
           },
           assinaturaId,
           user.id,
