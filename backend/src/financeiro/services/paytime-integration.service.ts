@@ -58,8 +58,8 @@ export interface ProcessarPagamentoCartaoDto {
     complement?: string;
   };
   // Campos de antifraude
-  session_id?: string; // Session ID do ClearSale (Paytime detecta automaticamente o tipo)
-  antifraud_type?: 'IDPAY' | 'THREEDS' | 'CLEARSALE'; // NÃO USADO - mantido para compatibilidade
+  session_id?: string; // Session ID do ClearSale
+  antifraud_type?: 'IDPAY' | 'THREEDS'; // Tipo de antifraude a acionar (IDPAY ou THREEDS)
 }
 
 export interface ProcessarPagamentoBoletoDto {
@@ -1418,13 +1418,12 @@ export class PaytimeIntegrationService {
         ],
       };
 
-      // Adicionar antifraude se fornecido
-      if (dto.session_id && dto.antifraud_type) {
-        paymentData['antifraud'] = {
-          session_id: dto.session_id,
-          type: dto.antifraud_type,
-        };
+      // Adicionar antifraude — session_id e antifraud_type são campos top-level na Paytime
+      if (dto.session_id) {
+        paymentData['session_id'] = dto.session_id;
       }
+      // Sempre acionar IDPAY (ou o tipo indicado), conforme configuração do establishment
+      paymentData['antifraud_type'] = dto.antifraud_type || 'IDPAY';
 
       this.logger.log(`📤 Enviando para Paytime com create_token: true`);
 

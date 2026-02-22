@@ -223,8 +223,9 @@ export default function ProcessarPagamentoModal({
           state: "ES",
           zip_code: "29090000",
         },
-        // Session ID do ClearSale (suficiente para antifraude)
+        // Session ID do ClearSale + tipo de antifraude para acionar o IDPAY
         session_id: sessionId,
+        antifraud_type: 'IDPAY',
       };
       
       console.log("💳 [FRONTEND] Enviando pagamento com cartão:");
