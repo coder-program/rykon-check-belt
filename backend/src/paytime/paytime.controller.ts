@@ -1510,9 +1510,9 @@ export class PaytimeController {
   async authenticateIdpay(
     @Param('id') id: string,
     @Body() authData: {
-      encrypted: string;
-      jwt?: string;
-      uniqueness_id: string;
+      id: string;
+      concluded: boolean;
+      capture_concluded: boolean;
     },
   ) {
     this.logger.debug(`Autenticando IDPAY para transação ${id}...`);

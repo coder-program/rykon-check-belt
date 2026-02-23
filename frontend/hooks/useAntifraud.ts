@@ -16,7 +16,8 @@ declare global {
 export interface IdpayFinishData {
   id: string;            // antifraud_id
   concluded: boolean;
-  captureConcluded: boolean;
+  captureConcluded?: boolean;   // camelCase (nosso mapeamento)
+  capture_concluded?: boolean;  // snake_case (retorno real do SDK)
 }
 
 interface IdpayConfig {
@@ -118,30 +119,69 @@ export function useAntifraud() {
    * @returns dados do callback onFinish: { id, concluded, captureConcluded }
    */
   const openIdpayIframe = useCallback(
-    async (antifraudId: string, sessionToken: string): Promise<IdpayFinishData> => {
+    async (
+      antifraudId: string,
+      sessionToken: string,
+      /**
+       * Callback chamado quando onFinish chega APÓS o timeout ter disparado.
+       * Garante que authenticateIdpay seja sempre executado mesmo em fluxos lentos (QR code no celular).
+       */
+      onLateFinish?: (transaction: IdpayFinishData) => void
+    ): Promise<IdpayFinishData> => {
       console.log("🪪 [IDPAY] Abrindo iframe biométrico...", { antifraudId });
 
       return new Promise((resolve, reject) => {
+        // Timeout de segurança: SDK pode não chamar onFinish em caso de
+        // "Domain not allowed" ou erros silenciosos — restaura o modal após 300s
+        // (5 minutos: tempo suficiente para o usuário escanear QR + completar biometria no celular)
+        let settled = false;
+        const timeoutId = setTimeout(() => {
+          if (settled) return;
+          settled = true;
+          console.error("❌ [IDPAY] Timeout: onFinish não foi chamado em 300s. Possível erro de domínio não permitido ou SDK bloqueado.");
+          console.error("❌ [IDPAY] Verifique: window.location.origin =", window.location.origin);
+          reject(new Error("IDPAY_ERROR: timeout — verifique se o domínio está na whitelist do IDPAY. Origin: " + window.location.origin));
+        }, 300000);
+
         try {
           IDPaySDK.open({
             transactionId: antifraudId,
             token: sessionToken,
             onFinish: (transaction: IdpayFinishData, type: string) => {
-              console.log("📸 [IDPAY] onFinish:", { transaction, type });
+              clearTimeout(timeoutId);
+              console.log("📸 [IDPAY] onFinish:", { transaction, type, settled });
+
               if (type === "ERROR") {
-                // Swagger: "Se type === 'ERROR': Não chamar authenticate"
-                // Rejeitar para que o caller possa tratar e oferecer nova tentativa
                 console.warn("⚠️ [IDPAY] Fluxo interrompido por erro");
-                reject(new Error("IDPAY_ERROR: fluxo interrompido. O usuário pode tentar novamente."));
-              } else {
-                // type === 'FINISH' — captura concluída: chamar authenticate
+                if (!settled) {
+                  settled = true;
+                  reject(new Error("IDPAY_ERROR: fluxo interrompido. O usuário pode tentar novamente."));
+                }
+                return;
+              }
+
+              // type === 'FINISH' ou undefined — captura biométrica concluída
+              console.log("✅ [IDPAY] Captura biométrica concluída:", { transaction, type });
+
+              if (!settled) {
+                // Caminho normal: promise ainda não foi resolvida/rejeitada
+                settled = true;
                 resolve(transaction);
+              } else {
+                // onFinish chegou DEPOIS do timeout — promise já rejeitada
+                // Chamar onLateFinish para garantir que a autenticação ocorra mesmo assim
+                console.warn("⏰ [IDPAY] onFinish tardio recebido após timeout — executando autenticação via onLateFinish");
+                onLateFinish?.(transaction);
               }
             },
           } as Parameters<typeof IDPaySDK.open>[0]);
         } catch (error) {
+          clearTimeout(timeoutId);
           console.error("❌ [IDPAY] Erro ao abrir iframe:", error);
-          reject(error);
+          if (!settled) {
+            settled = true;
+            reject(error);
+          }
         }
       });
     },

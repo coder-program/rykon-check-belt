@@ -790,6 +790,12 @@ export default function ProcessarPagamentoModal({
                         ID: {idpayTransactionId}
                       </p>
                     )}
+                    <button
+                      onClick={handleClose}
+                      className="mt-2 w-full py-2 px-4 rounded-md text-sm font-medium text-white bg-gray-600 hover:bg-gray-700 transition-colors"
+                    >
+                      Fechar
+                    </button>
                   </div>
                 ) : (
                   /* Instruções de biometria IDPAY */
@@ -832,6 +838,43 @@ export default function ProcessarPagamentoModal({
                         onClick={async () => {
                           if (!idpayTransactionId || !idpayAntifraudId) return;
                           setIdpayProcessing(true);
+
+                          // Extrai lógica de autenticação para reutilizar no caminho normal e no tardio
+                          const runAuthenticate = async (finishData: { id?: string; concluded?: boolean; captureConcluded?: boolean; capture_concluded?: boolean }) => {
+                            console.log("✅ [IDPAY] onFinish recebido, autenticando:", finishData);
+                            toast("🔄 Validando identidade com a operadora...", { duration: 4000 });
+                            const txId = idpayTransactionId!;
+                            // SDK pode retornar capture_concluded (snake_case) ou captureConcluded (camelCase)
+                            const captureConcluded =
+                              finishData.captureConcluded ??
+                              finishData.capture_concluded ??
+                              true;
+                            const authResult = await authenticateIdpay(txId, {
+                              id: finishData.id || idpayAntifraudId!,
+                              concluded: finishData.concluded ?? true,
+                              capture_concluded: captureConcluded,
+                            });
+                            console.log("📊 [IDPAY] Resultado da autenticação:", authResult);
+                            const status = authResult.analyse_status || authResult.status || authResult.antifraud_result || "UNKNOWN";
+                            // Restaurar o Dialog ANTES de mostrar o resultado para garantir visibilidade
+                            setIdpayIframeActive(false);
+                            setIdpayResult({
+                              status,
+                              message:
+                                status === "APPROVED"
+                                  ? "Identidade verificada com sucesso. Pagamento aprovado!"
+                                  : status === "INCONCLUSIVE"
+                                  ? "A verificação não foi conclusiva. A transação ficará pendente de revisão."
+                                  : status === "DECLINED"
+                                  ? "Identidade não verificada. Transação recusada."
+                                  : `Resultado: ${status}`,
+                            });
+                            if (status === "APPROVED") {
+                              toast.success("✅ Identidade verificada! Pagamento aprovado.");
+                              onSuccess();
+                            }
+                          };
+
                           try {
                             // 1. Garantir SDK inicializado
                             console.log("🔐 [IDPAY] Inicializando SDK...");
@@ -844,51 +887,39 @@ export default function ProcessarPagamentoModal({
                             // Ocultar o Dialog para o iframe do IDPAY aparecer (z-index conflito)
                             setIdpayIframeActive(true);
 
+                            // onLateFinish: chamado se onFinish chegar APÓS o timeout de 300s
+                            // (ex: usuário demora mais de 5min no celular)
+                            const onLateFinish = async (finishData: { id?: string; concluded?: boolean; captureConcluded?: boolean; capture_concluded?: boolean }) => {
+                              console.warn("⏰ [IDPAY] Autenticando via caminho tardio (pós-timeout)");
+                              setIdpayIframeActive(false);
+                              setIdpayProcessing(true);
+                              try {
+                                await runAuthenticate(finishData);
+                              } catch (err: any) {
+                                console.error("❌ [IDPAY] Erro na autenticação tardia:", err);
+                                toast.error(`Erro na verificação biométrica: ${err.message || "Tente novamente"}`);
+                              } finally {
+                                setIdpayProcessing(false);
+                              }
+                            };
+
                             const finishData = await openIdpayIframe(
                               idpayAntifraudId,
-                              idpaySession ?? ""
+                              idpaySession ?? "",
+                              onLateFinish
                             );
 
-                            console.log("✅ [IDPAY] onFinish recebido:", finishData);
+                            // 3. Caminho normal: autenticar com resultado do SDK
+                            await runAuthenticate(finishData);
 
-                            // 3. Enviar resultado do SDK para autenticação na Paytime
-                            toast("🔄 Validando identidade com a operadora...", { duration: 4000 });
-                            const authResult = await authenticateIdpay(idpayTransactionId, {
-                              id: finishData.id || idpayAntifraudId,
-                              concluded: finishData.concluded,
-                              capture_concluded: finishData.captureConcluded,
-                            });
-
-                            console.log("📊 [IDPAY] Resultado da autenticação:", authResult);
-                            // concluded=false → INCONCLUSIVE (biometria abandonada/erro)
-
-                            // 4. Exibir resultado
-                            const status = authResult.status || authResult.antifraud_result || "UNKNOWN";
-                            setIdpayResult({
-                              status,
-                              message:
-                                status === "APPROVED"
-                                  ? "Identidade verificada com sucesso. Pagamento aprovado!"
-                                  : status === "INCONCLUSIVE"
-                                  ? "A verificação não foi conclusiva. A transação ficará pendente de revisão."
-                                  : status === "DECLINED"
-                                  ? "Identidade não verificada. Transação recusada."
-                                  : `Resultado: ${status}`,
-                            });
-
-                            // 5. Se aprovado, fechar modal após delay
-                            if (status === "APPROVED") {
-                              toast.success("✅ Identidade verificada! Pagamento aprovado.");
-                              setTimeout(() => {
-                                onSuccess();
-                                handleClose();
-                              }, 3000);
-                            }
                           } catch (error: any) {
                             console.error("❌ [IDPAY] Erro:", error);
+                            const isTimeout = error?.message?.includes("timeout");
                             const isIdpayError = error?.message?.startsWith("IDPAY_ERROR");
-                            if (isIdpayError) {
-                              // Fluxo interrompido — permitir retry
+                            if (isTimeout) {
+                              // Timeout: modal foi restaurado, onLateFinish ainda pode chegar
+                              toast("⏳ Aguardando conclusão da biometria no celular...", { duration: 15000 });
+                            } else if (isIdpayError) {
                               toast.error("⚠️ Verificação não concluída. Clique em \"Iniciar Biometria\" para tentar novamente.", { duration: 6000 });
                             } else {
                               toast.error(`Erro na verificação biométrica: ${error.message || "Tente novamente"}`);

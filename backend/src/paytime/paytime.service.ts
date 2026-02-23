@@ -1,10 +1,11 @@
 import { Injectable, Logger, BadRequestException, NotFoundException, HttpException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, In } from 'typeorm';
+import { Repository, In, Not } from 'typeorm';
 import { Unidade } from '../people/entities/unidade.entity';
 import { Aluno } from '../people/entities/aluno.entity';
-import { Transacao } from '../financeiro/entities/transacao.entity';
+import { Transacao, StatusTransacao } from '../financeiro/entities/transacao.entity';
+import { Fatura, StatusFatura } from '../financeiro/entities/fatura.entity';
 
 interface PaytimeAuthResponse {
   access_token: string;
@@ -111,6 +112,8 @@ export class PaytimeService {
     private alunoRepository: Repository<Aluno>,
     @InjectRepository(Transacao)
     private transacaoRepository: Repository<Transacao>,
+    @InjectRepository(Fatura)
+    private faturaRepository: Repository<Fatura>,
   ) {
     this.baseUrl = this.configService.get('RYKON_PAY_BASE_URL') || 'https://rykon-pay-production.up.railway.app';
     this.paytimeUsername = this.configService.get('RYKON_PAY_USERNAME') || 'admin';
@@ -1959,21 +1962,52 @@ export class PaytimeService {
    * POST /api/antifraud/idpay/:id/authenticate
    */
   async authenticateIdpay(transactionId: string, authData: {
-    encrypted: string;
-    jwt?: string;
-    uniqueness_id: string;
+    id: string;
+    concluded: boolean;
+    capture_concluded: boolean;
   }) {
     const token = await this.authenticate();
     const url = `${this.baseUrl}/api/antifraud/idpay/${transactionId}/authenticate`;
 
     this.logger.debug(`🔐 Autenticando transação IDPAY - ID: ${transactionId}`);
 
+    // Buscar establishment_id via paytime_transaction_id → unidade
+    let establishmentId: string | null = null;
+    try {
+      const transacao = await this.transacaoRepository.findOne({
+        where: { paytime_transaction_id: transactionId },
+        select: ['id', 'unidade_id'],
+      });
+      if (transacao?.unidade_id) {
+        const unidade = await this.unidadeRepository.findOne({
+          where: { id: transacao.unidade_id },
+          select: ['id', 'paytime_establishment_id'],
+        });
+        if (unidade?.paytime_establishment_id) {
+          establishmentId = unidade.paytime_establishment_id.toString();
+        }
+      }
+    } catch (e) {
+      this.logger.warn(`⚠️ Não foi possível obter establishment_id para ${transactionId}: ${e.message}`);
+    }
+
+    if (!establishmentId) {
+      this.logger.warn(`⚠️ establishment_id não encontrado para transação ${transactionId} — chamando sem o header`);
+    } else {
+      this.logger.debug(`📍 establishment_id encontrado: ${establishmentId}`);
+    }
+
+    const headers: Record<string, string> = {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    };
+    if (establishmentId) {
+      headers['establishment_id'] = establishmentId;
+    }
+
     const response = await fetch(url, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
+      headers,
       body: JSON.stringify(authData),
     });
 
@@ -1984,8 +2018,131 @@ export class PaytimeService {
     }
 
     const data = await response.json();
-    this.logger.debug(`✅ Autenticação IDPAY concluída - Status: ${data.status}`);
-    return data;
+    this.logger.debug(`✅ Autenticação IDPAY concluída - resposta: ${JSON.stringify(data)}`);
+
+    // Buscar analyse_status: primeiro tenta na resposta do próprio POST,
+    // depois faz GETs se ainda estiver WAITING_AUTH
+    const finalTransactionId = data.new_transaction_id || data.transaction_id || transactionId;
+    let analyse_status: string | undefined;
+    const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+    // 1. Verificar se a resposta do POST já tem o status definitivo
+    this.logger.log(`📋 [IDPAY] Resposta POST authenticate: ${JSON.stringify(data)}`);
+    const immediateStatus = data.antifraud?.[0]?.analyse_status;
+    // WAITING_AUTH e PROCESSING são estados intermediários — precisam de GET retry
+    const isIntermediateStatus = !immediateStatus || immediateStatus === 'WAITING_AUTH' || immediateStatus === 'PROCESSING';
+    if (!isIntermediateStatus) {
+      analyse_status = immediateStatus;
+      this.logger.log(`📍 [IDPAY] analyse_status direto do POST authenticate: ${analyse_status}`);
+    } else {
+      this.logger.log(`⏳ [IDPAY] Status intermediário no POST (${immediateStatus || 'ausente'}) — aguardando resultado via GET...`);
+    }
+
+    // 2. Se ainda intermediário ou ausente, tenta GET com retries
+    if (!analyse_status && establishmentId) {
+      try {
+        const delays = [2000, 3000, 4000, 5000];
+        for (let i = 0; i < delays.length; i++) {
+          await sleep(delays[i]);
+          this.logger.debug(`🔄 [IDPAY] Tentativa ${i + 1} de buscar analyse_status via GET (aguardou ${delays[i]}ms)...`);
+          try {
+            const txUrl = `${this.baseUrl}/api/transactions/${finalTransactionId}`;
+            const freshToken = await this.authenticate();
+            const txResponse = await fetch(txUrl, {
+              method: 'GET',
+              headers: {
+                Authorization: `Bearer ${freshToken}`,
+                'Content-Type': 'application/json',
+                'establishment_id': establishmentId,
+              },
+            });
+            if (txResponse.ok) {
+              const txData = await txResponse.json();
+              const status = txData?.antifraud?.[0]?.analyse_status;
+              this.logger.debug(`📍 [IDPAY] analyse_status via GET (tentativa ${i + 1}): ${status}`);
+              if (status && status !== 'WAITING_AUTH') {
+                analyse_status = status;
+                break;
+              }
+            } else {
+              this.logger.warn(`⚠️ [IDPAY] GET retornou ${txResponse.status} na tentativa ${i + 1}`);
+            }
+          } catch (innerErr) {
+            this.logger.warn(`⚠️ [IDPAY] Erro na tentativa ${i + 1}: ${innerErr.message}`);
+          }
+        }
+        if (!analyse_status) {
+          this.logger.warn(`⚠️ [IDPAY] analyse_status não obtido após todas as tentativas — mantendo como WAITING_AUTH`);
+          analyse_status = 'WAITING_AUTH';
+        }
+      } catch (e) {
+        this.logger.warn(`⚠️ Não foi possível buscar analyse_status via GET: ${e.message}`);
+      }
+    }
+
+    // Atualizar status da transacao e fatura com base no analyse_status
+    if (analyse_status) {
+      try {
+        const transacao = await this.transacaoRepository.findOne({
+          where: { paytime_transaction_id: finalTransactionId },
+        });
+        if (transacao) {
+          // Atualizar metadata com o novo analyse_status
+          transacao.paytime_metadata = {
+            ...(transacao.paytime_metadata as any || {}),
+            antifraud: {
+              ...((transacao.paytime_metadata as any)?.antifraud || {}),
+              analyse_status,
+            },
+          };
+          if (analyse_status === 'APPROVED' && transacao.status !== StatusTransacao.CONFIRMADA) {
+            transacao.status = StatusTransacao.CONFIRMADA;
+            await this.transacaoRepository.save(transacao);
+            this.logger.log(`✅ [IDPAY] Transação ${transacao.id} marcada como CONFIRMADA`);
+            // Cancelar outras transações PENDENTE da mesma fatura
+            if (transacao.fatura_id) {
+              const outrasPendentes = await this.transacaoRepository.find({
+                where: {
+                  fatura_id: transacao.fatura_id,
+                  status: StatusTransacao.PENDENTE,
+                  id: Not(transacao.id),
+                },
+              });
+              if (outrasPendentes.length > 0) {
+                for (const outra of outrasPendentes) {
+                  outra.status = StatusTransacao.CANCELADA;
+                  outra.observacoes = 'Cancelada — outra transação da mesma fatura foi aprovada via IDPAY';
+                }
+                await this.transacaoRepository.save(outrasPendentes);
+                this.logger.log(`🗑️ [IDPAY] ${outrasPendentes.length} transação(ões) PENDENTE cancelada(s) para fatura ${transacao.fatura_id}`);
+              }
+              // Baixar fatura
+              const fatura = await this.faturaRepository.findOne({ where: { id: transacao.fatura_id } });
+              if (fatura && fatura.status !== StatusFatura.PAGA) {
+                fatura.status = StatusFatura.PAGA;
+                fatura.data_pagamento = new Date();
+                fatura.valor_pago = transacao.valor;
+                await this.faturaRepository.save(fatura);
+                this.logger.log(`✅ [IDPAY] Fatura ${fatura.id} baixada com sucesso`);
+              }
+            }
+          } else if (['FAILED', 'INCONCLUSIVE', 'WAITING_AUTH'].includes(analyse_status) && transacao.status === StatusTransacao.PENDENTE) {
+            // FAILED/INCONCLUSIVE/WAITING_AUTH: cancelar transação para limpar o badge "Pagamento em Processamento"
+            transacao.status = StatusTransacao.CANCELADA;
+            transacao.observacoes = `IDPAY: ${analyse_status}`;
+            await this.transacaoRepository.save(transacao);
+            this.logger.log(`🗑️ [IDPAY] Transação ${transacao.id} cancelada (analyse_status=${analyse_status})`);
+          } else {
+            await this.transacaoRepository.save(transacao);
+            this.logger.log(`ℹ️ [IDPAY] Transação ${transacao.id} metadata atualizada (${analyse_status})`);
+          }
+        }
+      } catch (e) {
+        this.logger.warn(`⚠️ [IDPAY] Erro ao atualizar transação/fatura: ${e.message}`);
+      }
+    }
+
+    return { ...data, analyse_status };
   }
 
   /**

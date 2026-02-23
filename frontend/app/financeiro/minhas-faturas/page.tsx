@@ -131,7 +131,10 @@ export default function MinhasFaturas() {
         .filter(f => f.status === "PENDENTE" || f.status === "ATRASADA")
         .map(f => f.id);
       
-      if (faturaIds.length === 0) return;
+      if (faturaIds.length === 0) {
+        setFaturasComPagamentoPendente(new Set());
+        return;
+      }
 
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/transacoes?status=PENDENTE`,

@@ -112,6 +112,22 @@ const nextConfig: NextConfig = {
   images: {
     unoptimized: true,
   },
+
+  // Headers necessários para o SDK IDPAY/Unico (biometria)
+  async headers() {
+    return [
+      {
+        source: "/(.*)",
+        headers: [
+          {
+            // Permite que o iframe do Unico/IDPAY use câmera, mídia criptografada, etc.
+            key: "Permissions-Policy",
+            value: "camera=*, microphone=*, encrypted-media=*, autoplay=*, fullscreen=*",
+          },
+        ],
+      },
+    ];
+  },
   // Otimizações de performance
   reactStrictMode: true,
   // swcMinify removido - já é padrão no Next.js 15
