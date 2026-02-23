@@ -425,6 +425,8 @@ export class PaytimeIntegrationService {
         },
         // Session ID do ClearSale (Paytime detecta automaticamente o tipo de antifraude)
         ...(dto.session_id && { session_id: dto.session_id }),
+        // Tipo de antifraude: IDPAY (padrão) ou THREEDS
+        antifraud_type: dto.antifraud_type || 'IDPAY',
       };
 
       this.logger.log(
@@ -436,17 +438,19 @@ export class PaytimeIntegrationService {
       if (dto.session_id) {
         this.logger.log(`   - Session ID ClearSale: ${dto.session_id.substring(0, 20)}...`);
       }
+      this.logger.log(`   - Antifraude Type: ${cardData['antifraud_type']}`);
+      this.logger.log(`   - session_id presente: ${cardData['session_id'] ? 'SIM' : 'NÃO'}`);
       
-      // Log do body completo (omitindo dados sensíveis)
-      this.logger.debug('📦 Body completo (dados sensíveis omitidos):');
-      this.logger.debug(JSON.stringify({
+      // Log do body completo (omitindo dados sensíveis) — LOG level para garantir visibilidade
+      const safeBody = {
         ...cardData,
         card: {
           ...cardData.card,
           card_number: cardData.card.card_number.substring(0, 6) + '******' + cardData.card.card_number.slice(-4),
           security_code: '***',
-        }
-      }, null, 2));
+        },
+      };
+      this.logger.log(`📦 [CARD] Body completo enviado para rykon-pay:\n${JSON.stringify(safeBody, null, 2)}`);
 
       const paytimeResponse =
         await this.paytimeService.createCardTransaction(
@@ -532,6 +536,12 @@ export class PaytimeIntegrationService {
       this.logger.log(
         `✅ Transação Cartão criada - ID: ${paytimeResponse._id || paytimeResponse.id}, Status: ${paytimeResponse.status}`,
       );
+      this.logger.debug(
+        `🔍 [IDPAY] Resposta completa Paytime: ${JSON.stringify(paytimeResponse)}`,
+      );
+      this.logger.log(
+        `🔍 [IDPAY] antifraud array: ${JSON.stringify(paytimeResponse.antifraud)}`,
+      );
 
       return {
         transacao_id: transacaoSalva.id,
@@ -547,6 +557,8 @@ export class PaytimeIntegrationService {
         fatura_numero: fatura.numero_fatura,
         // Incluir info de antifraude se presente
         antifraud_required: paytimeResponse.antifraud?.[0]?.analyse_required || null,
+        // Passar array completo para o frontend extrair antifraud_id e session
+        antifraud: paytimeResponse.antifraud || null,
       };
     } catch (error) {
       // 7. Em caso de erro, marcar transação como CANCELADA

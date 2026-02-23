@@ -32,31 +32,21 @@ export const DateTransformer = {
   from: (value: any): string | null => {
     if (!value) return null;
     
-    // DEBUG: Log para ver o que está chegando do banco
-    console.log('🔍 DateTransformer.from recebeu:', {
-      value,
-      type: typeof value,
-      isDate: value instanceof Date,
-      isString: typeof value === 'string',
-    });
-    
+
     // Se já é string no formato YYYY-MM-DD, retornar direto
     if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
-      console.log('✅ Retornando string direto:', value);
       return value;
     }
     
     // Se for Date, converter para string YYYY-MM-DD usando UTC para evitar mudança de dia
     if (value instanceof Date) {
       const result = dayjs.utc(value).format('YYYY-MM-DD');
-      console.log('📅 Convertendo Date para string:', { original: value, result });
       return result;
     }
     
     // Caso geral: tentar parsear e formatar
     try {
       const result = dayjs.utc(value).format('YYYY-MM-DD');
-      console.log('🔄 Parseando e formatando:', { original: value, result });
       return result;
     } catch (error) {
       console.error('❌ Erro ao converter data:', error);

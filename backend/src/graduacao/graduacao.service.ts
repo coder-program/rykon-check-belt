@@ -583,11 +583,6 @@ export class GraduacaoService {
     // Usar aulas_por_grau da configuração da unidade, ou fallback para faixaDef
     const aulasPorGrau = faixaConfig?.aulas_por_grau ?? faixaAtiva.faixaDef.aulas_por_grau;
 
-    console.log(`🎓 [INCREMENTAR PRESENCA] Aluno: ${aluno.nome_completo}`);
-    console.log(`   - Faixa: ${faixaAtiva.faixaDef.nome_exibicao} - Grau ${faixaAtiva.graus_atual}/${faixaAtiva.faixaDef.graus_max}`);
-    console.log(`   - Presenças antes: ${faixaAtiva.presencas_no_ciclo}`);
-    console.log(`   - Aulas por grau (config): ${aulasPorGrau}`);
-
     let grauConcedido = false;
 
     await this.dataSource.transaction(async (manager) => {
@@ -596,14 +591,10 @@ export class GraduacaoService {
       faixaAtiva.presencas_no_ciclo += 1;
       faixaAtiva.presencas_total_fx += 1;
 
-      console.log(`   - Presenças depois: ${faixaAtiva.presencas_no_ciclo}`);
-
       // Verificar se pode conceder grau automaticamente usando configuração da unidade
       const podeReceberGrau = 
         faixaAtiva.graus_atual < faixaAtiva.faixaDef.graus_max &&
         faixaAtiva.presencas_no_ciclo >= aulasPorGrau;
-
-      console.log(`   - Pode receber grau? ${podeReceberGrau} (${faixaAtiva.presencas_no_ciclo} >= ${aulasPorGrau})`);
 
       if (podeReceberGrau) {
         // Incrementar grau e zerar contador do ciclo (mesmo padrão da concederGrau manual)
@@ -621,12 +612,10 @@ export class GraduacaoService {
 
         await manager.save(grau);
 
-        console.log(`   ✅ GRAU CONCEDIDO! Novo grau: ${faixaAtiva.graus_atual}`);
         grauConcedido = true;
       } else {
         // Salvar faixaAtiva apenas com presencas incrementadas
         await manager.save(faixaAtiva);
-        console.log(`   ⏳ Ainda não... faltam ${aulasPorGrau - faixaAtiva.presencas_no_ciclo} aulas`);
       }
 
     });
@@ -2144,8 +2133,6 @@ export class GraduacaoService {
     faixasAtualizadas: number;
     detalhes: Array<{ codigo: string; aulasPorGrau: number }>;
   }> {
-    console.log(`🔄 [SINCRONIZAR FAIXAS] Iniciando sincronização para unidade ${unidadeId}`);
-
     // Buscar configuração da unidade
     const config = await this.getConfiguracaoGraduacao(unidadeId);
 
@@ -2161,7 +2148,6 @@ export class GraduacaoService {
       const aulasPorGrau = (faixaConfig as any).aulas_por_grau;
 
       if (aulasPorGrau === undefined || aulasPorGrau === null) {
-        console.log(`  ⚠️ Faixa ${codigoConfig} sem aulas_por_grau definido, pulando...`);
         continue;
       }
 
@@ -2182,13 +2168,8 @@ export class GraduacaoService {
         faixasAtualizadas.push({ codigo: faixa.codigo, aulasPorGrau });
         totalAtualizadas++;
 
-        console.log(`  ✅ Faixa ${faixa.codigo} atualizada: ${aulasPorGrau} aulas por grau`);
-      } else {
-        console.log(`  ⚠️ Faixa ${codigoConfig} não encontrada no banco, pulando...`);
       }
     }
-
-    console.log(`✅ [SINCRONIZAR FAIXAS] ${totalAtualizadas} faixas atualizadas`);
 
     return {
       message: `${totalAtualizadas} faixas sincronizadas com sucesso`,
@@ -2246,8 +2227,6 @@ export class GraduacaoService {
       presencasRestantes: number;
     }>;
   }> {
-    console.log(`🔄 [RECALCULAR GRAUS] Iniciando recálculo para unidade ${unidadeId}`);
-
     // Buscar configuração da unidade
     const config = await this.getConfiguracaoGraduacao(unidadeId);
 
@@ -2259,8 +2238,6 @@ export class GraduacaoService {
       .where('af.ativa = true')
       .andWhere('aluno.unidade_id = :unidadeId', { unidadeId })
       .getMany();
-
-    console.log(`  📊 Encontrados ${alunosFaixa.length} alunos ativos`);
 
     const detalhes: Array<{
       alunoNome: string;
@@ -2327,11 +2304,8 @@ export class GraduacaoService {
           presencasRestantes: af.presencas_no_ciclo,
         });
 
-        console.log(`  ✅ ${af.aluno.nome_completo}: +${grausFaltam} graus (${af.presencas_no_ciclo} presenças restantes)`);
       }
     }
-
-    console.log(`✅ [RECALCULAR GRAUS] ${alunosProcessados} alunos processados, ${totalGrausConcedidos} graus concedidos`);
 
     return {
       message: `Recálculo concluído: ${totalGrausConcedidos} graus concedidos para ${alunosProcessados} alunos`,

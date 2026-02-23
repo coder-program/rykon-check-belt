@@ -60,8 +60,6 @@ export class PresencasService {
   }
 
   async deletarPresenca(presencaId: string, user: any) {
-    console.log(`🗑️  [DELETAR PRESENÇA] ID: ${presencaId}, User: ${user?.id}`);
-
     // Verificar permissões - apenas franqueado, gerente, recepcionista e professor podem deletar
     const perfis = user?.perfis?.map((p: any) => 
       (typeof p === 'string' ? p : p.nome)?.toLowerCase()
@@ -86,8 +84,6 @@ export class PresencasService {
       throw new NotFoundException('Presença não encontrada');
     }
 
-    console.log(`✅ [DELETAR PRESENÇA] Presença encontrada - Aluno: ${presenca.aluno_id}`);
-
     // Buscar registro ativo de aluno_faixa para decrementar contadores
     const alunoFaixa = await this.alunoFaixaRepo.findOne({
       where: {
@@ -97,22 +93,15 @@ export class PresencasService {
     });
 
     if (alunoFaixa) {
-      console.log(`📊 [DELETAR PRESENÇA] Decrementando contadores - presencas_no_ciclo: ${alunoFaixa.presencas_no_ciclo} → ${Math.max(0, alunoFaixa.presencas_no_ciclo - 1)}, presencas_total_fx: ${alunoFaixa.presencas_total_fx} → ${Math.max(0, alunoFaixa.presencas_total_fx - 1)}`);
-      
       // Decrementar contadores (nunca deixar negativo)
       alunoFaixa.presencas_no_ciclo = Math.max(0, alunoFaixa.presencas_no_ciclo - 1);
       alunoFaixa.presencas_total_fx = Math.max(0, alunoFaixa.presencas_total_fx - 1);
       
       await this.alunoFaixaRepo.save(alunoFaixa);
-      console.log(`✅ [DELETAR PRESENÇA] Contadores atualizados em aluno_faixa`);
-    } else {
-      console.log(`⚠️ [DELETAR PRESENÇA] Nenhum registro ativo encontrado em aluno_faixa para aluno ${presenca.aluno_id}`);
     }
 
     // Deletar presença do banco
     await this.presencasRepo.delete(presencaId);
-
-    console.log(`✅ [DELETAR PRESENÇA] Presença ${presencaId} deletada com sucesso`);
 
     return {
       message: 'Presença deletada com sucesso',

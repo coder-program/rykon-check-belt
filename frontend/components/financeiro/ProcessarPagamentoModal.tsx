@@ -69,6 +69,7 @@ export default function ProcessarPagamentoModal({
   /** session retornado pelo Paytime — token para o IDPaySDK.open() */
   const [idpaySession, setIdpaySession] = useState<string | null>(null);
   const [idpayProcessing, setIdpayProcessing] = useState(false);
+  const [idpayIframeActive, setIdpayIframeActive] = useState(false); // true = modal oculto enquanto iframe IDPAY está visível
   const [idpayResult, setIdpayResult] = useState<{ status: string; message: string } | null>(null);
   
   // Mapear método de pagamento para ID da tab
@@ -286,7 +287,7 @@ export default function ProcessarPagamentoModal({
         data.antifraud?.[0]?.analyse_required === "IDPAY"
       ) {
         // Paytime exige validação biométrica IDPAY
-        const tid = data._id || data.transaction_id;
+        const tid = data._id || data.paytime_transaction_id || data.transaction_id;
         // antifraud_id e session vêm do array antifraud[] conforme doc Paytime
         const antifraudEntry = data.antifraud?.[0] ?? data;
         const afId = antifraudEntry.antifraud_id ?? antifraudEntry.id ?? tid;
@@ -297,7 +298,7 @@ export default function ProcessarPagamentoModal({
         setIdpayTransactionId(tid);
         setIdpayAntifraudId(afId);
         setIdpaySession(afSession);
-        setTransacaoId(tid);
+        setTransacaoId(data.transacao_id || tid);
         setAntifraudStep("IDPAY");
         toast("🔐 Verificação biométrica necessária. Aguarde...", {
           icon: "🪪",
@@ -462,7 +463,7 @@ export default function ProcessarPagamentoModal({
       if (!response.ok) return null;
       return response.json();
     },
-    enabled: !!transacaoId && activeTab === "cartao",
+    enabled: !!transacaoId && activeTab === "cartao" && antifraudStep !== 'IDPAY',
     refetchInterval: 5000, // Polling a cada 5 segundos
   });
 
@@ -573,6 +574,7 @@ export default function ProcessarPagamentoModal({
     setIdpayAntifraudId(null);
     setIdpaySession(null);
     setIdpayProcessing(false);
+    setIdpayIframeActive(false);
     setIdpayResult(null);
     setDadosCompletos({
       cpf: "",
@@ -646,7 +648,7 @@ export default function ProcessarPagamentoModal({
   const gridClass = numTabs === 3 ? "grid-cols-3" : numTabs === 2 ? "grid-cols-2" : "grid-cols-1";
 
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
+    <Dialog open={open && !idpayIframeActive} onOpenChange={handleClose}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Pagar Fatura #{fatura.numero_fatura}</DialogTitle>
@@ -839,6 +841,9 @@ export default function ProcessarPagamentoModal({
                             console.log("📷 [IDPAY] Abrindo iframe para antifraud_id:", idpayAntifraudId);
                             toast("🪪 Realize a biometria facial na tela que irá abrir...", { duration: 6000 });
 
+                            // Ocultar o Dialog para o iframe do IDPAY aparecer (z-index conflito)
+                            setIdpayIframeActive(true);
+
                             const finishData = await openIdpayIframe(
                               idpayAntifraudId,
                               idpaySession ?? ""
@@ -889,6 +894,7 @@ export default function ProcessarPagamentoModal({
                               toast.error(`Erro na verificação biométrica: ${error.message || "Tente novamente"}`);
                             }
                           } finally {
+                            setIdpayIframeActive(false); // Restaurar modal
                             setIdpayProcessing(false);
                           }
                         }}

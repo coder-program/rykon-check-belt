@@ -55,7 +55,6 @@ export class DashboardInstrutorService {
   async getInstrutorStats(
     usuarioId: string,
   ): Promise<InstrutorDashboardStats> {
-    console.log('🎯 [INSTRUTOR STATS] Iniciando busca de estatísticas para usuário:', usuarioId);
     
     // Buscar o professor pelo usuario_id
     const professor = await this.personRepository.findOne({
@@ -70,7 +69,6 @@ export class DashboardInstrutorService {
       throw new NotFoundException('Professor não encontrado');
     }
 
-    console.log('✅ [INSTRUTOR STATS] Professor encontrado:', professor.id, professor.nome_completo);
     const professorId = professor.id;
 
     // Buscar aulas do professor
@@ -78,8 +76,6 @@ export class DashboardInstrutorService {
       where: { professor_id: professorId },
       relations: ['unidade', 'professor'],
     });
-
-    console.log('📚 [INSTRUTOR STATS] Total de aulas do professor:', aulasProfessor.length);
 
     const aulasIds = aulasProfessor.map((aula) => aula.id);
 
@@ -106,8 +102,6 @@ export class DashboardInstrutorService {
       relations: ['aluno'],
     });
 
-    console.log('👥 [INSTRUTOR STATS] Total de presenças encontradas:', presencas.length);
-
     // Alunos únicos do professor
     const alunosUnicos = new Set();
     presencas.forEach((presenca) => {
@@ -115,8 +109,6 @@ export class DashboardInstrutorService {
         alunosUnicos.add(presenca.aluno.id);
       }
     });
-
-    console.log('🎓 [INSTRUTOR STATS] Alunos únicos:', alunosUnicos.size);
 
     // Aulas desta semana
     const hoje = dayjs().tz('America/Sao_Paulo');
@@ -129,37 +121,19 @@ export class DashboardInstrutorService {
       return dataAula >= inicioSemana && dataAula <= fimSemana;
     });
 
-    console.log('📅 [INSTRUTOR STATS] Aulas desta semana:', aulasSemana.length);
-
     // Próximas aulas (hoje)
     const hojeDate = dayjs().tz('America/Sao_Paulo');
     const hojeStr = hojeDate.format('YYYY-MM-DD');
     
-    console.log('📆 [INSTRUTOR STATS] Data de hoje (ISO):', hojeStr);
-    console.log('📚 [INSTRUTOR STATS] Analisando', aulasProfessor.length, 'aulas para encontrar as de hoje');
-    
     const proximasAulas = aulasProfessor.filter((aula) => {
       if (!aula.data_hora_inicio) {
-        console.log('⚠️ [INSTRUTOR STATS] Aula sem data_hora_inicio:', aula.id);
         return false;
       }
       const dataAula = dayjs(aula.data_hora_inicio).tz('America/Sao_Paulo');
       const dataAulaStr = dataAula.format('YYYY-MM-DD');
       const isToday = dataAulaStr === hojeStr;
-      
-      if (isToday) {
-        console.log('✅ [INSTRUTOR STATS] Aula de hoje encontrada:', {
-          id: aula.id,
-          nome: aula.nome,
-          data_hora_inicio: aula.data_hora_inicio,
-          dataAulaStr,
-        });
-      }
-      
       return isToday;
     });
-
-    console.log('⏰ [INSTRUTOR STATS] Total de aulas hoje:', proximasAulas.length);
 
     // Calcular presença média
     let totalPresencas = 0;
@@ -184,8 +158,6 @@ export class DashboardInstrutorService {
         ? Math.round(totalPresencas / totalAulasComPresenca)
         : 0;
 
-    console.log('📊 [INSTRUTOR STATS] Presença média:', presencaMedia + '%');
-
     // Alunos ativos (com presença nos últimos 30 dias)
     const dataLimite = dayjs().tz('America/Sao_Paulo').subtract(30, 'day').toDate();
 
@@ -194,8 +166,6 @@ export class DashboardInstrutorService {
       if (!aula.data_hora_inicio) return false;
       return dayjs(aula.data_hora_inicio).tz('America/Sao_Paulo').toDate() >= dataLimite;
     });
-
-    console.log('🕐 [INSTRUTOR STATS] Aulas recentes (últimos 30 dias):', aulasRecentes.length);
 
     const aulasRecentesIds = aulasRecentes.map((aula) => aula.id);
 
@@ -210,13 +180,9 @@ export class DashboardInstrutorService {
       });
     }
 
-    console.log('✅ [INSTRUTOR STATS] Presenças recentes:', presencasRecentes.length);
-
     const alunosAtivos = new Set(
       presencasRecentes.map((p) => p.aluno?.id).filter((id) => id),
     ).size;
-
-    console.log('🏃 [INSTRUTOR STATS] Alunos ativos:', alunosAtivos);
 
     const stats = {
       meusAlunos: alunosUnicos.size,
@@ -229,15 +195,10 @@ export class DashboardInstrutorService {
       avaliacoesPendentes: 0,
     };
 
-    console.log('📈 [INSTRUTOR STATS] Estatísticas finais:', JSON.stringify(stats, null, 2));
-
     return stats;
   }
 
   async getProximasAulas(usuarioId: string): Promise<ProximaAula[]> {
-    console.log('\n🎯🎯🎯 [PRÓXIMAS AULAS] INÍCIO 🎯🎯🎯');
-    console.log('👤 Usuario ID:', usuarioId);
-    
     try {
       // Buscar o professor pelo usuario_id
       const professor = await this.personRepository.findOne({
@@ -251,13 +212,10 @@ export class DashboardInstrutorService {
         throw new NotFoundException('Professor não encontrado');
       }
 
-      console.log('👨‍🏫 Professor encontrado:', professor.id, professor.nome_completo);
       const professorId = professor.id;
 
       // Pegar dia da semana atual (0 = domingo, 1 = segunda, ..., 6 = sábado)
       const diaSemanaHoje = new Date().getDay();
-      console.log('📅 Dia da semana hoje:', diaSemanaHoje);
-
       // Buscar aulas do dia da semana (aulas recorrentes)
       const aulas = await this.aulaRepository.find({
         where: {
@@ -270,8 +228,6 @@ export class DashboardInstrutorService {
         take: 3,
       });
       
-      console.log('🎯 Aulas encontradas para DIA DA SEMANA', diaSemanaHoje, ':', aulas.length);
-
       // Para cada aula, buscar número de alunos inscritos
       const aulasComAlunos = await Promise.all(
         aulas.map(async (aula) => {
@@ -298,9 +254,6 @@ export class DashboardInstrutorService {
         }),
       );
 
-      console.log('✅ Total de aulas retornadas:', aulasComAlunos.length);
-      console.log('🎯🎯🎯 [PRÓXIMAS AULAS] FIM 🎯🎯🎯\n');
-      
       return aulasComAlunos;
     } catch (error) {
       console.error('❌❌❌ [PRÓXIMAS AULAS] ERRO:', error);

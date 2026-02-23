@@ -70,7 +70,7 @@ export default function GatewaysPage() {
   
   // Modal de detalhes
   const [showDetailsModal, setShowDetailsModal] = useState(false);
-  const [selectedGateway, setSelectedGateway] = useState<any>(null);
+  const [selectedGateway, setSelectedGateway] = useState<unknown>(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
 
   const fetchGateways = async () => {
@@ -115,7 +115,7 @@ export default function GatewaysPage() {
       setGateways(data.data);
       setTotal(data.total);
       setLastPage(data.lastPage);
-    } catch (error: any) {
+    } catch (error) {
       console.error("❌ [GATEWAY] Erro:", error);
       toast.error(error.message || "Erro ao carregar gateways");
     } finally {
@@ -167,7 +167,7 @@ export default function GatewaysPage() {
       const data = await response.json();
       console.log("📋 Detalhes do gateway:", data);
       setSelectedGateway(data);
-    } catch (error: any) {
+    } catch (error) {
       console.error("❌ Erro ao buscar detalhes:", error);
       toast.error(error.message || "Erro ao carregar detalhes do gateway");
       setShowDetailsModal(false);

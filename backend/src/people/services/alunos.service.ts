@@ -62,17 +62,9 @@ export class AlunosService {
   ) {}
 
   async list(params: ListAlunosParams, user?: any) {
-    console.log('\n🔥🔥🔥 [LIST ALUNOS] INÍCIO 🔥🔥🔥');
-    console.log('📋 Params recebidos:', JSON.stringify(params, null, 2));
-    console.log('👤 User perfis:', user?.perfis?.map((p: any) => p.nome || p));
-    
     const page = Math.max(1, Number(params.page) || 1);
     const pageSize = Math.min(5000, Math.max(1, Number(params.pageSize) || 20));
     
-    console.log('📄 Page:', page);
-    console.log('📏 PageSize calculado:', pageSize);
-    console.log('📏 PageSize original:', params.pageSize);
-
     const query = this.alunoRepository.createQueryBuilder('aluno');
 
     query.leftJoinAndSelect('aluno.unidade', 'unidade');
@@ -139,26 +131,19 @@ export class AlunosService {
     }
     // Se franqueado (não master), filtra apenas alunos das suas unidades
     else if (user && this.isFranqueado(user) && !this.isMaster(user)) {
-      console.log('🏢 É FRANQUEADO (não master)');
       const franqueadoId = await this.getFranqueadoIdByUser(user);
-      console.log('🆔 FranqueadoId:', franqueadoId);
       
       if (franqueadoId) {
         // Buscar unidades do franqueado
         const unidadesDeFranqueado =
           await this.getUnidadesDeFranqueado(franqueadoId);
         
-        console.log('🏢 Unidades do franqueado:', unidadesDeFranqueado);
-        console.log('🏢 Total de unidades:', unidadesDeFranqueado.length);
-
         if (unidadesDeFranqueado.length > 0) {
           query.andWhere('aluno.unidade_id IN (:...unidades)', {
             unidades: unidadesDeFranqueado,
           });
-          console.log('✅ Filtro aplicado: unidade_id IN', unidadesDeFranqueado);
         } else {
           query.andWhere('1 = 0'); // Retorna vazio se franqueado não tem unidades
-          console.log('❌ Franqueado sem unidades - retornando vazio');
         }
       }
     }
@@ -228,22 +213,12 @@ export class AlunosService {
     // Ordenar por data de matrícula (mais recentes primeiro)
     query.orderBy('aluno.data_matricula', 'DESC');
 
-    console.log('🔍 SQL QUERY:', query.getSql());
-    console.log('🔍 PARAMETERS:', query.getParameters());
-
     // Paginação
     const [items, total] = await query
       .skip((page - 1) * pageSize)
       .take(pageSize)
       .getManyAndCount();
     
-    console.log('✅ Resultados:');
-    console.log('   - Items retornados:', items.length);
-    console.log('   - Total no banco:', total);
-    console.log('   - Skip:', (page - 1) * pageSize);
-    console.log('   - Take:', pageSize);
-    console.log('🔥🔥🔥 [LIST ALUNOS] FIM 🔥🔥🔥\n');
-
     // Buscar status dos usuários vinculados aos alunos
     const usuarioIds = items
       .filter((aluno) => aluno.usuario_id)
@@ -297,21 +272,6 @@ export class AlunosService {
     if (!aluno) {
       throw new NotFoundException(`Aluno com ID ${id} não encontrado`);
     }
-
-    console.log('🔍 [BACKEND - findById] Aluno encontrado:', {
-      id: aluno.id,
-      nome: aluno.nome_completo,
-      endereco: aluno.endereco,
-      endereco_id: aluno.endereco_id,
-      saude: {
-        observacoes_medicas: aluno.observacoes_medicas,
-        alergias: aluno.alergias,
-        medicamentos_uso_continuo: aluno.medicamentos_uso_continuo,
-        plano_saude: aluno.plano_saude,
-        atestado_medico_validade: aluno.atestado_medico_validade,
-        restricoes_medicas: aluno.restricoes_medicas
-      }
-    });
 
     // Se franqueado (não master), verifica se aluno pertence às suas unidades
     if (user && this.isFranqueado(user) && !this.isMaster(user)) {
@@ -838,55 +798,7 @@ export class AlunosService {
   }
 
   async update(id: string, dto: UpdateAlunoDto, user?: any): Promise<Aluno> {
-    console.log('\n🔥🔥🔥 [UPDATE ALUNO] INÍCIO 🔥🔥🔥', {
-      alunoId: id,
-      usuario: { id: user?.id, nome: user?.nome },
-      dto: {
-        ...dto,
-        // Destacar campos do responsável
-        responsavel_nome: dto.responsavel_nome,
-        responsavel_cpf: dto.responsavel_cpf,
-        responsavel_telefone: dto.responsavel_telefone,
-        responsavel_parentesco: dto.responsavel_parentesco,
-      },
-      saude: {
-        observacoes_medicas: dto.observacoes_medicas,
-        alergias: dto.alergias,
-        medicamentos_uso_continuo: dto.medicamentos_uso_continuo,
-        plano_saude: dto.plano_saude,
-        atestado_medico_validade: dto.atestado_medico_validade,
-        restricoes_medicas: dto.restricoes_medicas
-      },
-      financeiro: {
-        dia_vencimento: dto.dia_vencimento,
-        valor_mensalidade: dto.valor_mensalidade,
-        desconto_percentual: dto.desconto_percentual
-      }
-    });
-
     const aluno = await this.findById(id, user);
-    console.log('📋 [UPDATE ALUNO] Aluno atual no DB:', {
-      id: aluno.id,
-      nome: aluno.nome_completo,
-      responsavel_nome: aluno.responsavel_nome,
-      responsavel_cpf: aluno.responsavel_cpf,
-      responsavel_telefone: aluno.responsavel_telefone,
-      responsavel_parentesco: aluno.responsavel_parentesco,
-      saude: {
-        observacoes_medicas: aluno.observacoes_medicas,
-        alergias: aluno.alergias,
-        medicamentos_uso_continuo: aluno.medicamentos_uso_continuo,
-        plano_saude: aluno.plano_saude,
-        atestado_medico_validade: aluno.atestado_medico_validade,
-        restricoes_medicas: aluno.restricoes_medicas
-      },
-      financeiro: {
-        dia_vencimento: aluno.dia_vencimento,
-        valor_mensalidade: aluno.valor_mensalidade,
-        desconto_percentual: aluno.desconto_percentual
-      }
-    });
-
     const unidadeAnterior = aluno.unidade_id; // Salvar antes do assign
 
     // Verificar CPF único (se estiver sendo alterado)
@@ -935,15 +847,6 @@ export class AlunosService {
       ...dto,
     };
     
-    console.log('🏥 [UPDATE ALUNO] Campos de SAÚDE recebidos no DTO:', {
-      observacoes_medicas: dto.observacoes_medicas,
-      alergias: dto.alergias,
-      medicamentos_uso_continuo: dto.medicamentos_uso_continuo,
-      plano_saude: dto.plano_saude,
-      atestado_medico_validade: dto.atestado_medico_validade,
-      restricoes_medicas: dto.restricoes_medicas
-    });
-    
     // Helper to handle date fields
     function parseDateField(val: any, fallback: any = null) {
       if (val === undefined) return fallback;
@@ -988,15 +891,6 @@ export class AlunosService {
     if (updateData.valor_mensalidade !== undefined && String(updateData.valor_mensalidade).trim() === '') updateData.valor_mensalidade = null;
     if (updateData.desconto_percentual !== undefined && String(updateData.desconto_percentual).trim() === '') updateData.desconto_percentual = 0;
 
-    console.log('🏥 [UPDATE ALUNO] Campos de SAÚDE após tratamento de strings vazias:', {
-      observacoes_medicas: updateData.observacoes_medicas,
-      alergias: updateData.alergias,
-      medicamentos_uso_continuo: updateData.medicamentos_uso_continuo,
-      plano_saude: updateData.plano_saude,
-      atestado_medico_validade: updateData.atestado_medico_validade,
-      restricoes_medicas: updateData.restricoes_medicas
-    });
-
     // Remover campos que não existem mais na entidade Aluno
     // Mas capturar seus valores para atualizar a faixa ativa depois
     const faixaAtualParaAtualizar = dto.faixa_atual;
@@ -1020,22 +914,6 @@ export class AlunosService {
     }
     const temDadosEndereco = Object.keys(enderecoData).length > 0;
 
-    console.log('🏠 [UPDATE ALUNO] Dados de endereço capturados do DTO:', {
-      enderecoData,
-      temDadosEndereco,
-      endereco_id_atual: aluno.endereco_id,
-      campos_no_dto: {
-        cep: dto.cep,
-        logradouro: dto.logradouro,
-        numero: dto.numero,
-        complemento: dto.complemento,
-        bairro: dto.bairro,
-        cidade: dto.cidade,
-        uf: dto.uf,
-        estado: dto.estado
-      }
-    });
-
     // Remover campos de endereço que não pertencem à tabela alunos
     // (estes campos vão para a tabela 'enderecos' separada)
     delete updateData.cep;
@@ -1052,16 +930,11 @@ export class AlunosService {
 
     // Salvar ou atualizar endereço se houver dados
     if (temDadosEndereco) {
-      console.log('🏠 [UPDATE ALUNO] Salvando endereço:', {
-        endereco_id_atual: aluno.endereco_id,
-        dados_para_salvar: enderecoData
-      });
       
       try {
         if (aluno.endereco_id) {
           // Atualizar endereço existente
           await this.enderecosService.atualizarEndereco(aluno.endereco_id, enderecoData);
-          console.log('✅ [UPDATE ALUNO] Endereço atualizado com ID:', aluno.endereco_id);
         } else {
           // Criar novo endereço - garantir campos obrigatórios
           if (dto.cep && dto.logradouro && dto.numero) {
@@ -1077,14 +950,7 @@ export class AlunosService {
             const novoEndereco = await this.enderecosService.criarEndereco(createEnderecoDto);
             // Atualizar aluno com o ID do novo endereço
             updateData.endereco_id = novoEndereco.id;
-            console.log('✅ [UPDATE ALUNO] Novo endereço criado com ID:', novoEndereco.id);
-          } else {
-            console.log('⚠️ [UPDATE ALUNO] Campos obrigatórios do endereço faltando:', {
-              cep: !!dto.cep,
-              logradouro: !!dto.logradouro,
-              numero: !!dto.numero
-            });
-          }
+          } 
         }
       } catch (error) {
         console.error('❌ Erro ao salvar endereço:', error);
@@ -1092,41 +958,7 @@ export class AlunosService {
       }
     }
     
-    console.log('📦 [UPDATE ALUNO] Dados preparados para update:', {
-      ...updateData,
-      // Destacar campos do responsável
-      RESPONSAVEL: {
-        nome: updateData.responsavel_nome,
-        cpf: updateData.responsavel_cpf,
-        telefone: updateData.responsavel_telefone,
-        parentesco: updateData.responsavel_parentesco,
-      },
-      SAUDE: {
-        observacoes_medicas: updateData.observacoes_medicas,
-        alergias: updateData.alergias,
-        medicamentos_uso_continuo: updateData.medicamentos_uso_continuo,
-        plano_saude: updateData.plano_saude,
-        atestado_medico_validade: updateData.atestado_medico_validade,
-        restricoes_medicas: updateData.restricoes_medicas
-      },
-      FINANCEIRO: {
-        dia_vencimento: updateData.dia_vencimento,
-        valor_mensalidade: updateData.valor_mensalidade,
-        desconto_percentual: updateData.desconto_percentual
-      }
-    });
-
     await this.alunoRepository.update(id, updateData);
-
-    console.log('✅ [UPDATE ALUNO] Update executado no banco');
-    console.log('🏥 [UPDATE ALUNO] Campos de SAÚDE que foram para o UPDATE:', {
-      observacoes_medicas: updateData.observacoes_medicas,
-      alergias: updateData.alergias,
-      medicamentos_uso_continuo: updateData.medicamentos_uso_continuo,
-      plano_saude: updateData.plano_saude,
-      atestado_medico_validade: updateData.atestado_medico_validade,
-      restricoes_medicas: updateData.restricoes_medicas
-    });
 
     // Se enviou faixa_atual ou graus ou data_ultima_graduacao, atualizar na tabela aluno_faixa
     if (faixaAtualParaAtualizar || grausParaAtualizar !== undefined || dataUltimaGraduacaoParaAtualizar) {
@@ -1212,7 +1044,6 @@ export class AlunosService {
         console.error('Stack:', error.stack);
         // Não lançar erro para não quebrar o update do aluno
       }
-    } else {
     }
 
     // Buscar novamente do banco para garantir dados atualizados
@@ -1226,39 +1057,6 @@ export class AlunosService {
         `Aluno com ID ${id} não encontrado após atualização`,
       );
     }
-
-    console.log('� [UPDATE ALUNO] Dados de SAÚDE retornados do BANCO após update:', {
-      observacoes_medicas: resultado.observacoes_medicas,
-      alergias: resultado.alergias,
-      medicamentos_uso_continuo: resultado.medicamentos_uso_continuo,
-      plano_saude: resultado.plano_saude,
-      atestado_medico_validade: resultado.atestado_medico_validade,
-      restricoes_medicas: resultado.restricoes_medicas
-    });
-
-    console.log('�🎉 [UPDATE ALUNO] Aluno atualizado retornado:', {
-      id: resultado.id,
-      nome: resultado.nome_completo,
-      endereco_id: resultado.endereco_id,
-      endereco: resultado.endereco,
-      saude: {
-        observacoes_medicas: resultado.observacoes_medicas,
-        alergias: resultado.alergias,
-        medicamentos_uso_continuo: resultado.medicamentos_uso_continuo,
-        plano_saude: resultado.plano_saude,
-        atestado_medico_validade: resultado.atestado_medico_validade,
-        restricoes_medicas: resultado.restricoes_medicas
-      },
-      financeiro: {
-        dia_vencimento: resultado.dia_vencimento,
-        valor_mensalidade: resultado.valor_mensalidade,
-        desconto_percentual: resultado.desconto_percentual
-      },
-      responsavel_nome: resultado.responsavel_nome,
-      responsavel_cpf: resultado.responsavel_cpf,
-      responsavel_telefone: resultado.responsavel_telefone,
-      responsavel_parentesco: resultado.responsavel_parentesco,
-    });
 
     return resultado;
   }
@@ -1648,10 +1446,7 @@ export class AlunosService {
   // ========== TABLET CHECK-IN ==========
 
   async listarAlunosParaCheckin(user: any, search?: string) {
-    console.log('🔍 [listarAlunosParaCheckin] INÍCIO');
-    console.log('📋 [listarAlunosParaCheckin] User ID:', user?.id);
-    console.log('📋 [listarAlunosParaCheckin] User perfis:', user?.perfis);
-    
+   
     // Buscar unidade do usuário (TABLET_CHECKIN deve estar vinculado a uma unidade)
     let unidadeId: string | null = null;
 
@@ -1659,16 +1454,12 @@ export class AlunosService {
     const perfisNomes = (user?.perfis || []).map((p: any) =>
       typeof p === 'string' ? p.toUpperCase() : p.nome?.toUpperCase(),
     );
-    console.log('🔑 [listarAlunosParaCheckin] Perfis processados:', perfisNomes);
-
     if (perfisNomes.includes('TABLET_CHECKIN')) {
-      console.log('✅ [listarAlunosParaCheckin] Perfil TABLET_CHECKIN encontrado');
       const result = await this.dataSource.query(
         `SELECT unidade_id FROM teamcruz.tablet_unidades WHERE tablet_id = $1 AND ativo = true LIMIT 1`,
         [user.id],
       );
       unidadeId = result[0]?.unidade_id || null;
-      console.log('🏢 [listarAlunosParaCheckin] Unidade ID encontrada:', unidadeId);
     }
 
     if (!unidadeId) {
@@ -1708,12 +1499,6 @@ export class AlunosService {
     const amanha = new Date(hoje);
     amanha.setDate(amanha.getDate() + 1);
     
-    console.log('📅 [listarAlunosParaCheckin] Range de data:');
-    console.log('  - Servidor (UTC):', agora.toISOString());
-    console.log('  - Brasil (calculado):', agoraBrasil.toISOString());
-    console.log('  - Hoje 00:00 Brasil (UTC):', hoje.toISOString());
-    console.log('  - Amanhã 00:00 Brasil (UTC):', amanha.toISOString());
-    
     // Verificar quantas presencas existem hoje
     const presencasHoje = await this.dataSource.query(
       `SELECT COUNT(*), MIN(hora_checkin), MAX(hora_checkin) 
@@ -1722,7 +1507,6 @@ export class AlunosService {
        AND status_aprovacao IN ('APROVADO', 'PENDENTE')`,
       [hoje, amanha]
     );
-    console.log('📊 [listarAlunosParaCheckin] Presenças hoje:', presencasHoje[0]);
 
     query.where('aluno.unidade_id = :unidadeId', { unidadeId });
     query.andWhere('aluno.status = :status', { status: StatusAluno.ATIVO });
@@ -1744,15 +1528,11 @@ export class AlunosService {
         '(LOWER(aluno.nome_completo) LIKE :search OR aluno.cpf LIKE :search)',
         { search: `%${search.toLowerCase()}%` },
       );
-      console.log('🔎 [listarAlunosParaCheckin] Filtro de busca aplicado:', search);
     }
 
     query.orderBy('aluno.nome_completo', 'ASC');
 
-    console.log('🔍 [listarAlunosParaCheckin] Query SQL:', query.getSql());
     const alunos = await query.getMany();
-    console.log(`📊 [listarAlunosParaCheckin] Total alunos encontrados: ${alunos.length}`);
-    
     // Construir URL completa para as fotos
     // Usar a URL pública da API (backend)
     const baseUrl = process.env.API_URL || process.env.PUBLIC_API_URL || 'http://localhost:3000';

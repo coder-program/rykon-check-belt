@@ -91,7 +91,6 @@ export default function BankingPage() {
       setSemContaBancaria(false);
       const token = localStorage.getItem("token");
       
-      console.log("🏦 Buscando saldo para estabelecimento:", establishmentId);
       const saldoResponse = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/paytime/banking/balance?establishment_id=${establishmentId}`,
         {
@@ -101,11 +100,6 @@ export default function BankingPage() {
 
       if (saldoResponse.ok) {
         const saldoData = await saldoResponse.json();
-        console.log("💰 Saldo recebido (objeto completo):", saldoData);
-        console.log("💰 Campos disponíveis:", Object.keys(saldoData));
-        console.log("💰 Saldo disponível (balance):", saldoData.balance);
-        console.log("💰 Saldo bloqueado (blocked_balance):", saldoData.blocked_balance);
-        console.log("💰 Saldo total (total_balance):", saldoData.total_balance);
         setSaldo(saldoData);
         setSemContaBancaria(false);
       } else {
@@ -119,7 +113,6 @@ export default function BankingPage() {
             if (errorJson.message?.includes("Conta bancária não encontrada") || 
                 errorJson.message?.includes("dados bancários") ||
                 errorJson.code === "BNK000142") {
-              console.log("🏦 Estabelecimento sem conta bancária configurada");
               toast.error("Este estabelecimento não possui conta bancária configurada no PayTime");
               setSaldo(null);
               setExtrato([]);
@@ -135,7 +128,6 @@ export default function BankingPage() {
         throw new Error("Erro ao buscar saldo");
       }
 
-      console.log("📊 Buscando extrato:", { establishmentId, dataInicio, dataFim });
       const extratoResponse = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/paytime/banking/extract?establishment_id=${establishmentId}&start_date=${dataInicio}&end_date=${dataFim}`,
         {
@@ -145,13 +137,9 @@ export default function BankingPage() {
 
       if (extratoResponse.ok) {
         const extratoData = await extratoResponse.json();
-        console.log("📋 Extrato recebido (objeto completo):", extratoData);
-        console.log("📝 Número de lançamentos:", extratoData.data?.length || 0);
-        console.log("📝 Estrutura dos dados:", extratoData.data);
         
         if (extratoData.data && extratoData.data.length > 0) {
-          console.log("📝 Primeiro lançamento:", extratoData.data[0]);
-          console.log("📝 Último lançamento:", extratoData.data[extratoData.data.length - 1]);
+
         }
         
         setExtrato(extratoData.data || []);

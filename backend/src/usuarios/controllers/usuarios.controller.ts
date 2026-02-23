@@ -90,26 +90,7 @@ export class UsuariosController {
     summary: 'Listar usuários com cadastro completo aguardando aprovação',
   })
   async getPendentes(@Request() req) {
-    console.log('\n🌐 [CONTROLLER] Requisição recebida para usuários pendentes');
-    console.log('👤 [CONTROLLER] Usuário autenticado:', {
-      id: req.user?.id,
-      nome: req.user?.nome,
-      email: req.user?.email,
-      perfis: req.user?.perfis
-    });
-
     const result = await this.usuariosService.findPendingApproval(req.user);
-
-    console.log('📤 [CONTROLLER] Retornando resultado:', {
-      total: result?.length || 0,
-      usuarios: result?.slice(0, 3)?.map(u => ({
-        id: u.id,
-        nome: u.nome,
-        email: u.email,
-        perfis: u.perfis?.map(p => p.nome)
-      }))
-    });
-
     return result;
   }
 

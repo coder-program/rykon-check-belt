@@ -1055,9 +1055,11 @@ export class PaytimeService {
       } : undefined
     };
     
-    this.logger.debug(`💳 Criando transação Cartão para estabelecimento ${establishmentId}`);
-    this.logger.debug(`📋 Request URL: ${url}`);
-    this.logger.debug(`📋 Request Body: ${JSON.stringify(logData, null, 2)}`);
+    this.logger.log(`💳 [CARD] Criando transação para estabelecimento ${establishmentId}`);
+    this.logger.log(`📋 [CARD] Request URL: ${url}`);
+    this.logger.log(`🔑 [CARD] antifraud_type no cardData: ${cardData.antifraud_type ?? 'NÃO PRESENTE ⚠️'}`);
+    this.logger.log(`🔑 [CARD] session_id no cardData: ${cardData.session_id ? cardData.session_id.substring(0, 20) + '...' : 'NÃO PRESENTE'}`);
+    this.logger.log(`📦 [CARD] Body enviado para rykon-pay (sem dados sensíveis):\n${JSON.stringify(logData, null, 2)}`);
 
     const response = await fetch(url, {
       method: 'POST',
@@ -1101,7 +1103,9 @@ export class PaytimeService {
     }
 
     const data = JSON.parse(responseText);
-    this.logger.debug(`✅ Transação com cartão criada: ${data.id} - Status: ${data.status}`);
+    this.logger.log(`✅ [CARD] Transação criada: ${data._id || data.id} - Status: ${data.status}`);
+    this.logger.log(`🔍 [CARD] antifraud no response: ${JSON.stringify(data.antifraud ?? 'NÃO PRESENTE ⚠️')}`);
+    this.logger.log(`🔍 [CARD] analyse_required: ${data.antifraud?.[0]?.analyse_required ?? 'NÃO PRESENTE'}`);
     
     return data;
   }
