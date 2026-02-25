@@ -47,13 +47,6 @@ export class AlunoModalidadeService {
       );
     }
 
-    // Verificar se aluno e modalidade são da mesma unidade
-    if (aluno.unidade_id !== modalidade.unidade_id) {
-      throw new BadRequestException(
-        'Aluno e modalidade precisam ser da mesma unidade',
-      );
-    }
-
     // Verificar se já está matriculado
     const existente = await this.alunoModalidadeRepository.findOne({
       where: {
@@ -114,9 +107,7 @@ export class AlunoModalidadeService {
       id: m.modalidade.id,
       nome: m.modalidade.nome,
       descricao: m.modalidade.descricao,
-      valor_mensalidade: m.modalidade.valor_mensalidade,
       valor_praticado: m.valor_praticado,
-      valor_final: m.valor_praticado || m.modalidade.valor_mensalidade,
       cor: m.modalidade.cor,
       data_matricula: m.data_matricula,
     }));
@@ -132,7 +123,7 @@ export class AlunoModalidadeService {
       .getMany();
 
     return matriculas.reduce((total, m) => {
-      const valor = m.valor_praticado || m.modalidade.valor_mensalidade || 0;
+      const valor = m.valor_praticado || 0;
       return total + Number(valor);
     }, 0);
   }

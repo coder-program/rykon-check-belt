@@ -73,6 +73,7 @@ async function bootstrap() {
     'http://localhost:3000', // Desenvolvimento local frontend
     'http://localhost:3001', // Desenvolvimento local frontend alternativo
     'http://localhost:4000', // Desenvolvimento local backend
+    'http://localhost',      // Desenvolvimento local frontend porta 80 (IDPAY whitelist)
     'http://127.0.0.1:3000', // Desenvolvimento local frontend
     'http://127.0.0.1:4000', // Desenvolvimento local backend
     process.env.CORS_ORIGIN,

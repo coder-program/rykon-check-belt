@@ -255,3 +255,125 @@ export async function vincularEndereco(enderecoId: string, data: any) {
     auth: true,
   });
 }
+
+// ---------------------------------------------------------------------------
+// Modalidades
+// ---------------------------------------------------------------------------
+
+export interface Modalidade {
+  id: string;
+  nome: string;
+  descricao?: string;
+  cor?: string;
+  icone?: string;
+  tipo_graduacao?: string;
+  ativo: boolean;
+  totalAlunos?: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface UnidadeModalidade {
+  id: string;
+  unidade_id: string;
+  modalidade_id: string;
+  ativa: boolean;
+  modalidade?: Modalidade;
+  created_at?: string;
+}
+
+export interface CreateModalidadeData {
+  nome: string;
+  descricao?: string;
+  cor?: string;
+  icone?: string;
+  tipo_graduacao?: string;
+}
+
+export const TIPOS_GRADUACAO = [
+  { value: "NENHUM", label: "Sem graduação" },
+  { value: "FAIXA", label: "Faixa (cores)" },
+  { value: "GRAU", label: "Graus numéricos" },
+  { value: "KYU_DAN", label: "Kyu/Dan" },
+  { value: "CORDAO", label: "Cordão (cores)" },
+  { value: "LIVRE", label: "Personalizado" },
+] as const;
+
+export async function listModalidades(params: {
+  unidade_id?: string;
+  apenasAtivas?: boolean;
+}): Promise<Modalidade[]> {
+  const filteredParams = Object.fromEntries(
+    Object.entries(params).filter(
+      ([, value]) => value !== undefined && value !== null && value !== ""
+    )
+  );
+  const qs = new URLSearchParams(
+    filteredParams as Record<string, string>
+  ).toString();
+  const result = await http(`/modalidades${qs ? `?${qs}` : ""}`, { auth: true });
+  return Array.isArray(result) ? result : (result?.items ?? []);
+}
+
+export async function listUnidadeModalidades(params: {
+  unidade_id?: string;
+} = {}): Promise<UnidadeModalidade[]> {
+  const qs = params.unidade_id ? `?unidade_id=${params.unidade_id}` : "";
+  const result = await http(`/modalidades/unidade-modalidades${qs}`, { auth: true });
+  return Array.isArray(result) ? result : (result?.items ?? []);
+}
+
+export async function createModalidade(data: CreateModalidadeData): Promise<Modalidade> {
+  return http("/modalidades", { method: "POST", body: data, auth: true });
+}
+
+export async function updateModalidade(id: string, data: Partial<CreateModalidadeData>): Promise<Modalidade> {
+  return http(`/modalidades/${id}`, { method: "PATCH", body: data, auth: true });
+}
+
+export async function vincularModalidade(modalidade_id: string, unidade_id: string): Promise<UnidadeModalidade> {
+  return http(`/modalidades/${modalidade_id}/vincular`, { method: "POST", body: { unidade_id }, auth: true });
+}
+
+export async function desvincularModalidade(modalidade_id: string, unidade_id: string): Promise<void> {
+  return http(`/modalidades/${modalidade_id}/vincular/${unidade_id}`, { method: "DELETE", auth: true });
+}
+
+export async function ativarModalidade(id: string): Promise<Modalidade> {
+  return http(`/modalidades/${id}/ativar`, { method: "PATCH", auth: true });
+}
+
+export async function desativarModalidade(id: string): Promise<{ modalidade: Modalidade; totalAlunos: number }> {
+  return http(`/modalidades/${id}/desativar`, { method: "PATCH", auth: true });
+}
+
+export async function deleteModalidade(id: string): Promise<{ message: string }> {
+  return http(`/modalidades/${id}`, { method: "DELETE", auth: true });
+}
+
+export async function getModalidadeById(id: string): Promise<Modalidade> {
+  return http(`/modalidades/${id}`, { auth: true });
+}
+
+export async function getModalidadeAlunos(id: string): Promise<{
+  id: string;
+  aluno_id: string;
+  nome: string;
+  email: string;
+  telefone?: string;
+  data_matricula: string;
+  valor_praticado?: number;
+  ativo: boolean;
+  aluno_ativo: boolean;
+}[]> {
+  return http(`/modalidades/${id}/alunos`, { auth: true });
+}
+
+export async function getModalidadeEstatisticas(id: string): Promise<{
+  totalAlunos: number;
+  faturamentoPotencial: number;
+  faturamentoReal: number;
+  modalidade: { id: string; nome: string; cor: string; valor_mensalidade: number };
+}> {
+  return http(`/modalidades/${id}/estatisticas`, { auth: true });
+}

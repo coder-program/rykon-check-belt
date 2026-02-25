@@ -2,28 +2,24 @@ import {
   IsString,
   IsOptional,
   IsBoolean,
-  IsNumber,
+  IsIn,
+  IsUUID,
   Matches,
   Length,
-  IsUUID,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
-export class CreateModalidadeDto {
-  @ApiProperty({
-    description: 'ID da unidade que oferece esta modalidade',
-    example: '123e4567-e89b-12d3-a456-426614174000',
-  })
-  @IsUUID()
-  unidade_id: string;
+export const TIPOS_GRADUACAO = ['FAIXA', 'GRAU', 'KYU_DAN', 'CORDAO', 'LIVRE', 'NENHUM'] as const;
+export type TipoGraduacao = typeof TIPOS_GRADUACAO[number];
 
+export class CreateModalidadeDto {
   @ApiProperty({
     description: 'Nome da modalidade (Jiu-Jitsu, Muay Thai, MMA, etc.)',
     example: 'Jiu-Jitsu',
   })
   @IsString()
   @Length(3, 100)
-  nome: string;
+  nome!: string;
 
   @ApiPropertyOptional({
     description: 'Descrição detalhada da modalidade',
@@ -32,13 +28,6 @@ export class CreateModalidadeDto {
   @IsOptional()
   @IsString()
   descricao?: string;
-
-  @ApiProperty({
-    description: 'Valor da mensalidade para esta modalidade',
-    example: 250.0,
-  })
-  @IsNumber()
-  valor_mensalidade: number;
 
   @ApiPropertyOptional({
     description: 'Cor identificadora da modalidade em formato hex',
@@ -52,11 +41,37 @@ export class CreateModalidadeDto {
   cor?: string;
 
   @ApiPropertyOptional({
+    description: 'Tipo de sistema de graduação desta modalidade',
+    example: 'FAIXA',
+    enum: TIPOS_GRADUACAO,
+    default: 'NENHUM',
+  })
+  @IsOptional()
+  @IsIn(TIPOS_GRADUACAO, {
+    message: `tipo_graduacao deve ser um dos valores: ${TIPOS_GRADUACAO.join(', ')}`,
+  })
+  tipo_graduacao?: TipoGraduacao;
+
+  @ApiPropertyOptional({
+    description: 'Identificador de ícone (ex: boxing-glove, karate)',
+    example: 'boxing-glove',
+  })
+  @IsOptional()
+  @IsString()
+  @Length(1, 50)
+  icone?: string;
+
+  @ApiPropertyOptional({
     description: 'Se a modalidade está ativa',
-    example: true,
     default: true,
   })
   @IsOptional()
   @IsBoolean()
   ativo?: boolean;
+}
+
+export class VincularModalidadeDto {
+  @ApiProperty({ description: 'ID da unidade', example: '123e4567-e89b-12d3-a456-426614174000' })
+  @IsUUID()
+  unidade_id!: string;
 }

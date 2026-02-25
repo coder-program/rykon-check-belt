@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import { useFranqueadoProtection } from "@/hooks/useFranqueadoProtection";
 import { Building2, Save, ArrowLeft, Download } from "lucide-react";
 import toast, { Toaster } from "react-hot-toast";
+import { listUnidades } from "@/lib/peopleApi";
+import UnidadeOnboarding from "@/components/cadastro/UnidadeOnboarding";
 
 // Funções de validação e formatação
 const formatCPF = (value: string): string => {
@@ -201,6 +203,8 @@ export default function MinhaFranquiaPage() {
     useState<FranqueadoData | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [contratoAceito, setContratoAceito] = useState(false);
+  const [hasUnidades, setHasUnidades] = useState(false);
+  const [checkingUnidades, setCheckingUnidades] = useState(true);
 
   const [formData, setFormData] = useState<FranqueadoData>({
     nome: user?.nome || "",
@@ -209,8 +213,6 @@ export default function MinhaFranquiaPage() {
     telefone: user?.telefone || "",
     ativo: true,
   });
-
-  if (shouldBlock) return null;
 
   const baixarContratoPDF = () => {
     // Usar window.print() para gerar PDF diretamente
@@ -330,11 +332,8 @@ export default function MinhaFranquiaPage() {
       return;
     }
 
-    // Se o cadastro já está completo, redirecionar IMEDIATAMENTE para o dashboard
-    if (user?.cadastro_completo) {
-      router.replace("/dashboard");
-      return;
-    }
+    // Se o cadastro já está completo porém o usuário navegou de volta,
+    // deixar a lógica de unidades decidir o que mostrar (não redirecionar)
   }, [user, router]);
 
   useEffect(() => {
@@ -343,6 +342,9 @@ export default function MinhaFranquiaPage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
+
+  // Bloquear acesso se necessário (deve vir após os hooks)
+  if (shouldBlock) return null;
 
   const verificarFranquiaExistente = async () => {
     if (!user?.id) return;
@@ -354,6 +356,7 @@ export default function MinhaFranquiaPage() {
 
       // Se não há token, não tenta fazer a requisição
       if (!token) {
+        setCheckingUnidades(false);
         return;
       }
 
@@ -378,6 +381,19 @@ export default function MinhaFranquiaPage() {
           if (franquia.contrato_aceito) {
             setContratoAceito(true);
           }
+
+          // Verificar se já tem unidades cadastradas
+          try {
+            const unidadesResp = await listUnidades({
+              franqueado_id: franquia.id,
+              pageSize: 1,
+            });
+            const total = unidadesResp?.total ?? unidadesResp?.items?.length ?? 0;
+            setHasUnidades(total > 0);
+          } catch {
+            // Se falhar, assumir que não tem unidades (onboarding será exibido)
+            setHasUnidades(false);
+          }
         }
       } else if (response.status === 404) {
         // Franquia não encontrada é normal para primeira vez
@@ -391,6 +407,8 @@ export default function MinhaFranquiaPage() {
       }
     } catch (error) {
       console.error("Erro ao verificar franquia:", error);
+    } finally {
+      setCheckingUnidades(false);
     }
   };
 
@@ -559,19 +577,37 @@ export default function MinhaFranquiaPage() {
     }
   };
 
-  // Mostrar loading enquanto não há usuário ou está redirecionando
-  if (!user || user?.cadastro_completo) {
+  // Mostrar loading enquanto não há usuário ou está carregando dados
+  if (!user) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black p-4 flex items-center justify-center">
         <div className="text-center text-white">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-500 mx-auto mb-4"></div>
-          <p>
-            {!user
-              ? "Verificando autenticação..."
-              : "Redirecionando para o dashboard..."}
-          </p>
+          <p>Verificando autenticação...</p>
         </div>
       </div>
+    );
+  }
+
+  // Loading enquanto verifica franquia e unidades
+  if (checkingUnidades) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black p-4 flex items-center justify-center">
+        <div className="text-center text-white">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-yellow-500 mx-auto mb-4"></div>
+          <p>Carregando...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Se tem franquia mas NÃO tem unidades → mostrar onboarding
+  if (franquiaExistente && !hasUnidades) {
+    return (
+      <UnidadeOnboarding
+        franqueadoId={franquiaExistente.id!}
+        franqueadoNome={franquiaExistente.nome || user?.nome || "Franqueado"}
+      />
     );
   }
 

@@ -257,69 +257,34 @@ export default function InstrutorDashboard() {
           </div>
         </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Meus Alunos</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {statsLoading ? "..." : stats.meusAlunos}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {statsLoading ? "..." : stats.alunosAtivos} ativos
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Aulas/Semana
-              </CardTitle>
-              <Calendar className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {statsLoading ? "..." : stats.aulasSemana}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {statsLoading ? "..." : stats.proximasAulas} hoje
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Graduações</CardTitle>
-              <Trophy className="h-4 w-4 text-yellow-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-yellow-600">
-                {statsLoading ? "..." : stats.graduacoesPendentes}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Avaliações pendentes
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Presença Média
-              </CardTitle>
-              <Clock className="h-4 w-4 text-green-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600">
-                {statsLoading ? "..." : stats.presencaMedia}%
-              </div>
-              <p className="text-xs text-muted-foreground">Últimas 4 semanas</p>
-            </CardContent>
-          </Card>
+        {/* Stats strip */}
+        <div className="flex flex-wrap gap-x-6 gap-y-2 mb-8 px-1">
+          <div className="flex items-center gap-1.5 text-sm text-gray-500">
+            <Users className="h-3.5 w-3.5" />
+            <span className="font-medium text-gray-700">{statsLoading ? "…" : stats.alunosAtivos}</span>
+            <span>aluno{stats.alunosAtivos !== 1 ? "s" : ""} ativo{stats.alunosAtivos !== 1 ? "s" : ""}</span>
+            {!statsLoading && stats.meusAlunos !== stats.alunosAtivos && (
+              <span className="text-gray-400">({stats.meusAlunos} total)</span>
+            )}
+          </div>
+          <div className="flex items-center gap-1.5 text-sm text-gray-500">
+            <Calendar className="h-3.5 w-3.5" />
+            <span className="font-medium text-gray-700">{statsLoading ? "…" : stats.aulasSemana}</span>
+            <span>aula{stats.aulasSemana !== 1 ? "s" : ""}/semana</span>
+            {!statsLoading && stats.proximasAulas > 0 && (
+              <span className="text-gray-400">({stats.proximasAulas} hoje)</span>
+            )}
+          </div>
+          <div className="flex items-center gap-1.5 text-sm text-gray-500">
+            <Trophy className="h-3.5 w-3.5" />
+            <span className="font-medium text-gray-700">{statsLoading ? "…" : stats.graduacoesPendentes}</span>
+            <span>graduaç{stats.graduacoesPendentes !== 1 ? "ões" : "ão"} pendente{stats.graduacoesPendentes !== 1 ? "s" : ""}</span>
+          </div>
+          <div className="flex items-center gap-1.5 text-sm text-gray-500">
+            <Clock className="h-3.5 w-3.5" />
+            <span className="font-medium text-gray-700">{statsLoading ? "…" : `${stats.presencaMedia}%`}</span>
+            <span>presença média</span>
+          </div>
         </div>
 
         {/* Quick Actions */}

@@ -174,7 +174,6 @@ export class RecepcionistaUnidadesService {
         u.status as unidade_status,
         u.telefone_celular as unidade_telefone,
         u.email as unidade_email,
-        u.capacidade_max_alunos,
         COUNT(a.id) FILTER (WHERE a.status = 'ATIVO') as total_alunos_ativos
       FROM teamcruz.recepcionista_unidades ru
       INNER JOIN teamcruz.unidades u ON u.id = ru.unidade_id
@@ -184,7 +183,7 @@ export class RecepcionistaUnidadesService {
       GROUP BY
         ru.id, ru.cargo, ru.turno, ru.horario_entrada, ru.horario_saida,
         ru.dias_semana, ru.ativo, ru.data_inicio,
-        u.id, u.nome, u.cnpj, u.status, u.telefone_celular, u.email, u.capacidade_max_alunos
+        u.id, u.nome, u.cnpj, u.status, u.telefone_celular, u.email
       ORDER BY u.nome`,
       [usuario_id],
     );

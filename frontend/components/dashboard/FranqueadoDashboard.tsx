@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useAuth } from "@/app/auth/AuthContext";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
@@ -9,6 +9,7 @@ import {
   listAlunos,
   getMyFranqueado,
   listProfessores,
+  listUnidadeModalidades,
 } from "@/lib/peopleApi";
 import {
   Card,
@@ -35,6 +36,8 @@ import {
   DollarSign,
   Mail,
   Settings,
+  Dumbbell,
+  ArrowRight,
 } from "lucide-react";
 import ConviteModal from "@/components/convites/ConviteModal";
 
@@ -91,7 +94,35 @@ export default function FranqueadoDashboard() {
       unidade.id && arr.findIndex((u: any) => u.id === unidade.id) === index
   );
 
+  // Se o franqueado não tem nenhuma unidade cadastrada, redirecionar para o onboarding
+  useEffect(() => {
+    if (!loadingFranqueado && !loadingUnidades && franqueado?.id && unidadesUnicas.length === 0) {
+      router.replace("/minha-franquia");
+    }
+  }, [loadingFranqueado, loadingUnidades, franqueado?.id, unidadesUnicas.length, router]);
+
   const unidadeIds = unidadesUnicas.map((u: any) => u.id);
+
+  // Buscar vínculos unidade↔modalidade para detectar unidades sem modalidade configurada
+  const { data: unidadeModalidadesData } = useQuery({
+    queryKey: ["unidade-modalidades-franqueado", unidadeIds],
+    queryFn: () => listUnidadeModalidades(),
+    enabled: unidadeIds.length > 0,
+    staleTime: 0,
+    refetchOnMount: "always",
+  });
+
+  const unidadeModalidades = unidadeModalidadesData ?? [];
+
+  // Unidades que ainda não têm nenhuma modalidade vinculada
+  const unidadesSemModalidade = unidadesUnicas.filter(
+    (u: any) => !unidadeModalidades.some((um: any) => um.unidade_id === u.id && um.ativa)
+  );
+
+  // true enquanto TODAS as unidades estão sem modalidade = modo setup inicial
+  const semModalidades =
+    unidadesUnicas.length > 0 &&
+    unidadesSemModalidade.length === unidadesUnicas.length;
 
   // Buscar alunos das unidades do franqueado
   const { data: alunosData } = useQuery({
@@ -378,6 +409,13 @@ export default function FranqueadoDashboard() {
       color: "bg-indigo-500",
     },
     {
+      title: "Modalidades",
+      description: "Gerenciar modalidades esportivas",
+      icon: Dumbbell,
+      action: () => router.push("/modalidades"),
+      color: "bg-purple-500",
+    },
+    {
       title: "Gestão Financeira",
       description: "Dashboard financeiro completo",
       icon: DollarSign,
@@ -394,105 +432,96 @@ export default function FranqueadoDashboard() {
     // },
   ];
 
+  // Durante setup (todas unidades sem modalidade) libera
+  // apenas Unidades, Usuários e Modalidades
+  const SETUP_ALLOWED = new Set([
+    "Gerenciar Unidades",
+    "Gerenciar Usuários",
+    "Modalidades",
+  ]);
+  const visibleActions = semModalidades
+    ? quickActions.filter((a) => SETUP_ALLOWED.has(a.title))
+    : quickActions;
+
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <div className="flex items-center gap-3 mb-2">
-            <Building2 className="h-8 w-8 text-blue-600" />
-            <h1 className="text-3xl font-bold text-gray-900">
-              Dashboard Franqueado
-            </h1>
-          </div>
           <p className="text-gray-600">
             Bem-vindo, {user?.nome}! Gerencie suas unidades TeamCruz.
           </p>
         </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Minhas Unidades
-              </CardTitle>
-              <Building2 className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.minhasUnidades}</div>
-              <p className="text-xs text-muted-foreground">
-                {stats.unidadesAtivas > 0 &&
-                  `${stats.unidadesAtivas} ativa${
-                    stats.unidadesAtivas !== 1 ? "s" : ""
-                  }`}
-                {stats.unidadesAtivas > 0 &&
-                  (stats.unidadesHomologacao > 0 ||
-                    stats.unidadesInativas > 0) &&
-                  ", "}
-                {stats.unidadesHomologacao > 0 &&
-                  `${stats.unidadesHomologacao} em homologação`}
-                {stats.unidadesHomologacao > 0 &&
-                  stats.unidadesInativas > 0 &&
-                  ", "}
-                {stats.unidadesInativas > 0 &&
-                  `${stats.unidadesInativas} inativa${
-                    stats.unidadesInativas !== 1 ? "s" : ""
-                  }`}
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Total Alunos
-              </CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.totalAlunos}</div>
-              <p className="text-xs text-muted-foreground">ativos</p>
-            </CardContent>
-          </Card>
-
-          {/* Receita Mensal - Comentado até implementar módulo financeiro */}
-          {/* <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Receita Mensal
-              </CardTitle>
-              <DollarSign className="h-4 w-4 text-green-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600">
-                R$ {stats.receitaMensal.toLocaleString()}
+        {/* Banner: unidades sem modalidade */}
+        {unidadesSemModalidade.length > 0 && (
+          <div className="mb-6 rounded-xl border border-yellow-300 bg-yellow-50 p-4 flex flex-col sm:flex-row sm:items-center gap-4">
+            <div className="flex items-start gap-3 flex-1">
+              <div className="mt-0.5 shrink-0 rounded-full bg-yellow-400 p-1.5">
+                <Dumbbell className="h-4 w-4 text-white" />
               </div>
-              <p className="text-xs text-muted-foreground">
-                Baseado nos valores dos planos
-              </p>
-            </CardContent>
-          </Card> */}
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Professores</CardTitle>
-              <GraduationCap className="h-4 w-4 text-indigo-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-indigo-600">
-                {stats.totalProfessores}
+              <div>
+                <div className="flex items-center gap-2 mb-0.5">
+                  <span className="text-sm font-semibold text-yellow-900">
+                    Configure as modalidades da sua unidade
+                  </span>
+                  <span className="rounded-full bg-yellow-400 px-2 py-0.5 text-xs font-bold text-yellow-900">
+                    Pendente
+                  </span>
+                </div>
+                <p className="text-xs text-yellow-800">
+                  {unidadesSemModalidade.length === 1
+                    ? `A unidade "${unidadesSemModalidade[0].nome}" ainda não possui modalidades cadastradas.`
+                    : `${unidadesSemModalidade.length} unidades ainda não possuem modalidades: ${unidadesSemModalidade.map((u: any) => `"${u.nome}"`).join(", ")}.`}
+                  {" "}Adicione as disciplinas oferecidas para liberar matrículas e check-ins.
+                </p>
               </div>
-              <p className="text-xs text-muted-foreground">ativos</p>
-            </CardContent>
-          </Card>
+            </div>
+            <button
+              onClick={() => router.push("/modalidades")}
+              className="flex items-center gap-2 whitespace-nowrap rounded-lg bg-yellow-500 px-4 py-2 text-sm font-semibold text-white hover:bg-yellow-600 transition-colors"
+            >
+              Configurar agora
+              <ArrowRight className="h-4 w-4" />
+            </button>
+          </div>
+        )}
+
+        {/* Stats strip — dados compactos sem destaque */}
+        <div className="flex flex-wrap gap-x-6 gap-y-2 mb-8 px-1">
+          <div className="flex items-center gap-1.5 text-sm text-gray-500">
+            <Building2 className="h-3.5 w-3.5" />
+            <span className="font-medium text-gray-700">{stats.minhasUnidades}</span>
+            <span>unidade{stats.minhasUnidades !== 1 ? "s" : ""}</span>
+            {stats.unidadesHomologacao > 0 && (
+              <span className="text-gray-400">({stats.unidadesHomologacao} em homologação)</span>
+            )}
+          </div>
+          <div className="flex items-center gap-1.5 text-sm text-gray-500">
+            <Users className="h-3.5 w-3.5" />
+            <span className="font-medium text-gray-700">{stats.totalAlunos}</span>
+            <span>aluno{stats.totalAlunos !== 1 ? "s" : ""} ativo{stats.totalAlunos !== 1 ? "s" : ""}</span>
+          </div>
+          <div className="flex items-center gap-1.5 text-sm text-gray-500">
+            <GraduationCap className="h-3.5 w-3.5" />
+            <span className="font-medium text-gray-700">{stats.totalProfessores}</span>
+            <span>professor{stats.totalProfessores !== 1 ? "es" : ""}</span>
+          </div>
         </div>
 
         {/* Quick Actions */}
         <div className="mb-8">
-          <h2 className="text-xl font-semibold mb-4">Ações Rápidas</h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold">Ações Rápidas</h2>
+            {semModalidades && (
+              <span className="flex items-center gap-1.5 rounded-full bg-yellow-100 border border-yellow-300 px-3 py-1 text-xs font-medium text-yellow-800">
+                <AlertCircle className="h-3.5 w-3.5" />
+                Configure modalidades para liberar todas as funções
+              </span>
+            )}
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {quickActions.map((action, index) => (
+            {visibleActions.map((action, index) => (
               <Card
                 key={index}
                 className={`cursor-pointer hover:shadow-lg transform hover:scale-105 transition-all ${
@@ -631,6 +660,44 @@ export default function FranqueadoDashboard() {
                               <p className="text-sm text-gray-900">
                                 {unidade.cidade || "Não informado"}
                               </p>
+                            </div>
+                          </div>
+                          {/* Modalidades desta unidade */}
+                          <div className="pt-3 border-t">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="text-sm font-medium text-gray-500 mb-0.5">Modalidades</p>
+                                {(() => {
+                                  const linked = unidadeModalidades.filter(
+                                    (um: any) => um.unidade_id === unidade.id && um.ativa
+                                  );
+                                  return linked.length > 0 ? (
+                                    <div className="flex flex-wrap gap-1">
+                                      {linked.map((um: any) => (
+                                        <span
+                                          key={um.id}
+                                          className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-purple-100 text-purple-800"
+                                          style={{ borderLeft: `3px solid ${um.modalidade?.cor || '#7c3aed'}` }}
+                                        >
+                                          {um.modalidade?.nome || 'Modalidade'}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  ) : (
+                                    <p className="text-xs text-yellow-700 font-medium">Nenhuma modalidade configurada</p>
+                                  );
+                                })()}
+                              </div>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  router.push(`/modalidades?unidade_id=${unidade.id}`);
+                                }}
+                                className="flex items-center gap-1.5 whitespace-nowrap rounded-lg bg-purple-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-purple-700 transition-colors"
+                              >
+                                <Dumbbell className="h-3.5 w-3.5" />
+                                Gerenciar modalidades
+                              </button>
                             </div>
                           </div>
                         </div>

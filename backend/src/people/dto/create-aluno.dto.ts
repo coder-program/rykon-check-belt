@@ -22,6 +22,26 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Genero, StatusAluno, FaixaEnum } from '../entities/aluno.entity';
 import { IsValidName } from '../../common/decorators/is-valid-name.decorator';
 
+// DTO para modalidades do aluno (informado no cadastro)
+export class AlunoModalidadeInputDto {
+  @ApiProperty({
+    description: 'ID da modalidade',
+    example: '123e4567-e89b-12d3-a456-426614174000',
+  })
+  @IsUUID('4', { message: 'ID de modalidade inválido' })
+  @IsNotEmpty({ message: 'ID da modalidade é obrigatório' })
+  modalidade_id: string;
+
+  @ApiPropertyOptional({
+    description: 'Valor praticado (deixe vazio para usar o valor padrão da modalidade)',
+    example: 150.0,
+  })
+  @IsNumber({}, { message: 'Valor praticado deve ser um número' })
+  @Min(0, { message: 'Valor praticado não pode ser negativo' })
+  @IsOptional()
+  valor_praticado?: number;
+}
+
 // DTO para unidades do aluno
 export class AlunoUnidadeDto {
   @ApiProperty({
@@ -149,6 +169,24 @@ export class CreateAlunoDto {
   @Type(() => AlunoUnidadeDto)
   @IsOptional()
   unidades?: AlunoUnidadeDto[];
+
+  // ===== MODALIDADES (NOVO SISTEMA MULTI-MODAL) =====
+  @ApiPropertyOptional({
+    description:
+      'Lista de modalidades em que o aluno será matriculado (ex: Muay Thai, Judo)',
+    type: [AlunoModalidadeInputDto],
+    example: [
+      {
+        modalidade_id: '123e4567-e89b-12d3-a456-426614174000',
+        valor_praticado: 150.0,
+      },
+    ],
+  })
+  @IsArray({ message: 'Modalidades deve ser um array' })
+  @ValidateNested({ each: true })
+  @Type(() => AlunoModalidadeInputDto)
+  @IsOptional()
+  modalidades?: AlunoModalidadeInputDto[];
 
   // ===== COMPATIBILIDADE (SISTEMA ANTIGO) =====
   @ApiPropertyOptional({

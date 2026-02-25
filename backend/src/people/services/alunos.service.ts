@@ -28,6 +28,7 @@ import {
 import { UsuariosService } from '../../usuarios/services/usuarios.service';
 import { AlunoUnidadeService } from './aluno-unidade.service';
 import { AlunoUnidade } from '../entities/aluno-unidade.entity';
+import { AlunoModalidade } from '../entities/aluno-modalidade.entity';
 import { EnderecosService } from '../../enderecos/enderecos.service';
 
 interface ListAlunosParams {
@@ -55,6 +56,8 @@ export class AlunosService {
     private readonly alunoFaixaGrauRepository: Repository<AlunoFaixaGrau>,
     @InjectRepository(AlunoUnidade)
     private readonly alunoUnidadeRepository: Repository<AlunoUnidade>,
+    @InjectRepository(AlunoModalidade)
+    private readonly alunoModalidadeRepository: Repository<AlunoModalidade>,
     private dataSource: DataSource,
     private readonly usuariosService: UsuariosService,
     private readonly alunoUnidadeService: AlunoUnidadeService,
@@ -754,6 +757,22 @@ export class AlunosService {
         });
 
         await queryRunner.manager.save(AlunoUnidade, vinculoLegado);
+      }
+
+      // 8. Vincular aluno às modalidades selecionadas (novo sistema multi-modal)
+      if (dto.modalidades && dto.modalidades.length > 0) {
+        for (const modalidadeDto of dto.modalidades) {
+          const novaMatricula = queryRunner.manager.create(AlunoModalidade, {
+            aluno_id: savedAluno.id,
+            modalidade_id: modalidadeDto.modalidade_id,
+            valor_praticado:
+              modalidadeDto.valor_praticado !== undefined
+                ? modalidadeDto.valor_praticado
+                : null,
+            ativo: true,
+          });
+          await queryRunner.manager.save(AlunoModalidade, novaMatricula);
+        }
       }
 
       await queryRunner.commitTransaction();

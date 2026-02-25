@@ -28,6 +28,7 @@ import {
   Mail,
   Settings,
   CheckCircle,
+  Dumbbell,
 } from "lucide-react";
 import ConviteModal from "@/components/convites/ConviteModal";
 
@@ -260,6 +261,13 @@ export default function GerenteDashboard() {
       action: () => router.push("/financeiro/dashboard"),
       color: "bg-emerald-500",
     },
+    {
+      title: "Modalidades",
+      description: "Gerenciar modalidades esportivas",
+      icon: Dumbbell,
+      action: () => router.push("/modalidades"),
+      color: "bg-purple-500",
+    },
     // TODO: Implementar funcionalidade de relatórios
     // {
     //   title: "Relatórios",
@@ -284,11 +292,7 @@ export default function GerenteDashboard() {
         <div className="mb-8">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
-              <Building2 className="h-8 w-8 text-blue-600" />
               <div>
-                <h1 className="text-3xl font-bold text-gray-900">
-                  Dashboard Gerente
-                </h1>
                 <p className="text-gray-600">
                   Bem-vindo, <span className="font-semibold">{user?.nome}</span>
                   !
@@ -309,75 +313,26 @@ export default function GerenteDashboard() {
           </div>
         </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Total Alunos
-              </CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.totalAlunos}</div>
-              <p className="text-xs text-muted-foreground">
-                {stats.alunosAtivos} ativos
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Ocupação</CardTitle>
-              <Building2 className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-blue-600">
-                {stats.ocupacao !== null ? `${stats.ocupacao}%` : "—"}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {stats.capacidadeMax > 0
-                  ? `${stats.alunosAtivos} de ${stats.capacidadeMax} vagas`
-                  : `${stats.alunosAtivos} alunos (capacidade não configurada)`}
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Receita Mensal
-              </CardTitle>
-              <TrendingUp className="h-4 w-4 text-green-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600">
-                {unidade.valor_plano_padrao
-                  ? `R$ ${stats.receitaMensal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                  : "Não configurado"}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {unidade.valor_plano_padrao
-                  ? `Plano padrão: R$ ${unidade.valor_plano_padrao.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                  : "Configure o valor do plano na unidade"}
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Aulas Hoje</CardTitle>
-              <Clock className="h-4 w-4 text-purple-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-purple-600">
-                {stats.aulasHoje}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {stats.totalProfessores} professores
-              </p>
-            </CardContent>
-          </Card>
+        {/* Stats strip */}
+        <div className="flex flex-wrap gap-x-6 gap-y-2 mb-8 px-1">
+          <div className="flex items-center gap-1.5 text-sm text-gray-500">
+            <Users className="h-3.5 w-3.5" />
+            <span className="font-medium text-gray-700">{stats.alunosAtivos}</span>
+            <span>aluno{stats.alunosAtivos !== 1 ? "s" : ""} ativo{stats.alunosAtivos !== 1 ? "s" : ""}</span>
+            {stats.totalAlunos !== stats.alunosAtivos && (
+              <span className="text-gray-400">({stats.totalAlunos} total)</span>
+            )}
+          </div>
+          <div className="flex items-center gap-1.5 text-sm text-gray-500">  
+            {stats.capacidadeMax > 0 && (
+              <span className="text-gray-400">({stats.alunosAtivos}/{stats.capacidadeMax} vagas)</span>
+            )}
+          </div>
+          <div className="flex items-center gap-1.5 text-sm text-gray-500">
+            <Clock className="h-3.5 w-3.5" />
+            <span className="font-medium text-gray-700">{stats.aulasHoje}</span>
+            <span>aula{stats.aulasHoje !== 1 ? "s" : ""} hoje</span>
+          </div>          
         </div>
 
         {/* Quick Actions */}

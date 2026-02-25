@@ -619,12 +619,11 @@ export class UnidadesService {
       // Geolocalização
       latitude: row.latitude ? parseFloat(row.latitude) : null,
       longitude: row.longitude ? parseFloat(row.longitude) : null,
-      // Configurações operacionais
-      capacidade_max_alunos: row.capacidade_max_alunos ? parseInt(row.capacidade_max_alunos) : null,
-      valor_plano_padrao: row.valor_plano_padrao ? parseFloat(row.valor_plano_padrao) : null,
-      qtde_instrutores: row.qtde_instrutores ? parseInt(row.qtde_instrutores) : null,
       // Dados estruturais
       horarios_funcionamento: row.horarios_funcionamento,
+      // Catraca
+      catraca_habilitada: row.catraca_habilitada ?? false,
+      catraca_config: row.catraca_config || null,
       // Endereço
       endereco_id: row.endereco_id || null,
       created_at: new Date(row.created_at),

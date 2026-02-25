@@ -316,9 +316,7 @@ export default function RecepcionistaDashboard() {
         <div className="mb-8">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
-              <UserCheck className="h-8 w-8 text-green-600" />
               <div>
-                <h1 className="text-3xl font-bold text-gray-900">Recepção</h1>
                 <p className="text-gray-600">
                   Bem-vindo, <span className="font-semibold">{user?.nome}</span>
                   !
@@ -339,67 +337,33 @@ export default function RecepcionistaDashboard() {
           </div>
         </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Alunos Ativos
-              </CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-blue-600">
-                {stats.alunosAtivos}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {stats.totalAlunos} total
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Check-ins Hoje
-              </CardTitle>
-              <CheckCircle className="h-4 w-4 text-green-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600">
-                {stats.checkInsHoje}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Presenças registradas
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Aulas Hoje</CardTitle>
-              <Clock className="h-4 w-4 text-purple-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-purple-600">
-                {stats.aulasHoje}
-              </div>
-              <p className="text-xs text-muted-foreground">Aulas programadas</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Unidade</CardTitle>
-              <Building2 className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-lg font-bold truncate">{unidade.nome}</div>
-              <p className="text-xs text-muted-foreground">
-                {unidade.capacidade_max_alunos || "-"} alunos máx
-              </p>
-            </CardContent>
-          </Card>
+        {/* Stats strip */}
+        <div className="flex flex-wrap gap-x-6 gap-y-2 mb-8 px-1">
+          <div className="flex items-center gap-1.5 text-sm text-gray-500">
+            <Users className="h-3.5 w-3.5" />
+            <span className="font-medium text-gray-700">{stats.alunosAtivos}</span>
+            <span>aluno{stats.alunosAtivos !== 1 ? "s" : ""} ativo{stats.alunosAtivos !== 1 ? "s" : ""}</span>
+            {stats.totalAlunos !== stats.alunosAtivos && (
+              <span className="text-gray-400">({stats.totalAlunos} total)</span>
+            )}
+          </div>
+          <div className="flex items-center gap-1.5 text-sm text-gray-500">
+            <CheckCircle className="h-3.5 w-3.5" />
+            <span className="font-medium text-gray-700">{stats.checkInsHoje}</span>
+            <span>check-in{stats.checkInsHoje !== 1 ? "s" : ""} hoje</span>
+          </div>
+          <div className="flex items-center gap-1.5 text-sm text-gray-500">
+            <Clock className="h-3.5 w-3.5" />
+            <span className="font-medium text-gray-700">{stats.aulasHoje}</span>
+            <span>aula{stats.aulasHoje !== 1 ? "s" : ""} hoje</span>
+          </div>
+          <div className="flex items-center gap-1.5 text-sm text-gray-500">
+            <Building2 className="h-3.5 w-3.5" />
+            <span className="font-medium text-gray-700">{unidade.nome}</span>
+            {unidade.capacidade_max_alunos && (
+              <span className="text-gray-400">({unidade.capacidade_max_alunos} vagas máx)</span>
+            )}
+          </div>
         </div>
 
         {/* Quick Actions */}

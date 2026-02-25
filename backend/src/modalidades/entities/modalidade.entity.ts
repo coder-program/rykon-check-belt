@@ -5,44 +5,39 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   OneToMany,
-  ManyToOne,
-  JoinColumn,
 } from 'typeorm';
 import { AlunoModalidade } from '../../people/entities/aluno-modalidade.entity';
-import { Unidade } from '../../people/entities/unidade.entity';
+import { UnidadeModalidade } from './unidade-modalidade.entity';
 
 @Entity({ name: 'modalidades', schema: 'teamcruz' })
 export class Modalidade {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ type: 'uuid' })
-  unidade_id: string;
-
   @Column({ type: 'varchar', length: 100 })
   nome: string;
 
   @Column({ type: 'text', nullable: true })
-  descricao: string;
-
-  @Column({ type: 'decimal', precision: 10, scale: 2 })
-  valor_mensalidade: number;
+  descricao: string | null;
 
   @Column({ type: 'boolean', default: true })
   ativo: boolean;
 
   @Column({ type: 'varchar', length: 7, default: '#1E3A8A' })
-  cor: string; // Código hex: #FF5733
+  cor: string;
 
-  @ManyToOne(() => Unidade, { eager: false })
-  @JoinColumn({ name: 'unidade_id' })
-  unidade: Unidade;
+  @Column({ type: 'varchar', length: 20, default: 'NENHUM' })
+  tipo_graduacao: string; // FAIXA | GRAU | KYU_DAN | CORDAO | LIVRE | NENHUM
 
-  // Many-to-Many com Alunos via tabela intermediária
-  @OneToMany(
-    () => AlunoModalidade,
-    (alunoModalidade) => alunoModalidade.modalidade,
-  )
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  icone: string | null;
+
+  // Unidades que oferecem esta modalidade (via junction table)
+  @OneToMany(() => UnidadeModalidade, (um) => um.modalidade)
+  unidadeModalidades: UnidadeModalidade[];
+
+  // Alunos matriculados nesta modalidade
+  @OneToMany(() => AlunoModalidade, (am) => am.modalidade)
   alunoModalidades: AlunoModalidade[];
 
   @CreateDateColumn()

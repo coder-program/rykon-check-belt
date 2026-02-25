@@ -48,8 +48,7 @@ export class FranqueadosService {
       SELECT
         f.*,
         u.nome as usuario_nome,
-        u.email as usuario_email,
-        COALESCE(array_length(f.unidades_gerencia, 1), 0) as total_unidades
+        u.email as usuario_email
       FROM teamcruz.franqueados f
       LEFT JOIN teamcruz.usuarios u ON f.usuario_id = u.id
       ${whereClause}
@@ -90,8 +89,7 @@ export class FranqueadosService {
       SELECT
         f.*,
         u.nome as usuario_nome,
-        u.email as usuario_email,
-        COALESCE(array_length(f.unidades_gerencia, 1), 0) as total_unidades
+        u.email as usuario_email
       FROM teamcruz.franqueados f
       LEFT JOIN teamcruz.usuarios u ON f.usuario_id = u.id
       WHERE f.id = $1 AND f.ativo = true
@@ -106,8 +104,7 @@ export class FranqueadosService {
       SELECT
         f.*,
         u.nome as usuario_nome,
-        u.email as usuario_email,
-        COALESCE(array_length(f.unidades_gerencia, 1), 0) as total_unidades
+        u.email as usuario_email
       FROM teamcruz.franqueados f
       LEFT JOIN teamcruz.usuarios u ON f.usuario_id = u.id
       WHERE f.usuario_id = $1 AND f.ativo = true
@@ -150,13 +147,13 @@ export class FranqueadosService {
     const query = `
       INSERT INTO teamcruz.franqueados (
         nome, cpf, email, telefone, usuario_id,
-        endereco_id, unidades_gerencia, situacao, ativo,
+        endereco_id, situacao, ativo,
         contrato_aceito, contrato_aceito_em, contrato_versao, contrato_ip,
         created_at, updated_at
       ) VALUES (
         $1, $2, $3, $4, $5,
-        $6, $7, $8, $9,
-        $10, $11, $12, $13,
+        $6, $7, $8,
+        $9, $10, $11, $12,
         NOW(), NOW()
       ) RETURNING *
     `;
@@ -168,7 +165,6 @@ export class FranqueadosService {
       body.telefone,
       body.usuario_id || null,
       body.endereco_id || null,
-      body.unidades_gerencia || [],
       body.situacao || 'EM_HOMOLOGACAO', // Se não veio situacao, usa EM_HOMOLOGACAO
       body.ativo ?? true, // ✅ Por padrão, franqueados são criados como ativos
       body.contrato_aceito ?? false,
@@ -271,10 +267,6 @@ export class FranqueadosService {
       fields.push(`endereco_id = $${paramIndex++}`);
       params.push(body.endereco_id);
     }
-    if (body.unidades_gerencia !== undefined) {
-      fields.push(`unidades_gerencia = $${paramIndex++}`);
-      params.push(body.unidades_gerencia);
-    }
     if (body.situacao !== undefined) {
       fields.push(`situacao = $${paramIndex++}`);
       params.push(body.situacao);
@@ -341,36 +333,19 @@ export class FranqueadosService {
     }
   }
 
-  // Método para vincular/desvincular unidades
-  async updateUnidadesGerencia(
-    franqueadoId: string,
-    unidadeIds: string[],
-  ): Promise<Franqueado> {
-    const query = `
-      UPDATE teamcruz.franqueados
-      SET unidades_gerencia = $1, updated_at = NOW()
-      WHERE id = $2
-      RETURNING *
-    `;
-
-    const result = await this.dataSource.query(query, [
-      unidadeIds,
-      franqueadoId,
-    ]);
-    return result[0];
-  }
-
   // Método para buscar franqueados por unidade
   async getByUnidade(unidadeId: string): Promise<Franqueado[]> {
     const query = `
       SELECT
         f.*,
         u.nome as usuario_nome,
-        u.email as usuario_email,
-        COALESCE(array_length(f.unidades_gerencia, 1), 0) as total_unidades
+        u.email as usuario_email
       FROM teamcruz.franqueados f
       LEFT JOIN teamcruz.usuarios u ON f.usuario_id = u.id
-      WHERE $1 = ANY(f.unidades_gerencia)
+      WHERE EXISTS (
+        SELECT 1 FROM teamcruz.unidades un
+        WHERE un.id = $1 AND un.franqueado_id = f.id
+      )
       AND f.ativo = true
     `;
 
