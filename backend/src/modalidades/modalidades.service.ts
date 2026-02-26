@@ -52,20 +52,21 @@ export class ModalidadesService {
     if (unidade_id) {
       // Filtra apenas modalidades vinculadas à unidade via junction table
       query.innerJoin(
-        'teamcruz.unidade_modalidades',
+        UnidadeModalidade,
         'um',
-        'um.modalidade_id = modalidade.id AND um.unidade_id = :unidade_id AND um.ativa = true',
+        'um.modalidade_id = modalidade.id AND um.unidade_id = :unidade_id AND um.ativa IS NOT FALSE',
         { unidade_id },
       );
     }
 
     if (apenasAtivas) {
-      query.andWhere('modalidade.ativo = :ativo', { ativo: true });
+      query.andWhere('modalidade.ativo IS NOT FALSE');
     }
 
     query.orderBy('modalidade.nome', 'ASC');
 
-    return query.getMany() as Promise<(Modalidade & { totalAlunos: number })[]>;
+    const result = await query.getMany();
+    return result as unknown as (Modalidade & { totalAlunos: number })[];
   }
 
   async findOne(id: string): Promise<Modalidade> {

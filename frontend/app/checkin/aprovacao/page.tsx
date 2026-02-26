@@ -255,7 +255,7 @@ export default function AprovacaoCheckinPage() {
       horaFim: aula?.horaFim,
     });
     
-    if (rawHorario && typeof rawHorario === "string" && !/NaN/.test(rawHorario)) {
+    if (rawHorario && typeof rawHorario === "string" && !/NaN|Invalid Date/.test(rawHorario)) {
       console.log("✅ [Frontend] Usando horario direto:", rawHorario);
       return rawHorario;
     }
@@ -427,7 +427,7 @@ export default function AprovacaoCheckinPage() {
 
                               <p className="text-xs sm:text-sm text-gray-600 mt-2">
                                 <span className="font-medium">Professor:</span>{" "}
-                                {presenca.aula.professor} |{" "}
+                                {presenca.aula.professor || "Não informado"} |{" "}
                                 <span className="font-medium">Horário:</span>{" "}
                                 {getHorarioDisplay(presenca)}
                               </p>

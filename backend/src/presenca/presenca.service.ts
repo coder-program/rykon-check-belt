@@ -2407,20 +2407,19 @@ export class PresencaService {
     return entities.map((p, index) => {
       const rawData = raw[index];
 
-      // Extrair horários usando timezone de São Paulo
+      // Extrair horários — hora_inicio/hora_fim já são strings formatadas 'HH:mm' pelo getter da entity
       let horarioFormatado = '';
-      
-      if (p.aula && p.aula.hora_inicio && p.aula.hora_fim) {
-        const inicioDate = dayjs(p.aula.hora_inicio).tz('America/Sao_Paulo');
-        const fimDate = dayjs(p.aula.hora_fim).tz('America/Sao_Paulo');
-        
-        horarioFormatado = `${inicioDate.format('HH:mm')} - ${fimDate.format('HH:mm')}`;
-        
+
+      if (p.aula && p.aula.data_hora_inicio && p.aula.data_hora_fim) {
+        // Usar os getters da entity que já aplicam timezone de São Paulo
+        horarioFormatado = `${p.aula.hora_inicio} - ${p.aula.hora_fim}`;
+      } else if (p.aula?.hora_inicio && p.aula?.hora_fim) {
+        horarioFormatado = `${p.aula.hora_inicio} - ${p.aula.hora_fim}`;
       } else {
         console.warn('⚠️ [getPresencasPendentes] Aula sem horários:', {
           hasAula: !!p.aula,
-          hasInicio: !!p.aula?.hora_inicio,
-          hasFim: !!p.aula?.hora_fim,
+          hasInicio: !!p.aula?.data_hora_inicio,
+          hasFim: !!p.aula?.data_hora_fim,
         });
       }
 
@@ -2435,7 +2434,7 @@ export class PresencaService {
         aula: {
           id: p.aula?.id || p.aula_id,
           nome: p.aula?.nome || 'Aula',
-          professor: p.aula?.professor?.nome_completo || '',
+          professor: p.aula?.professor?.nome_completo || rawData?.professor_nome_completo || '',
           horario: horarioFormatado,
           hora_inicio: p.aula?.hora_inicio, // DEBUG
           hora_fim: p.aula?.hora_fim, // DEBUG
@@ -2655,7 +2654,7 @@ export class PresencaService {
         `SELECT u.id as unidade_id
          FROM teamcruz.franqueados f
          INNER JOIN teamcruz.unidades u ON u.franqueado_id = f.id
-         WHERE f.usuario_id = $1 AND u.ativo = true
+         WHERE f.usuario_id = $1 AND u.status = 'ATIVA'
          LIMIT 1`,
         [user.id],
       );

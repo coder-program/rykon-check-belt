@@ -4,7 +4,9 @@ import React, { useState } from "react";
 import { useAuth } from "@/app/auth/AuthContext";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { listUnidades, listAlunos } from "@/lib/peopleApi";
+import { listUnidades, listAlunos, listUnidadeModalidades } from "@/lib/peopleApi";
+import ModalidadeSelectorModal, { ModalidadeChip } from "@/components/dashboard/ModalidadeSelectorModal";
+import { useModalidadeSelector } from "@/hooks/useModalidadeSelector";
 import {
   Card,
   CardContent,
@@ -51,6 +53,25 @@ export default function GerenteDashboard() {
   });
 
   const unidade = unidadesData?.items?.[0];
+
+  // Buscar modalidades da unidade do gerente
+  const { data: vinculos = [] } = useQuery({
+    queryKey: ["unidade-modalidades-gerente", unidade?.id],
+    queryFn: () => listUnidadeModalidades({ unidade_id: unidade!.id }),
+    enabled: !!unidade?.id,
+    staleTime: 0,
+  });
+  const modalidadesUnidade = vinculos
+    .filter((v: { ativa: boolean }) => v.ativa)
+    .map((v: { modalidade?: { id: string; nome: string; cor?: string; icone?: string; tipo_graduacao?: string; exibe_graduacao?: boolean; ativo: boolean } }) => v.modalidade)
+    .filter(Boolean) as { id: string; nome: string; cor?: string; icone?: string; tipo_graduacao?: string; exibe_graduacao?: boolean; ativo: boolean }[];
+
+  const modalidadeSelector = useModalidadeSelector(user?.id, modalidadesUnidade);
+  const isJiuJitsu = (nome: string) => /jiu.?jitsu/i.test(nome);
+  const hasGraduacao = modalidadeSelector.selectedModalidade
+    ? isJiuJitsu(modalidadeSelector.selectedModalidade.nome)
+    : modalidadesUnidade.some((m) => isJiuJitsu(m.nome));
+  const isJiuJitsuSelected = !!modalidadeSelector.selectedModalidade && isJiuJitsu(modalidadeSelector.selectedModalidade.nome);
 
   // Buscar alunos da unidade
   const { data: alunosData, isLoading: loadingAlunos } = useQuery({
@@ -166,6 +187,7 @@ export default function GerenteDashboard() {
       icon: BarChart3,
       action: () => router.push("/teamcruz"),
       color: "bg-red-600",
+      show: isJiuJitsuSelected,
     },
     {
       title: "Gerenciar Usuários",
@@ -239,6 +261,7 @@ export default function GerenteDashboard() {
       action: () => router.push("/admin/aprovacao-graduacao"),
       color: "bg-yellow-500",
       urgent: stats.graduacoesPendentes > 0,
+      show: hasGraduacao,
     },
     {
       title: "Sistema Graduação",
@@ -246,6 +269,7 @@ export default function GerenteDashboard() {
       icon: Trophy,
       action: () => router.push("/admin/sistema-graduacao"),
       color: "bg-amber-500",
+      show: hasGraduacao,
     },
     {
       title: "Configurar Graduação",
@@ -253,6 +277,7 @@ export default function GerenteDashboard() {
       icon: Settings,
       action: () => router.push("/admin/configuracao-graduacao"),
       color: "bg-indigo-500",
+      show: hasGraduacao,
     },
     {
       title: "Gestão Financeira",
@@ -286,7 +311,15 @@ export default function GerenteDashboard() {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen p-6" style={{ background: "linear-gradient(135deg, #eef2ff 0%, #e0e7ff 40%, #ede9fe 100%)" }}>
+      {/* Modal seletor de modalidade */}
+      <ModalidadeSelectorModal
+        open={modalidadeSelector.showSelector}
+        modalidades={modalidadesUnidade}
+        userName={user?.nome}
+        allowAll={true}
+        onSelect={modalidadeSelector.selectModalidade}
+      />
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
@@ -300,8 +333,9 @@ export default function GerenteDashboard() {
               </div>
             </div>
 
-            {/* Badge da Unidade - Destacado */}
-            <div className="flex items-center gap-2 bg-gradient-to-r from-blue-500 to-indigo-600 text-white px-6 py-3 rounded-lg shadow-lg">
+            <div className="flex items-center gap-3">
+            {/* Badge da Unidade */}
+            <div className="flex items-center gap-2 bg-linear-to-r from-blue-500 to-indigo-600 text-white px-6 py-3 rounded-lg shadow-lg">
               <Building2 className="h-5 w-5" />
               <div className="text-left">
                 <p className="text-xs font-medium opacity-90">Unidade</p>
@@ -310,7 +344,16 @@ export default function GerenteDashboard() {
                 </p>
               </div>
             </div>
+            </div>
           </div>
+          {modalidadesUnidade.length > 1 && (
+            <div className="flex justify-center mt-5">
+              <ModalidadeChip
+                modalidade={modalidadeSelector.selectedModalidade}
+                onClick={() => modalidadeSelector.setShowSelector(true)}
+              />
+            </div>
+          )}
         </div>
 
         {/* Stats strip */}
@@ -339,7 +382,7 @@ export default function GerenteDashboard() {
         <div className="mb-8">
           <h2 className="text-xl font-semibold mb-4">Ações Rápidas</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {quickActions.map((action, index) => (
+            {quickActions.filter((a) => a.show !== false).map((action, index) => (
               <Card
                 key={index}
                 className={`cursor-pointer hover:shadow-lg transition-all transform hover:scale-105 ${

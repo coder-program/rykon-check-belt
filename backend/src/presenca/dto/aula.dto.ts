@@ -1,7 +1,6 @@
 import {
   IsString,
   IsUUID,
-  IsEnum,
   IsInt,
   IsBoolean,
   IsOptional,
@@ -11,7 +10,7 @@ import {
   Length,
   Matches,
 } from 'class-validator';
-import { TipoAula, DiaSemana } from '../entities/aula.entity';
+import { DiaSemana } from '../entities/aula.entity';
 
 export class CreateAulaDto {
   @IsString()
@@ -43,8 +42,12 @@ export class CreateAulaDto {
   professor_id?: string;
 
   @IsOptional()
-  @IsEnum(TipoAula)
-  tipo?: TipoAula;
+  @IsUUID()
+  modalidade_id?: string;
+
+  @IsOptional()
+  @IsString()
+  tipo?: string;
 
   @IsOptional()
   @IsInt()
@@ -106,8 +109,12 @@ export class UpdateAulaDto {
   professor_id?: string;
 
   @IsOptional()
-  @IsEnum(TipoAula)
-  tipo?: TipoAula;
+  @IsUUID()
+  modalidade_id?: string;
+
+  @IsOptional()
+  @IsString()
+  tipo?: string;
 
   @IsOptional()
   @IsInt()

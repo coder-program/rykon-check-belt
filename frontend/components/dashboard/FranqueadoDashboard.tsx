@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/app/auth/AuthContext";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
@@ -18,6 +18,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import ModalidadeSelectorModal, { ModalidadeChip } from "@/components/dashboard/ModalidadeSelectorModal";
+import { useModalidadeSelector } from "@/hooks/useModalidadeSelector";
 import {
   Building2,
   Users,
@@ -103,6 +105,14 @@ export default function FranqueadoDashboard() {
 
   const unidadeIds = unidadesUnicas.map((u: any) => u.id);
 
+  // Unidade selecionada no seletor de franqueado (para múltiplas unidades)
+  const [unidadeAtiva, setUnidadeAtiva] = useState<string>("");
+  useEffect(() => {
+    if (!unidadeAtiva && unidadesUnicas.length > 0) {
+      setUnidadeAtiva((unidadesUnicas[0] as { id: string }).id);
+    }
+  }, [unidadesUnicas, unidadeAtiva]);
+
   // Buscar vínculos unidade↔modalidade para detectar unidades sem modalidade configurada
   const { data: unidadeModalidadesData } = useQuery({
     queryKey: ["unidade-modalidades-franqueado", unidadeIds],
@@ -113,6 +123,25 @@ export default function FranqueadoDashboard() {
   });
 
   const unidadeModalidades = unidadeModalidadesData ?? [];
+
+  // Modalidades da unidade ativa (para franqueado)
+  const modalidadesDaUnidadeAtiva = useMemo(() => {
+    if (!unidadeAtiva) return [];
+    return unidadeModalidades
+      .filter((um: { unidade_id: string; ativa: boolean }) => um.unidade_id === unidadeAtiva && um.ativa)
+      .map((um: { modalidade?: { id: string; nome: string; cor?: string; icone?: string; tipo_graduacao?: string; exibe_graduacao?: boolean; ativo: boolean } }) => um.modalidade)
+      .filter(Boolean) as { id: string; nome: string; cor?: string; icone?: string; tipo_graduacao?: string; exibe_graduacao?: boolean; ativo: boolean }[];
+  }, [unidadeModalidades, unidadeAtiva]);
+
+  // Hook seletor de modalidade
+  const modalidadeSelector = useModalidadeSelector(user?.id, modalidadesDaUnidadeAtiva);
+  // Botões de graduação são exclusivos do Jiu-Jitsu
+  const isJiuJitsu = (nome: string) =>
+    /jiu.?jitsu/i.test(nome);
+  const hasGraduacao = modalidadeSelector.selectedModalidade
+    ? isJiuJitsu(modalidadeSelector.selectedModalidade.nome)
+    : modalidadesDaUnidadeAtiva.some((m) => isJiuJitsu(m.nome));
+  const isJiuJitsuSelected = !!modalidadeSelector.selectedModalidade && isJiuJitsu(modalidadeSelector.selectedModalidade.nome);
 
   // Unidades que ainda não têm nenhuma modalidade vinculada
   const unidadesSemModalidade = unidadesUnicas.filter(
@@ -329,6 +358,7 @@ export default function FranqueadoDashboard() {
       icon: BarChart3,
       action: () => router.push("/teamcruz"),
       color: "bg-red-600",
+      show: isJiuJitsuSelected,
     },
     {
       title: "Gerenciar Unidades",
@@ -393,6 +423,7 @@ export default function FranqueadoDashboard() {
       action: () => router.push("/admin/aprovacao-graduacao"),
       color: "bg-yellow-500",
       urgent: graduacoesEsteTrimestre > 0,
+      show: hasGraduacao,
     },
     {
       title: "Sistema Graduação",
@@ -400,6 +431,7 @@ export default function FranqueadoDashboard() {
       icon: Trophy,
       action: () => router.push("/admin/sistema-graduacao"),
       color: "bg-amber-500",
+      show: hasGraduacao,
     },
     {
       title: "Configurar Graduação",
@@ -407,6 +439,7 @@ export default function FranqueadoDashboard() {
       icon: Settings,
       action: () => router.push("/admin/configuracao-graduacao"),
       color: "bg-indigo-500",
+      show: hasGraduacao,
     },
     {
       title: "Modalidades",
@@ -441,16 +474,32 @@ export default function FranqueadoDashboard() {
   ]);
   const visibleActions = semModalidades
     ? quickActions.filter((a) => SETUP_ALLOWED.has(a.title))
-    : quickActions;
+    : quickActions.filter((a) => a.show !== false);
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen p-6" style={{ background: "linear-gradient(135deg, #eef2ff 0%, #e0e7ff 40%, #ede9fe 100%)" }}>
+      {/* Modal seletor de modalidade */}
+      <ModalidadeSelectorModal
+        open={modalidadeSelector.showSelector}
+        modalidades={modalidadesDaUnidadeAtiva}
+        userName={user?.nome}
+        allowAll={true}
+        onSelect={modalidadeSelector.selectModalidade}
+      />
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <p className="text-gray-600">
+          <p className="text-gray-600 mb-4">
             Bem-vindo, {user?.nome}! Gerencie suas unidades TeamCruz.
           </p>
+          {modalidadesDaUnidadeAtiva.length > 1 && (
+            <div className="flex justify-center">
+              <ModalidadeChip
+                modalidade={modalidadeSelector.selectedModalidade}
+                onClick={() => modalidadeSelector.setShowSelector(true)}
+              />
+            </div>
+          )}
         </div>
 
         {/* Banner: unidades sem modalidade */}

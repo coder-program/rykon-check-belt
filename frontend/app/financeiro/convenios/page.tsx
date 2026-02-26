@@ -16,7 +16,7 @@ import {
   Download,
   RefreshCw
 } from "lucide-react";
-import api from "@/lib/api";
+import { http } from "@/lib/api";
 
 interface AlunoConvenio {
   id: string;
@@ -76,22 +76,14 @@ export default function ConveniosPage() {
     setLoading(true);
     try {
       // Buscar alunos do convênio
-      const responseAlunos = await api.get(`/convenios/alunos`, {
-        params: {
-          unidadeId: unidadeId,
-          convenio: convenioSelecionado,
-        }
-      });
-      setAlunos(responseAlunos.data);
+      const alunosParams = new URLSearchParams({ unidadeId, convenio: convenioSelecionado }).toString();
+      const responseAlunos = await http(`/convenios/alunos?${alunosParams}`, { auth: true });
+      setAlunos(responseAlunos);
 
       // Buscar estatísticas
-      const responseStats = await api.get(`/convenios/estatisticas`, {
-        params: {
-          unidadeId: unidadeId,
-          convenio: convenioSelecionado,
-        }
-      });
-      setEstatisticas(responseStats.data);
+      const statsParams = new URLSearchParams({ unidadeId, convenio: convenioSelecionado }).toString();
+      const responseStats = await http(`/convenios/estatisticas?${statsParams}`, { auth: true });
+      setEstatisticas(responseStats);
     } catch (error) {
       console.error("Erro ao carregar dados:", error);
     } finally {

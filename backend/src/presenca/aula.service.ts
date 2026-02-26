@@ -49,6 +49,7 @@ export class AulaService {
       unidade_id: createAulaDto.unidade_id,
       turma_id,
       professor_id: createAulaDto.professor_id,
+      modalidade_id: createAulaDto.modalidade_id,
       tipo: createAulaDto.tipo,
       dia_semana: createAulaDto.dia_semana,
       data_hora_inicio: createAulaDto.data_hora_inicio
@@ -75,7 +76,8 @@ export class AulaService {
     const query = this.aulaRepository
       .createQueryBuilder('aula')
       .leftJoinAndSelect('aula.unidade', 'unidade')
-      .leftJoinAndSelect('aula.professor', 'professor');
+      .leftJoinAndSelect('aula.professor', 'professor')
+      .leftJoinAndSelect('aula.modalidade', 'modalidade');
 
     if (params?.unidade_id) {
       query.andWhere('aula.unidade_id = :unidade_id', {
@@ -117,6 +119,7 @@ export class AulaService {
       .createQueryBuilder('aula')
       .leftJoinAndSelect('aula.unidade', 'unidade')
       .leftJoinAndSelect('aula.professor', 'professor')
+      .leftJoinAndSelect('aula.modalidade', 'modalidade')
       .where('aula.unidade_id IN (:...unidadeIds)', { unidadeIds });
 
     if (params?.ativo !== undefined) {
@@ -141,7 +144,7 @@ export class AulaService {
   async findOne(id: string): Promise<Aula> {
     const aula = await this.aulaRepository.findOne({
       where: { id },
-      relations: ['unidade', 'professor'],
+      relations: ['unidade', 'professor', 'modalidade'],
     });
 
     if (!aula) {

@@ -11,6 +11,7 @@ import {
 import { Unidade } from '../../people/entities/unidade.entity';
 import { Person } from '../../people/entities/person.entity';
 import { Turma } from './turma.entity';
+import { Modalidade } from '../../modalidades/entities/modalidade.entity';
 
 export enum DiaSemana {
   DOMINGO = 0,
@@ -22,6 +23,7 @@ export enum DiaSemana {
   SABADO = 6,
 }
 
+// Mantido para retrocompatibilidade com código existente
 export enum TipoAula {
   GI = 'GI',
   NO_GI = 'NO_GI',
@@ -54,12 +56,11 @@ export class Aula {
   @Column({ type: 'uuid', nullable: true })
   professor_id: string;
 
-  @Column({
-    type: 'enum',
-    enum: TipoAula,
-    default: TipoAula.GI,
-  })
-  tipo: TipoAula;
+  @Column({ type: 'uuid', nullable: true })
+  modalidade_id: string;
+
+  @Column({ type: 'varchar', length: 100, default: 'GI' })
+  tipo: string;
 
   @Column({ type: 'int', nullable: true })
   dia_semana: DiaSemana;
@@ -129,6 +130,10 @@ export class Aula {
   @ManyToOne(() => Person, { eager: false })
   @JoinColumn({ name: 'professor_id' })
   professor: Person;
+
+  @ManyToOne(() => Modalidade, { eager: false })
+  @JoinColumn({ name: 'modalidade_id' })
+  modalidade: Modalidade;
 
   // Métodos auxiliares
   estaAtiva(): boolean {

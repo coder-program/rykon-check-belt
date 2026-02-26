@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
@@ -123,7 +123,7 @@ const FORM_VAZIO: Omit<CreateModalidadeData, "unidade_id"> = {
 // ---------------------------------------------------------------------------
 // page
 // ---------------------------------------------------------------------------
-export default function ModalidadesPage() {
+function ModalidadesPageContent() {
   const { user } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -885,6 +885,18 @@ function ModalidadeCard({
 // ---------------------------------------------------------------------------
 // Delete confirm
 // ---------------------------------------------------------------------------
+export default function ModalidadesPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex justify-center items-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-purple-600" />
+      </div>
+    }>
+      <ModalidadesPageContent />
+    </Suspense>
+  );
+}
+
 function DeleteConfirmDialog({
   modalidade,
   loading,

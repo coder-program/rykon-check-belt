@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import api from "@/lib/api";
+import { http } from "@/lib/api";
 
 function CadastroGympassForm() {
   const router = useRouter();
@@ -60,17 +60,20 @@ function CadastroGympassForm() {
 
     try {
       // Criar aluno via API pública (sem autenticação)
-      await api.post("/convites-cadastro/cadastro-publico", {
-        nome_completo: formData.nome_completo,
-        email: formData.email,
-        telefone: formData.telefone,
-        data_nascimento: formData.data_nascimento,
-        cpf: formData.cpf,
-        senha: formData.senha,
-        unidade_id: formData.unidade_id,
-        // Dados do convênio
-        convenio_tipo: "GYMPASS",
-        convenio_user_id: formData.gympass_user_id,
+      await http("/convites-cadastro/cadastro-publico", {
+        method: "POST",
+        body: {
+          nome_completo: formData.nome_completo,
+          email: formData.email,
+          telefone: formData.telefone,
+          data_nascimento: formData.data_nascimento,
+          cpf: formData.cpf,
+          senha: formData.senha,
+          unidade_id: formData.unidade_id,
+          // Dados do convênio
+          convenio_tipo: "GYMPASS",
+          convenio_user_id: formData.gympass_user_id,
+        },
       });
 
       setSucesso(true);
