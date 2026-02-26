@@ -6,7 +6,7 @@ import { Modalidade } from "@/lib/peopleApi";
 import {
   GiHighKick,
   GiBoxingGlove,
-  GiJudoUniform,
+  GiKimono,
   GiFist,
   GiMeditation,
   GiWeightLiftingUp,
@@ -27,7 +27,7 @@ function getEsporteIconChip(nome?: string, size = 22): React.ReactNode {
   if (n.includes("box"))
     return <GiBoxingGlove size={size} />;
   if (n.includes("jiu") || n.includes("judo") || n.includes("bjj"))
-    return <GiJudoUniform size={size} />;
+    return <GiKimono size={size} />;
   if (n.includes("mma") || n.includes("luta"))
     return <GiFist size={size} />;
   if (n.includes("yoga") || n.includes("pilates") || n.includes("medita"))

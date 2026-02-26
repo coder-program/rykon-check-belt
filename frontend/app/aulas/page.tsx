@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import {
   GiHighKick,
   GiBoxingGlove,
-  GiJudoUniform,
+  GiKimono,
   GiFist,
   GiMeditation,
   GiWeightLiftingUp,
@@ -88,7 +88,7 @@ function getEsporteIcon(nome?: string): React.ReactNode {
   if (n.includes("box"))
     return <GiBoxingGlove size={28} />;
   if (n.includes("jiu") || n.includes("judo") || n.includes("bjj"))
-    return <GiJudoUniform size={28} />;
+    return <GiKimono size={28} />;
   if (n.includes("mma") || n.includes("luta"))
     return <GiFist size={28} />;
   if (n.includes("yoga") || n.includes("pilates") || n.includes("medita"))
