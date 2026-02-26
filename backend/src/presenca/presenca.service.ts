@@ -473,6 +473,7 @@ export class PresencaService {
     const presenca = this.presencaRepository.create({
       aluno_id: aluno.id,
       aula_id: aula.id,
+      modalidade_id: aula.modalidade_id,
       status: PresencaStatus.PRESENTE,
       modo_registro: PresencaMetodo.QR_CODE,
       status_aprovacao: statusAprovacao,
@@ -575,6 +576,7 @@ export class PresencaService {
     const presenca = this.presencaRepository.create({
       aluno_id: aluno.id,
       aula_id: aula.id,
+      modalidade_id: aula.modalidade_id,
       status: PresencaStatus.PRESENTE,
       modo_registro: PresencaMetodo.MANUAL,
       status_aprovacao: statusAprovacao,
@@ -746,6 +748,7 @@ export class PresencaService {
     const presenca = this.presencaRepository.create({
       aluno_id: aluno.id,
       aula_id: aula.id,
+      modalidade_id: aula.modalidade_id,
       status: PresencaStatus.PRESENTE,
       modo_registro: PresencaMetodo.MANUAL,
       status_aprovacao: statusAprovacao,
@@ -1051,6 +1054,7 @@ export class PresencaService {
     const presenca = this.presencaRepository.create({
       aluno_id: alunoId,
       aula_id: aulaId,
+      modalidade_id: aula.modalidade_id,
       status: PresencaStatus.PRESENTE,
       modo_registro: metodo as PresencaMetodo,
       status_aprovacao: statusAprovacao,
@@ -1898,10 +1902,14 @@ export class PresencaService {
       throw new BadRequestException('Foto inválida para reconhecimento');
     }
 
+    // Buscar aula para obter modalidade_id
+    const aulaFacial = await this.aulaRepository.findOne({ where: { id: aulaId } });
+
     // Registrar presença facial
     const presenca = this.presencaRepository.create({
       aluno_id: user.id,
       aula_id: aulaId,
+      modalidade_id: aulaFacial?.modalidade_id,
       status: PresencaStatus.PRESENTE,
       modo_registro: PresencaMetodo.FACIAL,
       hora_checkin: dayjs().tz('America/Sao_Paulo').toDate(),
@@ -1959,10 +1967,14 @@ export class PresencaService {
       throw new BadRequestException('Este aluno já fez check-in hoje');
     }
 
+    // Buscar aula para obter modalidade_id
+    const aulaResp = await this.aulaRepository.findOne({ where: { id: aulaId } });
+
     // Registrar presença pelo responsável
     const presenca = this.presencaRepository.create({
       aluno_id: alunoId,
       aula_id: aulaId,
+      modalidade_id: aulaResp?.modalidade_id,
       status: PresencaStatus.PRESENTE,
       modo_registro: PresencaMetodo.RESPONSAVEL,
       hora_checkin: dayjs().tz('America/Sao_Paulo').toDate(),
@@ -2287,6 +2299,7 @@ export class PresencaService {
     const presenca = this.presencaRepository.create({
       aluno_id: alunoId,
       aula_id: aulaId,
+      modalidade_id: aula.modalidade_id,
       metodo: metodo as PresencaMetodo,
       status: PresencaStatus.PRESENTE,
       status_aprovacao: statusAprovacao,

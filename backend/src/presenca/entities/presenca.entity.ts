@@ -49,6 +49,9 @@ export class Presenca {
   @Column({ name: 'aula_id', type: 'uuid' })
   aula_id: string;
 
+  @Column({ name: 'modalidade_id', type: 'uuid', nullable: true })
+  modalidade_id: string;
+
   @Column({
     type: 'varchar',
     length: 20,
