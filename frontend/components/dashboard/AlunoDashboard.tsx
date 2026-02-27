@@ -359,14 +359,6 @@ export default function AlunoDashboard({
   const loadDashboardData = async () => {
     if (!targetAlunoId) return;
 
-    console.log('\n========================================');
-    console.log('🔍 [ALUNO DASHBOARD] Carregando dados do dashboard');
-    console.log('========================================');
-    console.log('👤 Target Aluno ID:', targetAlunoId);
-    console.log('👤 Aluno ID (prop):', alunoId);
-    console.log('👤 User ID:', user?.id);
-    console.log('========================================\n');
-
     try {
       setLoading(true);
       setError(null);
@@ -376,14 +368,12 @@ export default function AlunoDashboard({
 
       // Se não foi passado alunoId, precisamos buscar pelo usuario_id
       if (!realAlunoId) {
-        console.log('🔍 [ALUNO DASHBOARD] Buscando aluno pelo usuario_id...');
         try {
           const alunoByUsuario = await http(
             `/alunos/usuario/${targetAlunoId}`,
             { auth: true }
           );
           realAlunoId = alunoByUsuario.id; // Usar o ID do aluno, não do usuário
-          console.log('✅ [ALUNO DASHBOARD] Real Aluno ID encontrado:', realAlunoId);
         } catch (err) {
           console.error(
             "❌ [ALUNO DASHBOARD] Erro ao buscar aluno por usuario_id:",
@@ -425,11 +415,6 @@ export default function AlunoDashboard({
 
       // Guardar o ID real do aluno para o useEffect do ranking
       setResolvedAlunoId(realAlunoId);
-
-      console.log('\n📦 [ALUNO DASHBOARD] Carregando dados em paralelo...');
-      console.log('   - Real Aluno ID:', realAlunoId);
-      console.log('   - User Perfis:', user?.perfis);
-      console.log('   - Refresh Key:', refreshKey);
 
       // Cache-busting timestamp para garantir dados frescos
       const timestamp = `${Date.now()}_${refreshKey}`;
@@ -487,16 +472,6 @@ export default function AlunoDashboard({
         http(`/alunos/${realAlunoId}/modalidades`, { auth: true }),
       ]);
 
-      console.log('\n📊 [ALUNO DASHBOARD] Resultados das chamadas:');
-      console.log('   1. Graduação:', graduacaoData.status);
-      console.log('   2. Presença:', presencaData.status);
-      console.log('   3. Aulas:', aulasData.status);
-      console.log('   4. Ranking:', rankingDataResult.status);
-      console.log('   5. Competições:', competicoesData.status);
-      console.log('   6. Dados Aluno:', alunoData.status);
-      console.log('   7. Dependentes:', dependentesData.status);
-      console.log('   8. Modalidades:', modalidadesData.status);
-
       // Determinar modalidades do aluno (hook cuida da seleção e do hasJiu)
       let jiuDetected = false;
       if (modalidadesData.status === "fulfilled") {
@@ -511,7 +486,6 @@ export default function AlunoDashboard({
       // Processar resultados
       if (graduacaoData.status === "fulfilled") {
         setStatusGraduacao(graduacaoData.value);
-        console.log('✅ [ALUNO DASHBOARD] Graduação carregada:', graduacaoData.value);
       } else {
         console.error(
           "❌ [ALUNO DASHBOARD] Erro ao carregar status de graduação:",
@@ -525,13 +499,10 @@ export default function AlunoDashboard({
 
       if (presencaData.status === "fulfilled") {
         setEstatisticasPresenca(presencaData.value);
-        console.log('✅ [ALUNO DASHBOARD] Estatísticas de presença carregadas:', presencaData.value);
       }
 
       if (aulasData.status === "fulfilled") {
         setProximasAulas(Array.isArray(aulasData.value) ? aulasData.value : []);
-        console.log('✅ [ALUNO DASHBOARD] Aulas disponíveis:', aulasData.value?.length || 0);
-        console.log('📚 [ALUNO DASHBOARD] Aulas:', JSON.stringify(aulasData.value, null, 2));
       } else {
         console.error("❌ [ALUNO DASHBOARD] Erro ao carregar aulas:", aulasData.reason);
       }
@@ -580,7 +551,6 @@ export default function AlunoDashboard({
         const dependentesArray = Array.isArray(dependentesData.value)
           ? dependentesData.value
           : [];
-        console.log('👨‍👩‍👧‍👦 [DASHBOARD] Dependentes atualizados:', dependentesArray.length);
         setDependentes([...dependentesArray]); // Force new array reference
       }
       // Histórico será implementado futuramente
@@ -682,41 +652,8 @@ export default function AlunoDashboard({
       
       // Buscar dados completos do dependente (SEMPRE FRESH, SEM CACHE)
       const timestamp = `${Date.now()}_${refreshKey}`;
-      console.log('🔍 [FRONTEND] Buscando dependente com timestamp:', timestamp);
-      
       const dadosCompletos = await http(`/alunos/${dependente.id}?_t=${timestamp}`, {
         auth: true,
-      });
-
-      console.log('📋 [FRONTEND - handleEditDependente] Dados completos recebidos da API:', dadosCompletos);
-      console.log('📞 [FRONTEND - handleEditDependente] CONTATO recebido:', {
-        email: dadosCompletos.email,
-        telefone: dadosCompletos.telefone,
-        telefone_emergencia: dadosCompletos.telefone_emergencia,
-        nome_contato_emergencia: dadosCompletos.nome_contato_emergencia
-      });
-      console.log('🏠 [FRONTEND - handleEditDependente] ENDEREÇO recebido:', {
-        endereco: dadosCompletos.endereco,
-        cep: dadosCompletos.endereco?.cep,
-        logradouro: dadosCompletos.endereco?.logradouro,
-        numero: dadosCompletos.endereco?.numero,
-        complemento: dadosCompletos.endereco?.complemento,
-        bairro: dadosCompletos.endereco?.bairro,
-        cidade: dadosCompletos.endereco?.cidade,
-        estado: dadosCompletos.endereco?.estado
-      });
-      console.log('🏥 [FRONTEND - handleEditDependente] SAÚDE recebido:', {
-        observacoes_medicas: dadosCompletos.observacoes_medicas,
-        alergias: dadosCompletos.alergias,
-        medicamentos_uso_continuo: dadosCompletos.medicamentos_uso_continuo,
-        plano_saude: dadosCompletos.plano_saude,
-        atestado_medico_validade: dadosCompletos.atestado_medico_validade,
-        restricoes_medicas: dadosCompletos.restricoes_medicas
-      });
-      console.log('💰 [FRONTEND - handleEditDependente] FINANCEIRO recebido:', {
-        dia_vencimento: dadosCompletos.dia_vencimento,
-        valor_mensalidade: dadosCompletos.valor_mensalidade,
-        desconto_percentual: dadosCompletos.desconto_percentual
       });
 
       // Buscar graduação atual do aluno
@@ -791,38 +728,6 @@ export default function AlunoDashboard({
         observacoes: dadosCompletos.observacoes || "",
       };
       
-      console.log('📝 [FRONTEND - handleEditDependente] FormData preparado com CONTATO:', {
-        email: formDataToSet.email,
-        telefone: formDataToSet.telefone,
-        telefone_emergencia: formDataToSet.telefone_emergencia,
-        nome_contato_emergencia: formDataToSet.nome_contato_emergencia
-      });
-      
-      console.log('📝 [FRONTEND - handleEditDependente] FormData preparado com ENDEREÇO:', {
-        cep: formDataToSet.cep,
-        logradouro: formDataToSet.logradouro,
-        numero: formDataToSet.numero,
-        complemento: formDataToSet.complemento,
-        bairro: formDataToSet.bairro,
-        cidade: formDataToSet.cidade,
-        uf: formDataToSet.uf
-      });
-      
-      console.log('📝 [FRONTEND - handleEditDependente] FormData preparado com SAÚDE:', {
-        observacoes_medicas: formDataToSet.observacoes_medicas,
-        alergias: formDataToSet.alergias,
-        medicamentos_uso_continuo: formDataToSet.medicamentos_uso_continuo,
-        plano_saude: formDataToSet.plano_saude,
-        atestado_medico_validade: formDataToSet.atestado_medico_validade,
-        restricoes_medicas: formDataToSet.restricoes_medicas
-      });
-      
-      console.log('📝 [FRONTEND - handleEditDependente] FormData preparado com FINANCEIRO:', {
-        dia_vencimento: formDataToSet.dia_vencimento,
-        valor_mensalidade: formDataToSet.valor_mensalidade,
-        desconto_percentual: formDataToSet.desconto_percentual
-      });
-      
       setFormData(formDataToSet);
 
       setShowModal(true);
@@ -834,32 +739,6 @@ export default function AlunoDashboard({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    console.log('\n🔵🔵🔵 [FRONTEND handleSubmit] INÍCIO 🔵🔵🔵');
-    console.log('📝 [FRONTEND] Dados do formulário:', {
-      ...formData,
-      RESPONSAVEL: {
-        nome: formData.responsavel_nome,
-        cpf: formData.responsavel_cpf,
-        telefone: formData.responsavel_telefone,
-        parentesco: formData.responsavel_parentesco,
-      },
-      SAUDE: {
-        observacoes_medicas: formData.observacoes_medicas,
-        alergias: formData.alergias,
-        medicamentos_uso_continuo: formData.medicamentos_uso_continuo,
-        plano_saude: formData.plano_saude,
-        atestado_medico_validade: formData.atestado_medico_validade,
-        restricoes_medicas: formData.restricoes_medicas
-      },
-      FINANCEIRO: {
-        dia_vencimento: formData.dia_vencimento,
-        valor_mensalidade: formData.valor_mensalidade,
-        desconto_percentual: formData.desconto_percentual
-      }
-    });
-    console.log('✏️ [FRONTEND] Modo:', isEditMode ? 'EDITAR' : 'CRIAR');
-    console.log('🆔 [FRONTEND] ID do dependente:', editingDependenteId);
 
     // Prevenir múltiplas submissões
     if (isLoading) return;
@@ -920,29 +799,6 @@ export default function AlunoDashboard({
           {} as Record<string, unknown>
         );
 
-        console.log('📤 [FRONTEND] Dados preparados para envio (PATCH):', {
-          ...dataToSend,
-          RESPONSAVEL: {
-            nome: dataToSend.responsavel_nome,
-            cpf: dataToSend.responsavel_cpf,
-            telefone: dataToSend.responsavel_telefone,
-            parentesco: dataToSend.responsavel_parentesco,
-          },
-          SAUDE: {
-            observacoes_medicas: dataToSend.observacoes_medicas,
-            alergias: dataToSend.alergias,
-            medicamentos_uso_continuo: dataToSend.medicamentos_uso_continuo,
-            plano_saude: dataToSend.plano_saude,
-            atestado_medico_validade: dataToSend.atestado_medico_validade,
-            restricoes_medicas: dataToSend.restricoes_medicas
-          },
-          FINANCEIRO: {
-            dia_vencimento: dataToSend.dia_vencimento,
-            valor_mensalidade: dataToSend.valor_mensalidade,
-            desconto_percentual: dataToSend.desconto_percentual
-          }
-        });
-
         const response = await http(`/alunos/${editingDependenteId}`, {
           method: "PATCH",
           body: dataToSend,
@@ -950,28 +806,10 @@ export default function AlunoDashboard({
         });
 
         if (response) {
-          console.log('✅ [FRONTEND] Resposta do backend (PATCH):', {
-            ...response,
-            endereco: response.endereco,
-            saude: {
-              observacoes_medicas: response.observacoes_medicas,
-              alergias: response.alergias,
-              medicamentos_uso_continuo: response.medicamentos_uso_continuo,
-              plano_saude: response.plano_saude,
-              atestado_medico_validade: response.atestado_medico_validade,
-              restricoes_medicas: response.restricoes_medicas
-            },
-            financeiro: {
-              dia_vencimento: response.dia_vencimento,
-              valor_mensalidade: response.valor_mensalidade,
-              desconto_percentual: response.desconto_percentual
-            }
-          });
           toast.success("Dependente atualizado com sucesso!");
         }
       } else {
         // Criar novo dependente
-        console.log('📤 [FRONTEND] Dados preparados para envio (POST):', formData);
 
         const response = await http("/alunos", {
           method: "POST",
@@ -980,14 +818,10 @@ export default function AlunoDashboard({
         });
 
         if (response) {
-          console.log('✅ [FRONTEND] Resposta do backend (POST):', response);
           toast.success("Dependente cadastrado com sucesso!");
         }
       }
 
-      // Recarregar dados e aguardar um pouco para garantir atualização
-      console.log('🔄 [FRONTEND] Recarregando dashboard após save...');
-      
       // Incrementar refreshKey para forçar re-fetch
       setRefreshKey(prev => prev + 1);
       
@@ -995,8 +829,6 @@ export default function AlunoDashboard({
       await new Promise(resolve => setTimeout(resolve, 300));
       
       await loadDashboardData();
-      console.log('✅ [FRONTEND] Dashboard recarregado!');
-      
       // Aguardar 200ms para garantir que o estado foi atualizado
       await new Promise(resolve => setTimeout(resolve, 200));
 
@@ -1109,14 +941,6 @@ export default function AlunoDashboard({
     : 0;
 
   const proximasAulasFormatadas = proximasAulas.map((aula) => {
-    console.log('[ALUNO DASHBOARD] Formatando aula:', {
-      nome: aula.nome,
-      horarioInicio: aula.horarioInicio,
-      horarioFim: aula.horarioFim,
-      data: aula.data,
-      dataFormatada: new Date(aula.data).toLocaleDateString("pt-BR")
-    });
-    
     return {
       data: new Date(aula.data).toLocaleDateString("pt-BR"),
       horario: `${aula.horarioInicio} - ${aula.horarioFim}`,

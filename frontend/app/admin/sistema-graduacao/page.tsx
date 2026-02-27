@@ -216,22 +216,7 @@ export default function SistemaGraduacaoPage() {
     }
   };
 
-  // DEBUG: Log dos dados da API
-  if (proximosQuery.data?.items && proximosQuery.data.items.length > 0) {
-    console.log('🔍 [DEBUG] Dados da API - primeiro item:', proximosQuery.data.items[0]);
-  }
-
   const proximos = (proximosQuery.data?.items || []).map((item: any) => {
-    console.log('🔍 [DEBUG] Mapeando aluno:', {
-      nome: item.nomeCompleto,
-      prontoParaGrau: item.prontoParaGrau,
-      prontoParaGraduar: item.prontoParaGraduar,
-      grausAtual: item.grausAtual,
-      grausMax: item.grausMax,
-      faltamAulas: item.faltamAulas,
-      presencas: item.presencasTotalFaixa
-    });
-    
     return {
       id: item.alunoId,
       nome: item.nomeCompleto,

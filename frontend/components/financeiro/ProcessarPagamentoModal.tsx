@@ -116,7 +116,6 @@ export default function ProcessarPagamentoModal({
         try {
           await loadClearSaleScript();
           await generateSessionId();
-          console.log("✅ ClearSale Session ID gerado");
         } catch (error) {
           console.error("⚠️ Erro ao carregar ClearSale:", error);
         }
@@ -130,9 +129,7 @@ export default function ProcessarPagamentoModal({
     if (antifraudStep === "IDPAY") {
       const initIdpay = async () => {
         try {
-          console.log("🔐 Iniciando carregamento SDK IDPAY...");
           await loadIdpaySdk();
-          console.log("✅ SDK IDPAY pronto");
         } catch (error) {
           console.error("❌ Erro ao carregar SDK IDPAY:", error);
         }
@@ -229,22 +226,6 @@ export default function ProcessarPagamentoModal({
         antifraud_type: 'IDPAY',
       };
       
-      console.log("💳 [FRONTEND] Enviando pagamento com cartão:");
-      console.log("   - Fatura ID:", fatura?.id);
-      console.log("   - Valor:", fatura?.valor_total);
-      console.log("   - Tipo:", cardData.payment_type);
-      console.log("   - Parcelas:", cardData.installments);
-      console.log("   - Session ID:", sessionId);
-      console.log("   - Body (dados sensíveis omitidos):", {
-        ...requestBody,
-        cpf: requestBody.cpf.substring(0, 3) + "*****" + requestBody.cpf.slice(-2),
-        card: {
-          ...requestBody.card,
-          number: requestBody.card.number.substring(0, 6) + "******" + requestBody.card.number.slice(-4),
-          cvv: "***"
-        }
-      });
-      
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/financeiro/pagamentos-online/cartao`,
         {
@@ -257,10 +238,6 @@ export default function ProcessarPagamentoModal({
         }
       );
 
-      console.log("📥 [FRONTEND] Resposta recebida:");
-      console.log("   - Status HTTP:", response.status);
-      console.log("   - OK:", response.ok);
-
       if (!response.ok) {
         const error = await response.json();
         console.error("❌ [FRONTEND] Erro no pagamento:", error);
@@ -268,11 +245,11 @@ export default function ProcessarPagamentoModal({
       }
 
       const data = await response.json();
-      console.log("✅ [FRONTEND] Dados da resposta:", data);
+      console.log("✅ [FRONTEND] Dados da resposta:");
       return data;
     },
     onSuccess: (data) => {
-      console.log("🎉 [FRONTEND] Pagamento processado com sucesso:", data);
+      console.log("🎉 [FRONTEND] Pagamento processado com sucesso:");
       if (data.status === "PAID" || data.status === "APPROVED") {
         toast.success(
           `✅ Pagamento aprovado! Cartão final ${data.card?.last4_digits || "****"}`
@@ -293,7 +270,7 @@ export default function ProcessarPagamentoModal({
         const afId = antifraudEntry.antifraud_id ?? antifraudEntry.id ?? tid;
         const afSession = antifraudEntry.session ?? data.session ?? "";
 
-        console.log("🔐 [IDPAY] Antifraude requerido:", { tid, afId, hasSession: !!afSession });
+        console.log("🔐 [IDPAY] Antifraude requerido:");
 
         setIdpayTransactionId(tid);
         setIdpayAntifraudId(afId);
@@ -841,7 +818,7 @@ export default function ProcessarPagamentoModal({
 
                           // Extrai lógica de autenticação para reutilizar no caminho normal e no tardio
                           const runAuthenticate = async (finishData: { id?: string; concluded?: boolean; captureConcluded?: boolean; capture_concluded?: boolean }) => {
-                            console.log("✅ [IDPAY] onFinish recebido, autenticando:", finishData);
+                            console.log("✅ [IDPAY] onFinish recebido, autenticando:");
                             toast("🔄 Validando identidade com a operadora...", { duration: 4000 });
                             const txId = idpayTransactionId!;
                             // SDK pode retornar capture_concluded (snake_case) ou captureConcluded (camelCase)
@@ -854,7 +831,7 @@ export default function ProcessarPagamentoModal({
                               concluded: finishData.concluded ?? true,
                               capture_concluded: captureConcluded,
                             });
-                            console.log("📊 [IDPAY] Resultado da autenticação:", authResult);
+                            console.log("📊 [IDPAY] Resultado da autenticação:");
                             const status = authResult.analyse_status || authResult.status || authResult.antifraud_result || "UNKNOWN";
                             // Restaurar o Dialog ANTES de mostrar o resultado para garantir visibilidade
                             setIdpayIframeActive(false);
@@ -881,7 +858,6 @@ export default function ProcessarPagamentoModal({
                             await loadIdpaySdk();
 
                             // 2. Abrir iframe biométrico (tela fullscreen do IDPay)
-                            console.log("📷 [IDPAY] Abrindo iframe para antifraud_id:", idpayAntifraudId);
                             toast("🪪 Realize a biometria facial na tela que irá abrir...", { duration: 6000 });
 
                             // Ocultar o Dialog para o iframe do IDPAY aparecer (z-index conflito)

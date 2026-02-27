@@ -164,10 +164,8 @@ export default function ConfiguracaoRykonPay() {
 
   useEffect(() => {
     if (unidadeIdAtual) {
-      console.log("🔄 Carregando dados para unidade:", unidadeIdAtual);
       carregarDados();
     } else {
-      console.log("⏸️ Aguardando seleção de unidade...");
       setLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -177,12 +175,8 @@ export default function ConfiguracaoRykonPay() {
     try {
       setLoading(true);
       const token = localStorage.getItem("token");
-      
-      console.log("🔑 Token:", token ? "Presente" : "Ausente");
-      console.log("🌐 API URL:", process.env.NEXT_PUBLIC_API_URL);
 
       // Buscar planos disponíveis na API Paytime (filtrar apenas SubPaytime - gateway_id = 4)
-      console.log("📋 Buscando planos disponíveis...");
       const plansResponse = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/paytime/plans?filters=${encodeURIComponent(JSON.stringify({ gateway_id: 4, active: true }))}`,
         {
@@ -190,19 +184,15 @@ export default function ConfiguracaoRykonPay() {
         }
       );
 
-      console.log("📋 Resposta planos:", plansResponse.status);
-      
       if (!plansResponse.ok) {
         throw new Error(`Erro ao buscar planos disponíveis: ${plansResponse.status}`);
       }
 
       const plansData = await plansResponse.json();
-      console.log("📋 Planos carregados:", plansData.data?.length || 0);
       
       setAvailablePlans(plansData.data || []);
 
       // Buscar planos selecionados da unidade
-      console.log("✅ Buscando planos selecionados da unidade...");
       const selectedResponse = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/paytime/unidades/${unidadeIdAtual}/plans`,
         {
@@ -210,18 +200,14 @@ export default function ConfiguracaoRykonPay() {
         }
       );
 
-      console.log("✅ Resposta planos selecionados:", selectedResponse.status);
-      
       if (selectedResponse.ok) {
         const selectedData = await selectedResponse.json();
-        console.log("✅ Planos selecionados:", selectedData?.length || 0);
         setSelectedPlans(selectedData || []);
       } else {
         console.warn("⚠️ Erro ao buscar planos selecionados:", selectedResponse.status);
       }
 
       // Buscar informações da unidade para verificar establishment_id
-      console.log("🏢 Buscando informações da unidade...");
       const unidadeResponse = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/unidades/${unidadeIdAtual}`,
         {
@@ -229,19 +215,15 @@ export default function ConfiguracaoRykonPay() {
         }
       );
 
-      console.log("🏢 Resposta unidade:", unidadeResponse.status);
-      
       let unidadeData = null;
       
       if (unidadeResponse.ok) {
         unidadeData = await unidadeResponse.json();
-        console.log("🏢 Dados da unidade:", unidadeData);
         
         setUnidadeNome(unidadeData.nome || "Unidade");
         
         // Verifica se existe e não é null/undefined
         if (unidadeData.paytime_establishment_id) {
-          console.log("✅ Establishment ID encontrado:", unidadeData.paytime_establishment_id);
           setEstablishmentId(unidadeData.paytime_establishment_id);
         } else {
           console.warn("⚠️ Unidade não possui paytime_establishment_id configurado");
@@ -255,7 +237,6 @@ export default function ConfiguracaoRykonPay() {
       }
 
       // Buscar limites de transação da unidade
-      console.log("💳 Buscando limites de transação...");
       const limitsResponse = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/unidades/${unidadeIdAtual}/transaction-limits`,
         {
@@ -265,7 +246,6 @@ export default function ConfiguracaoRykonPay() {
 
       if (limitsResponse.ok) {
         const limitsData = await limitsResponse.json();
-        console.log("💳 Limites carregados:", limitsData.limits);
         setTransactionLimits(limitsData.limits);
       } else {
         console.warn("⚠️ Erro ao buscar limites:", limitsResponse.status);
@@ -274,7 +254,6 @@ export default function ConfiguracaoRykonPay() {
 
       // Buscar regras de split se tiver establishment_id
       if (unidadeData?.paytime_establishment_id) {
-        console.log("💰 Buscando regras de split...");
         const splitsResponse = await fetch(
           `${process.env.NEXT_PUBLIC_API_URL}/paytime/establishments/${unidadeData.paytime_establishment_id}/splits`,
           {
@@ -284,7 +263,6 @@ export default function ConfiguracaoRykonPay() {
 
         if (splitsResponse.ok) {
           const splitsData = await splitsResponse.json();
-          console.log("💰 Splits carregados:", splitsData.data?.length || 0);
           
           // Mapear dados da API para o formato esperado pelo frontend
           const mappedSplits = (splitsData.data || []).map((split: any) => ({
@@ -308,7 +286,6 @@ export default function ConfiguracaoRykonPay() {
       }
 
       // Buscar contas bancárias
-      console.log("💳 Buscando contas bancárias...");
       const contasResponse = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/financeiro/contas-bancarias?unidadeId=${unidadeIdAtual}`,
         {
@@ -318,7 +295,6 @@ export default function ConfiguracaoRykonPay() {
 
       if (contasResponse.ok) {
         const contasData = await contasResponse.json();
-        console.log("💳 Contas carregadas:", contasData.length);
         setContasBancarias(contasData);
       } else {
         console.warn("⚠️ Erro ao buscar contas bancárias:", contasResponse.status);
@@ -326,7 +302,6 @@ export default function ConfiguracaoRykonPay() {
       }
 
       // Buscar contrato ativo da unidade
-      console.log("📄 Buscando contrato...");
       const contratoResponse = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/financeiro/contratos/unidade/${unidadeIdAtual}?tipo=rykon-pay`,
         {
@@ -336,7 +311,6 @@ export default function ConfiguracaoRykonPay() {
 
       if (contratoResponse.ok) {
         const contratoData = await contratoResponse.json();
-        console.log("📄 Contrato carregado:", contratoData.id);
         setContrato(contratoData);
       } else {
         console.warn("⚠️ Erro ao buscar contrato:", contratoResponse.status);
@@ -350,7 +324,6 @@ export default function ConfiguracaoRykonPay() {
       // Mesmo com erro, permite continuar
       setEstablishmentId(null);
     } finally {
-      console.log("✅ Carregamento finalizado");
       setLoading(false);
     }
   };
@@ -413,11 +386,6 @@ export default function ConfiguracaoRykonPay() {
     const valor = parseFloat(valorSimulacao);
     const parcelas = parseInt(parcelasSim);
     
-    console.log("💰 SIMULADOR - Dados de entrada:");
-    console.log("   - Valor:", valor);
-    console.log("   - Parcelas:", parcelas);
-    console.log("   - Plano selecionado ID:", planoSelecionadoSim);
-    
     if (!valor || valor <= 0) {
       toast.error("Digite um valor válido");
       return;
@@ -447,8 +415,6 @@ export default function ConfiguracaoRykonPay() {
       }
 
       const planDetails = await response.json();
-      console.log("📋 Detalhes do plano:", planDetails);
-
       // Verificar se o plano tem flags (bandeiras) com taxas configuradas
       if (!planDetails.flags || planDetails.flags.length === 0) {
         toast.error("⚠️ Plano sem taxas configuradas. Entre em contato com o suporte.");
@@ -464,8 +430,6 @@ export default function ConfiguracaoRykonPay() {
       }
 
       const taxas = bandeiraAtiva.fees;
-      console.log("✅ Usando taxas da bandeira:", bandeiraAtiva.name, taxas);
-      
       // Calcular valores
       const taxaDebito = taxas.debit || 0;
       const taxaCreditoVista = taxas.credit?.["1x"] || 0;
@@ -477,12 +441,6 @@ export default function ConfiguracaoRykonPay() {
       const valorCreditoParcelado = valor - (valor * taxaCreditoParcelado / 100);
       const valorParcela = valorCreditoParcelado / parcelas;
       const valorPix = valor - (valor * taxaPix / 100);
-
-      console.log("💰 Resultado da simulação:");
-      console.log("   - PIX: R$", valorPix.toFixed(2), `(taxa ${taxaPix}%)`);
-      console.log("   - Débito: R$", valorDebito.toFixed(2), `(taxa ${taxaDebito}%)`);
-      console.log("   - Crédito: R$", valorCredito.toFixed(2), `(taxa ${taxaCreditoVista}%)`);
-      console.log("   - Parcelado:", `${parcelas}x R$ ${valorParcela.toFixed(2)}`, `(taxa ${taxaCreditoParcelado}%)`);
 
       // Encontrar o nome do plano
       const planoNome = selectedPlans.find(p => p.id.toString() === planoSelecionadoSim)?.name || "Plano";

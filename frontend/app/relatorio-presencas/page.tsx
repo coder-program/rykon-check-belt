@@ -62,43 +62,28 @@ export default function RelatorioPresencasPage() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [presencaToDelete, setPresencaToDelete] = useState<PresencaData | null>(null);
 
-  console.log('👤 [RELATÓRIO] User completo:', user);
-  console.log('🔐 [RELATÓRIO] User.perfis:', user?.perfis);
-  
   // Verificar se é gerente, recepcionista, instrutor ou professor e pegar unidade específica
   const isGerente = user?.perfis?.some((p: any) => {
     const perfil = (typeof p === 'string' ? p : p.nome)?.toLowerCase();
-    console.log('🔍 [RELATÓRIO] Verificando gerente:', perfil);
     return perfil === 'gerente_unidade';
   });
   
   const isRecepcionista = user?.perfis?.some((p: any) => {
     const perfil = (typeof p === 'string' ? p : p.nome)?.toLowerCase();
-    console.log('🔍 [RELATÓRIO] Verificando recepcionista:', perfil);
     return perfil === 'recepcionista';
   });
   
   const isInstrutor = user?.perfis?.some((p: any) => {
     const perfil = (typeof p === 'string' ? p : p.nome)?.toLowerCase();
-    console.log('🔍 [RELATÓRIO] Verificando instrutor:', perfil);
     return perfil === 'instrutor';
   });
   
   const isProfessor = user?.perfis?.some((p: any) => {
     const perfil = (typeof p === 'string' ? p : p.nome)?.toLowerCase();
-    console.log('🔍 [RELATÓRIO] Verificando professor:', perfil);
     return perfil === 'professor';
   });
   
   const isUnidadeRestrita = isGerente || isRecepcionista || isInstrutor || isProfessor;
-
-  console.log('🏷️ [RELATÓRIO] Perfis identificados:', {
-    isGerente,
-    isRecepcionista,
-    isInstrutor,
-    isProfessor,
-    isUnidadeRestrita
-  });
 
   // Query para buscar unidades do franqueado/gerente/recepcionista/instrutor/professor
   const { data: unidades } = useQuery({
@@ -141,15 +126,6 @@ export default function RelatorioPresencasPage() {
     queryKey: ["relatorio-presencas", selectedUnidade, dataReferencia, tipoPeriodo],
     enabled: !!user, // Executar sempre que user estiver carregado
     queryFn: async () => {
-      console.log('🚀 [RELATÓRIO] Query sendo EXECUTADA!');
-      console.log('🔍 [RELATÓRIO] Iniciando busca com parâmetros:', {
-        selectedUnidade,
-        dataReferencia,
-        tipoPeriodo,
-        isUnidadeRestrita,
-        isInstrutor,
-        isProfessor
-      });
 
       // Calcular dataInicio e dataFim baseado no tipo de período
       let dataInicio: string;
@@ -173,8 +149,6 @@ export default function RelatorioPresencasPage() {
         const ultimoDia = new Date(parseInt(ano), parseInt(mes), 0).getDate();
         dataFim = `${ano}-${mes}-${ultimoDia}`;
       }
-
-      console.log('📅 [RELATÓRIO] Período calculado:', { dataInicio, dataFim });
       
       const params = new URLSearchParams({
         dataInicio,
@@ -182,29 +156,16 @@ export default function RelatorioPresencasPage() {
         ...(selectedUnidade !== "todas" && { unidadeId: selectedUnidade }),
       });
 
-      console.log('🌐 [RELATÓRIO] URL params:', params.toString());
-
       const token = localStorage.getItem("token");
       const url = `${process.env.NEXT_PUBLIC_API_URL}/presenca/relatorio-presencas?${params}`;
-      console.log('🔗 [RELATÓRIO] URL completa:', url);
-
       const res = await fetch(url, {
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
       });
-
-      console.log('📡 [RELATÓRIO] Response status:', res.status);
-
       if (!res.ok) throw new Error("Erro ao carregar relatório");
       const data = await res.json();
-
-      console.log('📦 [RELATÓRIO] Dados recebidos:', {
-        isArray: Array.isArray(data),
-        length: Array.isArray(data) ? data.length : 'não é array',
-        firstItem: Array.isArray(data) && data.length > 0 ? data[0] : null
-      });
       
       // Processar os dados retornados pelo backend
       if (Array.isArray(data)) {

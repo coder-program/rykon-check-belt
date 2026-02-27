@@ -110,8 +110,6 @@ export default function AprovacaoCheckinPage() {
   const { data: presencasPendentes = [], isLoading } = useQuery({
     queryKey: ["presencas-pendentes", filtroUnidade],
     queryFn: async () => {
-      console.log("📡 [Frontend] Buscando presenças pendentes...");
-
       const params = new URLSearchParams();
       if (filtroUnidade) params.set("unidadeId", filtroUnidade);
 
@@ -129,18 +127,6 @@ export default function AprovacaoCheckinPage() {
       }
 
       const data = await response.json();
-      
-      console.log("📡 [Frontend] Presenças recebidas:", data.length);
-      console.log("📡 [Frontend] Primeira presença (amostra):", data[0]);
-      
-      if (data.length > 0) {
-        console.log("🕐 [Frontend] Debug horário primeira presença:", {
-          horario: data[0]?.aula?.horario,
-          hora_inicio: data[0]?.aula?.hora_inicio,
-          hora_fim: data[0]?.aula?.hora_fim,
-          aula_completa: data[0]?.aula,
-        });
-      }
 
       return data;
     },
@@ -310,18 +296,8 @@ export default function AprovacaoCheckinPage() {
     const aula: any = presenca?.aula || {};
     const rawHorario = aula?.horario;
     
-    console.log("🕐 [Frontend getHorarioDisplay] Processando:", {
-      presencaId: presenca?.id,
-      alunoNome: presenca?.aluno?.nome,
-      rawHorario,
-      hora_inicio: aula?.hora_inicio,
-      hora_fim: aula?.hora_fim,
-      horaInicio: aula?.horaInicio,
-      horaFim: aula?.horaFim,
-    });
     
     if (rawHorario && typeof rawHorario === "string" && !/NaN|Invalid Date/.test(rawHorario)) {
-      console.log("✅ [Frontend] Usando horario direto:", rawHorario);
       return rawHorario;
     }
 
@@ -331,8 +307,6 @@ export default function AprovacaoCheckinPage() {
     const fInicio = formatTime(inicio);
     const fFim = formatTime(fim);
     
-    console.log("🕐 [Frontend] Horários formatados:", { fInicio, fFim });
-
     if (fInicio && fFim) return `${fInicio} - ${fFim}`;
     if (fInicio) return fInicio;
     if (rawHorario) return String(rawHorario);

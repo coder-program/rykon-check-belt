@@ -625,8 +625,6 @@ function RegisterPageContent() {
 
       // Verificar se a data é válida
       const testDate = new Date(formData.data_nascimento);
-      console.log('[REGISTER] TestDate:', testDate);
-      console.log('[REGISTER] TestDate.getTime():', testDate.getTime());
       if (isNaN(testDate.getTime())) {
         console.error('[REGISTER] Data de nascimento inválida - NaN');
         setError('Data de nascimento inválida');
@@ -681,7 +679,6 @@ function RegisterPageContent() {
         console.warn("perfil_id inválido, não enviando:", formData.perfil_id);
       }
 
-      console.log('[REGISTER] Dados que serão enviados:', JSON.stringify(registerData, null, 2));
       await authService.register(registerData);
 
       // Verificar se o perfil escolhido requer aprovação

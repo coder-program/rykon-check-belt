@@ -252,7 +252,6 @@ export default function DependenteForm({
         uf: data.uf || formData.uf,
       });
 
-      console.log("✅ Endereço preenchido automaticamente via CEP:", data);
     } catch (error) {
       console.error("Erro ao buscar CEP:", error);
     }

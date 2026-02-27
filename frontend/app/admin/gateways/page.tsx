@@ -165,7 +165,6 @@ export default function GatewaysPage() {
       }
 
       const data = await response.json();
-      console.log("📋 Detalhes do gateway:", data);
       setSelectedGateway(data);
     } catch (error) {
       console.error("❌ Erro ao buscar detalhes:", error);

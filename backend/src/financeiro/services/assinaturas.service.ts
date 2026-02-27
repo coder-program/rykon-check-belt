@@ -82,9 +82,6 @@ export class AssinaturasService {
       const todasAssinaturas = await this.assinaturaRepository.find({
         where: { aluno_id: createAssinaturaDto.aluno_id },
       });
-      todasAssinaturas.forEach((a, idx) => {
-        console.log(`  ${idx + 1}. ID: ${a.id}, Status: ${a.status}, Plano: ${a.plano_id}`);
-      });
 
       const planoNome = assinaturaExistente.plano?.nome || 'não identificado';
       throw new BadRequestException(

@@ -121,19 +121,6 @@ export default function AtivarGatewayModal({
         const data = await response.json();
         setGateways(data.data || []);
         
-        console.log("🔍 GATEWAYS CARREGADOS - COMPLETO:", JSON.stringify(data.data, null, 2));
-        console.log("📊 Banking (ID 6) ativo?", data.data?.some((gw: any) => gw.gateway?.id === 6 && gw.active));
-        console.log("📊 SubPaytime (ID 4 + PAYTIME) ativo?", data.data?.some((gw: any) => gw.gateway?.id === 4 && gw.form_receipt === "PAYTIME" && gw.active));
-        console.log("📊 BankAccount (ID 4 + BANKACCOUNT) ativo?", data.data?.some((gw: any) => gw.gateway?.id === 4 && gw.form_receipt === "BANKACCOUNT" && gw.active));
-        
-        // Mostrar IDs de todos os gateways
-        console.log("🆔 IDs dos gateways:", data.data?.map((gw: any) => ({ 
-          id: gw.id, 
-          gateway_id: gw.gateway?.id, 
-          form_receipt: gw.form_receipt,
-          active: gw.active 
-        })));
-        
         // Buscar URL do KYC se houver Banking ativo em WAITING_KYC
         const bankingGateway = data.data?.find(
           (gw: any) => gw.gateway?.id === 6 && gw.status === "WAITING_KYC"
@@ -148,14 +135,10 @@ export default function AtivarGatewayModal({
           (gw: any) => gw.gateway?.id === 4 && gw.form_receipt === "BANKACCOUNT" && gw.active === true
         );
         
-        console.log("🔍 BankAccount gateway encontrado:", bankAccountGateway);
-        
         if (bankAccountGateway) {
-          console.log("📝 Carregando dados do gateway:", bankAccountGateway.id);
           // Passar o gateway completo em vez de só o ID
           await loadBankAccountData(bankAccountGateway);
         } else {
-          console.log("⚠️ Nenhum BankAccount ativo encontrado");
         }
       }
     } catch (error: any) {
@@ -168,11 +151,9 @@ export default function AtivarGatewayModal({
   // Carregar dados do BankAccount ativo nos campos
   const loadBankAccountData = async (gatewayData: any) => {
     try {
-      console.log("🔄 Recebido gateway data:", gatewayData);
       
       // Se já tiver bank_account nos dados, usar direto
       if (gatewayData.bank_account) {
-        console.log("✅ Usando dados recebidos diretamente (já tem bank_account)");
         setBankAccountData({
           reference_id: gatewayData.reference_id || "",
           bank_code: gatewayData.bank_account.bank_code || "341",
@@ -185,13 +166,11 @@ export default function AtivarGatewayModal({
           selected_plans: gatewayData.plans?.map((p: any) => p.id) || [],
           fees_banking_id: gatewayData.fees_banking_id?.toString() || "",
         });
-        console.log("✅ Dados da conta bancária carregados nos campos!");
         return;
       }
       
       // Se não tiver bank_account, tentar buscar na API
       const token = localStorage.getItem("token");
-      console.log("🔄 Buscando detalhes completos na API:", gatewayData.id);
       
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/paytime/establishments/${establishmentId}/gateways/${gatewayData.id}`,
@@ -202,11 +181,8 @@ export default function AtivarGatewayModal({
         }
       );
 
-      console.log("📡 Resposta da API:", response.status);
-
       if (response.ok) {
         const gateway = await response.json();
-        console.log("📦 Dados do BankAccount da API:", gateway);
         
         if (gateway.bank_account) {
           setBankAccountData({
@@ -221,13 +197,10 @@ export default function AtivarGatewayModal({
             selected_plans: gateway.plans?.map((p: any) => p.id) || [],
             fees_banking_id: gateway.fees_banking_id?.toString() || "",
           });
-          console.log("✅ Dados da conta bancária carregados da API!");
         } else {
-          console.log("⚠️ Gateway da API não tem bank_account");
         }
       } else {
         console.error("❌ Erro ao buscar detalhes do gateway na API:", response.status);
-        console.log("⚠️ Endpoint pode não existir, mas os dados já foram preenchidos acima se estavam disponíveis");
       }
     } catch (error: any) {
       console.error("❌ Erro ao carregar dados do BankAccount:", error);
@@ -252,7 +225,6 @@ export default function AtivarGatewayModal({
         const url = gateway.metadata?.url_documents_copy || gateway.metadata?.url_kyc;
         if (url) {
           setKycUrl(url);
-          console.log("✅ URL do KYC encontrada:", url);
         }
       }
     } catch (error: any) {
@@ -300,9 +272,7 @@ export default function AtivarGatewayModal({
         gw.active === true &&
         (!formReceipt || gw.form_receipt === formReceipt)
     );
-    
-    console.log(`🔍 isGatewayActive(${gatewayId}, "${formReceipt}"):`, result);
-    
+
     return result;
   };
 

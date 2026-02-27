@@ -129,7 +129,6 @@ export default function InstrutorDashboard() {
   >({
     queryKey: ["dashboard-instrutor-proximas-aulas"],
     queryFn: async () => {
-      console.log('🎯 [FRONTEND] Buscando próximas aulas...');
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/dashboard/instrutor/proximas-aulas`,
         {
@@ -143,8 +142,7 @@ export default function InstrutorDashboard() {
         throw new Error("Erro ao buscar próximas aulas");
       }
       const data = await response.json();
-      console.log('✅ [FRONTEND] Próximas aulas recebidas:', data);
-      console.log('📊 [FRONTEND] Total de aulas:', data?.length);
+
       return data;
     },
     enabled: !!user?.id,
@@ -371,9 +369,6 @@ export default function InstrutorDashboard() {
             <CardContent>
               <div className="space-y-4">
                 {(() => {
-                  console.log('🖼️ [FRONTEND RENDER] aulasLoading:', aulasLoading);
-                  console.log('🖼️ [FRONTEND RENDER] proximasAulas:', proximasAulas);
-                  console.log('🖼️ [FRONTEND RENDER] proximasAulas?.length:', proximasAulas?.length);
                   return null;
                 })()}
                 {aulasLoading ? (

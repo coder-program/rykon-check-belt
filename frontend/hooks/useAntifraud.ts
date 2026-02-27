@@ -90,10 +90,6 @@ export function useAntifraud() {
       const config = await loadIdpaySdkConfig();
       setIdpaySdkConfig(config);
 
-      console.log("📦 SDK IDPAY config recebida:", {
-        environment: config.environment,
-      });
-
       // Inicializar SDK — pré-carrega o iframe para experiência mais fluida
       const env = (config.environment?.toLowerCase() === "prod" || config.environment?.toLowerCase() === "production")
         ? undefined  // produção: não passa env
@@ -104,7 +100,6 @@ export function useAntifraud() {
         ...(env ? { env } : {}),
       } as Parameters<typeof IDPaySDK.init>[0]);
 
-      console.log("✅ SDK IDPAY inicializado com type=IFRAME, env=", env ?? "prod");
       setIdpayReady(true);
     } catch (error) {
       console.error("❌ Erro ao inicializar SDK IDPAY:", error);
@@ -128,7 +123,6 @@ export function useAntifraud() {
        */
       onLateFinish?: (transaction: IdpayFinishData) => void
     ): Promise<IdpayFinishData> => {
-      console.log("🪪 [IDPAY] Abrindo iframe biométrico...", { antifraudId });
 
       return new Promise((resolve, reject) => {
         // Timeout de segurança: SDK pode não chamar onFinish em caso de
@@ -149,7 +143,6 @@ export function useAntifraud() {
             token: sessionToken,
             onFinish: (transaction: IdpayFinishData, type: string) => {
               clearTimeout(timeoutId);
-              console.log("📸 [IDPAY] onFinish:", { transaction, type, settled });
 
               if (type === "ERROR") {
                 console.warn("⚠️ [IDPAY] Fluxo interrompido por erro");
@@ -161,7 +154,6 @@ export function useAntifraud() {
               }
 
               // type === 'FINISH' ou undefined — captura biométrica concluída
-              console.log("✅ [IDPAY] Captura biométrica concluída:", { transaction, type });
 
               if (!settled) {
                 // Caminho normal: promise ainda não foi resolvida/rejeitada

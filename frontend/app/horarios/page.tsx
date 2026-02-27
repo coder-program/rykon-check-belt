@@ -103,8 +103,6 @@ export default function HorariosPage() {
         return;
       }
 
-      console.log("🔑 Token encontrado, verificando validade...");
-
       // Verificar se token está expirado antes de fazer requisição
       try {
         const base64Url = token.split(".")[1];
@@ -125,7 +123,6 @@ export default function HorariosPage() {
           return;
         }
         
-        console.log("✅ Token válido, fazendo requisição...");
       } catch (e) {
         console.error("❌ Erro ao decodificar token:", e);
         localStorage.removeItem("token");
@@ -143,7 +140,6 @@ export default function HorariosPage() {
       // Se há alunoId na URL, passar para a API
       if (alunoId) {
         url += `?alunoId=${alunoId}`;
-        console.log(`🔍 Buscando horários para aluno: ${alunoId}`);
       }
 
       // 🔒 Backend automaticamente filtra pela unidade do aluno
@@ -164,7 +160,6 @@ export default function HorariosPage() {
 
       if (response.ok) {
         const data = await response.json();
-        console.log("✅ Horários carregados:", data.length);
         setHorarios(data);
       } else {
         console.error("❌ Erro ao buscar horários:", response.status);
@@ -178,85 +173,6 @@ export default function HorariosPage() {
     } finally {
       setLoading(false);
     }
-  };
-
-  const inscreverAula = async (aulaId: string) => {
-    try {
-      const token = localStorage.getItem("token");
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/aulas/${aulaId}/inscrever`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-
-      if (response.ok) {
-        // Atualizar o estado local
-        setHorarios((prev) =>
-          prev.map((h) =>
-            h.id === aulaId
-              ? {
-                  ...h,
-                  inscrito: true,
-                  vagasDisponiveis: h.vagasDisponiveis - 1,
-                }
-              : h
-          )
-        );
-      }
-    } catch (error) {
-      console.error("Erro ao se inscrever na aula:", error);
-    }
-  };
-
-  const desinscreverAula = async (aulaId: string) => {
-    try {
-      const token = localStorage.getItem("token");
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/aulas/${aulaId}/desinscrever`,
-        {
-          method: "DELETE",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-
-      if (response.ok) {
-        // Atualizar o estado local
-        setHorarios((prev) =>
-          prev.map((h) =>
-            h.id === aulaId
-              ? {
-                  ...h,
-                  inscrito: false,
-                  vagasDisponiveis: h.vagasDisponiveis + 1,
-                }
-              : h
-          )
-        );
-      }
-    } catch (error) {
-      console.error("Erro ao cancelar inscrição:", error);
-    }
-  };
-
-  const getDiaSemanaNome = (dia: string) => {
-    const nomes: Record<string, string> = {
-      segunda: "Segunda-feira",
-      terca: "Terça-feira",
-      quarta: "Quarta-feira",
-      quinta: "Quinta-feira",
-      sexta: "Sexta-feira",
-      sabado: "Sábado",
-      domingo: "Domingo",
-    };
-    return nomes[dia] || dia;
   };
 
   const getNivelColor = (nivel: string) => {

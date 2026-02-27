@@ -1,0 +1,6 @@
+-- Migration cancelada: campo exibe_graduacao nao sera utilizado.
+-- Os botoes de graduacao sao controlados pelo campo tipo_graduacao ja existente:
+--   tipo_graduacao != 'NENHUM' => exibe botoes de graduacao no dashboard
+-- Para habilitar graduacao em uma modalidade, basta definir tipo_graduacao
+-- com um dos valores: FAIXA, GRAU, KYU_DAN, CORDAO, LIVRE
+-- Nenhuma alteracao necessaria no banco.

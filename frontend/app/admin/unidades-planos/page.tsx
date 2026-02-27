@@ -107,8 +107,6 @@ export default function UnidadesPlanosPage() {
       setLoading(true);
       const token = localStorage.getItem("token");
 
-      console.log("🔄 Carregando dados de unidades e planos...");
-
       // Buscar todas as unidades (já vem com paytime_plans do banco de dados)
       const unidadesResponse = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/unidades`,
@@ -123,7 +121,6 @@ export default function UnidadesPlanosPage() {
       // O endpoint retorna { items, page, pageSize, total, hasNextPage }
       const unidadesList = unidadesData.items || unidadesData;
       
-      console.log("📋 Unidades carregadas:", unidadesList.length);
       
       // Deduplica planos que podem estar duplicados no banco
       const unidadesComPlanosLimpos = unidadesList.map((u: Unidade) => {
@@ -135,8 +132,6 @@ export default function UnidadesPlanosPage() {
           if (uniquePlans.length !== u.paytime_plans.length) {
             console.warn(`⚠️ Planos duplicados encontrados em ${u.nome}: ${u.paytime_plans.length} → ${uniquePlans.length}`);
           }
-          
-          console.log(`💳 Planos para ${u.nome}:`, uniquePlans);
           
           return { ...u, paytime_plans: uniquePlans };
         }
@@ -157,14 +152,6 @@ export default function UnidadesPlanosPage() {
       if (establishmentsResponse.ok) {
         const establishmentsData = await establishmentsResponse.json();
         setEstablishments(establishmentsData.data || []);
-        console.log("🏢 Establishments carregados:", establishmentsData.data?.length || 0);
-        console.log("🏢 Detalhes dos establishments:", establishmentsData.data?.map((e: PaytimeEstablishment) => ({
-          id: e.id,
-          first_name: e.first_name,
-          last_name: e.last_name,
-          document: e.document,
-          status: e.status
-        })));
       }
 
       // Buscar planos comerciais Paytime (gateway_id = 4)
@@ -180,7 +167,6 @@ export default function UnidadesPlanosPage() {
       if (plansResponse.ok) {
         const plansData = await plansResponse.json();
         setAvailablePlans(plansData.data || []);
-        console.log("💳 Planos disponíveis:", plansData.data?.length || 0);
       }
     } catch (error) {
       console.error("❌ Erro ao carregar dados:", error);
@@ -191,17 +177,11 @@ export default function UnidadesPlanosPage() {
   };
 
   const handleOpenModal = (unidade: Unidade) => {
-    console.log("🔍 Abrindo modal para unidade:", unidade.nome);
-    console.log("📌 Establishment ID da unidade:", unidade.paytime_establishment_id);
-    console.log("📋 Establishments disponíveis:", establishments);
-    console.log("📌 Planos da unidade (antes dedup):", unidade.paytime_plans);
-    
+   
     // Deduplicação dos planos (caso venham duplicados do banco)
     const uniquePlans = unidade.paytime_plans 
       ? Array.from(new Map(unidade.paytime_plans.map(p => [p.id, p])).values())
       : [];
-    
-    console.log("✅ Planos após dedup:", uniquePlans);
     
     setSelectedUnidade(unidade);
     setSelectedEstablishment(unidade.paytime_establishment_id?.toString() || "");
@@ -295,8 +275,6 @@ export default function UnidadesPlanosPage() {
           new Map(selectedPlans.map(p => [p.id, p])).values()
         );
         
-        console.log("💾 Salvando planos:", uniquePlans);
-        
         const plansResponse = await fetch(
           `${process.env.NEXT_PUBLIC_API_URL}/paytime/unidades/${selectedUnidade.id}/plans`,
           {
@@ -337,8 +315,6 @@ export default function UnidadesPlanosPage() {
           );
 
           if (uniquePlans.length !== unidade.paytime_plans.length) {
-            console.log(`🧹 Limpando duplicatas de ${unidade.nome}`);
-            
             await fetch(
               `${process.env.NEXT_PUBLIC_API_URL}/paytime/unidades/${unidade.id}/plans`,
               {

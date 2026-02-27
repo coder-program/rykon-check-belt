@@ -991,9 +991,6 @@ export default function DashboardNew() {
   const aniversariantesQuery = useQuery({
     queryKey: ["aniversariantes", selectedUnidade],
     queryFn: async () => {
-      console.log('\n🎂🎂🎂 [ANIVERSARIANTES] Buscando aniversariantes');
-      console.log('   - selectedUnidade:', selectedUnidade);
-      console.log('   - Perfis:', perfis);
       
       const mesAtual = new Date().getMonth();
       const paramsEnviados = {
@@ -1001,18 +998,9 @@ export default function DashboardNew() {
         pageSize: 500, // Buscar muitos para pegar todos aniversariantes
         unidade_id: selectedUnidade !== "todas" ? selectedUnidade : undefined,
       };
-      
-      console.log('   - Params sendo enviados:', JSON.stringify(paramsEnviados, null, 2));
-      
+
       const response = await listAlunos(paramsEnviados);
 
-      console.log('   - Total alunos retornados:', response.items.length);
-      console.log('   - Total no banco (response.total):', response.total);
-      console.log('   - Primeiros 3 alunos:', response.items.slice(0, 3).map((a: any) => ({ 
-        nome: a.nome, 
-        unidade: a.unidade?.nome,
-        data_nascimento: a.data_nascimento 
-      })));
 
       const aniversariantes = response.items
         .filter((aluno: any) => {
@@ -1037,10 +1025,6 @@ export default function DashboardNew() {
           const diaB = new Date(b.data_nascimento + 'T12:00:00').getDate();
           return diaA - diaB;
         });
-
-      console.log('   - Aniversariantes encontrados:', aniversariantes.length);
-      console.log('   - Lista:', aniversariantes.map((a: any) => a.nome));
-      console.log('🎂🎂🎂🎂🎂🎂🎂🎂🎂🎂🎂🎂🎂🎂🎂🎂🎂🎂🎂🎂\n');
       
       return aniversariantes;
     },

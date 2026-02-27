@@ -29,9 +29,6 @@ export default function LiquidacoesPage() {
 
       if (response.ok) {
         const data = await response.json();
-        console.log("💰 Resposta completa de liquidações:", data);
-        console.log("📊 Meta informações:", data.meta);
-        console.log("📋 Lista de liquidações:", data.data);
         setMeta(data.meta);
         setLiquidacoes(data.data || []);
       } else {

@@ -22,7 +22,7 @@
   JWT_SECRET = "jwt_secret_muito_forte_para_producao_123456789"
   JWT_EXPIRES_IN = "8h"
   PORT = "3000"
-  CORS_ORIGIN = "https://rykon-check-belt.vercel.app,https://teamcruz.rykonfit.com.br,http://localhost:3000"
+  CORS_ORIGIN = "https://rykon-check-belt.vercel.app,https://teamcruz.rykonfit.com.br,http://localhost:3000,http://localhost"
   LOG_LEVEL = "info"
   SMTP_HOST = "smtp.gmail.com"
   SMTP_PORT = "587"

@@ -87,7 +87,6 @@ export default function AtualizarCartaoModal({
         try {
           await loadClearSaleScript();
           await generateSessionId();
-          console.log("✅ ClearSale Session ID gerado para atualização de cartão");
         } catch (error) {
           console.error("⚠️ Erro ao carregar ClearSale:", error);
         }
@@ -162,7 +161,6 @@ export default function AtualizarCartaoModal({
       return response.json();
     },
     onSuccess: (data) => {
-      console.log("✅ Cartão atualizado com sucesso:", data);
       setSuccessData(data);
       setShowSuccess(true);
       

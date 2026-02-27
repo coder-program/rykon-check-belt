@@ -115,9 +115,6 @@ export default function PlansPage() {
       const url = `${process.env.NEXT_PUBLIC_API_URL}/paytime/plans?${paramsString}`;
       const token = localStorage.getItem("token");
 
-      console.log("🔍 Buscando planos comerciais...");
-      console.log("📡 URL:", url);
-
       const response = await fetch(url, {
         headers: {
           "Content-Type": "application/json",
@@ -130,10 +127,6 @@ export default function PlansPage() {
       }
 
       const data = await response.json();
-
-      console.log("✅ Planos carregados:", data.data?.length || 0);
-      console.log("📊 Total disponível:", data.total);
-      console.log("📋 Planos:", data.data);
 
       setPlans(data.data || []);
       setTotal(data.total || 0);
@@ -221,8 +214,6 @@ export default function PlansPage() {
         (u: Unidade) => u.paytime_establishment_id
       );
 
-      console.log("🔍 Unidades com establishment:", unidadesComEstabelecimento);
-
       // Para cada unidade, buscar os gateways ativos
       const establishmentsData: EstablishmentWithPlans[] = [];
 
@@ -240,14 +231,10 @@ export default function PlansPage() {
           if (gatewaysResponse.ok) {
             const gatewaysData = await gatewaysResponse.json();
             
-            console.log(`📡 Gateways da unidade ${unidade.nome}:`, gatewaysData);
-            
             // Procurar gateway SubPaytime (ID 4) com planos
             const subPaytimeGateway = gatewaysData.data?.find(
               (g: any) => g.gateway?.id === 4
             );
-
-            console.log(`🔌 Gateway SubPaytime da ${unidade.nome}:`, subPaytimeGateway);
 
             if (subPaytimeGateway?.plans && subPaytimeGateway.plans.length > 0) {
               establishmentsData.push({
@@ -262,7 +249,6 @@ export default function PlansPage() {
         }
       }
 
-      console.log("✅ Establishments com planos:", establishmentsData);
       setEstablishmentsWithPlans(establishmentsData);
     } catch (error) {
       console.error("Erro ao carregar estabelecimentos com planos:", error);
@@ -328,15 +314,7 @@ export default function PlansPage() {
 
       const establishmentId = unidade.paytime_establishment_id;
 
-      console.log("🔗 Iniciando associação de plano...");
-      console.log("📋 Plano:", selectedPlan.name, `(ID: ${selectedPlan.id})`);
-      console.log("🏢 Unidade:", unidade.nome);
-      console.log("🆔 Establishment ID:", establishmentId);
-      console.log("📌 Reference ID:", referenceId);
-      console.log("💳 Statement Descriptor:", statementDescriptor);
-
       // 1. Verificar gateways existentes
-      console.log("1️⃣ Verificando gateways existentes...");
       const checkResponse = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/paytime/establishments/${establishmentId}/gateways`,
         {
@@ -351,7 +329,6 @@ export default function PlansPage() {
 
       if (checkResponse.ok) {
         const existingGateways = await checkResponse.json();
-        console.log("📡 Gateways atuais:", existingGateways.data);
         
         bankingExists = existingGateways.data?.some(
           (g: any) => g.gateway?.id === 6
@@ -360,19 +337,14 @@ export default function PlansPage() {
           (g: any) => g.gateway?.id === 4
         );
 
-        console.log("🏦 Banking (ID: 6) ativo:", bankingExists ? "✅ Sim" : "❌ Não");
-        console.log("💰 SubPaytime (ID: 4) ativo:", gateway4Exists ? "✅ Sim" : "❌ Não");
-
         if (gateway4Exists) {
           toast.error("Gateway SubPaytime (ID 4) já está associado a este estabelecimento");
-          console.log("⚠️ Gateway SubPaytime já existe, abortando...");
           return;
         }
       }
 
       // 2. Ativar Banking (ID 6) se não existir
       if (!bankingExists) {
-        console.log("2️⃣ Gateway Banking não encontrado, ativando...");
         toast.loading("Ativando Gateway Banking...", { id: "banking" });
         
         const bankingBody = {
@@ -381,8 +353,6 @@ export default function PlansPage() {
           active: true,
           form_receipt: "PAYTIME",
         };
-
-        console.log("📤 Body Banking:", bankingBody);
 
         const bankingResponse = await fetch(
           `${process.env.NEXT_PUBLIC_API_URL}/paytime/establishments/${establishmentId}/gateways`,
@@ -403,14 +373,11 @@ export default function PlansPage() {
           throw new Error(errorData?.message || "Erro ao ativar Gateway Banking");
         }
 
-        console.log("✅ Gateway Banking ativado com sucesso!");
         toast.success("Gateway Banking ativado!", { id: "banking" });
       } else {
-        console.log("✅ Gateway Banking já está ativo");
       }
 
       // 3. Ativar SubPaytime (ID 4) com o plano
-      console.log("3️⃣ Associando plano ao Gateway SubPaytime...");
       toast.loading("Associando plano ao estabelecimento...", { id: "plan" });
       
       const body = {
@@ -426,9 +393,6 @@ export default function PlansPage() {
           },
         ],
       };
-
-      console.log("📤 Body SubPaytime:", body);
-      console.log("📤 Body SubPaytime:", body);
 
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/paytime/establishments/${establishmentId}/gateways`,
@@ -450,14 +414,11 @@ export default function PlansPage() {
       }
 
       const responseData = await response.json();
-      console.log("✅ Plano associado com sucesso!");
-      console.log("📊 Resposta:", responseData);
 
       toast.success("Plano associado com sucesso!", { id: "plan" });
       handleCloseAssociateModal();
       
       // Recarregar dados para atualizar os cards
-      console.log("🔄 Recarregando lista de estabelecimentos com planos...");
       fetchEstablishmentsWithPlans();
     } catch (error: any) {
       console.error("❌ Erro ao associar plano:", error);

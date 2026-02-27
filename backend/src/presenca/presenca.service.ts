@@ -2482,9 +2482,6 @@ export class PresencaService {
         throw new UnauthorizedException('Usuário não autenticado');
       }
 
-      console.log('🔍 [getPresencasPendentes] user.id:', user?.id);
-      console.log('🔍 [getPresencasPendentes] perfis RAW:', JSON.stringify(user?.perfis));
-
       // Verificar permissão
       const perfisPermitidos = [
         'RECEPCIONISTA',
@@ -2498,8 +2495,6 @@ export class PresencaService {
       const perfisNomes = (user?.perfis || []).map((p: any) =>
         typeof p === 'string' ? p.toUpperCase() : p.nome?.toUpperCase(),
       );
-
-      console.log('🔍 [getPresencasPendentes] perfisNomes normalizados:', perfisNomes);
 
       const temPermissao = perfisNomes.some((p) => perfisPermitidos.includes(p));
 
@@ -2515,7 +2510,6 @@ export class PresencaService {
 
     // Determinar unidade do usuário
     const unidadeId = await this.getUnidadeUsuario(user);
-    console.log('🔍 [getPresencasPendentes] unidadeId (primeira):', unidadeId);
     if (!unidadeId) {
       console.error(' [getPresencasPendentes] Usuário sem unidade');
       throw new ForbiddenException(
@@ -2538,11 +2532,9 @@ export class PresencaService {
     if (filtroUnidadeId && unidadeIds.includes(filtroUnidadeId)) {
       unidadeIds = [filtroUnidadeId];
     }
-    console.log('🔍 [getPresencasPendentes] unidadeIds finais:', unidadeIds);
 
     // Verificar total de pendentes no banco (sem filtro de unidade) para debug
     const totalPendentesBanco = await this.presencaRepository.count({ where: { status_aprovacao: 'PENDENTE' } });
-    console.log('🔍 [getPresencasPendentes] TOTAL pendentes no banco (sem filtro):', totalPendentesBanco);
 
     // Construir query
     const where: any = {
@@ -2590,8 +2582,6 @@ export class PresencaService {
       .getRawAndEntities();
 
     const { raw, entities } = presencas;
-    console.log('🔍 [getPresencasPendentes] Resultados encontrados:', entities.length);
-
     return entities.map((p, index) => {
       const rawData = raw[index];
 
@@ -2859,7 +2849,6 @@ export class PresencaService {
          WHERE f.usuario_id = $1 AND u.status = 'ATIVA'`,
         [user.id],
       );
-      console.log('🔍 [getUnidadesUsuario FRANQUEADO] user.id:', user.id, '→ unidades:', result);
       return result.map((r: any) => r.unidade_id).filter(Boolean);
     }
 

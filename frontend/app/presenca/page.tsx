@@ -402,10 +402,8 @@ export default function PresencaPage() {
   };
 
   const startQRScanner = async () => {
-    console.log('🎥 startQRScanner chamado');
     
     if (scanner) {
-      console.log('🧹 Limpando scanner anterior');
       scanner.clear();
       setScanner(null);
     }
@@ -416,8 +414,6 @@ export default function PresencaPage() {
     // Aguarda o próximo tick para garantir que o elemento foi renderizado
     setTimeout(() => {
       const element = document.getElementById("qr-reader");
-      console.log('📦 Elemento qr-reader:', element);
-      
       if (!element) {
         console.error("❌ Elemento qr-reader não encontrado");
         toast.error("Erro ao inicializar scanner");
@@ -426,7 +422,6 @@ export default function PresencaPage() {
       }
 
       try {
-        console.log('🔧 Criando Html5QrcodeScanner...');
         const newScanner = new Html5QrcodeScanner(
           "qr-reader",
           {
@@ -439,10 +434,8 @@ export default function PresencaPage() {
           false
         );
 
-        console.log('🎬 Renderizando scanner...');
         newScanner.render(
           (decodedText) => {
-            console.log('✅ QR Code lido:', decodedText);
             processQRCode(decodedText);
             newScanner.clear();
             setScannerActive(false);
@@ -457,7 +450,6 @@ export default function PresencaPage() {
         );
 
         setScanner(newScanner);
-        console.log('✅ Scanner criado com sucesso');
         
       } catch (error) {
         console.error("❌ Erro ao criar scanner:", error);
@@ -935,13 +927,7 @@ export default function PresencaPage() {
   };
 
   const formatDate = (dateString: string) => {
-    console.log('📅 [formatDate] Input:', dateString);
-    
-    // Criar Date a partir da string ISO que vem do backend
-    // Se a string já tem timezone (-0300), o Date vai interpretar corretamente
     const date = new Date(dateString);
-    console.log('📅 [formatDate] Date object:', date);
-    console.log('📅 [formatDate] Date ISO:', date.toISOString());
     
     // Formatar usando as opções do Brasil, mas mantendo a data original
     const formatted = date.toLocaleDateString("pt-BR", {
@@ -953,7 +939,6 @@ export default function PresencaPage() {
       timeZone: "America/Sao_Paulo", // Forçar timezone de São Paulo
     });
     
-    console.log('📅 [formatDate] Formatted:', formatted);
     return formatted;
   };
 
@@ -1809,14 +1794,7 @@ export default function PresencaPage() {
                             <div>
                               <div className="text-sm font-medium">
                                 {(() => {
-                                  console.log('🔥🔥🔥 [PRESENCA ITEM] Dados da presença:');
-                                  console.log('   - Presenca ID:', presenca.id);
-                                  console.log('   - Data recebida:', presenca.data);
-                                  console.log('   - Data typeof:', typeof presenca.data);
-                                  console.log('   - Horario:', presenca.horario);
                                   const formatted = formatDate(presenca.data).split(" ")[0];
-                                  console.log('   - Data formatada:', formatted);
-                                  console.log('🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥🔥\n');
                                   return formatted;
                                 })()}
                               </div>

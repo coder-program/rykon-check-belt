@@ -105,16 +105,12 @@ export default function Planos() {
       const userData = localStorage.getItem("user");
       const user = JSON.parse(userData || "{}");
 
-      console.log("=== CARREGANDO PLANOS ===");
-      console.log("User:", user);
-
       // Detectar franqueado
       const franqueadoDetected = user.perfis?.some(
         (p: any) =>
           (typeof p === "string" && p.toLowerCase() === "franqueado") ||
           (typeof p === "object" && p?.nome?.toLowerCase() === "franqueado")
       );
-      console.log("É franqueado?", franqueadoDetected);
       setIsFranqueado(franqueadoDetected);
 
       // Se não é franqueado, setar unidade_id no formData
@@ -137,15 +133,10 @@ export default function Planos() {
           const unidadesData = await unidadesRes.json();
           // A API retorna { items: [...], page, pageSize, total }
           const unidadesArray = unidadesData.items || [];
-          console.log("Unidades carregadas:", unidadesArray);
           setUnidades(unidadesArray);
 
           // Se o franqueado tem apenas 1 unidade, seleciona automaticamente
           if (unidadesArray.length === 1) {
-            console.log(
-              "✅ Franqueado com 1 unidade - aplicando filtro automático:",
-              unidadesArray[0].id
-            );
             setUnidadeFiltro(unidadesArray[0].id);
           }
         }
@@ -158,20 +149,15 @@ export default function Planos() {
         ? `${process.env.NEXT_PUBLIC_API_URL}/financeiro/planos`
         : `${process.env.NEXT_PUBLIC_API_URL}/financeiro/planos?unidadeId=${user.unidade_id}`;
 
-      console.log("URL para buscar planos:", planosUrl);
-
       const response = await fetch(planosUrl, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
 
-      console.log("Response status:", response.status);
 
       if (response.ok) {
         const data = await response.json();
-        console.log("Planos carregados (raw):", data);
-        console.log("Tipo de data:", typeof data, Array.isArray(data));
         setPlanos(data);
 
         // Carregar assinaturas para contagem
@@ -243,11 +229,6 @@ export default function Planos() {
     const userData = localStorage.getItem("user");
     const user = JSON.parse(userData || "{}");
 
-    console.log("=== SUBMITTING PLANO ===");
-    console.log("User data:", user);
-    console.log("Form data:", formData);
-    console.log("Editing plano:", editingPlano);
-
     try {
       const token = localStorage.getItem("token");
       const url = editingPlano
@@ -266,9 +247,6 @@ export default function Planos() {
           null,
       };
 
-      console.log("URL:", url);
-      console.log("Method:", editingPlano ? "PATCH" : "POST");
-      console.log("Payload:", payload);
 
       const response = await fetch(url, {
         method: editingPlano ? "PATCH" : "POST",
@@ -279,12 +257,8 @@ export default function Planos() {
         body: JSON.stringify(payload),
       });
 
-      console.log("Response status:", response.status);
-      console.log("Response ok:", response.ok);
 
       if (response.ok) {
-        const responseData = await response.json();
-        console.log("Response data:", responseData);
         setSuccessDialog({
           isOpen: true,
           message: editingPlano

@@ -56,8 +56,6 @@ export default function MinhasFaturas() {
       const token = localStorage.getItem("token");
       const userData = localStorage.getItem("user");
 
-      console.log("🔍 [FRONTEND] Iniciando busca de faturas...");
-
       if (!token || !userData) {
         console.error("❌ Token ou usuário não encontrado");
         setLoading(false);
@@ -65,10 +63,8 @@ export default function MinhasFaturas() {
       }
 
       const user = JSON.parse(userData);
-      console.log("👤 Usuário logado:", { id: user.id, nome: user.nome, email: user.email });
 
       // Buscar o aluno_id do usuário logado
-      console.log(`🔎 Buscando dados do aluno para usuário ID: ${user.id}`);
       const alunoResponse = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/alunos/usuario/${user.id}`,
         {
@@ -85,7 +81,6 @@ export default function MinhasFaturas() {
       }
 
       const aluno = await alunoResponse.json();
-      console.log("✅ Aluno encontrado:", { id: aluno.id, nome: aluno.nome });
 
       if (!aluno) {
         console.warn("⚠️ Nenhum aluno encontrado para este usuário");
@@ -94,7 +89,6 @@ export default function MinhasFaturas() {
       }
 
       // Buscar faturas do aluno
-      console.log(`💰 Buscando faturas para aluno ID: ${aluno.id}`);
       const faturasResponse = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/faturas/aluno/${aluno.id}`,
         {
@@ -106,9 +100,7 @@ export default function MinhasFaturas() {
 
       if (faturasResponse.ok) {
         const faturasData = await faturasResponse.json();
-        console.log(`✅ ${faturasData.length} faturas encontradas:`, faturasData);
         setFaturas(faturasData);
-        console.log(`📝 Estado 'faturas' atualizado com ${faturasData.length} itens`);
         
         // Buscar transações pendentes para cada fatura
         await verificarTransacoesPendentes(faturasData, token);
@@ -117,7 +109,6 @@ export default function MinhasFaturas() {
       }
 
       setLoading(false);
-      console.log(`🏁 Loading finalizado: false`);
     } catch (error) {
       console.error("💥 Erro ao carregar faturas:", error);
       setLoading(false);
@@ -126,7 +117,6 @@ export default function MinhasFaturas() {
 
   const verificarTransacoesPendentes = async (faturasData: Fatura[], token: string) => {
     try {
-      console.log("🔍 Verificando transações pendentes...");
       const faturaIds = faturasData
         .filter(f => f.status === "PENDENTE" || f.status === "ATRASADA")
         .map(f => f.id);
@@ -153,7 +143,6 @@ export default function MinhasFaturas() {
             .map((t: any) => t.fatura_id)
         );
         setFaturasComPagamentoPendente(faturasComPendente);
-        console.log(`💳 ${faturasComPendente.size} faturas com pagamento pendente`);
       }
     } catch (error) {
       console.error("⚠️ Erro ao verificar transações:", error);
@@ -218,8 +207,6 @@ export default function MinhasFaturas() {
           new Date(b.data_vencimento).getTime()
       )[0],
   };
-
-  console.log(`🎨 [RENDER] Estado atual:`, { loading, faturasCount: faturas.length, faturas });
 
   if (loading) {
     return (

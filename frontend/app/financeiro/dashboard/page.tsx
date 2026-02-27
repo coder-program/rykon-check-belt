@@ -186,10 +186,6 @@ function DashboardFinanceiro() {
 
       if (inadimplenciaRes.ok) {
         const inadimplenciaData = await inadimplenciaRes.json();
-        console.log(
-          "📊 [DASHBOARD-FRONTEND] Inadimplência recebida:",
-          inadimplenciaData
-        );
         setInadimplencia(inadimplenciaData);
       }
 

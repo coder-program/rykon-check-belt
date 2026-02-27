@@ -171,9 +171,7 @@ export default function TransacoesPage() {
 
       if (response.ok) {
         const data = await response.json();
-        console.log('📍 Estabelecimentos recebidos:', data);
         const estabs = data.data || [];
-        console.log('📍 Lista de estabelecimentos:', estabs);
         setEstablishments(estabs);
         
         // NÃO seleciona automaticamente - usuário deve escolher
@@ -181,7 +179,6 @@ export default function TransacoesPage() {
           console.warn('⚠️ Nenhum estabelecimento encontrado');
           toast.error("Nenhum estabelecimento encontrado");
         } else {
-          console.log(`✅ ${estabs.length} estabelecimento(s) disponível(is). Selecione um no combo.`);
         }
       } else {
         console.error('❌ Erro na resposta:', response.status, response.statusText);
@@ -197,13 +194,11 @@ export default function TransacoesPage() {
 
   const carregarTransacoes = async () => {
     if (!selectedEstablishment) {
-      console.log('⚠️ Nenhum estabelecimento selecionado');
       return;
     }
 
     try {
       setLoading(true);
-      console.log(`🔄 Carregando transações do estabelecimento ${selectedEstablishment}...`);
       const token = localStorage.getItem("token");
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/paytime/transactions`,
@@ -217,11 +212,6 @@ export default function TransacoesPage() {
 
       if (response.ok) {
         const data = await response.json();
-        console.log('📦 Dados recebidos da API:', data);
-        console.log('🔍 Primeira transação COMPLETA:', JSON.stringify(data.data?.[0], null, 2));
-        console.log('👤 Dados do aluno (primeira transação):', data.data?.[0]?.aluno);
-        console.log('📋 info_additional:', data.data?.[0]?.info_additional);
-        console.log('📋 metadata:', data.data?.[0]?.metadata);
         setTransactions(data.data || []);
       } else {
         throw new Error("Erro ao carregar transações");
