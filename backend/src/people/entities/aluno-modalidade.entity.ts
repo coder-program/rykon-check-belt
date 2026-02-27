@@ -30,6 +30,12 @@ export class AlunoModalidade {
   @Column({ type: 'boolean', default: true })
   ativo: boolean;
 
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  graduacao_atual: string | null; // graduação na modalidade (ex: Faixa Amarela); não usado para jiu-jitsu
+
+  @Column({ type: 'date', nullable: true })
+  data_ultima_graduacao: Date | null;
+
   @ManyToOne(() => Aluno, (aluno) => aluno.alunoModalidades, {
     onDelete: 'CASCADE',
   })

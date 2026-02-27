@@ -43,6 +43,17 @@ export function ProfileCompletionGuard({
 
     // Se o usuário está autenticado mas não completou o cadastro, redireciona
     if (user.cadastro_completo === false) {
+      // ALUNO: cadastro sempre marcado true no registro; wizard no dashboard cuida do resto
+      const isAluno = user?.perfis?.some(
+        (perfil: string | { nome?: string; name?: string }) => {
+          if (typeof perfil === "string") return perfil.toLowerCase() === "aluno";
+          if (typeof perfil === "object" && perfil?.nome) return perfil.nome.toLowerCase() === "aluno";
+          if (typeof perfil === "object" && perfil?.name) return perfil.name.toLowerCase() === "aluno";
+          return String(perfil).toLowerCase() === "aluno";
+        }
+      );
+      if (isAluno) return; // aluno vai para /dashboard, o wizard cuida do perfil incompleto
+
       // Verificar se é franqueado
       const isFranqueado = user?.perfis?.some(
         (perfil: string | { nome?: string; name?: string }) => {

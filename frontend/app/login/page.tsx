@@ -194,12 +194,21 @@ function LoginContent() {
         // Tablet checkin sempre vai para a rota de check-in
         router.push("/checkin/tablet");
       } else if (result.user?.cadastro_completo === false) {
-        // Outros perfis com cadastro incompleto vão para complete-profile
-        toast("Complete seu cadastro para acessar o sistema", {
-          icon: "📋",
-          duration: 3000,
+        // ALUNO: vai para /dashboard, o wizard cuida do perfil incompleto
+        const isAluno = result.user?.perfis?.some((p: string | { nome?: string }) => {
+          const n = typeof p === "string" ? p : p?.nome ?? "";
+          return n.toLowerCase() === "aluno";
         });
-        router.push("/complete-profile");
+        if (isAluno) {
+          router.push("/dashboard");
+        } else {
+          // Outros perfis com cadastro incompleto vão para complete-profile
+          toast("Complete seu cadastro para acessar o sistema", {
+            icon: "📋",
+            duration: 3000,
+          });
+          router.push("/complete-profile");
+        }
       } else {
         // Outros perfis com cadastro completo vão para dashboard
         router.push("/dashboard");

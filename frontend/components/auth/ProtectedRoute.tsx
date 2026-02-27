@@ -78,8 +78,19 @@ export default function ProtectedRoute({
         !isTabletCheckin &&
         currentPath !== "/complete-profile"
       ) {
-        router.push("/complete-profile");
-        return;
+        // ALUNO: não redireciona para complete-profile, o wizard no dashboard cuida disso
+        const isAluno = user?.perfis?.some(
+          (perfil: string | { nome?: string; name?: string }) => {
+            if (typeof perfil === "string") return perfil.toLowerCase() === "aluno";
+            if (typeof perfil === "object" && perfil?.nome) return perfil.nome.toLowerCase() === "aluno";
+            if (typeof perfil === "object" && perfil?.name) return perfil.name.toLowerCase() === "aluno";
+            return String(perfil).toLowerCase() === "aluno";
+          }
+        );
+        if (!isAluno) {
+          router.push("/complete-profile");
+          return;
+        }
       }
     }
   }, [loading, isAuthenticated, router, redirectTo, user]);

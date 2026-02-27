@@ -38,6 +38,18 @@ export class PresencaController {
     }
   }
 
+  @Get('aulas-ativas-aluno')
+  @ApiOperation({ summary: 'Aulas ativas agora nas modalidades do aluno' })
+  @ApiResponse({ status: 200, description: 'Lista de aulas ativas por modalidade' })
+  async getAulasAtivasAluno(@Request() req) {
+    try {
+      return await this.presencaService.getAulasAtivasAluno(req.user.id);
+    } catch (error) {
+      console.error('❌ [Controller] Erro ao buscar aulas ativas do aluno:', error);
+      return [];
+    }
+  }
+
   @Post('check-in-qr')
   @ApiOperation({ summary: 'Check-in via QR Code' })
   @ApiBody({
@@ -411,8 +423,9 @@ export class PresencaController {
     @Query('mes') mes?: number,
     @Query('ano') ano?: number,
     @Query('alunoId') alunoId?: string,
+    @Query('modalidadeId') modalidadeId?: string,
   ) {
-    return this.presencaService.getRankingUnidade(req.user, mes, ano, alunoId);
+    return this.presencaService.getRankingUnidade(req.user, mes, ano, alunoId, modalidadeId);
   }
 
   // ========== TABLET CHECK-IN ENDPOINTS ==========

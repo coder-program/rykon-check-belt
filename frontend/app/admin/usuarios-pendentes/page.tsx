@@ -26,6 +26,53 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "react-hot-toast";
+import {
+  GiHighKick,
+  GiBoxingGlove,
+  GiKimono,
+  GiFist,
+  GiMeditation,
+  GiWeightLiftingUp,
+  GiSoccerBall,
+  GiBasketballBall,
+  GiTennisBall,
+  GiRunningShoe,
+  GiSwimfins,
+  GiAcrobatic,
+  GiBlackBelt,
+  GiMuscleUp,
+} from "react-icons/gi";
+
+function getEsporteIcon(nome?: string, size = 22): React.ReactNode {
+  const n = (nome ?? "").toLowerCase();
+  if (n.includes("muay") || n.includes("kickbox") || n.includes("karate") || n.includes("taekwondo"))
+    return <GiHighKick size={size} />;
+  if (n.includes("box"))
+    return <GiBoxingGlove size={size} />;
+  if (n.includes("jiu") || n.includes("judo") || n.includes("bjj") || n.includes("jud"))
+    return <GiKimono size={size} />;
+  if (n.includes("mma") || n.includes("luta") || n.includes("wrestling") || n.includes("krav"))
+    return <GiFist size={size} />;
+  if (n.includes("yoga") || n.includes("pilates") || n.includes("medita"))
+    return <GiMeditation size={size} />;
+  if (n.includes("cross") || n.includes("funcional"))
+    return <GiWeightLiftingUp size={size} />;
+  if (n.includes("muscula") || n.includes("gym"))
+    return <GiMuscleUp size={size} />;
+  if (n.includes("futebol") || n.includes("soccer"))
+    return <GiSoccerBall size={size} />;
+  if (n.includes("basquet"))
+    return <GiBasketballBall size={size} />;
+  if (n.includes("tenis") || n.includes("tênis"))
+    return <GiTennisBall size={size} />;
+  if (n.includes("corrida") || n.includes("atletismo"))
+    return <GiRunningShoe size={size} />;
+  if (n.includes("nata") || n.includes("swim") || n.includes("aqua"))
+    return <GiSwimfins size={size} />;
+  if (n.includes("capoeira") || n.includes("kung"))
+    return <GiAcrobatic size={size} />;
+  return <GiBlackBelt size={size} />;
+}
 
 interface PendingUser {
   id: string;
@@ -94,6 +141,15 @@ function AprovacaoUsuariosPage() {
   const [loadingModalidadesModal, setLoadingModalidadesModal] = useState(false);
   const [selectedModalidades, setSelectedModalidades] = useState<string[]>([]);
   const [approvingAluno, setApprovingAluno] = useState(false);
+  // graduação por modalidade (não jiu-jitsu)
+  const [modalidadeGraduacoes, setModalidadeGraduacoes] = useState<
+    Record<string, { graduacao_atual: string; data_ultima_graduacao: string }>
+  >();
+
+  const isJiuNome = (nome: string) => {
+    const n = nome.toLowerCase();
+    return n.includes("jiu") || n.includes("jitsu") || n.includes("bjj");
+  };
 
   // Buscar modalidades quando o modal de matrícula abre
   useEffect(() => {
@@ -116,6 +172,21 @@ function AprovacaoUsuariosPage() {
     setSelectedModalidades((prev) =>
       prev.includes(id) ? prev.filter((m) => m !== id) : [...prev, id]
     );
+
+  const setGrad = (
+    modalidadeId: string,
+    field: "graduacao_atual" | "data_ultima_graduacao",
+    value: string
+  ) =>
+    setModalidadeGraduacoes((prev) => ({
+      ...(prev ?? {}),
+      [modalidadeId]: {
+        graduacao_atual: "",
+        data_ultima_graduacao: new Date().toISOString().split("T")[0],
+        ...(prev?.[modalidadeId] ?? {}),
+        [field]: value,
+      },
+    }));
 
   const handleConfirmarAprovacaoAluno = async () => {
     setApprovingAluno(true);
@@ -143,6 +214,7 @@ function AprovacaoUsuariosPage() {
           const alunoData = await alunoResp.json();
           const alunoId = alunoData?.id;
           if (alunoId) {
+            // Matricular e depois salvar graduações
             await Promise.allSettled(
               selectedModalidades.map((modalidadeId) =>
                 fetch(
@@ -155,7 +227,28 @@ function AprovacaoUsuariosPage() {
                     },
                     body: JSON.stringify({ modalidade_id: modalidadeId }),
                   }
-                )
+                ).then(async () => {
+                  // Salvar graduação se preenchida (apenas para não-jiu)
+                  const grad = modalidadeGraduacoes?.[modalidadeId];
+                  const modNome =
+                    modalidadesDisponiveis.find((m) => m.id === modalidadeId)?.nome ?? "";
+                  if (grad?.graduacao_atual?.trim() && !isJiuNome(modNome)) {
+                    await fetch(
+                      `${process.env.NEXT_PUBLIC_API_URL}/alunos/${alunoId}/modalidades/${modalidadeId}/graduacao`,
+                      {
+                        method: "PATCH",
+                        headers: {
+                          "Content-Type": "application/json",
+                          Authorization: `Bearer ${localStorage.getItem("token")}`,
+                        },
+                        body: JSON.stringify({
+                          graduacao_atual: grad.graduacao_atual,
+                          data_ultima_graduacao: grad.data_ultima_graduacao,
+                        }),
+                      }
+                    );
+                  }
+                })
               )
             );
           }
@@ -175,6 +268,7 @@ function AprovacaoUsuariosPage() {
       queryClient.invalidateQueries({ queryKey: ["usuarios-pendentes"] });
       setMatricularModal({ isOpen: false, userId: "", userName: "", unidadeId: "" });
       setSelectedModalidades([]);
+      setModalidadeGraduacoes(undefined);
     } catch (err: any) {
       toast.error(err?.message || "Erro ao aprovar aluno");
     } finally {
@@ -946,8 +1040,7 @@ function AprovacaoUsuariosPage() {
               <div className="flex items-start gap-3 mb-5 p-3 bg-amber-50 border border-amber-200 rounded-xl">
                 <Dumbbell className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
                 <p className="text-sm text-amber-800 leading-relaxed">
-                  Selecione as modalidades para matricular o aluno. Você pode
-                  pular esta etapa e fazer a matrícula em outro momento.
+                  Selecione as modalidades para matricular o aluno.
                 </p>
               </div>
 
@@ -955,7 +1048,7 @@ function AprovacaoUsuariosPage() {
               {loadingModalidadesModal ? (
                 <div className="flex items-center justify-center py-8">
                   <div className="animate-spin w-6 h-6 border-2 border-green-500 border-t-transparent rounded-full" />
-                  <span className="ml-3 text-sm text-gray-500">Carregando modalidades...</span>
+                  <span className="ml-3 text-sm text-gray-400">Carregando modalidades...</span>
                 </div>
               ) : modalidadesDisponiveis.length === 0 ? (
                 <div className="text-center py-8">
@@ -965,27 +1058,84 @@ function AprovacaoUsuariosPage() {
                   </p>
                 </div>
               ) : (
-                <div className="flex flex-wrap gap-2 mb-2">
+                <div className="flex flex-col gap-2 mb-2">
                   {modalidadesDisponiveis.map((m) => {
                     const selected = selectedModalidades.includes(m.id);
+                    const isJiu = isJiuNome(m.nome);
+                    const grad = modalidadeGraduacoes?.[m.id];
                     return (
-                      <button
-                        key={m.id}
-                        onClick={() => toggleModalidade(m.id)}
-                        className={`px-4 py-2 rounded-full text-sm font-semibold border-2 transition-all ${
-                          selected
-                            ? "text-white border-transparent shadow-md scale-105"
-                            : "bg-white border-gray-200 text-gray-600 hover:border-gray-400"
-                        }`}
-                        style={
-                          selected
-                            ? { background: m.cor ?? "#16a34a", borderColor: m.cor ?? "#16a34a" }
-                            : {}
-                        }
-                      >
-                        {selected && <span className="mr-1.5">✓</span>}
-                        {m.nome}
-                      </button>
+                      <div key={m.id}>
+                        <button
+                          onClick={() => toggleModalidade(m.id)}
+                          className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold border-2 transition-all ${
+                            selected
+                              ? "text-white border-transparent shadow-md"
+                              : "bg-gray-100 border-gray-200 text-gray-700 hover:border-gray-400 hover:bg-gray-200"
+                          }`}
+                          style={
+                            selected
+                              ? { background: m.cor ?? "#16a34a", borderColor: m.cor ?? "#16a34a" }
+                              : {}
+                          }
+                        >
+                          <span
+                            className={`flex items-center justify-center w-9 h-9 rounded-lg shrink-0 ${
+                              selected ? "bg-white/20" : "bg-white"
+                            }`}
+                            style={!selected ? { color: m.cor ?? "#4ade80" } : {}}
+                          >
+                            {getEsporteIcon(m.nome, 20)}
+                          </span>
+                          <span className="flex-1 text-left">{m.nome}</span>
+                          {isJiu && selected && (
+                            <span className="text-xs opacity-75">Graduação via Jiu-Jitsu</span>
+                          )}
+                          {selected && (
+                            <span className="w-5 h-5 rounded-full bg-white/30 flex items-center justify-center shrink-0">
+                              <Check className="w-3 h-3" />
+                            </span>
+                          )}
+                        </button>
+
+                        {/* Campos de graduação — só para não-jiu e quando selecionado */}
+                        {selected && !isJiu && (
+                          <div className="mt-1.5 mb-1 pl-3 border-l-2 border-gray-300 space-y-2">
+                            <div>
+                              <label className="text-xs font-semibold text-gray-500 block mb-1">
+                                Graduação atual
+                                <span className="font-normal text-gray-400 ml-1">(opcional)</span>
+                              </label>
+                              <input
+                                className="w-full px-3 py-2 border border-gray-300 bg-white text-gray-800 placeholder-gray-400 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-400 transition"
+                                placeholder="Ex: Faixa Amarela, Kyu 7, Intermediário..."
+                                value={grad?.graduacao_atual ?? ""}
+                                onChange={(e) =>
+                                  setGrad(m.id, "graduacao_atual", e.target.value)
+                                }
+                              />
+                            </div>
+                            {grad?.graduacao_atual?.trim() && (
+                              <div>
+                                <label className="text-xs font-semibold text-gray-500 block mb-1">
+                                  Data da graduação
+                                </label>
+                                <input
+                                  type="date"
+                                  className="w-full px-3 py-2 border border-gray-300 bg-white text-gray-800 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-400 transition"
+                                  value={
+                                    grad?.data_ultima_graduacao ??
+                                    new Date().toISOString().split("T")[0]
+                                  }
+                                  max={new Date().toISOString().split("T")[0]}
+                                  onChange={(e) =>
+                                    setGrad(m.id, "data_ultima_graduacao", e.target.value)
+                                  }
+                                />
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     );
                   })}
                 </div>
@@ -1003,27 +1153,14 @@ function AprovacaoUsuariosPage() {
               <Button
                 variant="outline"
                 className="flex-1"
-                onClick={() =>
-                  setMatricularModal({ isOpen: false, userId: "", userName: "", unidadeId: "" })
-                }
+                onClick={() => {
+                  setMatricularModal({ isOpen: false, userId: "", userName: "", unidadeId: "" });
+                  setSelectedModalidades([]);
+                  setModalidadeGraduacoes(undefined);
+                }}
                 disabled={approvingAluno}
               >
                 Cancelar
-              </Button>
-              <Button
-                variant="outline"
-                className="flex-1 border-green-300 text-green-700 hover:bg-green-50"
-                onClick={handleConfirmarAprovacaoAluno}
-                disabled={approvingAluno}
-              >
-                {approvingAluno ? (
-                  <span className="flex items-center gap-2">
-                    <div className="animate-spin w-4 h-4 border-2 border-green-500 border-t-transparent rounded-full" />
-                    Aprovando...
-                  </span>
-                ) : (
-                  "Aprovar sem modalidade"
-                )}
               </Button>
               <Button
                 className="flex-1 bg-green-600 hover:bg-green-700 text-white"

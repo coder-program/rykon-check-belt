@@ -336,7 +336,7 @@ export class UsuariosService {
       cpf: cpfLimpo,
       telefone: telefoneLimpo,
       data_nascimento: createUsuarioDto.data_nascimento
-        ? new Date(createUsuarioDto.data_nascimento)
+        ? (String(createUsuarioDto.data_nascimento).split('T')[0] as any)
         : undefined,
       foto: createUsuarioDto.foto || undefined,
       perfis,

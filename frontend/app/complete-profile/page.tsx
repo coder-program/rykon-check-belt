@@ -301,7 +301,7 @@ export default function CompleteProfilePage() {
 
     try {
       // Validar campos obrigatórios
-      if (!formData.unidade_id) {
+      if (!isAluno && !formData.unidade_id) {
         console.error(" [handleSubmit] unidade_id não informado");
         throw new Error("Selecione uma unidade");
       }
@@ -435,7 +435,8 @@ export default function CompleteProfilePage() {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Unidade */}
+          {/* Unidade — ocultado para ALUNO (já definida no cadastro) */}
+          {!isAluno && (
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-2">
               Unidade *
@@ -468,8 +469,10 @@ export default function CompleteProfilePage() {
               </p>
             )}
           </div>
+          )}
 
-          {/* Data de Nascimento - EDITÁVEL */}
+          {/* Data Nascimento + Gênero — ocultados para ALUNO (já preenchidos no registro) */}
+          {!isAluno && (
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-2">
               Data de Nascimento *
@@ -493,8 +496,9 @@ export default function CompleteProfilePage() {
             />
             <p className="text-xs text-gray-400 mt-1">Idade mínima: 10 anos</p>
           </div>
+          )}
 
-          {/* Gênero */}
+          {!isAluno && (
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-2">
               Gênero
@@ -509,32 +513,11 @@ export default function CompleteProfilePage() {
               <option value="FEMININO">Feminino</option>
             </select>
           </div>
+          )}
 
           {/* Campos específicos para ALUNO */}
           {isAluno && (
             <>
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Faixa Atual
-                </label>
-                <select
-                  name="faixa_atual"
-                  value={formData.faixa_atual}
-                  onChange={handleChange}
-                  className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-red-500"
-                >
-                  <option value="BRANCA">Branca</option>
-                  <option value="CINZA">Cinza</option>
-                  <option value="AMARELA">Amarela</option>
-                  <option value="LARANJA">Laranja</option>
-                  <option value="VERDE">Verde</option>
-                  <option value="AZUL">Azul</option>
-                  <option value="ROXA">Roxa</option>
-                  <option value="MARROM">Marrom</option>
-                  <option value="PRETA">Preta</option>
-                </select>
-              </div>
-
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">
                   Observações Médicas
@@ -647,116 +630,9 @@ export default function CompleteProfilePage() {
                 </div>
               </div>
 
-              {/* Dados Financeiros */}
-              <div className="border border-blue-600 rounded-lg p-4 bg-blue-900/20">
-                <h3 className="text-lg font-semibold text-blue-400 mb-3">
-                  Dados Financeiros (Opcional)
-                </h3>
-                <div className="grid grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
-                      Dia Vencimento
-                    </label>
-                    <input
-                      type="number"
-                      name="dia_vencimento"
-                      value={formData.dia_vencimento}
-                      onChange={handleChange}
-                      min="1"
-                      max="31"
-                      className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-red-500"
-                      placeholder="1-31"
-                    />
-                  </div>
+              {/* Dados Financeiros — removido para aluno (gestão do admin) */}
 
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
-                      Valor Mensalidade (R$)
-                    </label>
-                    <input
-                      type="number"
-                      name="valor_mensalidade"
-                      value={formData.valor_mensalidade}
-                      onChange={handleChange}
-                      step="0.01"
-                      min="0"
-                      className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-red-500"
-                      placeholder="0.00"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
-                      Desconto (%)
-                    </label>
-                    <input
-                      type="number"
-                      name="desconto_percentual"
-                      value={formData.desconto_percentual}
-                      onChange={handleChange}
-                      min="0"
-                      max="100"
-                      step="0.01"
-                      className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-red-500"
-                      placeholder="0"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Consentimentos LGPD */}
-              <div className="border border-green-600 rounded-lg p-4 bg-green-900/20 space-y-3">
-                <h3 className="text-lg font-semibold text-green-400 mb-3">
-                  Consentimentos
-                </h3>
-
-                <div className="flex items-start gap-3">
-                  <input
-                    type="checkbox"
-                    id="consent_lgpd"
-                    name="consent_lgpd"
-                    checked={formData.consent_lgpd}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        consent_lgpd: e.target.checked,
-                      })
-                    }
-                    className="mt-1 h-4 w-4 rounded border-gray-600 bg-gray-700 text-red-600 focus:ring-red-500"
-                  />
-                  <label
-                    htmlFor="consent_lgpd"
-                    className="text-sm text-gray-300"
-                  >
-                    Autorizo o uso dos meus dados pessoais para fins cadastrais,
-                    conforme a Lei Geral de Proteção de Dados (LGPD).
-                  </label>
-                </div>
-
-                <div className="flex items-start gap-3">
-                  <input
-                    type="checkbox"
-                    id="consent_imagem"
-                    name="consent_imagem"
-                    checked={formData.consent_imagem}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        consent_imagem: e.target.checked,
-                      })
-                    }
-                    className="mt-1 h-4 w-4 rounded border-gray-600 bg-gray-700 text-red-600 focus:ring-red-500"
-                  />
-                  <label
-                    htmlFor="consent_imagem"
-                    className="text-sm text-gray-300"
-                  >
-                    Autorizo o uso de minha imagem em fotos e vídeos para
-                    divulgação da academia nas redes sociais e materiais
-                    promocionais.
-                  </label>
-                </div>
-              </div>
+              {/* Consentimentos LGPD — removido para aluno (já aceito no registro) */}
 
               {/* Dados do Responsável (se menor de idade) */}
               {isMenorDeIdade() && (

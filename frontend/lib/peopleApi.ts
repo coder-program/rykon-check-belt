@@ -16,6 +16,8 @@ interface ListAlunosParams {
   status?: string;
   ativo?: boolean;
   perfil_id?: number;
+  modalidade_id?: string;
+  faixa?: string;
 }
 
 interface Aluno {

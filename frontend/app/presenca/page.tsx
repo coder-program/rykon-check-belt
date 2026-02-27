@@ -67,6 +67,16 @@ interface AulaAtiva {
   qrCode: string;
 }
 
+interface AulaAtivaAluno {
+  id: string;
+  nome: string;
+  professor: string;
+  horarioInicio: string;
+  horarioFim: string;
+  modalidade: { id: string; nome: string; cor: string | null };
+  jaFezCheckin: boolean;
+}
+
 export default function PresencaPage() {
   const { shouldBlock } = useFranqueadoProtection();
   const router = useRouter();
@@ -112,6 +122,9 @@ export default function PresencaPage() {
   const [showResponsavelMode, setShowResponsavelMode] = useState(false);
   const [buscaHistorico, setBuscaHistorico] = useState("");
   const [presencasPendentes, setPresencasPendentes] = useState<any[]>([]);
+  const [aulasAtivasAluno, setAulasAtivasAluno] = useState<AulaAtivaAluno[]>([]);
+  const [loadingAulasAluno, setLoadingAulasAluno] = useState(false);
+  const [loadingCheckinAula, setLoadingCheckinAula] = useState<Record<string, boolean>>({});
   
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -132,6 +145,8 @@ export default function PresencaPage() {
     loadEstatisticas();
     if (!targetAlunoId) {
       loadMeusFilhos();
+      const isAluno = user?.perfis?.some((p: string) => p.toLowerCase() === "aluno");
+      if (isAluno) loadAulasAtivasAluno();
     }
   }, [targetAlunoId, isInitialized]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -150,6 +165,70 @@ export default function PresencaPage() {
     
     // Removido auto-start - scanner inicia apenas ao clicar no botão
   }, [aulaAtiva, user, metodoCheckin]);
+
+  const loadAulasAtivasAluno = async () => {
+    setLoadingAulasAluno(true);
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/presenca/aulas-ativas-aluno`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (res.ok) {
+        const data = await res.json();
+        setAulasAtivasAluno(Array.isArray(data) ? data : []);
+      }
+    } catch (e) {
+      console.error("Erro ao carregar aulas ativas do aluno:", e);
+    } finally {
+      setLoadingAulasAluno(false);
+    }
+  };
+
+  const checkInPorAula = async (aulaId: string) => {
+    setLoadingCheckinAula((prev) => ({ ...prev, [aulaId]: true }));
+    try {
+      let latitude: number | undefined;
+      let longitude: number | undefined;
+      try {
+        if (navigator.geolocation) {
+          const pos = await new Promise<GeolocationPosition>((resolve, reject) =>
+            navigator.geolocation.getCurrentPosition(resolve, reject, {
+              enableHighAccuracy: true, timeout: 10000, maximumAge: 0,
+            })
+          );
+          latitude = pos.coords.latitude;
+          longitude = pos.coords.longitude;
+        }
+      } catch {
+        // sem localização
+      }
+      const token = localStorage.getItem("token");
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/presenca/check-in-manual`,
+        {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ aulaId, latitude, longitude }),
+        }
+      );
+      const result = await res.json();
+      if (res.ok) {
+        toast.success("Check-in realizado com sucesso!");
+        setAulasAtivasAluno((prev) =>
+          prev.map((a) => a.id === aulaId ? { ...a, jaFezCheckin: true } : a)
+        );
+        loadEstatisticas();
+        loadHistoricoPresenca();
+      } else {
+        toast.error(result.message || "Erro ao realizar check-in");
+      }
+    } catch {
+      toast.error("Erro ao processar check-in");
+    } finally {
+      setLoadingCheckinAula((prev) => ({ ...prev, [aulaId]: false }));
+    }
+  };
 
   const loadAulaAtiva = async () => {
     try {
@@ -1124,6 +1203,85 @@ export default function PresencaPage() {
             {/* Check-in Section - Ocultar quando visualizando dependente */}
             {!targetAlunoId && (
               <div className="space-y-4 sm:space-y-6">
+
+                {/* ── Aulas ativas por modalidade (apenas para alunos) ── */}
+                {user?.perfis?.some((p: string) => p.toLowerCase() === "aluno") && (
+                  <div className="space-y-3">
+                    {loadingAulasAluno ? (
+                      <Card className="border-0 shadow-md">
+                        <CardContent className="p-6 text-center text-gray-500">
+                          Verificando aulas em andamento...
+                        </CardContent>
+                      </Card>
+                    ) : aulasAtivasAluno.length === 0 ? (
+                      <Card className="border-0 shadow-md">
+                        <CardContent className="p-6 text-center">
+                          <Clock className="h-10 w-10 mx-auto mb-3 text-gray-300" />
+                          <p className="font-medium text-gray-600">Nenhuma aula em andamento</p>
+                          <p className="text-sm text-gray-400 mt-1">
+                            Suas aulas aparecerão aqui quando estiverem no horário
+                          </p>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="mt-3 text-blue-600"
+                            onClick={loadAulasAtivasAluno}
+                          >
+                            Atualizar
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    ) : (
+                      aulasAtivasAluno.map((aula) => (
+                        <Card
+                          key={aula.id}
+                          className="border-0 shadow-md overflow-hidden"
+                          style={{ borderLeft: `4px solid ${aula.modalidade.cor || "#3b82f6"}` }}
+                        >
+                          <CardContent className="p-4 sm:p-5">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <span
+                                    className="text-xs font-semibold px-2 py-0.5 rounded-full text-white"
+                                    style={{ background: aula.modalidade.cor || "#3b82f6" }}
+                                  >
+                                    {aula.modalidade.nome}
+                                  </span>
+                                  <span className="text-xs text-gray-500">
+                                    {aula.horarioInicio} – {aula.horarioFim}
+                                  </span>
+                                </div>
+                                <p className="font-semibold text-gray-900 truncate">{aula.nome}</p>
+                                <p className="text-sm text-gray-500">Prof. {aula.professor}</p>
+                              </div>
+                              <div className="shrink-0">
+                                {aula.jaFezCheckin ? (
+                                  <div className="flex items-center gap-1.5 text-green-600 font-medium text-sm">
+                                    <CheckCircle className="h-5 w-5" />
+                                    Presente
+                                  </div>
+                                ) : (
+                                  <Button
+                                    size="sm"
+                                    onClick={() => checkInPorAula(aula.id)}
+                                    disabled={loadingCheckinAula[aula.id]}
+                                    style={{ background: aula.modalidade.cor || "#3b82f6" }}
+                                    className="text-white hover:opacity-90 border-0"
+                                  >
+                                    <UserCheck className="h-4 w-4 mr-1.5" />
+                                    {loadingCheckinAula[aula.id] ? "..." : "Check-in"}
+                                  </Button>
+                                )}
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))
+                    )}
+                  </div>
+                )}
+
                 {/* Seletor de Método de Check-in - Apenas para não-alunos */}
                 {aulaAtiva && !user?.perfis?.some(
                   (p: string) => p.toLowerCase() === "aluno"
@@ -1462,8 +1620,10 @@ export default function PresencaPage() {
                 </Card>
               )}
 
-              {/* Check-in Manual (mantido como fallback) */}
-              {aulaAtiva && (
+              {/* Check-in Manual (mantido como fallback) - apenas para não-alunos */}
+              {aulaAtiva && !user?.perfis?.some(
+                (p: string) => p.toLowerCase() === "aluno"
+              ) && (
                 <Card className="border-2 border-gray-200">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">

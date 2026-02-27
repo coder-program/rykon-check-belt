@@ -536,6 +536,27 @@ export class AlunosController {
     });
   }
 
+  @Patch(':id/modalidades/:modalidadeId/graduacao')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({
+    summary: '🎖️ Atualizar graduação em modalidade',
+    description: 'Atualiza a graduação atual do aluno numa modalidade (não jiu-jitsu)',
+  })
+  @ApiResponse({ status: 200, description: '✅ Graduação atualizada' })
+  @ApiResponse({ status: 404, description: '❌ Matrícula não encontrada' })
+  async atualizarGraduacaoModalidade(
+    @Param('id') id: string,
+    @Param('modalidadeId') modalidadeId: string,
+    @Body() body: { graduacao_atual?: string; data_ultima_graduacao?: string },
+  ) {
+    return this.alunoModalidadeService.atualizarGraduacao(
+      id,
+      modalidadeId,
+      body.graduacao_atual,
+      body.data_ultima_graduacao,
+    );
+  }
+
   @Delete(':id/modalidades/:modalidadeId')
   @UseGuards(JwtAuthGuard)
   @ApiOperation({

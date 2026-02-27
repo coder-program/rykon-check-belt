@@ -111,19 +111,12 @@ export class AuthService {
         };
       }
 
-      // Verificar se usuário está inativo
+      // Verificar se usuário está inativo — bloqueia login até aprovação
       if (!user.ativo) {
-        // Se o cadastro NÃO está completo, permitir login para completar o cadastro
-        if (!user.cadastro_completo) {
-          // Permite login mas o frontend vai redirecionar para /complete-profile
-          return { user };
-        }
-
-        // Se o cadastro JÁ está completo mas usuário está inativo = aguardando aprovação
         return {
           user: null,
           error:
-            'Sua conta está inativa. Entre em contato com o administrador.',
+            'Sua conta está aguardando aprovação. Você receberá um e-mail assim que for aprovado.',
         };
       }
 
@@ -797,7 +790,7 @@ export class AuthService {
         data_nascimento: payload.data_nascimento, // Adicionar data de nascimento ao usuário
         ativo: usuarioAtivo, // Ativo apenas se perfil não requer aprovação
         perfil_ids: [perfilId],
-        cadastro_completo: true, // ✅ ALUNO já vai com cadastro completo, não precisa logar 2x
+        cadastro_completo: perfilNome !== 'aluno', // Aluno precisa preencher perfil no wizard; demais perfis já nascem completos
       } as any);
 
       // ========================================
@@ -875,10 +868,12 @@ export class AuthService {
             responsavel_telefone: payload.responsavel_telefone || null,
             responsavel_parentesco: payload.responsavel_parentesco || null,
 
-            // LGPD - aceitar ambos os nomes de campos (frontend envia consent_uso_*)
+            // LGPD - gravar nos dois pares de colunas (legado + novo)
             consent_lgpd: payload.consent_uso_dados_lgpd ?? payload.consent_lgpd ?? false,
             consent_imagem: payload.consent_uso_imagem ?? payload.consent_imagem ?? false,
             consent_lgpd_date: (payload.consent_uso_dados_lgpd || payload.consent_lgpd) ? new Date() : null,
+            consent_uso_dados_lgpd: payload.consent_uso_dados_lgpd ?? payload.consent_lgpd ?? false,
+            consent_uso_imagem: payload.consent_uso_imagem ?? payload.consent_imagem ?? false,
           };
 
           await this.alunosService.create(alunoData as any);

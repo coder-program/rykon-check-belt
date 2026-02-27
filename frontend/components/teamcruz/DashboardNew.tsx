@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { FixedSizeList as List } from "react-window";
@@ -714,6 +715,15 @@ export default function DashboardNew() {
   const [filterCategoriaRanking, setFilterCategoriaRanking] =
     React.useState<string>("todos");
 
+  // Filtro por modalidade (inicializado a partir de URL param)
+  const searchParams = useSearchParams();
+  const [filterModalidadeId, setFilterModalidadeId] = React.useState<string | undefined>(
+    () => searchParams.get("modalidadeId") || undefined
+  );
+  const [filterModalidadeNome, setFilterModalidadeNome] = React.useState<string>(
+    () => searchParams.get("modalidadeNome") || ""
+  );
+
   // Query para ranking de frequência (Top Assiduidade)
   const { data: rankingFrequencia = [], isLoading: isLoadingRanking } =
     useQuery({
@@ -911,7 +921,7 @@ export default function DashboardNew() {
 
   // Query para Alunos (aba Alunos) - DADOS REAIS DO BANCO
   const alunosQuery = useInfiniteQuery({
-    queryKey: ["alunos", debouncedSearch, filterFaixa, selectedUnidade],
+    queryKey: ["alunos", debouncedSearch, filterFaixa, selectedUnidade, filterModalidadeId],
     initialPageParam: 1,
     getNextPageParam: (lastPage) =>
       lastPage.hasNextPage ? lastPage.page + 1 : undefined,
@@ -932,6 +942,7 @@ export default function DashboardNew() {
         search: debouncedSearch,
         faixa: faixaParam,
         unidade_id: selectedUnidade !== "todas" ? selectedUnidade : undefined,
+        modalidade_id: filterModalidadeId,
       });
 
       // Adaptar os dados para o formato esperado pelo componente
@@ -1789,6 +1800,20 @@ export default function DashboardNew() {
                         </>
                       )}
                     </select>
+                  </div>
+                )}
+
+                {/* Chip de modalidade filtrada */}
+                {filterModalidadeId && (
+                  <div className="flex items-center gap-1.5 px-3 py-2 bg-blue-50 border border-blue-200 text-blue-700 rounded-lg text-xs sm:text-sm font-medium">
+                    <span>🏅 {filterModalidadeNome || "Modalidade"}</span>
+                    <button
+                      onClick={() => { setFilterModalidadeId(undefined); setFilterModalidadeNome(""); }}
+                      className="ml-1 text-blue-400 hover:text-blue-700 font-bold leading-none"
+                      title="Remover filtro"
+                    >
+                      ×
+                    </button>
                   </div>
                 )}
 

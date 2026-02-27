@@ -342,6 +342,73 @@ export class PresencaService {
     };
   }
 
+  /**
+   * Retorna TODAS as aulas ativas agora que pertencem às modalidades
+   * em que o aluno está matriculado. Usado na página de presença do aluno.
+   */
+  async getAulasAtivasAluno(userId: string): Promise<Array<{
+    id: string;
+    nome: string;
+    professor: string;
+    horarioInicio: string;
+    horarioFim: string;
+    modalidade: { id: string; nome: string; cor: string | null };
+    jaFezCheckin: boolean;
+  }>> {
+    const aluno = await this.alunoRepository.findOne({ where: { usuario_id: userId } });
+    if (!aluno?.unidade_id) return [];
+
+    // Buscar modalidades do aluno
+    const mods = await this.presencaRepository.manager.query(
+      `SELECT am.modalidade_id, m.nome, m.cor
+       FROM teamcruz.aluno_modalidades am
+       INNER JOIN teamcruz.modalidades m ON m.id = am.modalidade_id
+       WHERE am.aluno_id = $1 AND am.ativo = true`,
+      [aluno.id],
+    );
+
+    if (!mods.length) return [];
+
+    const modalidadeIds = mods.map((m: any) => m.modalidade_id);
+    const modalidadeMap: Record<string, { id: string; nome: string; cor: string | null }> = {};
+    for (const m of mods) modalidadeMap[m.modalidade_id] = { id: m.modalidade_id, nome: m.nome, cor: m.cor };
+
+    // Buscar aulas da unidade do aluno com as modalidades dele
+    const aulas = await this.aulaRepository
+      .createQueryBuilder('aula')
+      .leftJoinAndSelect('aula.professor', 'professor')
+      .where('aula.unidade_id = :unidadeId', { unidadeId: aluno.unidade_id })
+      .andWhere('aula.modalidade_id IN (:...modalidadeIds)', { modalidadeIds })
+      .andWhere('aula.ativo = true')
+      .getMany();
+
+    // Filtrar apenas as que estão ativas agora
+    const aulasAtivas = aulas.filter(a => a.estaAtiva());
+
+    if (!aulasAtivas.length) return [];
+
+    // Verificar quais modalidades o aluno já fez check-in hoje (1 por modalidade por dia)
+    const hoje = dayjs().tz('America/Sao_Paulo').format('YYYY-MM-DD');
+    const checkins = await this.presencaRepository.manager.query(
+      `SELECT p.modalidade_id FROM teamcruz.presencas p
+       WHERE p.aluno_id = $1
+         AND DATE(p.hora_checkin AT TIME ZONE 'America/Sao_Paulo') = $2
+         AND p.status_aprovacao IN ('APROVADO', 'PENDENTE')`,
+      [aluno.id, hoje],
+    );
+    const jaFez = new Set((checkins as any[]).map((c: any) => c.modalidade_id));
+
+    return aulasAtivas.map(a => ({
+      id: a.id,
+      nome: a.nome,
+      professor: a.professor?.nome_completo || 'Professor',
+      horarioInicio: a.hora_inicio,
+      horarioFim: a.hora_fim,
+      modalidade: modalidadeMap[a.modalidade_id] ?? { id: a.modalidade_id, nome: 'Modalidade', cor: null },
+      jaFezCheckin: jaFez.has(a.modalidade_id),
+    }));
+  }
+
   async checkInQR(
     qrCode: string,
     user: any,
@@ -444,18 +511,19 @@ export class PresencaService {
       throw new NotFoundException('Aluno não encontrado');
     }
 
-    // Verificar se já fez check-in hoje (horário Brasil)
+    // Verificar se já fez check-in hoje nessa modalidade (1 check-in por modalidade por dia)
     const { hoje, amanha } = this.getHojeBrasil();
 
     const presencaHoje = await this.presencaRepository.findOne({
       where: {
         aluno_id: aluno.id,
+        modalidade_id: aula.modalidade_id,
         hora_checkin: Between(hoje, amanha),
       },
     });
 
     if (presencaHoje) {
-      throw new BadRequestException('Você já fez check-in hoje');
+      throw new BadRequestException('Você já fez check-in hoje nessa modalidade');
     }
 
     // Log para debug: contar total de presenças aprovadas do aluno
@@ -552,12 +620,13 @@ export class PresencaService {
       }
     }
 
-    // Verificar se já existe check-in hoje (apenas 1 check-in por dia permitido)
+    // Verificar se já existe check-in hoje nessa modalidade (1 check-in por modalidade por dia)
     const { hoje, amanha } = this.getHojeBrasil();
 
     const presencaHoje = await this.presencaRepository.findOne({
       where: {
         aluno_id: aluno.id,
+        modalidade_id: aula.modalidade_id,
         hora_checkin: Between(hoje, amanha),
         status_aprovacao: In(['APROVADO', 'PENDENTE']),
       },
@@ -565,7 +634,7 @@ export class PresencaService {
 
     if (presencaHoje) {
       throw new BadRequestException(
-        'Você já fez check-in hoje. Apenas 1 check-in por dia é permitido.',
+        'Você já fez check-in hoje nessa modalidade. Apenas 1 check-in por modalidade por dia é permitido.',
       );
     }
 
@@ -723,12 +792,13 @@ export class PresencaService {
       throw new NotFoundException('Unidade não encontrada');
     }
 
-    // Verificar se já existe check-in hoje (apenas 1 check-in por dia permitido)
+    // Verificar se já existe check-in hoje nessa modalidade (1 check-in por modalidade por dia)
     const { hoje, amanha } = this.getHojeBrasil();
 
     const presencaHoje = await this.presencaRepository.findOne({
       where: {
         aluno_id: aluno.id,
+        modalidade_id: aula.modalidade_id,
         hora_checkin: Between(hoje, amanha),
         status_aprovacao: In(['APROVADO', 'PENDENTE']),
       },
@@ -736,7 +806,7 @@ export class PresencaService {
 
     if (presencaHoje) {
       throw new BadRequestException(
-        `${aluno.nome_completo} já fez check-in hoje. Apenas 1 check-in por dia é permitido.`,
+        `${aluno.nome_completo} já fez check-in hoje nessa modalidade. Apenas 1 check-in por modalidade por dia é permitido.`,
       );
     }
 
@@ -1023,20 +1093,6 @@ export class PresencaService {
     metodo: string,
     adminUser: any,
   ) {
-    // Verificar se já fez check-in hoje
-    const { hoje, amanha } = this.getHojeBrasil();
-
-    const presencaHoje = await this.presencaRepository.findOne({
-      where: {
-        aluno_id: alunoId,
-        hora_checkin: Between(hoje, amanha),
-      },
-    });
-
-    if (presencaHoje) {
-      throw new BadRequestException('Aluno já fez check-in hoje');
-    }
-
     // Buscar aula com unidade para verificar configuração de aprovação
     const aula = await this.aulaRepository.findOne({
       where: { id: aulaId },
@@ -1045,6 +1101,21 @@ export class PresencaService {
 
     if (!aula) {
       throw new NotFoundException('Aula não encontrada');
+    }
+
+    // Verificar se já fez check-in hoje nessa modalidade (1 check-in por modalidade por dia)
+    const { hoje, amanha } = this.getHojeBrasil();
+
+    const presencaHoje = await this.presencaRepository.findOne({
+      where: {
+        aluno_id: alunoId,
+        modalidade_id: aula.modalidade_id,
+        hora_checkin: Between(hoje, amanha),
+      },
+    });
+
+    if (presencaHoje) {
+      throw new BadRequestException('Aluno já fez check-in hoje nessa modalidade');
     }
 
     // Verificar configuração de aprovação da unidade
@@ -1882,19 +1953,23 @@ export class PresencaService {
   }
 
   async checkInFacial(foto: string, aulaId: string, user: any) {
-    // Verificar se já fez check-in hoje
+    // Buscar aula para obter modalidade_id
+    const aulaFacial = await this.aulaRepository.findOne({ where: { id: aulaId } });
+
+    // Verificar se já fez check-in hoje nessa modalidade (1 check-in por modalidade por dia)
     const hoje = dayjs().tz('America/Sao_Paulo').startOf('day').toDate();
     const amanha = dayjs().tz('America/Sao_Paulo').add(1, 'day').startOf('day').toDate();
 
     const presencaHoje = await this.presencaRepository.findOne({
       where: {
         aluno_id: user.id,
+        modalidade_id: aulaFacial?.modalidade_id,
         created_at: Between(hoje, amanha),
       },
     });
 
     if (presencaHoje) {
-      throw new BadRequestException('Você já fez check-in hoje');
+      throw new BadRequestException('Você já fez check-in hoje nessa modalidade');
     }
 
     // Por enquanto, vamos simular o reconhecimento facial
@@ -1902,9 +1977,6 @@ export class PresencaService {
     if (!foto || foto.length < 100) {
       throw new BadRequestException('Foto inválida para reconhecimento');
     }
-
-    // Buscar aula para obter modalidade_id
-    const aulaFacial = await this.aulaRepository.findOne({ where: { id: aulaId } });
 
     // Registrar presença facial
     const presenca = this.presencaRepository.create({
@@ -1953,23 +2025,24 @@ export class PresencaService {
     // TODO: Implementar validação de relacionamento responsável-aluno
     // Por enquanto, vamos permitir apenas se o usuário for da mesma unidade ou for admin
 
-    // Verificar se já fez check-in hoje
+    // Buscar aula para obter modalidade_id
+    const aulaResp = await this.aulaRepository.findOne({ where: { id: aulaId } });
+
+    // Verificar se já fez check-in hoje nessa modalidade (1 check-in por modalidade por dia)
     const hoje = dayjs().tz('America/Sao_Paulo').startOf('day').toDate();
     const amanha = dayjs().tz('America/Sao_Paulo').add(1, 'day').startOf('day').toDate();
 
     const presencaHoje = await this.presencaRepository.findOne({
       where: {
         aluno_id: alunoId,
+        modalidade_id: aulaResp?.modalidade_id,
         created_at: Between(hoje, amanha),
       },
     });
 
     if (presencaHoje) {
-      throw new BadRequestException('Este aluno já fez check-in hoje');
+      throw new BadRequestException('Este aluno já fez check-in hoje nessa modalidade');
     }
-
-    // Buscar aula para obter modalidade_id
-    const aulaResp = await this.aulaRepository.findOne({ where: { id: aulaId } });
 
     // Registrar presença pelo responsável
     const presenca = this.presencaRepository.create({
@@ -2048,6 +2121,7 @@ export class PresencaService {
     mes?: number,
     ano?: number,
     alunoId?: string,
+    modalidadeId?: string,
   ) {
     try {
       // Buscar unidade do aluno
@@ -2081,55 +2155,119 @@ export class PresencaService {
       const categoriaAluno = idadeNoAnoAtual <= 15 ? 'INFANTIL' : 'ADULTO';
 
       // OTIMIZAÇÃO: Usar query SQL para calcular ranking direto no banco
-      const query = `
-        WITH alunos_filtrados AS (
-          SELECT 
-            a.id,
-            a.nome_completo,
-            EXTRACT(YEAR FROM AGE(CAST($4 AS DATE), a.data_nascimento)) as idade
-          FROM teamcruz.alunos a
-          WHERE a.unidade_id = $1
-            AND a.status = 'ATIVO'
-            AND CASE 
-              WHEN $5 = 'INFANTIL' THEN EXTRACT(YEAR FROM AGE(CAST($4 AS DATE), a.data_nascimento)) <= 15
-              ELSE EXTRACT(YEAR FROM AGE(CAST($4 AS DATE), a.data_nascimento)) > 15
-            END
-        ),
-        presencas_mes AS (
-          SELECT 
-            p.aluno_id,
-            COUNT(*) as total_presencas
-          FROM teamcruz.presencas p
-          WHERE p.aluno_id IN (SELECT id FROM alunos_filtrados)
-            AND p.created_at >= $2
-            AND p.created_at <= $3
-          GROUP BY p.aluno_id
-        )
-        SELECT 
-          af.id as aluno_id,
-          af.nome_completo as nome,
-          COALESCE(fd.nome_exibicao, 'Sem faixa') as faixa,
-          COALESCE(f.graus_atual, 0) as graus,
-          COALESCE(pm.total_presencas, 0) as presencas,
-          ROW_NUMBER() OVER (ORDER BY COALESCE(pm.total_presencas, 0) DESC) as posicao
-        FROM alunos_filtrados af
-        LEFT JOIN presencas_mes pm ON pm.aluno_id = af.id
-        LEFT JOIN teamcruz.aluno_faixa f ON f.aluno_id = af.id AND f.ativa = true
-        LEFT JOIN teamcruz.faixa_def fd ON fd.id = f.faixa_def_id
-        ORDER BY COALESCE(pm.total_presencas, 0) DESC
-        LIMIT 100
-      `;
+      // Se modalidadeId fornecido: filtra só alunos daquela modalidade e usa graduação correta
+      let rankingComDetalhes: any[];
 
-      const rankingComDetalhes = await this.presencaRepository.manager.query(
-        query,
-        [
-          aluno.unidade_id,
-          primeiroDia,
-          ultimoDia,
-          `${anoRef}-01-01`,
-          categoriaAluno,
-        ],
-      );
+      if (modalidadeId) {
+        const queryModalidade = `
+          WITH alunos_filtrados AS (
+            SELECT
+              a.id,
+              a.nome_completo,
+              am.graduacao_atual AS graduacao_modalidade,
+              EXTRACT(YEAR FROM AGE(CAST($4 AS DATE), a.data_nascimento)) AS idade
+            FROM teamcruz.alunos a
+            INNER JOIN teamcruz.aluno_modalidades am
+              ON am.aluno_id = a.id
+              AND am.modalidade_id = $6::uuid
+              AND am.ativo = true
+            WHERE a.unidade_id = $1
+              AND a.status = 'ATIVO'
+              AND CASE
+                WHEN $5 = 'INFANTIL' THEN EXTRACT(YEAR FROM AGE(CAST($4 AS DATE), a.data_nascimento)) <= 15
+                ELSE EXTRACT(YEAR FROM AGE(CAST($4 AS DATE), a.data_nascimento)) > 15
+              END
+          ),
+          presencas_mes AS (
+            SELECT
+              p.aluno_id,
+              COUNT(*) AS total_presencas
+            FROM teamcruz.presencas p
+            WHERE p.aluno_id IN (SELECT id FROM alunos_filtrados)
+              AND p.created_at >= $2
+              AND p.created_at <= $3
+            GROUP BY p.aluno_id
+          )
+          SELECT
+            af.id AS aluno_id,
+            af.nome_completo AS nome,
+            COALESCE(
+              NULLIF(TRIM(COALESCE(af.graduacao_modalidade, '')), ''),
+              CASE
+                WHEN fd.nome_exibicao IS NOT NULL THEN
+                  fd.nome_exibicao ||
+                  CASE WHEN COALESCE(f.graus_atual, 0) > 0
+                    THEN ' - ' || f.graus_atual || ' grau' || CASE WHEN f.graus_atual > 1 THEN 's' ELSE '' END
+                    ELSE ''
+                  END
+                ELSE 'Sem graduação'
+              END
+            ) AS graduacao,
+            COALESCE(pm.total_presencas, 0) AS presencas,
+            ROW_NUMBER() OVER (ORDER BY COALESCE(pm.total_presencas, 0) DESC) AS posicao
+          FROM alunos_filtrados af
+          LEFT JOIN presencas_mes pm ON pm.aluno_id = af.id
+          LEFT JOIN teamcruz.aluno_faixa f ON f.aluno_id = af.id AND f.ativa = true
+          LEFT JOIN teamcruz.faixa_def fd ON fd.id = f.faixa_def_id
+          ORDER BY COALESCE(pm.total_presencas, 0) DESC
+          LIMIT 100
+        `;
+        rankingComDetalhes = await this.presencaRepository.manager.query(
+          queryModalidade,
+          [aluno.unidade_id, primeiroDia, ultimoDia, `${anoRef}-01-01`, categoriaAluno, modalidadeId],
+        );
+      } else {
+        const query = `
+          WITH alunos_filtrados AS (
+            SELECT
+              a.id,
+              a.nome_completo,
+              EXTRACT(YEAR FROM AGE(CAST($4 AS DATE), a.data_nascimento)) as idade
+            FROM teamcruz.alunos a
+            WHERE a.unidade_id = $1
+              AND a.status = 'ATIVO'
+              AND CASE
+                WHEN $5 = 'INFANTIL' THEN EXTRACT(YEAR FROM AGE(CAST($4 AS DATE), a.data_nascimento)) <= 15
+                ELSE EXTRACT(YEAR FROM AGE(CAST($4 AS DATE), a.data_nascimento)) > 15
+              END
+          ),
+          presencas_mes AS (
+            SELECT
+              p.aluno_id,
+              COUNT(*) as total_presencas
+            FROM teamcruz.presencas p
+            WHERE p.aluno_id IN (SELECT id FROM alunos_filtrados)
+              AND p.created_at >= $2
+              AND p.created_at <= $3
+            GROUP BY p.aluno_id
+          )
+          SELECT
+            af.id as aluno_id,
+            af.nome_completo as nome,
+            COALESCE(
+              CASE WHEN fd.nome_exibicao IS NOT NULL THEN
+                fd.nome_exibicao ||
+                CASE WHEN COALESCE(f.graus_atual, 0) > 0
+                  THEN ' - ' || f.graus_atual || ' grau' || CASE WHEN f.graus_atual > 1 THEN 's' ELSE '' END
+                  ELSE ''
+                END
+              ELSE NULL END,
+              'Sem graduação'
+            ) as graduacao,
+            COALESCE(pm.total_presencas, 0) as presencas,
+            ROW_NUMBER() OVER (ORDER BY COALESCE(pm.total_presencas, 0) DESC) as posicao
+          FROM alunos_filtrados af
+          LEFT JOIN presencas_mes pm ON pm.aluno_id = af.id
+          LEFT JOIN teamcruz.aluno_faixa f ON f.aluno_id = af.id AND f.ativa = true
+          LEFT JOIN teamcruz.faixa_def fd ON fd.id = f.faixa_def_id
+          ORDER BY COALESCE(pm.total_presencas, 0) DESC
+          LIMIT 100
+        `;
+        rankingComDetalhes = await this.presencaRepository.manager.query(
+          query,
+          [aluno.unidade_id, primeiroDia, ultimoDia, `${anoRef}-01-01`, categoriaAluno],
+        );
+      }
 
       // Encontrar posição do aluno atual
       const alunoNoRanking = rankingComDetalhes.find(
@@ -2144,8 +2282,7 @@ export class PresencaService {
       const top10 = rankingComDetalhes.slice(0, 10).map((item: any, index) => ({
         posicao: index + 1,
         nome: item.nome,
-        faixa: item.faixa,
-        graus: parseInt(item.graus),
+        graduacao: item.graduacao || 'Sem graduação',
         presencas: parseInt(item.presencas),
         isUsuarioAtual: item.aluno_id === aluno.id,
       }));
@@ -2523,6 +2660,7 @@ export class PresencaService {
       'PROFESSOR',
       'GERENTE_UNIDADE',
       'INSTRUTOR',
+      'FRANQUEADO',
     ];
 
     const perfisNomes = (user?.perfis || []).map((p: any) =>
@@ -2533,7 +2671,7 @@ export class PresencaService {
 
     if (!temPermissao) {
       throw new ForbiddenException(
-        'Apenas RECEPCIONISTA, PROFESSOR ou GERENTE pode aprovar presenças',
+        'Apenas RECEPCIONISTA, PROFESSOR, GERENTE ou FRANQUEADO pode aprovar presenças',
       );
     }
 
@@ -2553,9 +2691,9 @@ export class PresencaService {
       );
     }
 
-    // Verificar se usuário pertence à mesma unidade
-    const unidadeId = await this.getUnidadeUsuario(user);
-    if (presenca.aula?.unidade?.id !== unidadeId) {
+    // Verificar se usuário pertence à mesma unidade (suporte a franqueados com múltiplas unidades)
+    const unidadesUsuario = await this.getUnidadesUsuario(user);
+    if (unidadesUsuario.length > 0 && !unidadesUsuario.includes(presenca.aula?.unidade?.id)) {
       throw new ForbiddenException(
         'Você não tem permissão para aprovar presenças de outra unidade',
       );
@@ -2613,6 +2751,7 @@ export class PresencaService {
       'PROFESSOR',
       'GERENTE_UNIDADE',
       'INSTRUTOR',
+      'FRANQUEADO',
     ];
 
     const perfisNomes = (user?.perfis || []).map((p: any) =>
@@ -2623,7 +2762,7 @@ export class PresencaService {
 
     if (!temPermissao) {
       throw new ForbiddenException(
-        'Apenas RECEPCIONISTA, PROFESSOR ou GERENTE pode rejeitar presenças',
+        'Apenas RECEPCIONISTA, PROFESSOR, GERENTE ou FRANQUEADO pode rejeitar presenças',
       );
     }
 
@@ -2644,9 +2783,9 @@ export class PresencaService {
       );
     }
 
-    // Verificar se usuário pertence à mesma unidade
-    const unidadeId = await this.getUnidadeUsuario(user);
-    if (presenca.aula?.unidade?.id !== unidadeId) {
+    // Verificar se usuário pertence à mesma unidade (suporte a franqueados com múltiplas unidades)
+    const unidadesUsuario = await this.getUnidadesUsuario(user);
+    if (unidadesUsuario.length > 0 && !unidadesUsuario.includes(presenca.aula?.unidade?.id)) {
       throw new ForbiddenException(
         'Você não tem permissão para rejeitar presenças de outra unidade',
       );

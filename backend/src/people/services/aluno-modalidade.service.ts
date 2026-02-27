@@ -6,6 +6,11 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import * as dayjs from 'dayjs';
+import * as utc from 'dayjs/plugin/utc';
+import * as timezone from 'dayjs/plugin/timezone';
+dayjs.extend(utc);
+dayjs.extend(timezone);
 import { AlunoModalidade } from '../entities/aluno-modalidade.entity';
 import { Aluno } from '../entities/aluno.entity';
 import { Modalidade } from '../../modalidades/entities/modalidade.entity';
@@ -70,6 +75,11 @@ export class AlunoModalidadeService {
       ativo: true,
     });
 
+    const agoraBrasil = dayjs().tz('America/Sao_Paulo').toDate();
+    matricula.data_matricula = agoraBrasil;
+    matricula.created_at = agoraBrasil;
+    matricula.updated_at = agoraBrasil;
+
     return this.alunoModalidadeRepository.save(matricula);
   }
 
@@ -113,6 +123,8 @@ export class AlunoModalidadeService {
       valor_praticado: m.valor_praticado,
       cor: m.modalidade.cor,
       data_matricula: m.data_matricula,
+      graduacao_atual: m.graduacao_atual ?? null,
+      data_ultima_graduacao: m.data_ultima_graduacao ?? null,
     }));
   }
 
@@ -146,6 +158,33 @@ export class AlunoModalidadeService {
     }
 
     matricula.valor_praticado = valor_praticado;
+    return this.alunoModalidadeRepository.save(matricula);
+  }
+
+  // Atualizar graduação atual numa modalidade (não é jiu-jitsu)
+  async atualizarGraduacao(
+    aluno_id: string,
+    modalidade_id: string,
+    graduacao_atual?: string,
+    data_ultima_graduacao?: string,
+  ): Promise<AlunoModalidade> {
+    const matricula = await this.alunoModalidadeRepository.findOne({
+      where: { aluno_id, modalidade_id, ativo: true },
+    });
+
+    if (!matricula) {
+      throw new NotFoundException('Matrícula não encontrada');
+    }
+
+    if (graduacao_atual !== undefined) matricula.graduacao_atual = graduacao_atual || null;
+    if (data_ultima_graduacao !== undefined) {
+      // Passa a string YYYY-MM-DD diretamente — evita shift de fuso ao usar new Date()
+      matricula.data_ultima_graduacao = data_ultima_graduacao
+        ? (data_ultima_graduacao as any)
+        : null;
+    }
+
+    matricula.updated_at = dayjs().tz('America/Sao_Paulo').toDate();
     return this.alunoModalidadeRepository.save(matricula);
   }
 }

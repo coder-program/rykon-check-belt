@@ -39,6 +39,7 @@ interface ListAlunosParams {
   status?: StatusAluno;
   faixa?: string;
   categoria?: string;
+  modalidade_id?: string;
 }
 
 @Injectable()
@@ -211,6 +212,16 @@ export class AlunosService {
         .andWhere('faixaDef_filtro.codigo = :faixa', {
           faixa: params.faixa.toUpperCase(),
         });
+    }
+
+    // Filtro por modalidade
+    if (params.modalidade_id) {
+      query.innerJoin(
+        'teamcruz.aluno_modalidades',
+        'am_filtro',
+        'am_filtro.aluno_id = aluno.id AND am_filtro.modalidade_id = :modalidadeId AND am_filtro.ativo = true',
+        { modalidadeId: params.modalidade_id },
+      );
     }
 
     // Ordenar por data de matrícula (mais recentes primeiro)
@@ -591,6 +602,17 @@ export class AlunosService {
             ? true
             : false,
         consent_imagem:
+          dto.consent_imagem === true || dto.consent_imagem === 'true'
+            ? true
+            : false,
+        // Gravar também nas colunas com nomes novos
+        consent_uso_dados_lgpd:
+          dto.consent_uso_dados_lgpd === true || dto.consent_uso_dados_lgpd === 'true' ||
+          dto.consent_lgpd === true || dto.consent_lgpd === 'true'
+            ? true
+            : false,
+        consent_uso_imagem:
+          dto.consent_uso_imagem === true || dto.consent_uso_imagem === 'true' ||
           dto.consent_imagem === true || dto.consent_imagem === 'true'
             ? true
             : false,

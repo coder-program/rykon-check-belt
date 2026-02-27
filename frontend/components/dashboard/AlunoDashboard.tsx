@@ -30,7 +30,11 @@ import {
 } from "lucide-react";
 import { getStatusGraduacao, StatusGraduacao } from "@/lib/graduacaoApi";
 import { http } from "@/lib/api";
+import { Modalidade } from "@/lib/peopleApi";
 import DependenteForm from "@/components/alunos/DependenteForm";
+import CompleteProfileWizardModal from "@/components/aluno/CompleteProfileWizardModal";
+import ModalidadeSelectorModal, { ModalidadeChip } from "@/components/dashboard/ModalidadeSelectorModal";
+import { useModalidadeSelector } from "@/hooks/useModalidadeSelector";
 
 type Genero = "MASCULINO" | "FEMININO" | "OUTRO";
 
@@ -99,8 +103,7 @@ interface RankingData {
   ranking: Array<{
     posicao: number;
     nome: string;
-    faixa: string;
-    graus: number;
+    graduacao: string;
     presencas: number;
     isUsuarioAtual: boolean;
   }>;
@@ -253,6 +256,8 @@ export default function AlunoDashboard({
   const [canAccess, setCanAccess] = useState(false);
   const [dependentes, setDependentes] = useState<Dependente[]>([]);
   const [refreshKey, setRefreshKey] = useState(0); // Force refresh
+  const [modalidadesAluno, setModalidadesAluno] = useState<Modalidade[]>([]);
+  const [resolvedAlunoId, setResolvedAlunoId] = useState<string | undefined>();
   const [showModal, setShowModal] = useState(false);
   const [showFaixaModal, setShowFaixaModal] = useState(false);
   const [faixaInicial, setFaixaInicial] = useState({
@@ -309,6 +314,40 @@ export default function AlunoDashboard({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [loadingCheckin, setLoadingCheckin] = useState<string | null>(null);
+
+  // Seletor de modalidade (igual ao dash de gerente/franqueado)
+  const modalidadeSelector = useModalidadeSelector(
+    user?.id,
+    modalidadesAluno.length > 0 ? modalidadesAluno : undefined
+  );
+  const hasJiu = modalidadeSelector.selectedModalidade
+    ? ((n) => n.includes("jiu") || n.includes("jitsu") || n.includes("bjj"))(
+        (modalidadeSelector.selectedModalidade.nome ?? "").toLowerCase()
+      )
+    : modalidadesAluno.some((m) =>
+        ((m.nome ?? "").toLowerCase()).includes("jiu") ||
+        ((m.nome ?? "").toLowerCase()).includes("jitsu") ||
+        ((m.nome ?? "").toLowerCase()).includes("bjj")
+      );
+
+  // Re-buscar ranking quando modalidade selecionada mudar
+  useEffect(() => {
+    if (!resolvedAlunoId || !modalidadeSelector.initialized) return;
+    const fetchRanking = async () => {
+      try {
+        const params = new URLSearchParams();
+        if (modalidadeSelector.selectedModalidade?.id) {
+          params.set("modalidadeId", modalidadeSelector.selectedModalidade.id);
+        }
+        if (alunoId) params.set("alunoId", alunoId);
+        const data = await http(`/presenca/ranking-unidade?${params}`, { auth: true });
+        setRankingData(data);
+      } catch {
+        // silencioso
+      }
+    };
+    fetchRanking();
+  }, [modalidadeSelector.selectedModalidade?.id, resolvedAlunoId, modalidadeSelector.initialized]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Carregar dados do aluno logado ou do aluno especificado
   useEffect(() => {
@@ -384,6 +423,9 @@ export default function AlunoDashboard({
         setCanAccess(true);
       }
 
+      // Guardar o ID real do aluno para o useEffect do ranking
+      setResolvedAlunoId(realAlunoId);
+
       console.log('\n📦 [ALUNO DASHBOARD] Carregando dados em paralelo...');
       console.log('   - Real Aluno ID:', realAlunoId);
       console.log('   - User Perfis:', user?.perfis);
@@ -401,6 +443,7 @@ export default function AlunoDashboard({
         competicoesData,
         alunoData,
         dependentesData,
+        modalidadesData,
       ] = await Promise.allSettled([
         // 1. Status de Graduação - USAR realAlunoId (ID do aluno, não do usuário)
         getStatusGraduacao(realAlunoId),
@@ -419,11 +462,11 @@ export default function AlunoDashboard({
           { auth: true }
         ),
 
-        // 4. Ranking da Unidade - passar alunoId se estiver visualizando dependente
+        // 4. Ranking da Unidade - filtrado por modalidade
         http(
-          `/presenca/ranking-unidade${
-            realAlunoId ? `?alunoId=${realAlunoId}` : ""
-          }`,
+          `/presenca/ranking-unidade?${new URLSearchParams({
+            ...(realAlunoId ? { alunoId: realAlunoId } : {}),
+          }).toString()}`,
           { auth: true }
         ),
 
@@ -439,6 +482,9 @@ export default function AlunoDashboard({
 
         // 7. Dependentes do aluno (se ele for responsável)
         http(`/alunos/meus-dependentes?_t=${timestamp}`, { auth: true }),
+
+        // 8. Modalidades do aluno
+        http(`/alunos/${realAlunoId}/modalidades`, { auth: true }),
       ]);
 
       console.log('\n📊 [ALUNO DASHBOARD] Resultados das chamadas:');
@@ -449,6 +495,18 @@ export default function AlunoDashboard({
       console.log('   5. Competições:', competicoesData.status);
       console.log('   6. Dados Aluno:', alunoData.status);
       console.log('   7. Dependentes:', dependentesData.status);
+      console.log('   8. Modalidades:', modalidadesData.status);
+
+      // Determinar modalidades do aluno (hook cuida da seleção e do hasJiu)
+      let jiuDetected = false;
+      if (modalidadesData.status === "fulfilled") {
+        const mods = Array.isArray(modalidadesData.value) ? modalidadesData.value : [];
+        setModalidadesAluno(mods.map((m: any) => ({ ...m, ativo: true })) as Modalidade[]);
+        jiuDetected = mods.some((m: any) => {
+          const n = (m.nome ?? "").toLowerCase();
+          return n.includes("jiu") || n.includes("jitsu") || n.includes("bjj");
+        });
+      }
 
       // Processar resultados
       if (graduacaoData.status === "fulfilled") {
@@ -459,8 +517,8 @@ export default function AlunoDashboard({
           "❌ [ALUNO DASHBOARD] Erro ao carregar status de graduação:",
           graduacaoData.reason
         );
-        // Se não tem faixa ativa, abrir modal para cadastrar
-        if (graduacaoData.reason?.message?.includes("não possui faixa ativa")) {
+        // Se não tem faixa ativa, abrir modal para cadastrar (apenas para alunos de Jiu-Jitsu)
+        if (graduacaoData.reason?.message?.includes("não possui faixa ativa") && jiuDetected) {
           setShowFaixaModal(true);
         }
       }
@@ -1156,13 +1214,20 @@ export default function AlunoDashboard({
       },
       color: "bg-green-500",
     },
-    {
+    ...(hasJiu ? [{
       title: "TeamCruz Jiu-Jitsu",
       description: "Ranking, aulas e check-in",
       icon: Trophy,
-      action: () => router.push("/teamcruz"),
+      action: () => {
+        const params = new URLSearchParams();
+        if (modalidadeSelector.selectedModalidade?.id) {
+          params.set("modalidadeId", modalidadeSelector.selectedModalidade.id);
+          params.set("modalidadeNome", modalidadeSelector.selectedModalidade.nome ?? "");
+        }
+        router.push(`/teamcruz${params.toString() ? `?${params.toString()}` : ""}`);
+      },
       color: "bg-yellow-500",
-    },
+    }] : []),
     {
       title: "Competições",
       description: "Inscreva-se em campeonatos",
@@ -1173,7 +1238,25 @@ export default function AlunoDashboard({
   ];
 
   return (
-    <div className="min-h-screen p-3 sm:p-6" style={{ background: "linear-gradient(135deg, #eef2ff 0%, #e0e7ff 40%, #ede9fe 100%)" }}>
+    <>
+      {/* Wizard de cadastro completo — aparece enquanto o aluno não tem endereço */}
+      {!alunoId && (
+        <CompleteProfileWizardModal
+          onComplete={() => {
+            // reload to refresh data
+            window.location.reload();
+          }}
+        />
+      )}
+      {/* Seletor de modalidade */}
+      <ModalidadeSelectorModal
+        open={modalidadeSelector.showSelector}
+        modalidades={modalidadesAluno}
+        userName={alunoNome || user?.nome}
+        allowAll={false}
+        onSelect={modalidadeSelector.selectModalidade}
+      />
+    <div className="min-h-screen p-3 sm:p-6" style={{ background: "linear-gradient(135deg, #eef2ff 0%, #e0e7ff 40%, #ede9fe 100%)"}}>
       <div className="max-w-7xl mx-auto">
         {/* Botão Voltar para Meus Dados (se estiver visualizando dependente) */}
         {alunoId && alunoId !== user?.id && (
@@ -1228,26 +1311,41 @@ export default function AlunoDashboard({
                     {alunoNome || user?.nome}
                   </span>
                   <span className="hidden sm:inline">
-                    ! Acompanhe sua jornada no Jiu-Jitsu.
+                    {hasJiu
+                      ? "! Acompanhe sua jornada no Jiu-Jitsu."
+                      : modalidadeSelector.selectedModalidade
+                      ? `! Modalidade: ${modalidadeSelector.selectedModalidade.nome}.`
+                      : modalidadesAluno.length > 0
+                      ? `! Suas modalidades: ${modalidadesAluno.map((m) => m.nome).join(", ")}.`
+                      : "! Acompanhe sua evolução."}
                   </span>
                 </p>
               </div>
             </div>
 
-            {/* Badge da Unidade - Destacado */}
-            {unidadeAluno && (
-              <div className="flex items-center gap-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white px-3 py-2 sm:px-6 sm:py-3 rounded-lg shadow-lg w-full sm:w-auto">
-                <Building2 className="h-4 w-4 sm:h-5 sm:w-5" />
-                <div className="text-left">
-                  <p className="text-xs font-medium opacity-90">
-                    Minha Unidade
-                  </p>
-                  <p className="text-sm sm:text-lg font-bold truncate">
-                    {unidadeAluno.nome}
-                  </p>
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+              {/* Chip de modalidade (só aparece quando tem mais de 1) */}
+              {modalidadesAluno.length > 1 && (
+                <ModalidadeChip
+                  modalidade={modalidadeSelector.selectedModalidade}
+                  onClick={() => modalidadeSelector.setShowSelector(true)}
+                />
+              )}
+              {/* Badge da Unidade */}
+              {unidadeAluno && (
+                <div className="flex items-center gap-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white px-3 py-2 sm:px-6 sm:py-3 rounded-lg shadow-lg w-full sm:w-auto">
+                  <Building2 className="h-4 w-4 sm:h-5 sm:w-5" />
+                  <div className="text-left">
+                    <p className="text-xs font-medium opacity-90">
+                      Minha Unidade
+                    </p>
+                    <p className="text-sm sm:text-lg font-bold truncate">
+                      {unidadeAluno.nome}
+                    </p>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
 
@@ -1278,7 +1376,7 @@ export default function AlunoDashboard({
         )}
 
         {/* Graduação Atual */}
-        {!loading && !error && (
+        {!loading && !error && hasJiu && (
           <Card className="mb-4 sm:mb-8 bg-gradient-to-r from-blue-500 to-blue-600 text-white">
             <CardHeader className="pb-3 sm:pb-6">
               <CardTitle className="flex items-center gap-2 text-base sm:text-xl">
@@ -1721,11 +1819,11 @@ export default function AlunoDashboard({
                         >
                           {item.nome} {item.isUsuarioAtual && "(Você)"}
                         </div>
-                        <div className="text-sm text-gray-600">
-                          {item.faixa}{" "}
-                          {item.graus > 0 &&
-                            `- ${item.graus} grau${item.graus > 1 ? "s" : ""}`}
-                        </div>
+                        {item.graduacao && item.graduacao !== "Sem graduação" && (
+                          <div className="text-sm text-gray-600">
+                            {item.graduacao}
+                          </div>
+                        )}
                       </div>
                     </div>
                     <div className="text-right">
@@ -2072,5 +2170,6 @@ export default function AlunoDashboard({
         </div>
       )}
     </div>
+    </>
   );
 }
