@@ -11,6 +11,7 @@ import { Aluno } from '../people/entities/aluno.entity';
 import { Responsavel } from '../people/entities/responsavel.entity';
 import { AlunoFaixa } from '../graduacao/entities/aluno-faixa.entity';
 import { Unidade } from '../people/entities/unidade.entity';
+import { Modalidade } from '../modalidades/entities/modalidade.entity';
 import { GraduacaoModule } from '../graduacao/graduacao.module';
 
 @Module({
@@ -23,6 +24,7 @@ import { GraduacaoModule } from '../graduacao/graduacao.module';
       Responsavel,
       AlunoFaixa,
       Unidade,
+      Modalidade,
     ]),
     forwardRef(() => GraduacaoModule),
   ],

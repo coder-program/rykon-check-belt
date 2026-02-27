@@ -460,8 +460,10 @@ export class PresencaController {
     @Request() req,
     @Query('data') data?: string,
     @Query('aulaId') aulaId?: string,
+    @Query('modalidadeId') modalidadeId?: string,
+    @Query('unidadeId') unidadeId?: string,
   ) {
-    return this.presencaService.getPresencasPendentes(req.user, data, aulaId);
+    return this.presencaService.getPresencasPendentes(req.user, data, aulaId, modalidadeId, unidadeId);
   }
 
   @Post(':id/aprovar')

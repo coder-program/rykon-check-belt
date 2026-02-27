@@ -11,17 +11,33 @@ import {
   vincularModalidade,
   desvincularModalidade,
   createModalidade,
-  updateModalidade,
-  ativarModalidade,
-  desativarModalidade,
-  deleteModalidade,
   listUnidades,
   getMyFranqueado,
+  listAlunos,
+  getModalidadeAlunos,
+  matricularAlunoModalidade,
+  cancelarAlunoModalidade,
   TIPOS_GRADUACAO,
   type CreateModalidadeData,
   type Modalidade,
   type UnidadeModalidade,
 } from "@/lib/peopleApi";
+import {
+  GiHighKick,
+  GiBoxingGlove,
+  GiKimono,
+  GiFist,
+  GiMeditation,
+  GiWeightLiftingUp,
+  GiSoccerBall,
+  GiBasketballBall,
+  GiTennisBall,
+  GiRunningShoe,
+  GiSwimfins,
+  GiAcrobatic,
+  GiBlackBelt,
+  GiMuscleUp,
+} from "react-icons/gi";
 import {
   Dialog,
   DialogContent,
@@ -48,16 +64,13 @@ import {
   AlertCircle,
   Loader2,
   ArrowLeft,
-  Pencil,
-  Trash2,
-  PowerOff,
-  Power,
   Search,
-  AlertTriangle,
   X,
   Link2,
   Link2Off,
   Building2,
+  UserMinus,
+  UserPlus,
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -85,11 +98,38 @@ function podeGerenciar(user: AuthUser): boolean {
   );
 }
 
-function podeDeletar(user: AuthUser): boolean {
-  return hasPerfil(user, "master") || hasPerfil(user, "franqueado");
-}
-
 const COR_DEFAULT = "#1E3A8A";
+
+function getEsporteIcon(nome?: string): React.ReactNode {
+  const n = (nome ?? "").toLowerCase();
+  if (n.includes("muay") || n.includes("kickbox") || n.includes("karate") || n.includes("taekwondo"))
+    return <GiHighKick size={26} />;
+  if (n.includes("box"))
+    return <GiBoxingGlove size={26} />;
+  if (n.includes("jiu") || n.includes("judo") || n.includes("bjj") || n.includes("jud"))
+    return <GiKimono size={26} />;
+  if (n.includes("mma") || n.includes("luta") || n.includes("wrestling") || n.includes("krav"))
+    return <GiFist size={26} />;
+  if (n.includes("yoga") || n.includes("pilates") || n.includes("medita"))
+    return <GiMeditation size={26} />;
+  if (n.includes("cross") || n.includes("funcional"))
+    return <GiWeightLiftingUp size={26} />;
+  if (n.includes("muscula") || n.includes("gym"))
+    return <GiMuscleUp size={26} />;
+  if (n.includes("futebol") || n.includes("soccer"))
+    return <GiSoccerBall size={26} />;
+  if (n.includes("basquet"))
+    return <GiBasketballBall size={26} />;
+  if (n.includes("tenis") || n.includes("tênis"))
+    return <GiTennisBall size={26} />;
+  if (n.includes("corrida") || n.includes("atletismo"))
+    return <GiRunningShoe size={26} />;
+  if (n.includes("nata") || n.includes("swim") || n.includes("aqua"))
+    return <GiSwimfins size={26} />;
+  if (n.includes("capoeira") || n.includes("kung"))
+    return <GiAcrobatic size={26} />;
+  return <GiBlackBelt size={26} />;
+}
 
 const MODALIDADES_PREDEFINIDAS = [
   "Muay Thai",
@@ -135,17 +175,17 @@ function ModalidadesPageContent() {
   );
 
   const [modalAberto, setModalAberto] = useState(false);
-  const [modalidadeEditando, setModalidadeEditando] = useState<Modalidade | null>(null);
-  const [modalidadeDeletando, setModalidadeDeletando] = useState<Modalidade | null>(null);
   const [form, setForm] = useState<Omit<CreateModalidadeData, "unidade_id">>(FORM_VAZIO);
   const [erroForm, setErroForm] = useState<string | null>(null);
   const [nomeOpcao, setNomeOpcao] = useState<string>("");
   const [busca, setBusca] = useState("");
-  const [toggleLoadingId, setToggleLoadingId] = useState<string | null>(null);
-  const [deleteLoadingId, setDeleteLoadingId] = useState<string | null>(null);
   const [vincularLoadingId, setVincularLoadingId] = useState<string | null>(null);
   const [desvincularLoadingId, setDesvincularLoadingId] = useState<string | null>(null);
   const [secaoCatalogo, setSecaoCatalogo] = useState(false);
+
+  // modal associar alunos
+  const [modalidadeAlunosModal, setModalidadeAlunosModal] = useState<Modalidade | null>(null);
+  const [buscaAluno, setBuscaAluno] = useState("");
 
   // ---------------------------------------------------------------- unidades
   const isFranqueado = hasPerfil(user as AuthUser, "franqueado");
@@ -251,58 +291,6 @@ function ModalidadesPageContent() {
     onError: (error: Error) => toast.error(error?.message || "Erro ao criar modalidade"),
   });
 
-  const editarMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: Partial<CreateModalidadeData> }) =>
-      updateModalidade(id, data),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["modalidades-catalogo"] });
-      setModalidadeEditando(null);
-      setForm(FORM_VAZIO);
-      toast.success("Modalidade atualizada!");
-    },
-    onError: (error: Error) => toast.error(error?.message || "Erro ao atualizar"),
-  });
-
-  const toggleMutation = useMutation({
-    mutationFn: ({ id, ativo }: { id: string; ativo: boolean }) =>
-      ativo
-        ? desativarModalidade(id)
-        : ativarModalidade(id).then((m) => ({ modalidade: m, totalAlunos: 0 })),
-    onSuccess: (result, vars) => {
-      qc.invalidateQueries({ queryKey: ["modalidades-catalogo"] });
-      setToggleLoadingId(null);
-      if (vars.ativo) {
-        const count = (result as any).totalAlunos ?? 0;
-        if (count > 0) {
-          toast(`Desativada. ${count} aluno(s) ainda matriculado(s).`, { icon: "⚠️" });
-        } else {
-          toast.success("Modalidade desativada!");
-        }
-      } else {
-        toast.success("Modalidade ativada!");
-      }
-    },
-    onError: (error: Error) => {
-      setToggleLoadingId(null);
-      toast.error(error?.message || "Erro ao alterar status");
-    },
-  });
-
-  const deletarMutation = useMutation({
-    mutationFn: (id: string) => deleteModalidade(id),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["modalidades-catalogo"] });
-      qc.invalidateQueries({ queryKey: ["unidade-modalidades"] });
-      setModalidadeDeletando(null);
-      setDeleteLoadingId(null);
-      toast.success("Modalidade excluída!");
-    },
-    onError: (error: Error) => {
-      setDeleteLoadingId(null);
-      toast.error(error?.message || "Erro ao excluir");
-    },
-  });
-
   const vincularMutation = useMutation({
     mutationFn: (modalidade_id: string) =>
       vincularModalidade(modalidade_id, unidadeSelecionada),
@@ -333,6 +321,39 @@ function ModalidadesPageContent() {
     },
   });
 
+  // ------------------------------------------------------------------ alunos da modalidade
+  const { data: alunosUnidadeData, isLoading: loadingAlunosUnidade } = useQuery({
+    queryKey: ["alunos-unidade-modal", unidadeSelecionada],
+    queryFn: () => listAlunos({ unidade_id: unidadeSelecionada, pageSize: 200 }),
+    enabled: !!modalidadeAlunosModal && !!unidadeSelecionada,
+  });
+
+  const { data: alunosMatriculados = [], isLoading: loadingMatriculados, refetch: refetchMatriculados } = useQuery({
+    queryKey: ["modalidade-alunos-lista", modalidadeAlunosModal?.id],
+    queryFn: () => getModalidadeAlunos(modalidadeAlunosModal!.id),
+    enabled: !!modalidadeAlunosModal?.id,
+  });
+
+  const matricularMutation = useMutation({
+    mutationFn: ({ alunoId, modalidadeId }: { alunoId: string; modalidadeId: string }) =>
+      matricularAlunoModalidade(alunoId, modalidadeId),
+    onSuccess: () => {
+      refetchMatriculados();
+      toast.success("Aluno matriculado!");
+    },
+    onError: (error: Error) => toast.error(error?.message || "Erro ao matricular aluno"),
+  });
+
+  const cancelarMatriculaMutation = useMutation({
+    mutationFn: ({ alunoId, modalidadeId }: { alunoId: string; modalidadeId: string }) =>
+      cancelarAlunoModalidade(alunoId, modalidadeId),
+    onSuccess: () => {
+      refetchMatriculados();
+      toast.success("Matrícula cancelada!");
+    },
+    onError: (error: Error) => toast.error(error?.message || "Erro ao cancelar matrícula"),
+  });
+
   // ------------------------------------------------------------------- form
   function abrirModal() {
     setForm(FORM_VAZIO);
@@ -341,25 +362,8 @@ function ModalidadesPageContent() {
     setModalAberto(true);
   }
 
-  function abrirEditar(m: Modalidade) {
-    const nomePredef = (MODALIDADES_PREDEFINIDAS as readonly string[]).includes(m.nome)
-      ? m.nome
-      : "outro";
-    setNomeOpcao(nomePredef);
-    setForm({
-      nome: m.nome,
-      descricao: m.descricao || "",
-      cor: m.cor || COR_DEFAULT,
-      icone: m.icone || "",
-      tipo_graduacao: m.tipo_graduacao || "NENHUM",
-    });
-    setErroForm(null);
-    setModalidadeEditando(m);
-  }
-
   function fecharModal() {
     setModalAberto(false);
-    setModalidadeEditando(null);
     setErroForm(null);
   }
 
@@ -392,11 +396,7 @@ function ModalidadesPageContent() {
       icone: form.icone?.trim() || undefined,
       tipo_graduacao: form.tipo_graduacao || "NENHUM",
     };
-    if (modalidadeEditando) {
-      editarMutation.mutate({ id: modalidadeEditando.id, data: payload });
-    } else {
-      criarMutation.mutate(payload);
-    }
+    criarMutation.mutate(payload);
   }
 
   const labelTipoGrad = (val: string | undefined) =>
@@ -410,37 +410,47 @@ function ModalidadesPageContent() {
     <ProtectedRoute
       requiredPerfis={["master", "franqueado", "gerente_unidade", "gerente"]}
     >
-      <div className="min-h-screen bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="min-h-screen" style={{ background: "linear-gradient(160deg, #e2e6f3 0%, #eaecf8 40%, #e6e9f5 100%)" }}>
 
-          {/* Cabeçalho */}
-          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
-            <div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => router.push("/dashboard")}
-                className="mb-2 -ml-2 text-gray-500 hover:text-gray-700"
-              >
-                <ArrowLeft className="h-4 w-4 mr-1" />
-                Voltar
-              </Button>
-              <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                <Dumbbell className="h-6 w-6 text-purple-600" />
-                Modalidades
-              </h1>
-              <p className="text-sm text-gray-500 mt-1">
-                Gerencie as modalidades esportivas das suas unidades
-              </p>
+        {/* Hero Header */}
+        <div className="bg-linear-to-r from-[#0f172a] via-[#1e3a8a] to-[#312e81] shadow-xl">
+          <div className="max-w-7xl mx-auto px-6 py-7">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <Button
+                  variant="ghost"
+                  onClick={() => router.push("/dashboard")}
+                  className="text-white/70 hover:text-white hover:bg-white/10 border border-white/10 rounded-lg px-3 py-2 h-auto text-sm"
+                >
+                  <ArrowLeft className="h-4 w-4 mr-1.5" />
+                  Voltar
+                </Button>
+                <div className="w-px h-8 bg-white/20" />
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-white/10 border border-white/20 flex items-center justify-center backdrop-blur-sm shrink-0">
+                    <Dumbbell className="h-5 w-5 text-white" />
+                  </div>
+                  <div>
+                    <h1 className="text-xl font-bold text-white tracking-tight leading-tight">
+                      Modalidades
+                    </h1>
+                    <p className="text-blue-200/70 text-xs mt-0.5">
+                      Gerencie as modalidades esportivas das unidades
+                    </p>
+                  </div>
+                </div>
+              </div>
             </div>
-
           </div>
+        </div>
+
+        <div className="max-w-7xl mx-auto px-6 py-6">
 
           {/* Seletor de unidade (franqueado com múltiplas unidades) */}
           {isFranqueado && unidades.length > 1 && (
-            <div className="mb-6 flex items-center gap-3 bg-white border rounded-xl px-4 py-3">
-              <Building2 className="h-5 w-5 text-gray-400 shrink-0" />
-              <span className="text-sm font-medium text-gray-600 shrink-0">Unidade:</span>
+            <div className="mb-6 flex items-center gap-3 bg-white/70 backdrop-blur-sm border border-white/60 rounded-2xl shadow-sm px-4 py-3">
+              <Building2 className="h-5 w-5 text-slate-400 shrink-0" />
+              <span className="text-xs font-black text-slate-600 uppercase tracking-widest shrink-0">Unidade</span>
               <div className="flex flex-wrap gap-2">
                 {unidades.map((u) => (
                   <button
@@ -450,10 +460,10 @@ function ModalidadesPageContent() {
                       setBusca("");
                       setSecaoCatalogo(false);
                     }}
-                    className={`px-3 py-1 rounded-full text-sm border transition-colors ${
+                    className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all duration-200 ${
                       unidadeSelecionada === u.id
-                        ? "bg-purple-600 text-white border-purple-600"
-                        : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
+                        ? "bg-slate-800 text-white shadow-md shadow-slate-800/25"
+                        : "bg-slate-100 text-slate-500 hover:bg-slate-200"
                     }`}
                   >
                     {u.nome}
@@ -465,7 +475,7 @@ function ModalidadesPageContent() {
 
           {/* Aviso: nenhuma unidade */}
           {isFranqueado && unidades.length === 0 && !loadingCatalogo && (
-            <div className="text-center py-20 text-gray-400">
+            <div className="text-center py-20 text-slate-400">
               <Building2 className="h-12 w-12 mx-auto mb-3 opacity-40" />
               <p className="font-medium">Nenhuma unidade encontrada</p>
               <p className="text-sm mt-1">Cadastre uma unidade primeiro.</p>
@@ -475,20 +485,20 @@ function ModalidadesPageContent() {
           {!!unidadeSelecionada && (
             <>
               {/* Abas */}
-              <div className="flex gap-1 border-b mb-6">
+              <div className="flex gap-1 border-b border-white/60 mb-6">
                 <button
                   onClick={() => { setSecaoCatalogo(false); setBusca(""); }}
-                  className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                  className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition-colors ${
                     !secaoCatalogo
-                      ? "border-purple-600 text-purple-700"
-                      : "border-transparent text-gray-500 hover:text-gray-700"
+                      ? "border-blue-600 text-blue-700"
+                      : "border-transparent text-slate-500 hover:text-slate-700"
                   }`}
                 >
                   <span className="flex items-center gap-1.5">
                     <Link2 className="h-4 w-4" />
                     {unidadeNome}
                     <span className={`ml-1 text-xs rounded-full px-1.5 py-0.5 ${
-                      !secaoCatalogo ? "bg-purple-100 text-purple-700" : "bg-gray-100 text-gray-500"
+                      !secaoCatalogo ? "bg-blue-100 text-blue-700" : "bg-slate-100 text-slate-500"
                     }`}>
                       {modalidadesUnidade.length}
                     </span>
@@ -496,17 +506,17 @@ function ModalidadesPageContent() {
                 </button>
                 <button
                   onClick={() => { setSecaoCatalogo(true); setBusca(""); }}
-                  className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                  className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition-colors ${
                     secaoCatalogo
-                      ? "border-purple-600 text-purple-700"
-                      : "border-transparent text-gray-500 hover:text-gray-700"
+                      ? "border-blue-600 text-blue-700"
+                      : "border-transparent text-slate-500 hover:text-slate-700"
                   }`}
                 >
                   <span className="flex items-center gap-1.5">
                     <Dumbbell className="h-4 w-4" />
                     Catálogo global
                     <span className={`ml-1 text-xs rounded-full px-1.5 py-0.5 ${
-                      secaoCatalogo ? "bg-purple-100 text-purple-700" : "bg-gray-100 text-gray-500"
+                      secaoCatalogo ? "bg-blue-100 text-blue-700" : "bg-slate-100 text-slate-500"
                     }`}>
                       {catalogoDisponivel.length} disponíveis
                     </span>
@@ -516,18 +526,18 @@ function ModalidadesPageContent() {
 
               {/* Busca */}
               <div className="relative mb-5">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                 <input
                   type="text"
                   placeholder={secaoCatalogo ? "Buscar no catálogo..." : "Buscar modalidade..."}
                   value={busca}
                   onChange={(e) => setBusca(e.target.value)}
-                  className="w-full pl-9 pr-8 py-2 text-sm border border-input rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-purple-400"
+                  className="w-full pl-9 pr-8 py-2.5 text-sm border border-white/60 rounded-xl bg-white/70 backdrop-blur-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
                 />
                 {busca && (
                   <button
                     onClick={() => setBusca("")}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
                   >
                     <X className="h-4 w-4" />
                   </button>
@@ -537,28 +547,30 @@ function ModalidadesPageContent() {
               {/* Lista */}
               {isLoading ? (
                 <div className="flex justify-center py-20">
-                  <Loader2 className="h-8 w-8 animate-spin text-purple-600" />
+                  <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
                 </div>
               ) : modalidadesFiltradas.length === 0 ? (
-                <div className="text-center py-20">
-                  <Dumbbell className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                  <p className="text-gray-500 font-medium">
+                <div className="bg-white/70 rounded-2xl shadow-sm border border-white/80 p-12 text-center">
+                  <div className="w-16 h-16 rounded-3xl bg-linear-to-br from-blue-50 to-indigo-100 flex items-center justify-center mx-auto mb-4 shadow-inner">
+                    <Dumbbell className="h-8 w-8 text-blue-400" />
+                  </div>
+                  <h3 className="text-base font-bold text-slate-700 mb-1">
                     {secaoCatalogo
                       ? catalogoDisponivel.length === 0
-                        ? "Todas as modalidades do catálogo já estão vinculadas!"
+                        ? "Todas as modalidades já estão vinculadas!"
                         : "Nenhuma modalidade encontrada"
                       : modalidadesUnidade.length === 0
                         ? "Nenhuma modalidade vinculada ainda"
                         : "Nenhuma modalidade encontrada"}
-                  </p>
+                  </h3>
                   {!secaoCatalogo && modalidadesUnidade.length === 0 && (
                     <>
-                      <p className="text-gray-400 text-sm mt-1">
+                      <p className="text-slate-400 text-sm mt-1 mb-5 max-w-xs mx-auto">
                         Use a aba <strong>Catálogo global</strong> para adicionar modalidades.
                       </p>
                       <Button
                         onClick={() => setSecaoCatalogo(true)}
-                        className="mt-4 bg-purple-600 hover:bg-purple-700 text-white"
+                        className="bg-linear-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg shadow-blue-500/25 border-0 rounded-xl px-5"
                       >
                         <Dumbbell className="h-4 w-4 mr-2" />
                         Ver Catálogo
@@ -575,17 +587,8 @@ function ModalidadesPageContent() {
                       labelTipoGrad={labelTipoGrad}
                       isVinculada={!secaoCatalogo}
                       podeGerenciar={podeGerenciar(user as AuthUser)}
-                      podeDeletar={podeDeletar(user as AuthUser)}
-                      toggleLoading={toggleLoadingId === m.id}
-                      deleteLoading={deleteLoadingId === m.id}
                       vincularLoading={vincularLoadingId === m.id}
                       desvincularLoading={desvincularLoadingId === m.id}
-                      onEditar={() => abrirEditar(m)}
-                      onToggle={() => {
-                        setToggleLoadingId(m.id);
-                        toggleMutation.mutate({ id: m.id, ativo: m.ativo });
-                      }}
-                      onDeletar={() => setModalidadeDeletando(m)}
                       onVincular={() => {
                         setVincularLoadingId(m.id);
                         vincularMutation.mutate(m.id);
@@ -593,6 +596,10 @@ function ModalidadesPageContent() {
                       onDesvincular={() => {
                         setDesvincularLoadingId(m.id);
                         desvincularMutation.mutate(m.id);
+                      }}
+                      onAlunosClick={() => {
+                        setBuscaAluno("");
+                        setModalidadeAlunosModal(m);
                       }}
                     />
                   ))}
@@ -603,17 +610,17 @@ function ModalidadesPageContent() {
         </div>
       </div>
 
-      {/* Modal criar / editar */}
-      <Dialog open={modalAberto || !!modalidadeEditando} onOpenChange={fecharModal}>
+      {/* Modal criar modalidade */}
+      <Dialog open={modalAberto} onOpenChange={fecharModal}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Dumbbell className="h-5 w-5 text-purple-600" />
-              {modalidadeEditando ? "Editar Modalidade" : "Nova Modalidade"}
+              Nova Modalidade
             </DialogTitle>
           </DialogHeader>
 
-          {!modalidadeEditando && unidadeSelecionada && (
+          {unidadeSelecionada && (
             <div className="flex items-center gap-2 text-sm bg-purple-50 border border-purple-100 rounded-lg px-3 py-2 text-purple-700">
               <Link2 className="h-4 w-4 shrink-0" />
               Será vinculada automaticamente a <strong>{unidadeNome}</strong>
@@ -710,16 +717,14 @@ function ModalidadesPageContent() {
 
             <DialogFooter className="pt-2">
               <Button type="button" variant="outline" onClick={fecharModal}
-                disabled={criarMutation.isPending || editarMutation.isPending}>
+                disabled={criarMutation.isPending}>
                 Cancelar
               </Button>
               <Button type="submit"
-                disabled={criarMutation.isPending || editarMutation.isPending}
+                disabled={criarMutation.isPending}
                 className="bg-purple-600 hover:bg-purple-700 text-white">
-                {(criarMutation.isPending || editarMutation.isPending) ? (
+                {criarMutation.isPending ? (
                   <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Salvando...</>
-                ) : modalidadeEditando ? (
-                  <><Pencil className="h-4 w-4 mr-2" />Salvar</>
                 ) : (
                   <><Plus className="h-4 w-4 mr-2" />Criar e Vincular</>
                 )}
@@ -729,17 +734,39 @@ function ModalidadesPageContent() {
         </DialogContent>
       </Dialog>
 
-      {/* Confirmação de exclusão */}
-      <DeleteConfirmDialog
-        modalidade={modalidadeDeletando}
-        loading={!!deleteLoadingId}
-        onConfirm={() => {
-          if (!modalidadeDeletando) return;
-          setDeleteLoadingId(modalidadeDeletando.id);
-          deletarMutation.mutate(modalidadeDeletando.id);
-        }}
-        onCancel={() => setModalidadeDeletando(null)}
-      />
+      {/* Modal associar alunos à modalidade */}
+      {modalidadeAlunosModal && (
+        <AlunosMatriculaModal
+          modalidade={modalidadeAlunosModal}
+          alunosUnidade={Array.from(
+            new Map(
+              (alunosUnidadeData?.items ?? []).map((a) => [
+                String(a.id),
+                {
+                  id: String(a.id),
+                  nome: ((a.nome_completo || a.nome || "").trim() || a.email || "Sem nome"),
+                  email: a.email ?? "",
+                },
+              ])
+            ).values()
+          )}
+          alunosMatriculados={alunosMatriculados as { aluno_id: string; nome: string }[]}
+          loading={loadingAlunosUnidade || loadingMatriculados}
+          busca={buscaAluno}
+          onBuscaChange={setBuscaAluno}
+          onMatricular={(alunoId) =>
+            matricularMutation.mutate({ alunoId, modalidadeId: modalidadeAlunosModal.id })
+          }
+          onCancelar={(alunoId) =>
+            cancelarMatriculaMutation.mutate({ alunoId, modalidadeId: modalidadeAlunosModal.id })
+          }
+          pendingIds={[
+            ...(matricularMutation.isPending ? [(matricularMutation.variables as unknown as { alunoId: string })?.alunoId] : []),
+            ...(cancelarMatriculaMutation.isPending ? [(cancelarMatriculaMutation.variables as unknown as { alunoId: string })?.alunoId] : []),
+          ].filter(Boolean)}
+          onClose={() => setModalidadeAlunosModal(null)}
+        />
+      )}
     </ProtectedRoute>
   );
 }
@@ -752,132 +779,130 @@ function ModalidadeCard({
   labelTipoGrad,
   isVinculada,
   podeGerenciar,
-  podeDeletar,
-  toggleLoading,
-  deleteLoading,
   vincularLoading,
   desvincularLoading,
-  onEditar,
-  onToggle,
-  onDeletar,
   onVincular,
   onDesvincular,
+  onAlunosClick,
 }: {
   modalidade: Modalidade;
   labelTipoGrad: (val: string) => string;
   isVinculada: boolean;
   podeGerenciar: boolean;
-  podeDeletar: boolean;
-  toggleLoading: boolean;
-  deleteLoading: boolean;
   vincularLoading: boolean;
   desvincularLoading: boolean;
-  onEditar: () => void;
-  onToggle: () => void;
-  onDeletar: () => void;
   onVincular: () => void;
   onDesvincular: () => void;
+  onAlunosClick: () => void;
 }) {
+  const cor = modalidade.cor ?? "#1E3A8A";
   return (
     <div
-      className={`bg-white rounded-xl border shadow-sm p-5 flex flex-col gap-3 transition-opacity ${
-        modalidade.ativo ? "opacity-100" : "opacity-60"
+      className={`group relative bg-white rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden border border-white/80 flex flex-col ${
+        modalidade.ativo ? "opacity-100" : "opacity-55"
       }`}
-      style={{ borderLeft: `4px solid ${modalidade.cor ?? "#1E3A8A"}` }}
     >
-      {/* Header */}
-      <div className="flex items-start justify-between gap-2">
-        <h3 className="font-semibold text-gray-900 leading-tight">{modalidade.nome}</h3>
-        <Badge
-          className={
-            modalidade.ativo
-              ? "bg-green-100 text-green-700 border-green-200 shrink-0"
-              : "bg-gray-100 text-gray-500 shrink-0"
-          }
-        >
-          {modalidade.ativo ? "Ativa" : "Inativa"}
-        </Badge>
-      </div>
+      {/* Colored top strip */}
+      <div className="h-1.5 w-full shrink-0" style={{ background: `linear-gradient(90deg, ${cor}, ${cor}88)` }} />
 
-      {modalidade.descricao && (
-        <p className="text-sm text-gray-500 line-clamp-2">{modalidade.descricao}</p>
-      )}
-
-      <div className="flex items-center gap-4 text-xs text-gray-500">
-        <span className="flex items-center gap-1">
-          <Users className="h-3.5 w-3.5 text-blue-400" />
-          {modalidade.totalAlunos ?? 0} aluno(s)
-        </span>
-        <span className="flex items-center gap-1">
-          <Award className="h-3.5 w-3.5 text-yellow-400" />
-          {labelTipoGrad(modalidade.tipo_graduacao ?? "NENHUM")}
-        </span>
-      </div>
-
-      {/* Catálogo → Vincular */}
-      {!isVinculada && (
-        <Button
-          size="sm"
-          onClick={onVincular}
-          disabled={vincularLoading}
-          className="w-full bg-purple-600 hover:bg-purple-700 text-white text-xs h-8"
-        >
-          {vincularLoading ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          ) : (
-            <><Link2 className="h-3.5 w-3.5 mr-1" />Adicionar à unidade</>
-          )}
-        </Button>
-      )}
-
-      {/* Vinculada → Editar / Toggle / Desvincular / Deletar */}
-      {isVinculada && podeGerenciar && (
-        <div className="flex items-center gap-2 pt-1 border-t border-gray-100">
-          <Button size="sm" variant="outline" onClick={onEditar}
-            className="flex-1 text-xs h-8">
-            <Pencil className="h-3.5 w-3.5 mr-1" />Editar
-          </Button>
-
-          <Button size="sm" variant="outline" onClick={onToggle} disabled={toggleLoading}
-            className={`flex-1 text-xs h-8 ${
-              modalidade.ativo
-                ? "text-orange-600 border-orange-200 hover:bg-orange-50"
-                : "text-green-600 border-green-200 hover:bg-green-50"
-            }`}>
-            {toggleLoading ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : modalidade.ativo ? (
-              <><PowerOff className="h-3.5 w-3.5 mr-1" />Desativar</>
-            ) : (
-              <><Power className="h-3.5 w-3.5 mr-1" />Ativar</>
+      <div className="p-5 flex flex-col gap-3 flex-1">
+        {/* Header: icon + name + badge */}
+        <div className="flex items-start gap-3">
+          {/* Sport icon badge */}
+          <div
+            className="shrink-0 w-12 h-12 rounded-2xl flex items-center justify-center shadow-md"
+            style={{
+              background: `linear-gradient(135deg, ${cor}dd, ${cor}88)`,
+              boxShadow: `0 4px 14px ${cor}45`,
+            }}
+          >
+            <span className="flex items-center justify-center text-white">
+              {getEsporteIcon(modalidade.nome)}
+            </span>
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-start justify-between gap-2">
+              <h3 className="font-bold text-slate-900 leading-tight text-base truncate">{modalidade.nome}</h3>
+              <Badge
+                className={`shrink-0 text-[10px] px-1.5 py-0.5 ${
+                  modalidade.ativo
+                    ? "bg-emerald-100 text-emerald-700 border-emerald-200"
+                    : "bg-slate-100 text-slate-500"
+                }`}
+              >
+                {modalidade.ativo ? "Ativa" : "Inativa"}
+              </Badge>
+            </div>
+            {modalidade.descricao && (
+              <p className="text-xs text-slate-400 line-clamp-1 mt-0.5">{modalidade.descricao}</p>
             )}
-          </Button>
+          </div>
+        </div>
 
-          <Button size="sm" variant="outline" onClick={onDesvincular}
-            disabled={desvincularLoading}
-            title="Remover da unidade"
-            className="h-8 w-8 p-0 text-red-500 border-red-200 hover:bg-red-50 shrink-0">
-            {desvincularLoading ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <Link2Off className="h-3.5 w-3.5" />
-            )}
-          </Button>
+        {/* Stats row */}
+        <div className="flex items-center gap-3 text-xs text-slate-500">
+          <span className="flex items-center gap-1">
+            <Users className="h-3.5 w-3.5" style={{ color: cor }} />
+            <span className="font-semibold text-slate-700">{modalidade.totalAlunos ?? 0}</span> aluno(s)
+          </span>
+          <span className="w-px h-3 bg-slate-200" />
+          <span className="flex items-center gap-1">
+            <Award className="h-3.5 w-3.5 text-amber-400" />
+            {labelTipoGrad(modalidade.tipo_graduacao ?? "NENHUM")}
+          </span>
+        </div>
 
-          {podeDeletar && (
-            <Button size="sm" variant="outline" onClick={onDeletar}
-              disabled={deleteLoading}
-              title="Excluir do catálogo global"
-              className="h-8 w-8 p-0 text-gray-400 border-gray-200 hover:bg-gray-50 hover:text-red-500 shrink-0">
-              {deleteLoading ? (
+        {/* Actions */}
+        <div className="flex flex-col gap-2 mt-auto">
+          {/* Catálogo → Vincular */}
+          {!isVinculada && (
+            <Button
+              size="sm"
+              onClick={onVincular}
+              disabled={vincularLoading}
+              className="w-full rounded-xl text-xs h-9 font-semibold"
+              style={{ background: `linear-gradient(135deg, ${cor}ee, ${cor}aa)`, color: "white", border: "none" }}
+            >
+              {vincularLoading ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
               ) : (
-                <Trash2 className="h-3.5 w-3.5" />
+                <><Link2 className="h-3.5 w-3.5 mr-1.5" />Adicionar à unidade</>
+              )}
+            </Button>
+          )}
+
+          {/* Vinculada → Gerenciar Alunos */}
+          {isVinculada && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={onAlunosClick}
+              className="w-full rounded-xl text-xs h-9 font-semibold border-2"
+              style={{ borderColor: cor, color: cor }}
+            >
+              <Users className="h-3.5 w-3.5 mr-1.5" />
+              Gerenciar Alunos
+            </Button>
+          )}
+
+          {/* Vinculada → Remover */}
+          {isVinculada && podeGerenciar && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={onDesvincular}
+              disabled={desvincularLoading}
+              className="w-full rounded-xl text-xs h-8 font-medium text-red-500 border-red-200 hover:bg-red-50"
+            >
+              {desvincularLoading ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <><Link2Off className="h-3.5 w-3.5 mr-1" />Remover da unidade</>
               )}
             </Button>
           )}
         </div>
-      )}
+      </div>
     </div>
   );
 }
@@ -897,54 +922,196 @@ export default function ModalidadesPage() {
   );
 }
 
-function DeleteConfirmDialog({
+function getInitials(nome: string): string {
+  const parts = nome.trim().split(" ").filter(Boolean);
+  if (parts.length === 0) return "?";
+  if (parts.length === 1) return parts[0][0].toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
+function AlunosMatriculaModal({
   modalidade,
+  alunosUnidade,
+  alunosMatriculados,
   loading,
-  onConfirm,
-  onCancel,
+  busca,
+  onBuscaChange,
+  onMatricular,
+  onCancelar,
+  pendingIds,
+  onClose,
 }: {
-  modalidade: Modalidade | null;
+  modalidade: Modalidade;
+  alunosUnidade: { id: string; nome: string; email: string }[];
+  alunosMatriculados: { aluno_id: string; nome: string }[];
   loading: boolean;
-  onConfirm: () => void;
-  onCancel: () => void;
+  busca: string;
+  onBuscaChange: (v: string) => void;
+  onMatricular: (alunoId: string) => void;
+  onCancelar: (alunoId: string) => void;
+  pendingIds: string[];
+  onClose: () => void;
 }) {
+  const matriculadosSet = useMemo(
+    () => new Set(alunosMatriculados.map((a) => a.aluno_id)),
+    [alunosMatriculados]
+  );
+
+  const alunosFiltrados = useMemo(() => {
+    let list = alunosUnidade;
+    if (busca.trim()) {
+      const q = busca.toLowerCase();
+      list = list.filter(
+        (a) => a.nome.toLowerCase().includes(q) || a.email.toLowerCase().includes(q)
+      );
+    }
+    // matriculados first, then alphabetical
+    return [...list].sort((a, b) => {
+      const aM = matriculadosSet.has(a.id);
+      const bM = matriculadosSet.has(b.id);
+      if (aM && !bM) return -1;
+      if (!aM && bM) return 1;
+      return a.nome.localeCompare(b.nome, "pt-BR", { sensitivity: "base" });
+    });
+  }, [alunosUnidade, busca, matriculadosSet]);
+
+  const totalMatriculados = alunosUnidade.filter((a) => matriculadosSet.has(a.id)).length;
+
   return (
-    <Dialog open={!!modalidade} onOpenChange={() => !loading && onCancel()}>
-      <DialogContent className="sm:max-w-md">
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="sm:max-w-lg max-h-[90vh] flex flex-col">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-red-600">
-            <AlertTriangle className="h-5 w-5" />
-            Excluir do catálogo
+          <DialogTitle className="flex items-center gap-2">
+            <Users className="h-5 w-5 text-blue-600" />
+            Alunos em{" "}
+            <span
+              className="inline-block px-2 py-0.5 rounded text-white text-sm"
+              style={{ background: modalidade.cor ?? "#1E3A8A" }}
+            >
+              {modalidade.nome}
+            </span>
           </DialogTitle>
         </DialogHeader>
-        <div className="py-2 space-y-3">
-          <p className="text-gray-700">
-            Tem certeza que deseja excluir{" "}
-            <strong>&ldquo;{modalidade?.nome}&rdquo;</strong> do catálogo global?
+
+        <div className="flex items-center justify-between -mt-2">
+          <p className="text-sm text-gray-500">
+            <span className="font-semibold text-gray-700">{totalMatriculados}</span> de{" "}
+            <span className="font-semibold text-gray-700">{alunosUnidade.length}</span> aluno(s) matriculado(s).
           </p>
-          <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
-            Isso removerá a modalidade de <strong>todas as unidades</strong> e de todos os
-            alunos matriculados nela.
-          </p>
-          <p className="text-xs text-gray-400">
-            Prefira usar &ldquo;Remover da unidade&rdquo; se quiser apenas desvinculá-la.
-          </p>
+          {busca && (
+            <p className="text-xs text-gray-400">
+              {alunosFiltrados.length} resultado(s)
+            </p>
+          )}
         </div>
+
+        {/* Busca */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Buscar aluno por nome ou email..."
+            value={busca}
+            onChange={(e) => onBuscaChange(e.target.value)}
+            className="w-full pl-9 pr-8 py-2 text-sm border border-input rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-400"
+          />
+          {busca && (
+            <button
+              onClick={() => onBuscaChange("")}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+
+        {/* Lista */}
+        <div className="flex-1 overflow-y-auto min-h-0 rounded-md border">
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-6 w-6 animate-spin text-blue-500" />
+            </div>
+          ) : alunosFiltrados.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-gray-400">
+              <Users className="h-10 w-10 mb-2 opacity-40" />
+              <p className="text-sm">
+                {alunosUnidade.length === 0
+                  ? "Nenhum aluno cadastrado nesta unidade."
+                  : "Nenhum aluno encontrado."}
+              </p>
+            </div>
+          ) : (
+            <ul className="divide-y">
+              {alunosFiltrados.map((aluno) => {
+                const isMatriculado = matriculadosSet.has(aluno.id);
+                const isPending = pendingIds.includes(aluno.id);
+                return (
+                  <li
+                    key={aluno.id}
+                    className={`flex items-center justify-between px-4 py-2.5 transition-colors ${
+                      isMatriculado ? "bg-blue-50/60" : "hover:bg-gray-50"
+                    }`}
+                  >
+                    {/* Avatar */}
+                    <div
+                      className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0 mr-3"
+                      style={{
+                        background: isMatriculado
+                          ? (modalidade.cor ?? "#1E3A8A")
+                          : "#94a3b8",
+                      }}
+                    >
+                      {getInitials(aluno.nome)}
+                    </div>
+
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5">
+                        <p className="text-sm font-medium text-gray-900 truncate">
+                          {aluno.nome || aluno.email}
+                        </p>
+                        {isMatriculado && (
+                          <span
+                            className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full text-white shrink-0"
+                            style={{ background: modalidade.cor ?? "#1E3A8A" }}
+                          >
+                            ✓
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-gray-400 truncate">{aluno.email}</p>
+                    </div>
+
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      disabled={isPending}
+                      onClick={() =>
+                        isMatriculado ? onCancelar(aluno.id) : onMatricular(aluno.id)
+                      }
+                      className={`ml-2 shrink-0 text-xs h-8 px-3 rounded-full border ${
+                        isMatriculado
+                          ? "border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300"
+                          : "border-blue-200 text-blue-600 hover:bg-blue-50 hover:border-blue-300"
+                      }`}
+                    >
+                      {isPending ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : isMatriculado ? (
+                        <><UserMinus className="h-3.5 w-3.5 mr-1" />Remover</>
+                      ) : (
+                        <><UserPlus className="h-3.5 w-3.5 mr-1" />Matricular</>
+                      )}
+                    </Button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+
         <DialogFooter>
-          <Button variant="outline" onClick={onCancel} disabled={loading}>
-            Cancelar
-          </Button>
-          <Button
-            variant="destructive"
-            onClick={onConfirm}
-            disabled={loading}
-            className="bg-red-600 hover:bg-red-700"
-          >
-            {loading ? (
-              <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Excluindo...</>
-            ) : (
-              <><Trash2 className="h-4 w-4 mr-2" />Excluir do catálogo</>
-            )}
+          <Button variant="outline" onClick={onClose}>
+            Fechar
           </Button>
         </DialogFooter>
       </DialogContent>

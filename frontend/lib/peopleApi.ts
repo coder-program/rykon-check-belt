@@ -377,3 +377,39 @@ export async function getModalidadeEstatisticas(id: string): Promise<{
 }> {
   return http(`/modalidades/${id}/estatisticas`, { auth: true });
 }
+// ===== ALUNO MODALIDADES =====
+
+export interface AlunoModalidadeItem {
+  id: string;
+  nome: string;
+  descricao?: string;
+  valor_praticado?: number;
+  cor?: string;
+  data_matricula?: string;
+}
+
+export async function getModalidadesAluno(alunoId: string): Promise<AlunoModalidadeItem[]> {
+  return http(`/alunos/${alunoId}/modalidades`, { auth: true });
+}
+
+export async function matricularAlunoModalidade(
+  alunoId: string,
+  modalidadeId: string,
+  valorPraticado?: number,
+) {
+  return http(`/alunos/${alunoId}/matricular-modalidade`, {
+    method: "POST",
+    body: { modalidade_id: modalidadeId, valor_praticado: valorPraticado },
+    auth: true,
+  });
+}
+
+export async function cancelarAlunoModalidade(
+  alunoId: string,
+  modalidadeId: string,
+) {
+  return http(`/alunos/${alunoId}/modalidades/${modalidadeId}`, {
+    method: "DELETE",
+    auth: true,
+  });
+}

@@ -43,6 +43,7 @@ import { Endereco } from '../enderecos/endereco.entity';
 import { Usuario } from '../usuarios/entities/usuario.entity';
 import { AlunoConvenio } from '../financeiro/entities/aluno-convenio.entity';
 import { Convenio } from '../financeiro/entities/convenio.entity';
+import { Presenca } from '../presenca/entities/presenca.entity';
 
 @Module({
   imports: [
@@ -70,6 +71,7 @@ import { Convenio } from '../financeiro/entities/convenio.entity';
       Usuario,
       AlunoConvenio,
       Convenio,
+      Presenca,
     ]),
     EnderecosModule,
   ],

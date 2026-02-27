@@ -3,7 +3,6 @@
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image";
 import {
   Card,
   CardContent,
@@ -42,7 +41,6 @@ import {
 import { toast } from "react-hot-toast";
 import { authService } from "@/lib/services/authService";
 import {
-  getPerfis,
   getPerfisPublicos,
   type Perfil,
   getUnidadesAtivas,
@@ -68,9 +66,6 @@ function RegisterPageContent() {
     genero: "", // Adicionar gênero
     perfil_id: "", // Adicionar perfil selecionado
     unidade_id: "", // Adicionar unidade selecionada
-    faixa_atual: "", // Faixa atual do aluno
-    graus: "0", // Graus na faixa atual
-    data_ultima_graduacao: "", // Data que pegou a faixa atual
     responsavel_nome: "", // Nome do responsável (se menor de 18)
     responsavel_cpf: "", // CPF do responsável (se menor de 18)
     responsavel_telefone: "", // Telefone do responsável (se menor de 18)
@@ -84,10 +79,6 @@ function RegisterPageContent() {
   const [loadingPerfis, setLoadingPerfis] = useState(true);
   const [unidades, setUnidades] = useState<Unidade[]>([]);
   const [loadingUnidades, setLoadingUnidades] = useState(true);
-  const [faixas, setFaixas] = useState<
-    Array<{ codigo: string; nome_exibicao: string; categoria: string }>
-  >([]);
-  const [loadingFaixas, setLoadingFaixas] = useState(true);
   const [cpfError, setCpfError] = useState("");
   const [telefoneError, setTelefoneError] = useState("");
   const [responsavelCpfError, setResponsavelCpfError] = useState("");
@@ -106,20 +97,6 @@ function RegisterPageContent() {
   const unidadeFromUrl = searchParams?.get("unidade");
   const perfilFromUrl = searchParams?.get("perfil");
 
-  // Função para obter o número máximo de graus baseado na faixa
-  const getMaxGrausPorFaixa = (codigoFaixa: string): number => {
-    const faixasComMaisGraus = ["PRETA", "CORAL", "VERMELHA"];
-    const faixaUpper = codigoFaixa?.toUpperCase() || "";
-
-    // Faixas preta, coral e vermelha têm 10 graus (0 a 9)
-    if (faixasComMaisGraus.some((f) => faixaUpper.includes(f))) {
-      return 9; // 0 a 9 = 10 graus
-    }
-
-    // Outras faixas têm 5 graus (0 a 4)
-    return 4; // 0 a 4 = 5 graus
-  };
-
   // Função para calcular idade que vai completar no ano atual
   const calcularIdade = (dataNascimento: string): number => {
     if (!dataNascimento) return 0;
@@ -134,47 +111,10 @@ function RegisterPageContent() {
     if (formData.data_nascimento) {
       const idade = calcularIdade(formData.data_nascimento);
       setIsMenorDeIdade(idade <= 15);
-
-      // Ajustar faixa selecionada se não for compatível com a idade
-      if (formData.faixa_atual && faixas.length > 0) {
-        const faixaSelecionada = faixas.find(
-          (f) => f.codigo === formData.faixa_atual
-        );
-
-        if (faixaSelecionada) {
-          // Se maior de 16 e faixa é infantil, mudar para AZUL
-          if (idade >= 16 && faixaSelecionada.categoria === "INFANTIL") {
-            const faixaAzul = faixas.find((f) => f.codigo === "AZUL");
-            if (faixaAzul) {
-              setFormData((prev) => ({
-                ...prev,
-                faixa_atual: faixaAzul.codigo,
-              }));
-              toast.success("Faixa ajustada para Azul (faixa inicial adulto)", {
-                duration: 3000,
-              });
-            }
-          }
-          // Se menor de 16 e faixa é adulto, mudar para BRANCA
-          else if (idade <= 15 && faixaSelecionada.categoria === "ADULTO") {
-            const faixaBranca = faixas.find((f) => f.codigo === "BRANCA");
-            if (faixaBranca) {
-              setFormData((prev) => ({
-                ...prev,
-                faixa_atual: faixaBranca.codigo,
-              }));
-              toast.success(
-                "Faixa ajustada para Branca (faixa inicial infantil)",
-                { duration: 3000 }
-              );
-            }
-          }
-        }
-      }
     } else {
       setIsMenorDeIdade(false);
     }
-  }, [formData.data_nascimento, faixas]);
+  }, [formData.data_nascimento]);
 
   // Carregar unidades ativas disponíveis
   useEffect(() => {
@@ -230,90 +170,6 @@ function RegisterPageContent() {
     }
   }, [unidadeFromUrl, perfilFromUrl, unidades]);
 
-  // Carregar faixas disponíveis da API
-  useEffect(() => {
-    const loadFaixas = async () => {
-      try {
-        const API_URL =
-          process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api";
-
-        const response = await fetch(`${API_URL}/graduacao/faixas`, {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        });
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error(" Erro na resposta:", errorText);
-          throw new Error(
-            `Erro ao carregar faixas: ${response.status} - ${errorText}`
-          );
-        }
-
-        const data = await response.json();
-
-        if (!data || !Array.isArray(data)) {
-          console.error("Resposta da API de faixas inválida:", data);
-          throw new Error("Formato de resposta inválido");
-        }
-
-        setFaixas(data);
-
-        // Definir BRANCA como padrão se disponível
-        const faixaBranca = data.find((f: { codigo: string; nome: string }) => f.codigo === "BRANCA");
-        if (faixaBranca) {
-          setFormData((prev) => ({ ...prev, faixa_atual: faixaBranca.codigo }));
-        }
-      } catch (error) {
-        console.error("Erro ao carregar faixas:", error);
-
-        // Criar faixas básicas como fallback
-        const faixasPadrao = [
-          {
-            codigo: "BRANCA",
-            nome_exibicao: "Branca",
-            categoria: "INFANTIL",
-            ordem: 1,
-          },
-          {
-            codigo: "AZUL",
-            nome_exibicao: "Azul",
-            categoria: "ADULTO",
-            ordem: 10,
-          },
-        ];
-
-        setFaixas(faixasPadrao);
-        setFormData((prev) => ({ ...prev, faixa_atual: "BRANCA" }));
-
-        toast.error(
-          "Não foi possível carregar todas as faixas. Faixas básicas carregadas.",
-          { duration: 5000 }
-        );
-      } finally {
-        setLoadingFaixas(false);
-      }
-    };
-    loadFaixas();
-  }, []);
-
-  // Filtrar faixas baseado na idade
-  const faixasFiltradas = faixas.filter((faixa) => {
-    if (!formData.data_nascimento) return true; // Mostra todas se não tiver data
-
-    const idade = calcularIdade(formData.data_nascimento);
-
-    // Maior de idade (16+): apenas faixas ADULTO (AZUL, ROXA, MARROM, PRETA)
-    if (idade >= 16) {
-      return faixa.categoria === "ADULTO";
-    }
-
-    // Menor de idade (<=15): apenas faixas INFANTIL
-    return faixa.categoria === "INFANTIL";
-  });
-
   // Carregar perfis disponíveis
   useEffect(() => {
     const loadPerfis = async () => {
@@ -368,7 +224,7 @@ function RegisterPageContent() {
             );
             if (perfilAluno) {
               setFormData((prev) => ({ ...prev, perfil_id: perfilAluno.id }));
-              toast.info("Menores de 16 anos devem se cadastrar como Aluno", {
+              toast("Menores de 16 anos devem se cadastrar como Aluno", {
                 duration: 3000,
               });
             }
@@ -653,21 +509,6 @@ function RegisterPageContent() {
       return false;
     }
 
-    // Validação de faixa e graus SOMENTE para perfil ALUNO
-    const perfilSelecionado = perfis.find((p) => p.id === formData.perfil_id);
-    const isPerfilAluno = perfilSelecionado?.nome === "ALUNO";
-
-    if (isPerfilAluno) {
-      if (!formData.faixa_atual) {
-        setError("Seleção da faixa atual é obrigatória para alunos");
-        return false;
-      }
-      if (formData.graus === "" || formData.graus === undefined) {
-        setError("Seleção dos graus é obrigatória para alunos");
-        return false;
-      }
-    }
-
     // Validar idade mínima de 10 anos
     const dataNascimento = new Date(formData.data_nascimento);
     const hoje = new Date();
@@ -804,9 +645,6 @@ function RegisterPageContent() {
         genero?: string;
         perfil_id?: string;
         unidade_id?: string;
-        faixa_atual?: string;
-        graus?: number;
-        data_ultima_graduacao?: string;
         responsavel_nome?: string;
         responsavel_cpf?: string;
         responsavel_telefone?: string;
@@ -822,9 +660,6 @@ function RegisterPageContent() {
         data_nascimento: formData.data_nascimento,
         genero: formData.genero || "OUTRO", // Incluir gênero
         unidade_id: formData.unidade_id,
-        faixa_atual: formData.faixa_atual || "BRANCA", // Incluir faixa atual (padrão BRANCA)
-        graus: parseInt(formData.graus) || 0, // Incluir graus (padrão 0)
-        data_ultima_graduacao: formData.data_ultima_graduacao || undefined, // Data que recebeu a faixa
         consent_uso_dados_lgpd: formData.consent_uso_dados_lgpd || false,
         consent_uso_imagem: formData.consent_uso_imagem || false,
       };
@@ -1018,18 +853,6 @@ function RegisterPageContent() {
                     value={formData.perfil_id}
                     onValueChange={(value) => {
                       setFormData({ ...formData, perfil_id: value });
-                      // Limpar campos de faixa se não for aluno
-                      const perfilSelecionado = perfis.find(
-                        (p) => p.id === value
-                      );
-                      if (perfilSelecionado?.nome !== "ALUNO") {
-                        setFormData((prev) => ({
-                          ...prev,
-                          faixa_atual: "",
-                          graus: "0",
-                          data_ultima_graduacao: "",
-                        }));
-                      }
                     }}
                     disabled={loadingPerfis || !!perfilFromUrl}
                     required
@@ -1233,158 +1056,6 @@ function RegisterPageContent() {
                     </SelectContent>
                   </Select>
                 </div>
-
-                {/* Campos de Graduação - SÓ APARECEM SE FOR ALUNO */}
-                {formData.perfil_id &&
-                  perfis.find((p) => p.id === formData.perfil_id)?.nome ===
-                    "ALUNO" && (
-                    <>
-                      <div className="border-t border-gray-700 pt-4">
-                        <h3 className="text-lg font-semibold text-red-400 mb-4 flex items-center gap-2">
-                          🥋 Informações de Graduação (Somente para Alunos)
-                        </h3>
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label
-                            htmlFor="faixa_atual"
-                            className="flex items-center gap-2 text-gray-200"
-                          >
-                            <User2 className="h-4 w-4 text-red-400" />
-                            Faixa Atual *
-                          </Label>
-                          <Select
-                            value={formData.faixa_atual}
-                            onValueChange={(value) =>
-                              setFormData({ ...formData, faixa_atual: value })
-                            }
-                            disabled={loadingFaixas}
-                          >
-                            <SelectTrigger className="h-11 bg-gray-800/50 border-gray-600 text-white focus:border-red-500 focus:ring-red-500">
-                              <SelectValue
-                                placeholder={
-                                  loadingFaixas
-                                    ? "Carregando faixas..."
-                                    : "Selecione sua faixa atual"
-                                }
-                              />
-                            </SelectTrigger>
-                            <SelectContent className="bg-gray-800 border-gray-600 max-h-80">
-                              {faixasFiltradas.length === 0 ? (
-                                <div className="px-4 py-3 text-sm text-gray-400">
-                                  {!formData.data_nascimento
-                                    ? "Selecione a data de nascimento primeiro"
-                                    : "Nenhuma faixa disponível para esta idade"}
-                                </div>
-                              ) : (
-                                faixasFiltradas.map((faixa) => (
-                                  <SelectItem
-                                    key={faixa.codigo}
-                                    value={faixa.codigo}
-                                    className="hover:bg-gray-700 focus:bg-gray-700"
-                                  >
-                                    <div className="flex flex-col">
-                                      <span className="font-medium text-white">
-                                        {faixa.nome_exibicao}
-                                      </span>
-                                      <span className="text-xs text-gray-400">
-                                        {faixa.categoria}
-                                      </span>
-                                    </div>
-                                  </SelectItem>
-                                ))
-                              )}
-                            </SelectContent>
-                          </Select>
-                          {formData.data_nascimento && (
-                            <p className="text-xs text-gray-400">
-                              {calcularIdade(formData.data_nascimento) >= 16
-                                ? "Apenas faixas adultas (Azul, Roxa, Marrom, Preta) disponíveis para maiores de 16 anos"
-                                : "Apenas faixas infantis disponíveis para menores de 16 anos"}
-                            </p>
-                          )}
-                          {!formData.data_nascimento && (
-                            <p className="text-xs text-gray-400">
-                              Selecione a data de nascimento para ver faixas
-                              disponíveis
-                            </p>
-                          )}
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label
-                            htmlFor="graus"
-                            className="flex items-center gap-2 text-gray-200"
-                          >
-                            <User2 className="h-4 w-4 text-red-400" />
-                            Graus na Faixa Atual *
-                          </Label>
-                          <Select
-                            value={formData.graus}
-                            onValueChange={(value) =>
-                              setFormData({ ...formData, graus: value })
-                            }
-                          >
-                            <SelectTrigger className="h-11 bg-gray-800/50 border-gray-600 text-white focus:border-red-500 focus:ring-red-500">
-                              <SelectValue placeholder="Selecione os graus" />
-                            </SelectTrigger>
-                            <SelectContent className="bg-gray-800 border-gray-600">
-                              {Array.from(
-                                {
-                                  length:
-                                    getMaxGrausPorFaixa(formData.faixa_atual) +
-                                    1,
-                                },
-                                (_, i) => (
-                                  <SelectItem
-                                    key={i}
-                                    value={i.toString()}
-                                    className="text-white"
-                                  >
-                                    {i === 0
-                                      ? "0 graus (sem grau)"
-                                      : `${i} ${i === 1 ? "grau" : "graus"}`}
-                                  </SelectItem>
-                                )
-                              )}
-                            </SelectContent>
-                          </Select>
-                          <p className="text-xs text-gray-400">
-                            Quantos graus você possui na sua faixa atual
-                            {formData.faixa_atual &&
-                              ["PRETA", "CORAL", "VERMELHA"].some((f) =>
-                                formData.faixa_atual.toUpperCase().includes(f)
-                              ) &&
-                              " (Faixas preta, coral e vermelha possuem até 9 graus)"}
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* Data da Última Graduação */}
-                      <div className="space-y-2">
-                        <Label
-                          htmlFor="data_ultima_graduacao"
-                          className="flex items-center gap-2 text-gray-200"
-                        >
-                          <Calendar className="h-4 w-4 text-red-400" />
-                          Data que Recebeu a Faixa Atual
-                        </Label>
-                        <Input
-                          id="data_ultima_graduacao"
-                          name="data_ultima_graduacao"
-                          type="date"
-                          value={formData.data_ultima_graduacao}
-                          onChange={handleChange}
-                          max={new Date().toISOString().split("T")[0]}
-                          className="h-11 bg-gray-800/50 border-gray-600 text-white placeholder-gray-400 focus:border-red-500 focus:ring-red-500"
-                        />
-                        <p className="text-xs text-gray-400">
-                          Quando você recebeu sua faixa atual (opcional)
-                        </p>
-                      </div>
-                    </>
-                  )}
 
                 {/* Campos do Responsável (apenas se menor de 18) */}
                 {isMenorDeIdade && (

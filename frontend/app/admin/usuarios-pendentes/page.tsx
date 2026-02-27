@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
@@ -19,6 +19,8 @@ import {
   Edit,
   Save,
   ArrowLeft,
+  Dumbbell,
+  ChevronRight,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -78,6 +80,108 @@ function AprovacaoUsuariosPage() {
     responsavel_cpf: "",
     responsavel_telefone: "",
   });
+
+  // ─── Matricular Modal (só para ALUNO) ───────────────────────────────────────
+  const [matricularModal, setMatricularModal] = useState<{
+    isOpen: boolean;
+    userId: string;
+    userName: string;
+    unidadeId: string;
+  }>({ isOpen: false, userId: "", userName: "", unidadeId: "" });
+  const [modalidadesDisponiveis, setModalidadesDisponiveis] = useState<
+    { id: string; nome: string; cor: string | null; descricao?: string }[]
+  >([]);
+  const [loadingModalidadesModal, setLoadingModalidadesModal] = useState(false);
+  const [selectedModalidades, setSelectedModalidades] = useState<string[]>([]);
+  const [approvingAluno, setApprovingAluno] = useState(false);
+
+  // Buscar modalidades quando o modal de matrícula abre
+  useEffect(() => {
+    if (!matricularModal.isOpen || !matricularModal.unidadeId) return;
+    setLoadingModalidadesModal(true);
+    fetch(
+      `${process.env.NEXT_PUBLIC_API_URL}/modalidades?unidade_id=${matricularModal.unidadeId}&apenasAtivas=true`,
+      { headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } }
+    )
+      .then((r) => r.json())
+      .then((data) => {
+        const items = Array.isArray(data) ? data : data?.items ?? [];
+        setModalidadesDisponiveis(items);
+      })
+      .catch(() => setModalidadesDisponiveis([]))
+      .finally(() => setLoadingModalidadesModal(false));
+  }, [matricularModal.isOpen, matricularModal.unidadeId]);
+
+  const toggleModalidade = (id: string) =>
+    setSelectedModalidades((prev) =>
+      prev.includes(id) ? prev.filter((m) => m !== id) : [...prev, id]
+    );
+
+  const handleConfirmarAprovacaoAluno = async () => {
+    setApprovingAluno(true);
+    try {
+      // 1. Aprovar usuário
+      const approveResp = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/usuarios/${matricularModal.userId}/aprovar`,
+        {
+          method: "PATCH",
+          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        }
+      );
+      if (!approveResp.ok) throw new Error("Erro ao aprovar usuário");
+
+      // 2. Matricular em modalidades (se selecionadas)
+      if (selectedModalidades.length > 0) {
+        // Buscar registro do aluno pelo userId
+        const alunoResp = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/alunos/usuario/${matricularModal.userId}`,
+          {
+            headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+          }
+        );
+        if (alunoResp.ok) {
+          const alunoData = await alunoResp.json();
+          const alunoId = alunoData?.id;
+          if (alunoId) {
+            await Promise.allSettled(
+              selectedModalidades.map((modalidadeId) =>
+                fetch(
+                  `${process.env.NEXT_PUBLIC_API_URL}/alunos/${alunoId}/matricular-modalidade`,
+                  {
+                    method: "POST",
+                    headers: {
+                      "Content-Type": "application/json",
+                      Authorization: `Bearer ${localStorage.getItem("token")}`,
+                    },
+                    body: JSON.stringify({ modalidade_id: modalidadeId }),
+                  }
+                )
+              )
+            );
+          }
+        }
+      }
+
+      const nomes = modalidadesDisponiveis
+        .filter((m) => selectedModalidades.includes(m.id))
+        .map((m) => m.nome)
+        .join(", ");
+      toast.success(
+        selectedModalidades.length > 0
+          ? `Aluno aprovado e matriculado em: ${nomes}`
+          : "Aluno aprovado! Matrícula em modalidade pode ser feita depois.",
+        { duration: 4000 }
+      );
+      queryClient.invalidateQueries({ queryKey: ["usuarios-pendentes"] });
+      setMatricularModal({ isOpen: false, userId: "", userName: "", unidadeId: "" });
+      setSelectedModalidades([]);
+    } catch (err: any) {
+      toast.error(err?.message || "Erro ao aprovar aluno");
+    } finally {
+      setApprovingAluno(false);
+    }
+  };
+  // ────────────────────────────────────────────────────────────────────────────
   const queryClient = useQueryClient();
 
   // Query separada para estatísticas (busca todos os usuários visíveis para o perfil)
@@ -335,7 +439,20 @@ function AprovacaoUsuariosPage() {
     },
   });
 
-  const handleApprove = (userId: string) => {
+  const handleApprove = (userId: string, user?: PendingUser) => {
+    const isAluno = user?.perfis?.some(
+      (p) => (typeof p === "string" ? p : "").toLowerCase() === "aluno"
+    );
+    if (isAluno && user?.unidade?.id) {
+      setMatricularModal({
+        isOpen: true,
+        userId,
+        userName: user.nome,
+        unidadeId: user.unidade.id,
+      });
+      setSelectedModalidades([]);
+      return;
+    }
     setConfirmModal({
       isOpen: true,
       title: "Aprovar Usuário",
@@ -789,7 +906,7 @@ function AprovacaoUsuariosPage() {
                           </Button>
                           <Button
                             size="sm"
-                            onClick={() => handleApprove(userItem.id)}
+                            onClick={() => handleApprove(userItem.id, userItem)}
                             disabled={approveMutation.isPending}
                             className="bg-green-600 hover:bg-green-700"
                           >
@@ -807,7 +924,131 @@ function AprovacaoUsuariosPage() {
         </div>
       </div>
 
-      {/* Modal de Edição de Usuário */}
+      {/* ─── Modal: Aprovar Aluno + Associar Modalidade ─── */}
+      {matricularModal.isOpen && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden">
+            {/* Header */}
+            <div className="bg-linear-to-r from-green-600 to-emerald-600 px-6 py-5">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
+                  <Check className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-white">Aprovar Aluno</h2>
+                  <p className="text-green-100 text-sm">{matricularModal.userName}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-6">
+              {/* Descriptive text */}
+              <div className="flex items-start gap-3 mb-5 p-3 bg-amber-50 border border-amber-200 rounded-xl">
+                <Dumbbell className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                <p className="text-sm text-amber-800 leading-relaxed">
+                  Selecione as modalidades para matricular o aluno. Você pode
+                  pular esta etapa e fazer a matrícula em outro momento.
+                </p>
+              </div>
+
+              {/* Modalidade pills */}
+              {loadingModalidadesModal ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="animate-spin w-6 h-6 border-2 border-green-500 border-t-transparent rounded-full" />
+                  <span className="ml-3 text-sm text-gray-500">Carregando modalidades...</span>
+                </div>
+              ) : modalidadesDisponiveis.length === 0 ? (
+                <div className="text-center py-8">
+                  <Dumbbell className="w-10 h-10 text-gray-300 mx-auto mb-2" />
+                  <p className="text-sm text-gray-400">
+                    Nenhuma modalidade disponível para esta unidade.
+                  </p>
+                </div>
+              ) : (
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {modalidadesDisponiveis.map((m) => {
+                    const selected = selectedModalidades.includes(m.id);
+                    return (
+                      <button
+                        key={m.id}
+                        onClick={() => toggleModalidade(m.id)}
+                        className={`px-4 py-2 rounded-full text-sm font-semibold border-2 transition-all ${
+                          selected
+                            ? "text-white border-transparent shadow-md scale-105"
+                            : "bg-white border-gray-200 text-gray-600 hover:border-gray-400"
+                        }`}
+                        style={
+                          selected
+                            ? { background: m.cor ?? "#16a34a", borderColor: m.cor ?? "#16a34a" }
+                            : {}
+                        }
+                      >
+                        {selected && <span className="mr-1.5">✓</span>}
+                        {m.nome}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              {selectedModalidades.length > 0 && (
+                <p className="text-xs text-green-600 font-medium mt-2">
+                  {selectedModalidades.length} modalidade(s) selecionada(s)
+                </p>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="flex gap-3 px-6 pb-6">
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() =>
+                  setMatricularModal({ isOpen: false, userId: "", userName: "", unidadeId: "" })
+                }
+                disabled={approvingAluno}
+              >
+                Cancelar
+              </Button>
+              <Button
+                variant="outline"
+                className="flex-1 border-green-300 text-green-700 hover:bg-green-50"
+                onClick={handleConfirmarAprovacaoAluno}
+                disabled={approvingAluno}
+              >
+                {approvingAluno ? (
+                  <span className="flex items-center gap-2">
+                    <div className="animate-spin w-4 h-4 border-2 border-green-500 border-t-transparent rounded-full" />
+                    Aprovando...
+                  </span>
+                ) : (
+                  "Aprovar sem modalidade"
+                )}
+              </Button>
+              <Button
+                className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                onClick={handleConfirmarAprovacaoAluno}
+                disabled={approvingAluno || selectedModalidades.length === 0}
+              >
+                {approvingAluno ? (
+                  <span className="flex items-center gap-2">
+                    <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
+                    Aprovando...
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-1">
+                    <Check className="w-4 h-4" />
+                    Aprovar
+                    <ChevronRight className="w-4 h-4" />
+                  </span>
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de confirmação (rejeitar / aprovar não-aluno) */}
       {isUserModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">

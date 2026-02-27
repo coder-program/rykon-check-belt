@@ -9,6 +9,7 @@ import { Repository } from 'typeorm';
 import { AlunoModalidade } from '../entities/aluno-modalidade.entity';
 import { Aluno } from '../entities/aluno.entity';
 import { Modalidade } from '../../modalidades/entities/modalidade.entity';
+import { Presenca } from '../../presenca/entities/presenca.entity';
 
 export interface MatricularAlunoDto {
   aluno_id: string;
@@ -25,6 +26,8 @@ export class AlunoModalidadeService {
     private alunoRepository: Repository<Aluno>,
     @InjectRepository(Modalidade)
     private modalidadeRepository: Repository<Modalidade>,
+    @InjectRepository(Presenca)
+    private presencaRepository: Repository<Presenca>,
   ) {}
 
   // Matricular aluno em uma modalidade
@@ -56,17 +59,7 @@ export class AlunoModalidadeService {
     });
 
     if (existente) {
-      if (existente.ativo) {
-        throw new ConflictException(
-          'Aluno já está matriculado nesta modalidade',
-        );
-      }
-      // Reativar matrícula existente
-      existente.ativo = true;
-      if (dto.valor_praticado !== undefined) {
-        existente.valor_praticado = dto.valor_praticado;
-      }
-      return this.alunoModalidadeRepository.save(existente);
+      throw new ConflictException('Aluno já está matriculado nesta modalidade');
     }
 
     // Criar nova matrícula
@@ -80,18 +73,28 @@ export class AlunoModalidadeService {
     return this.alunoModalidadeRepository.save(matricula);
   }
 
-  // Cancelar matrícula em uma modalidade
+  // Cancelar matrícula em uma modalidade (hard delete)
   async cancelar(aluno_id: string, modalidade_id: string): Promise<void> {
-    const matricula = await this.alunoModalidadeRepository.findOne({
+    // Verificar se existem presenças registradas nesta modalidade; se sim, impedir para manter histórico
+    const totalPresencas = await this.presencaRepository.count({
       where: { aluno_id, modalidade_id },
     });
 
-    if (!matricula) {
-      throw new NotFoundException('Matrícula não encontrada');
+    if (totalPresencas > 0) {
+      throw new ConflictException(
+        `Este aluno possui ${totalPresencas} presença(s) registrada(s) nesta modalidade. ` +
+          'Não é possível remover a matrícula para preservar o histórico.',
+      );
     }
 
-    matricula.ativo = false;
-    await this.alunoModalidadeRepository.save(matricula);
+    const result = await this.alunoModalidadeRepository.delete({
+      aluno_id,
+      modalidade_id,
+    });
+
+    if (!result.affected || result.affected === 0) {
+      throw new NotFoundException('Matrícula não encontrada');
+    }
   }
 
   // Listar modalidades de um aluno

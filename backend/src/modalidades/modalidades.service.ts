@@ -218,7 +218,9 @@ export class ModalidadesService {
 
     if (!registros?.alunoModalidades) return [];
 
-    return registros.alunoModalidades.map((am) => ({
+    return registros.alunoModalidades
+      .filter((am) => am.ativo)
+      .map((am) => ({
       id: am.id,
       aluno_id: am.aluno_id,
       nome: am.aluno?.nome_completo || 'Sem nome',

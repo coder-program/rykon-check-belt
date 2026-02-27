@@ -28,6 +28,7 @@ import {
   PresencaMetodo,
   PresencaStatus,
 } from './entities/presenca.entity';
+import { Modalidade } from '../modalidades/entities/modalidade.entity';
 import { Aula } from './entities/aula.entity';
 import { Person, TipoCadastro } from '../people/entities/person.entity';
 import { Aluno, StatusAluno } from '../people/entities/aluno.entity';
@@ -2336,13 +2337,16 @@ export class PresencaService {
     };
   }
 
-  async getPresencasPendentes(user: any, data?: string, aulaId?: string) {
+  async getPresencasPendentes(user: any, data?: string, aulaId?: string, modalidadeId?: string, filtroUnidadeId?: string) {
     try {
       // Verificar se o usuário está definido
       if (!user) {
         console.error(' [getPresencasPendentes] Usuário não definido');
         throw new UnauthorizedException('Usuário não autenticado');
       }
+
+      console.log('🔍 [getPresencasPendentes] user.id:', user?.id);
+      console.log('🔍 [getPresencasPendentes] perfis RAW:', JSON.stringify(user?.perfis));
 
       // Verificar permissão
       const perfisPermitidos = [
@@ -2351,12 +2355,14 @@ export class PresencaService {
         'GERENTE_UNIDADE',
         'INSTRUTOR',
         'GERENTE',
-        'FRANQUEADO', // Franqueados podem aprovar check-ins
+        'FRANQUEADO',
       ];
 
       const perfisNomes = (user?.perfis || []).map((p: any) =>
         typeof p === 'string' ? p.toUpperCase() : p.nome?.toUpperCase(),
       );
+
+      console.log('🔍 [getPresencasPendentes] perfisNomes normalizados:', perfisNomes);
 
       const temPermissao = perfisNomes.some((p) => perfisPermitidos.includes(p));
 
@@ -2372,12 +2378,34 @@ export class PresencaService {
 
     // Determinar unidade do usuário
     const unidadeId = await this.getUnidadeUsuario(user);
+    console.log('🔍 [getPresencasPendentes] unidadeId (primeira):', unidadeId);
     if (!unidadeId) {
       console.error(' [getPresencasPendentes] Usuário sem unidade');
       throw new ForbiddenException(
         'Usuário não está vinculado a nenhuma unidade',
       );
     }
+
+    // Para FRANQUEADO, buscar todas as unidades
+    const perfisNomes2 = (user?.perfis || []).map((p: any) =>
+      typeof p === 'string' ? p.toUpperCase() : p.nome?.toUpperCase(),
+    );
+    let unidadeIds: string[];
+    if (perfisNomes2.includes('FRANQUEADO')) {
+      unidadeIds = await this.getUnidadesUsuario(user);
+      if (unidadeIds.length === 0) unidadeIds = [unidadeId];
+    } else {
+      unidadeIds = [unidadeId];
+    }
+    // Se um filtro de unidade específica foi solicitado pelo frontend, restringir a ele
+    if (filtroUnidadeId && unidadeIds.includes(filtroUnidadeId)) {
+      unidadeIds = [filtroUnidadeId];
+    }
+    console.log('🔍 [getPresencasPendentes] unidadeIds finais:', unidadeIds);
+
+    // Verificar total de pendentes no banco (sem filtro de unidade) para debug
+    const totalPendentesBanco = await this.presencaRepository.count({ where: { status_aprovacao: 'PENDENTE' } });
+    console.log('🔍 [getPresencasPendentes] TOTAL pendentes no banco (sem filtro):', totalPendentesBanco);
 
     // Construir query
     const where: any = {
@@ -2400,22 +2428,32 @@ export class PresencaService {
       .leftJoinAndSelect('p.aula', 'aula')
       .leftJoinAndSelect('aula.unidade', 'unidade')
       .leftJoinAndSelect('aula.professor', 'professor')
+      .leftJoin(Modalidade, 'modalidade', 'modalidade.id = p.modalidade_id')
       .addSelect([
         'aluno.id',
         'aluno.nome_completo',
         'aluno.cpf',
         'aluno.foto_url',
+        'aluno.unidade_id',
+        'modalidade.id',
+        'modalidade.nome',
+        'modalidade.cor',
       ])
       .where('p.status_aprovacao = :status', { status: 'PENDENTE' })
-      .andWhere('unidade.id = :unidadeId', { unidadeId })
+      .andWhere(
+        '(unidade.id IN (:...unidadeIds) OR aluno.unidade_id IN (:...unidadeIds))',
+        { unidadeIds },
+      )
       .andWhere(data ? 'DATE(p.created_at) = :data' : '1=1', {
         data: data ? dayjs(data).tz('America/Sao_Paulo').toDate() : undefined,
       })
       .andWhere(aulaId ? 'p.aula_id = :aulaId' : '1=1', { aulaId })
+      .andWhere(modalidadeId ? 'p.modalidade_id = :modalidadeId' : '1=1', { modalidadeId })
       .orderBy('p.created_at', 'DESC')
       .getRawAndEntities();
 
     const { raw, entities } = presencas;
+    console.log('🔍 [getPresencasPendentes] Resultados encontrados:', entities.length);
 
     return entities.map((p, index) => {
       const rawData = raw[index];
@@ -2455,11 +2493,19 @@ export class PresencaService {
         metodo: p.metodo,
         dataCheckin: p.created_at,
         status: p.status_aprovacao,
+        modalidade: rawData?.modalidade_id
+          ? {
+              id: rawData.modalidade_id,
+              nome: rawData.modalidade_nome || 'Modalidade',
+              cor: rawData.modalidade_cor || null,
+            }
+          : null,
       };
     });
     } catch (error) {
       // Proteção total: nunca derrubar o sistema por erro em getPresencasPendentes
-      console.error(' [getPresencasPendentes] Erro crítico:', error.message);
+      console.error('💥 [getPresencasPendentes] Erro crítico:', error.message);
+      console.error('💥 [getPresencasPendentes] Stack:', error.stack);
       
       if (error instanceof ForbiddenException || error instanceof UnauthorizedException) {
         throw error;
@@ -2626,6 +2672,11 @@ export class PresencaService {
   }
 
   private async getUnidadeUsuario(user: any): Promise<string | null> {
+    const ids = await this.getUnidadesUsuario(user);
+    return ids[0] ?? null;
+  }
+
+  private async getUnidadesUsuario(user: any): Promise<string[]> {
     // Normalizar perfis
     const perfisNomes = (user?.perfis || []).map((p: any) =>
       typeof p === 'string' ? p.toUpperCase() : p.nome?.toUpperCase(),
@@ -2633,18 +2684,18 @@ export class PresencaService {
 
     if (perfisNomes.includes('GERENTE_UNIDADE')) {
       const result = await this.personRepository.query(
-        `SELECT unidade_id FROM teamcruz.gerente_unidades WHERE usuario_id = $1 AND ativo = true LIMIT 1`,
+        `SELECT unidade_id FROM teamcruz.gerente_unidades WHERE usuario_id = $1 AND ativo = true`,
         [user.id],
       );
-      return result[0]?.unidade_id || null;
+      return result.map((r: any) => r.unidade_id).filter(Boolean);
     }
 
     if (perfisNomes.includes('RECEPCIONISTA')) {
       const result = await this.personRepository.query(
-        `SELECT unidade_id FROM teamcruz.recepcionista_unidades WHERE usuario_id = $1 AND ativo = true LIMIT 1`,
+        `SELECT unidade_id FROM teamcruz.recepcionista_unidades WHERE usuario_id = $1 AND ativo = true`,
         [user.id],
       );
-      return result[0]?.unidade_id || null;
+      return result.map((r: any) => r.unidade_id).filter(Boolean);
     }
 
     if (
@@ -2655,11 +2706,10 @@ export class PresencaService {
         `SELECT pu.unidade_id
          FROM teamcruz.professor_unidades pu
          LEFT JOIN teamcruz.professores p ON p.id = pu.professor_id
-         WHERE (p.usuario_id = $1 OR pu.usuario_id = $1) AND pu.ativo = true
-         LIMIT 1`,
+         WHERE (p.usuario_id = $1 OR pu.usuario_id = $1) AND pu.ativo = true`,
         [user.id],
       );
-      return result[0]?.unidade_id || null;
+      return result.map((r: any) => r.unidade_id).filter(Boolean);
     }
 
     if (perfisNomes.includes('FRANQUEADO')) {
@@ -2667,15 +2717,15 @@ export class PresencaService {
         `SELECT u.id as unidade_id
          FROM teamcruz.franqueados f
          INNER JOIN teamcruz.unidades u ON u.franqueado_id = f.id
-         WHERE f.usuario_id = $1 AND u.status = 'ATIVA'
-         LIMIT 1`,
+         WHERE f.usuario_id = $1 AND u.status = 'ATIVA'`,
         [user.id],
       );
-      return result[0]?.unidade_id || null;
+      console.log('🔍 [getUnidadesUsuario FRANQUEADO] user.id:', user.id, '→ unidades:', result);
+      return result.map((r: any) => r.unidade_id).filter(Boolean);
     }
 
-    console.warn('⚠️ [getUnidadeUsuario] Nenhum perfil com unidade encontrado');
-    return null;
+    console.warn('⚠️ [getUnidadesUsuario] Nenhum perfil com unidade encontrado');
+    return [];
   }
 
   private async getUnidadeTablet(userId: string): Promise<string | null> {

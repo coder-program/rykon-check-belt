@@ -34,6 +34,7 @@ import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../../auth/guards/permissions.guard';
 import { Permissions } from '../../auth/decorators/permissions.decorator';
 import { AlunoUnidadeService } from '../services/aluno-unidade.service';
+import { AlunoModalidadeService } from '../services/aluno-modalidade.service';
 
 @ApiTags('🎓 Alunos')
 @ApiBearerAuth('JWT-auth')
@@ -42,6 +43,7 @@ export class AlunosController {
   constructor(
     private readonly service: AlunosService,
     private readonly alunoUnidadeService: AlunoUnidadeService,
+    private readonly alunoModalidadeService: AlunoModalidadeService,
     private readonly dataSource: DataSource,
   ) {}
 
@@ -500,5 +502,53 @@ export class AlunosController {
     @Request() req,
   ) {
     return this.service.listarAlunosParaCheckin(req.user, search);
+  }
+
+  // ===== MODALIDADES DO ALUNO =====
+
+  @Get(':id/modalidades')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({
+    summary: '📋 Listar modalidades do aluno',
+    description: 'Retorna todas as modalidades ativas em que o aluno está matriculado',
+  })
+  @ApiResponse({ status: 200, description: '✅ Lista de modalidades do aluno' })
+  async getModalidadesAluno(@Param('id') id: string) {
+    return this.alunoModalidadeService.getModalidadesAluno(id);
+  }
+
+  @Post(':id/matricular-modalidade')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({
+    summary: '➕ Matricular aluno em modalidade',
+    description: 'Vincula um aluno a uma modalidade da unidade',
+  })
+  @ApiResponse({ status: 201, description: '✅ Matrícula criada' })
+  @ApiResponse({ status: 409, description: '⚠️ Aluno já matriculado nesta modalidade' })
+  async matricularModalidade(
+    @Param('id') id: string,
+    @Body() body: { modalidade_id: string; valor_praticado?: number },
+  ) {
+    return this.alunoModalidadeService.matricular({
+      aluno_id: id,
+      modalidade_id: body.modalidade_id,
+      valor_praticado: body.valor_praticado,
+    });
+  }
+
+  @Delete(':id/modalidades/:modalidadeId')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({
+    summary: '➖ Cancelar matrícula em modalidade',
+    description: 'Remove a matrícula do aluno em uma modalidade',
+  })
+  @ApiResponse({ status: 200, description: '✅ Matrícula cancelada' })
+  @ApiResponse({ status: 404, description: '❌ Matrícula não encontrada' })
+  async cancelarModalidade(
+    @Param('id') id: string,
+    @Param('modalidadeId') modalidadeId: string,
+  ) {
+    await this.alunoModalidadeService.cancelar(id, modalidadeId);
+    return { message: 'Matrícula cancelada com sucesso' };
   }
 }

@@ -3,7 +3,9 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
+import { useAuth } from "@/app/auth/AuthContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { getMyFranqueado, listUnidades } from "@/lib/peopleApi";
 import {
   Card,
   CardContent,
@@ -30,8 +32,25 @@ import {
   User,
   Calendar,
   ArrowLeft,
+  Filter,
+  Building2,
 } from "lucide-react";
 import toast from "react-hot-toast";
+
+// ---------------------------------------------------------------------------
+// helpers
+// ---------------------------------------------------------------------------
+type UserPerfil = { nome?: string; perfil?: string } | string;
+type AuthUser = { perfis?: UserPerfil[]; unidade_id?: string } | null;
+
+function hasPerfil(user: AuthUser, p: string): boolean {
+  if (!user?.perfis) return false;
+  return user.perfis.some(
+    (perfil: UserPerfil) =>
+      (typeof perfil === "string" ? perfil : perfil?.nome || "")
+        .toLowerCase() === p.toLowerCase()
+  );
+}
 
 interface PresencaPendente {
   id: string;
@@ -47,6 +66,11 @@ interface PresencaPendente {
     professor: string;
     horario: string;
   };
+  modalidade: {
+    id: string;
+    nome: string;
+    cor: string | null;
+  } | null;
   metodo: string;
   dataCheckin: string;
   status: string;
@@ -55,21 +79,44 @@ interface PresencaPendente {
 export default function AprovacaoCheckinPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  const isFranqueado = hasPerfil(user as AuthUser, "franqueado");
 
   const [dialogAberto, setDialogAberto] = useState(false);
   const [presencaSelecionada, setPresencaSelecionada] =
     useState<PresencaPendente | null>(null);
   const [acao, setAcao] = useState<"aprovar" | "rejeitar" | null>(null);
   const [observacao, setObservacao] = useState("");
+  const [filtroModalidade, setFiltroModalidade] = useState<string | null>(null);
+  const [filtroUnidade, setFiltroUnidade] = useState<string | null>(null);
+
+  // Franqueado: buscar dados do franqueado para obter franqueado_id
+  const { data: franqueado } = useQuery({
+    queryKey: ["meu-franqueado"],
+    queryFn: () => getMyFranqueado(),
+    enabled: isFranqueado,
+  });
+
+  // Franqueado: buscar as unidades vinculadas
+  const { data: unidadesData } = useQuery({
+    queryKey: ["unidades-franqueado", (franqueado as any)?.id],
+    queryFn: () => listUnidades({ pageSize: 100, franqueado_id: (franqueado as any)?.id }),
+    enabled: isFranqueado && !!(franqueado as any)?.id,
+  });
+  const unidades: any[] = (unidadesData as any)?.data ?? (unidadesData as any)?.items ?? [];
 
   // Query para buscar presenças pendentes
   const { data: presencasPendentes = [], isLoading } = useQuery({
-    queryKey: ["presencas-pendentes"],
+    queryKey: ["presencas-pendentes", filtroUnidade],
     queryFn: async () => {
       console.log("📡 [Frontend] Buscando presenças pendentes...");
-      
+
+      const params = new URLSearchParams();
+      if (filtroUnidade) params.set("unidadeId", filtroUnidade);
+
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/presenca/pendentes`,
+        `${process.env.NEXT_PUBLIC_API_URL}/presenca/pendentes${params.toString() ? `?${params}` : ""}`,
         {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -99,6 +146,24 @@ export default function AprovacaoCheckinPage() {
     },
     refetchInterval: 10000, // Atualiza a cada 10 segundos
   });
+
+  // Modalidades únicas presentes nos pendentes (para filtro)
+  const modalidadesDisponiveis = React.useMemo(() => {
+    const map = new Map<string, { id: string; nome: string; cor: string | null }>();
+    (presencasPendentes as PresencaPendente[]).forEach((p) => {
+      if (p.modalidade?.id && !map.has(p.modalidade.id)) {
+        map.set(p.modalidade.id, p.modalidade);
+      }
+    });
+    return Array.from(map.values()).sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
+  }, [presencasPendentes]);
+
+  const presencasFiltradas = React.useMemo(() => {
+    if (!filtroModalidade) return presencasPendentes as PresencaPendente[];
+    return (presencasPendentes as PresencaPendente[]).filter(
+      (p) => p.modalidade?.id === filtroModalidade
+    );
+  }, [presencasPendentes, filtroModalidade]);
 
   // Mutation para aprovar presença
   const aprovarMutation = useMutation({
@@ -328,15 +393,99 @@ export default function AprovacaoCheckinPage() {
             </Card>
           </div>
 
+          {/* Filtro por unidade (apenas FRANQUEADO com múltiplas unidades) */}
+          {isFranqueado && unidades.length > 1 && (
+            <div className="flex flex-wrap items-center gap-2 mb-3">
+              <Building2 className="w-4 h-4 text-gray-500 shrink-0" />
+              <span className="text-xs text-gray-500 font-medium mr-1">Unidade:</span>
+              <button
+                onClick={() => setFiltroUnidade(null)}
+                className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
+                  filtroUnidade === null
+                    ? "bg-gray-800 text-white border-gray-800"
+                    : "bg-white text-gray-600 border-gray-300 hover:border-gray-400"
+                }`}
+              >
+                Todas
+              </button>
+              {unidades.map((u: any) => (
+                <button
+                  key={u.id}
+                  onClick={() => {
+                    setFiltroUnidade(filtroUnidade === u.id ? null : u.id);
+                    setFiltroModalidade(null);
+                  }}
+                  className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
+                    filtroUnidade === u.id
+                      ? "bg-indigo-600 text-white border-indigo-600"
+                      : "bg-white text-indigo-600 border-indigo-300 hover:border-indigo-400"
+                  }`}
+                >
+                  {u.nome ?? u.name ?? u.id}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Filtro por modalidade */}
+          {modalidadesDisponiveis.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2 mb-4">
+              <Filter className="w-4 h-4 text-gray-500 shrink-0" />
+              <button
+                onClick={() => setFiltroModalidade(null)}
+                className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
+                  filtroModalidade === null
+                    ? "bg-gray-800 text-white border-gray-800"
+                    : "bg-white text-gray-600 border-gray-300 hover:border-gray-400"
+                }`}
+              >
+                Todas ({presencasPendentes.length})
+              </button>
+              {modalidadesDisponiveis.map((m) => {
+                const count = (presencasPendentes as PresencaPendente[]).filter(
+                  (p) => p.modalidade?.id === m.id
+                ).length;
+                return (
+                  <button
+                    key={m.id}
+                    onClick={() =>
+                      setFiltroModalidade(filtroModalidade === m.id ? null : m.id)
+                    }
+                    className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
+                      filtroModalidade === m.id
+                        ? "text-white border-transparent"
+                        : "bg-white border-gray-300 hover:border-gray-400"
+                    }`}
+                    style={
+                      filtroModalidade === m.id
+                        ? { background: m.cor ?? "#1e3a8a", borderColor: m.cor ?? "#1e3a8a" }
+                        : { color: m.cor ?? "#1e3a8a" }
+                    }
+                  >
+                    {m.nome} ({count})
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
           {/* Lista de Presenças Pendentes */}
           <Card>
             <CardHeader className="pb-3 sm:pb-6">
               <CardTitle className="text-lg sm:text-xl">
                 Check-ins Pendentes
+                {filtroModalidade && (
+                  <span
+                    className="ml-2 text-sm font-normal px-2 py-0.5 rounded-full text-white"
+                    style={{ background: modalidadesDisponiveis.find(m => m.id === filtroModalidade)?.cor ?? "#1e3a8a" }}
+                  >
+                    {modalidadesDisponiveis.find(m => m.id === filtroModalidade)?.nome}
+                  </span>
+                )}
               </CardTitle>
               <CardDescription className="text-xs sm:text-sm">
-                {presencasPendentes.length > 0
-                  ? `${presencasPendentes.length} check-in(s) aguardando aprovação`
+                {presencasFiltradas.length > 0
+                  ? `${presencasFiltradas.length} check-in(s) aguardando aprovação`
                   : "Nenhum check-in pendente no momento"}
               </CardDescription>
             </CardHeader>
@@ -360,7 +509,7 @@ export default function AprovacaoCheckinPage() {
                 </div>
               ) : (
                 <div className="space-y-3 sm:space-y-4">
-                  {presencasPendentes.map((presenca) => (
+                  {presencasFiltradas.map((presenca) => (
                     <Card
                       key={presenca.id}
                       className="border-2 border-yellow-200 bg-yellow-50"
@@ -392,6 +541,14 @@ export default function AprovacaoCheckinPage() {
                                 >
                                   Pendente
                                 </Badge>
+                                {presenca.modalidade && (
+                                  <span
+                                    className="text-[10px] font-semibold px-2 py-0.5 rounded-full text-white w-fit shrink-0"
+                                    style={{ background: presenca.modalidade.cor ?? "#1e3a8a" }}
+                                  >
+                                    {presenca.modalidade.nome}
+                                  </span>
+                                )}
                               </div>
 
                               <div className="grid grid-cols-1 gap-1 sm:gap-2 text-xs sm:text-sm text-gray-600 mt-2">
