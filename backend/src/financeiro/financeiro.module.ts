@@ -42,6 +42,7 @@ import { AnexosService } from './services/anexos.service';
 import { RecibosService } from './services/recibos.service';
 import { BankAccountsService } from './services/bank-accounts.service';
 import { ContractsService } from './services/contracts.service';
+import { RelatoriosService } from './services/relatorios.service';
 
 // Controllers
 import { PlanosController } from './controllers/planos.controller';
@@ -59,6 +60,7 @@ import { BankAccountsController } from './controllers/bank-accounts.controller';
 import { ContractsController } from './controllers/contracts.controller';
 import { PagamentosOnlineController } from './controllers/pagamentos-online.controller';
 import { WebhooksController } from './controllers/webhooks.controller';
+import { RelatoriosController } from './controllers/relatorios.controller';
 
 // Services externos
 import { PaytimeService } from '../paytime/paytime.service';
@@ -108,6 +110,7 @@ import { PaytimeWebhookService } from './services/paytime-webhook.service';
     AnexosController,
     PagamentosOnlineController,
     WebhooksController,
+    RelatoriosController,
   ],
   providers: [
     PlanosService,
@@ -129,6 +132,7 @@ import { PaytimeWebhookService } from './services/paytime-webhook.service';
     GympassService,
     AnexosService,
     RecibosService,
+    RelatoriosService,
   ],
   exports: [
     PlanosService,

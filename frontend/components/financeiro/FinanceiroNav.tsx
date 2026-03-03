@@ -12,6 +12,7 @@ import {
   Settings,
   Tags,
   CreditCard,
+  BarChart3,
 } from "lucide-react";
 
 const menuItems = [
@@ -62,6 +63,12 @@ const menuItems = [
     icon: ListChecks,
     href: "/financeiro/transacoes",
     description: "Todas transações",
+  },
+  {
+    title: "Relatórios",
+    icon: BarChart3,
+    href: "/financeiro/relatorios",
+    description: "Análises e cobranças",
   },
   {
     title: "Configurações",

@@ -647,5 +647,163 @@ export class AssinaturasService {
       );
     }
   }
+
+  /**
+   * 🔄 SCHEDULER: Busca assinaturas que devem ser cobradas hoje
+   */
+  async findPendentesCobranca(data?: string): Promise<Assinatura[]> {
+    const dataCobranca = data 
+      ? dayjs(data).tz('America/Sao_Paulo').format('YYYY-MM-DD')
+      : dayjs().tz('America/Sao_Paulo').format('YYYY-MM-DD');
+
+    this.logger.log(`🔍 Buscando assinaturas para cobrar em ${dataCobranca}`);
+
+    const assinaturas = await this.assinaturaRepository
+      .createQueryBuilder('assinatura')
+      .leftJoinAndSelect('assinatura.aluno', 'aluno')
+      .leftJoinAndSelect('assinatura.plano', 'plano')
+      .leftJoinAndSelect('assinatura.unidade', 'unidade')
+      .where('assinatura.status = :status', { status: StatusAssinatura.ATIVA })
+      .andWhere('assinatura.metodo_pagamento = :metodo', { metodo: 'CARTAO' })
+      .andWhere('assinatura.token_cartao IS NOT NULL')
+      .andWhere('DATE(assinatura.proxima_cobranca) <= :data', { data: dataCobranca })
+      .getMany();
+
+    this.logger.log(`✅ Encontradas ${assinaturas.length} assinaturas para cobrar`);
+    
+    return assinaturas;
+  }
+
+  /**
+   * 🔄 SCHEDULER: Executa cobrança recorrente usando token salvo
+   */
+  async cobrarRecorrencia(assinaturaId: string | number): Promise<any> {
+    this.logger.log(`💳 Cobrando recorrência da assinatura ${assinaturaId}`);
+
+    const assinatura = await this.assinaturaRepository.findOne({
+      where: { id: typeof assinaturaId === 'string' ? assinaturaId : assinaturaId.toString() },
+      relations: ['aluno', 'plano', 'unidade'],
+    });
+
+    if (!assinatura) {
+      throw new NotFoundException('Assinatura não encontrada');
+    }
+
+    if (!assinatura.token_cartao) {
+      throw new BadRequestException('Assinatura não possui token de cartão salvo');
+    }
+
+    // 1. Criar nova fatura
+    const proximoVencimento = dayjs(assinatura.proxima_cobranca)
+      .tz('America/Sao_Paulo')
+      .toDate();
+
+    const fatura = this.faturaRepository.create({
+      aluno_id: assinatura.aluno_id,
+      assinatura_id: assinatura.id,
+      numero_fatura: `REC-${assinatura.id}-${dayjs().format('YYYYMMDDHHmmss')}`,
+      descricao: `Mensalidade ${assinatura.plano?.nome || 'Plano'} - ${dayjs().format('MM/YYYY')}`,
+      valor_original: assinatura.valor,
+      valor_desconto: 0,
+      valor_acrescimo: 0,
+      valor_total: assinatura.valor,
+      valor_pago: 0,
+      data_vencimento: proximoVencimento,
+      status: StatusFatura.PENDENTE,
+    });
+
+    const faturaSalva = await this.faturaRepository.save(fatura);
+
+    try {
+      // 2. Cobrar com token
+      const resultado = await this.paytimeIntegrationService.cobrarComToken(
+        assinatura,
+        faturaSalva,
+      );
+
+      // 3. Se sucesso, atualizar proxima_cobranca e zerar retry_count
+      if (resultado.status === 'PAID' || resultado.status === 'APPROVED') {
+        assinatura.proxima_cobranca = dayjs(assinatura.proxima_cobranca)
+          .add(1, 'month')
+          .toDate();
+        assinatura.retry_count = 0;
+        await this.assinaturaRepository.save(assinatura);
+
+        this.logger.log(`✅ Cobrança recorrente APROVADA - assinatura ${assinaturaId}`);
+      }
+
+      return {
+        success: resultado.status === 'PAID' || resultado.status === 'APPROVED',
+        assinatura_id: assinatura.id,
+        fatura_id: faturaSalva.id,
+        fatura_numero: faturaSalva.numero_fatura,
+        valor: faturaSalva.valor_total,
+        status: resultado.status,
+        transacao_id: resultado.transacao_id,
+        paytime_transaction_id: resultado.paytime_transaction_id,
+        proxima_cobranca: assinatura.proxima_cobranca,
+      };
+
+    } catch (error) {
+      this.logger.error(`❌ Erro ao cobrar recorrência: ${error.message}`);
+      
+      // Registrar falha automaticamente
+      await this.registrarFalhaCobranca(assinatura.id);
+      
+      throw error;
+    }
+  }
+
+  /**
+   * 🔄 SCHEDULER: Registra falha de cobrança e aplica retry logic
+   */
+  async registrarFalhaCobranca(
+    assinaturaId: string | number,
+    motivo?: string
+  ): Promise<any> {
+    this.logger.log(`⚠️ Registrando falha de cobrança - assinatura ${assinaturaId}`);
+
+    const assinatura = await this.assinaturaRepository.findOne({
+      where: { id: typeof assinaturaId === 'string' ? assinaturaId : assinaturaId.toString() },
+      relations: ['aluno'],
+    });
+
+    if (!assinatura) {
+      throw new NotFoundException('Assinatura não encontrada');
+    }
+
+    // Incrementar retry_count
+    assinatura.retry_count = (assinatura.retry_count || 0) + 1;
+
+    let proximaTentativa: Date | null = null;
+
+    // Aplicar retry logic
+    if (assinatura.retry_count >= 3) {
+      // Após 3 tentativas, marcar como inadimplente
+      assinatura.status = StatusAssinatura.INADIMPLENTE;
+      this.logger.warn(`🚫 Assinatura ${assinaturaId} marcada como INADIMPLENTE após ${assinatura.retry_count} tentativas`);
+    } else {
+      // Agendar nova tentativa
+      const diasEspera = assinatura.retry_count === 1 ? 3 : 5;
+      proximaTentativa = dayjs(assinatura.proxima_cobranca)
+        .add(diasEspera, 'days')
+        .toDate();
+      
+      assinatura.proxima_cobranca = proximaTentativa;
+      
+      this.logger.log(`🔄 Nova tentativa agendada para ${dayjs(proximaTentativa).format('DD/MM/YYYY')} (tentativa ${assinatura.retry_count + 1}/3)`);
+    }
+
+    await this.assinaturaRepository.save(assinatura);
+
+    return {
+      assinatura_id: assinatura.id,
+      retry_count: assinatura.retry_count,
+      status: assinatura.status,
+      proxima_tentativa: proximaTentativa,
+      inadimplente: assinatura.status === StatusAssinatura.INADIMPLENTE,
+      motivo: motivo || 'Pagamento recusado',
+    };
+  }
 }
 

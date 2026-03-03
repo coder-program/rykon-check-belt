@@ -93,6 +93,7 @@ export class FaturasService {
     const query = this.faturaRepository
       .createQueryBuilder('fatura')
       .leftJoinAndSelect('fatura.aluno', 'aluno')
+      .leftJoinAndSelect('aluno.unidade', 'alunoUnidade')
       .leftJoinAndSelect('fatura.assinatura', 'assinatura')
       .leftJoinAndSelect('assinatura.plano', 'plano')
       .leftJoinAndSelect('assinatura.unidade', 'unidade')
@@ -100,11 +101,15 @@ export class FaturasService {
 
     // Se foi passado franqueado_id, filtrar pelas unidades desse franqueado
     if (franqueado_id) {
-      query.andWhere('unidade.franqueado_id = :franqueado_id', {
-        franqueado_id,
-      });
+      query.andWhere(
+        '(unidade.franqueado_id = :franqueado_id OR alunoUnidade.franqueado_id = :franqueado_id)',
+        { franqueado_id },
+      );
     } else if (unidade_id) {
-      query.andWhere('unidade.id = :unidade_id', { unidade_id });
+      query.andWhere(
+        '(unidade.id = :unidade_id OR alunoUnidade.id = :unidade_id)',
+        { unidade_id },
+      );
     }
 
     if (status) {
@@ -133,6 +138,7 @@ export class FaturasService {
       where: { id },
       relations: [
         'aluno',
+        'aluno.unidade',
         'assinatura',
         'assinatura.plano',
         'assinatura.unidade',
@@ -302,7 +308,7 @@ export class FaturasService {
     
     const faturas = await this.faturaRepository.find({
       where: { aluno_id: alunoId },
-      relations: ['assinatura', 'assinatura.plano'],
+      relations: ['aluno', 'aluno.unidade', 'assinatura', 'assinatura.plano'],
       order: { data_vencimento: 'DESC' },
     });
     

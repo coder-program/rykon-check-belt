@@ -370,6 +370,10 @@ Equipe TeamCruz 🥋
   }
 
   private gerarMensagemLembrete(fatura: Fatura, diasRestantes: number): string {
+    const unidade = (fatura.aluno as any)?.unidade;
+    const telefoneUnidade = unidade?.telefone_celular || unidade?.telefone_fixo || '';
+    const nomeUnidade = unidade?.nome || 'Team Cruz';
+
     return `
 🔔 *Lembrete de Pagamento*
 
@@ -383,11 +387,19 @@ Sua fatura *${fatura.numero_fatura}* vence em *${diasRestantes} ${diasRestantes 
 
 ${fatura.link_pagamento ? `🔗 Link de pagamento: ${fatura.link_pagamento}` : ''}
 
+${telefoneUnidade ? `📞 Dúvidas? Ligue: ${telefoneUnidade}` : ''}
+
 Evite atrasos e mantenha sua academia em dia! 💪
+
+*${nomeUnidade}*
     `.trim();
   }
 
   private gerarMensagemInadimplencia(assinatura: Assinatura): string {
+    const unidade = (assinatura.aluno as any)?.unidade;
+    const telefoneUnidade = unidade?.telefone_celular || unidade?.telefone_fixo || '';
+    const nomeUnidade = unidade?.nome || 'Team Cruz';
+
     return `
 ⚠️ *Atenção: Inadimplência Detectada*
 
@@ -398,13 +410,19 @@ Identificamos que sua assinatura está com *faturas em atraso*.
 📋 Plano: ${assinatura.plano?.nome || 'Mensalidade'}
 💰 Valor: R$ ${assinatura.valor.toFixed(2)}
 
-Para regularizar sua situação e continuar aproveitando todos os benefícios, entre em contato conosco.
+${telefoneUnidade ? `📞 Entre em contato: ${telefoneUnidade}` : 'Para regularizar sua situação e continuar aproveitando todos os benefícios, entre em contato conosco.'}
 
 Regularize sua situação e volte a treinar! 🥋
+
+*${nomeUnidade}*
     `.trim();
   }
 
   private gerarMensagemCobranca(fatura: Fatura): string {
+    const unidade = (fatura.aluno as any)?.unidade;
+    const telefoneUnidade = unidade?.telefone_celular || unidade?.telefone_fixo || '';
+    const nomeUnidade = unidade?.nome || 'Team Cruz';
+
     return `
 💳 *Cobrança Pendente*
 
@@ -419,7 +437,9 @@ Você possui uma fatura pendente:
 
 ${fatura.link_pagamento ? `🔗 Pague agora: ${fatura.link_pagamento}` : ''}
 
-Em caso de dúvidas, estamos à disposição!
+${telefoneUnidade ? `📞 Dúvidas? Entre em contato: ${telefoneUnidade}` : 'Em caso de dúvidas, estamos à disposição!'}
+
+*${nomeUnidade}*
     `.trim();
   }
 

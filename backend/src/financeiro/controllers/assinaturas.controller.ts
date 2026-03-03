@@ -168,4 +168,122 @@ export class AssinaturasController {
   ): Promise<any> {
     return await this.assinaturasService.atualizarCartao(id, dto, req.user);
   }
+
+  @Get('pendentes-cobranca')
+  @ApiOperation({ 
+    summary: '[SCHEDULER] Lista assinaturas que devem ser cobradas',
+    description: 'Endpoint usado pelo scheduler para identificar assinaturas com cobrança recorrente pendente. Filtra por: status ATIVA, método CARTAO, possui token, proxima_cobranca <= data informada (ou hoje).'
+  })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Lista de assinaturas pendentes de cobrança',
+    schema: {
+      example: [{
+        id: 123,
+        aluno_id: 456,
+        plano_id: 789,
+        status: 'ATIVA',
+        metodo_pagamento: 'CARTAO',
+        valor: 150.00,
+        proxima_cobranca: '2026-03-01',
+        retry_count: 0,
+        token_cartao: 'tk_abc123...',
+        aluno: {
+          nome_completo: 'João Silva',
+          email: 'joao@email.com'
+        },
+        plano: {
+          nome: 'Plano Mensal'
+        }
+      }]
+    }
+  })
+  async findPendentesCobranca(
+    @Query('data') data?: string,
+  ): Promise<any> {
+    this.logger.log(`📥 [GET] /financeiro/assinaturas/pendentes-cobranca`);
+    this.logger.log(`   - Data: ${data || 'hoje'}`);
+    
+    const assinaturas = await this.assinaturasService.findPendentesCobranca(data);
+    
+    this.logger.log(`✅ Encontradas ${assinaturas.length} assinaturas pendentes`);
+    return assinaturas;
+  }
+
+  @Post(':id/cobrar-recorrencia')
+  @ApiOperation({ 
+    summary: '[SCHEDULER] Executa cobrança recorrente',
+    description: 'Endpoint usado pelo scheduler para executar cobrança usando token salvo. Gera nova fatura e processa pagamento automaticamente. Se aprovado, atualiza proxima_cobranca += 1 mês.'
+  })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Cobrança processada com sucesso',
+    schema: {
+      example: {
+        success: true,
+        assinatura_id: 123,
+        fatura_id: 456,
+        fatura_numero: 'REC-123-20260301120000',
+        valor: 150.00,
+        status: 'PAID',
+        transacao_id: 789,
+        paytime_transaction_id: '507f1f77bcf86cd799439011',
+        proxima_cobranca: '2026-04-01T00:00:00.000Z'
+      }
+    }
+  })
+  @ApiResponse({ 
+    status: 400, 
+    description: 'Assinatura sem token ou pagamento recusado' 
+  })
+  @ApiResponse({ 
+    status: 404, 
+    description: 'Assinatura não encontrada' 
+  })
+  async cobrarRecorrencia(
+    @Param('id') id: string,
+  ): Promise<any> {
+    this.logger.log(`📥 [POST] /financeiro/assinaturas/${id}/cobrar-recorrencia`);
+    
+    const resultado = await this.assinaturasService.cobrarRecorrencia(id);
+    
+    this.logger.log(`✅ Cobrança processada: ${resultado.status}`);
+    return resultado;
+  }
+
+  @Patch(':id/registrar-falha')
+  @ApiOperation({ 
+    summary: '[SCHEDULER] Registra falha de cobrança',
+    description: 'Endpoint usado pelo scheduler para registrar falha na cobrança recorrente. Incrementa retry_count e agenda nova tentativa (3 dias na 1ª falha, 5 dias na 2ª). Após 3 falhas, marca como INADIMPLENTE.'
+  })
+  @ApiResponse({ 
+    status: 200, 
+    description: 'Falha registrada com sucesso',
+    schema: {
+      example: {
+        assinatura_id: 123,
+        retry_count: 2,
+        status: 'ATIVA',
+        proxima_tentativa: '2026-03-06T00:00:00.000Z',
+        inadimplente: false,
+        motivo: 'Cartão recusado'
+      }
+    }
+  })
+  @ApiResponse({ 
+    status: 404, 
+    description: 'Assinatura não encontrada' 
+  })
+  async registrarFalha(
+    @Param('id') id: string,
+    @Body() body?: { motivo?: string },
+  ): Promise<any> {
+    this.logger.log(`📥 [PATCH] /financeiro/assinaturas/${id}/registrar-falha`);
+    this.logger.log(`   - Motivo: ${body?.motivo || 'Não informado'}`);
+    
+    const resultado = await this.assinaturasService.registrarFalhaCobranca(id, body?.motivo);
+    
+    this.logger.log(`✅ Falha registrada: retry ${resultado.retry_count}/3`);
+    return resultado;
+  }
 }

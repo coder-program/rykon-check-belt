@@ -641,8 +641,8 @@ export class PaytimeIntegrationService {
 
         // Verificar se boleto está travado em PROCESSING há muito tempo
         if (paytimeBoleto.status === 'PROCESSING') {
-          const transacaoCriadaEm = dayjs(transacaoExistente.created_at).tz('America/Sao_Paulo');
-          const agora = dayjs().tz('America/Sao_Paulo');
+          const transacaoCriadaEm = dayjs.utc(transacaoExistente.created_at);
+          const agora = dayjs.utc();
           const minutosEmProcessing = agora.diff(transacaoCriadaEm, 'minute', true);
           
           this.logger.log(
@@ -796,6 +796,17 @@ export class PaytimeIntegrationService {
         2,
       );
 
+      // Calcular limit_date do desconto (5 dias antes do vencimento) — omitir se já passou
+      const today = dayjs().tz('America/Sao_Paulo').startOf('day');
+      const discountLimitDate = dayjs(dueDate).tz('America/Sao_Paulo').subtract(5, 'day').startOf('day');
+      const discountBlock = discountLimitDate.isBefore(today)
+        ? undefined
+        : {
+            mode: 'PERCENTAGE',
+            amount: 1,
+            limit_date: discountLimitDate.format('YYYY-MM-DD'),
+          };
+
       // 5. Chamar Paytime para criar boleto
       const boletoData = {
         amount: Math.round(fatura.valor_total * 100), // Converter para centavos
@@ -828,11 +839,7 @@ export class PaytimeIntegrationService {
             mode: 'MONTHLY_PERCENTAGE',
             amount: 1,
           },
-          discount: {
-            mode: 'PERCENTAGE',
-            amount: 1,
-            limit_date: dayjs(dueDate).tz('America/Sao_Paulo').subtract(5, 'day').format('YYYY-MM-DD'), // 5 dias antes do vencimento
-          },
+          ...(discountBlock ? { discount: discountBlock } : {}),
         },
         // info_additional não é aceito pela API de boletos do Paytime
         // Removido conforme erro: "property info_additional should not exist"
@@ -976,15 +983,16 @@ export class PaytimeIntegrationService {
         
         // ⏱️ TIMEOUT: Verificar se boleto está travado em PROCESSING há mais de 2 minutos
         if (paytimeTransaction.status === 'PROCESSING') {
-          const transacaoCriadaEm = dayjs(transacao.created_at).tz('America/Sao_Paulo');
-          const agora = dayjs().tz('America/Sao_Paulo');
-          const minutosEmProcessing = Math.abs(agora.diff(transacaoCriadaEm, 'minute', true));
+          const transacaoCriadaEm = dayjs.utc(transacao.created_at);
+          const agora = dayjs.utc();
+          const minutosEmProcessing = agora.diff(transacaoCriadaEm, 'minute', true);
           
           this.logger.log(
             `⏱️  [STATUS CHECK] Boleto ${transacao.paytime_transaction_id} - Criado em: ${transacaoCriadaEm.toISOString()}, Agora: ${agora.toISOString()}, Minutos em PROCESSING: ${minutosEmProcessing.toFixed(2)}`,
           );
           
           // Se está em PROCESSING há mais de 2 minutos E não tem dados, cancelar automaticamente
+          // minutosEmProcessing > 0 garante que não há falso positivo por offset de timezone do DB
           if (minutosEmProcessing > 2 && !paytimeTransaction.barcode && !paytimeTransaction.digitable_line) {
             this.logger.warn(
               `⚠️ [TIMEOUT] Boleto ${transacao.paytime_transaction_id} travado em PROCESSING há ${minutosEmProcessing.toFixed(1)} minutos sem dados - Cancelando automaticamente`,
