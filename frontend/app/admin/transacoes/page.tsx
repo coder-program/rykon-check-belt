@@ -125,6 +125,8 @@ interface Transaction {
     numero_matricula?: string;
     status: string;
   };
+  _source?: 'LOCAL_DB' | 'LOCAL_FALLBACK' | 'PAYTIME_INDIVIDUAL';
+  observacoes?: string;
 }
 
 interface Establishment {
@@ -212,6 +214,16 @@ export default function TransacoesPage() {
 
       if (response.ok) {
         const data = await response.json();
+        console.log(`📊 [TRANSAÇÕES] Total recebido: ${data.data?.length || 0}`);
+        console.log(`📊 [TRANSAÇÕES] Raw data:`, data);
+        if (data.data?.length > 0) {
+          const porTipo: Record<string, number> = {};
+          data.data.forEach((t: any) => {
+            const tipo = t.type || t.payment_type || 'UNKNOWN';
+            porTipo[tipo] = (porTipo[tipo] || 0) + 1;
+          });
+          console.log(`📊 [TRANSAÇÕES] Por tipo:`, porTipo);
+        }
         setTransactions(data.data || []);
       } else {
         throw new Error("Erro ao carregar transações");
@@ -593,13 +605,23 @@ export default function TransacoesPage() {
                         </div>
                         <div>
                           <div className="flex flex-col gap-0.5 mb-1">
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 flex-wrap">
                               <p className="font-mono text-xs text-gray-600">
                                 {transacao._id ? transacao._id.substring(0, 12) + '...' : transacao.id}
                               </p>
                               <Badge className={getStatusBadge(transacao.status)}>
                                 {transacao.status}
                               </Badge>
+                              {transacao._source === 'LOCAL_DB' && (
+                                <span className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded font-medium" title="Transação registrada localmente — não chegou à Paytime">
+                                  LOCAL
+                                </span>
+                              )}
+                              {transacao._source === 'LOCAL_FALLBACK' && (
+                                <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded font-medium" title="Dado local — API Paytime indisponível no momento">
+                                  OFFLINE
+                                </span>
+                              )}
                             </div>
                             {transacao.reference_id && (
                               <p className="text-xs text-blue-600 font-medium">
@@ -1285,6 +1307,22 @@ export default function TransacoesPage() {
                       </div>
                     )}
                   </div>
+                </div>
+              )}
+
+              {/* Observações (transações locais / erros) */}
+              {selectedTransaction.observacoes && (
+                <div>
+                  <h3 className="font-semibold mb-3 flex items-center gap-2 text-orange-700">
+                    <AlertCircle className="h-4 w-4" />
+                    Observações
+                    {selectedTransaction._source === 'LOCAL_DB' && (
+                      <span className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded ml-1">Banco Local</span>
+                    )}
+                  </h3>
+                  <p className="text-sm text-gray-700 bg-orange-50 p-3 rounded-lg border border-orange-200">
+                    {selectedTransaction.observacoes}
+                  </p>
                 </div>
               )}
 

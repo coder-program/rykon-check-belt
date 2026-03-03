@@ -1036,6 +1036,26 @@ export class PaytimeIntegrationService {
         };
       }
 
+      // Se mudou para FAILED ou CANCELED no Paytime, sincronizar localmente
+      if (
+        (paytimeTransaction.status === 'FAILED' || paytimeTransaction.status === 'CANCELED') &&
+        transacao.status === StatusTransacao.PENDENTE
+      ) {
+        transacao.status = StatusTransacao.CANCELADA;
+        transacao.observacoes = `Pagamento ${paytimeTransaction.status} na Paytime`;
+        await this.transacaoRepository.save(transacao);
+        this.logger.warn(
+          `⚠️ Transação ${transacao.id} marcada como CANCELADA — Paytime status: ${paytimeTransaction.status}`,
+        );
+
+        return {
+          status: 'CANCELADA',
+          pago: false,
+          paytime_status: paytimeTransaction.status,
+          paytime_metadata: novaMetadata,
+        };
+      }
+
       return {
         status: transacao.status,
         pago: paytimeTransaction.status === 'PAID',

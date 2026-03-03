@@ -1499,7 +1499,154 @@ export class PaytimeService {
     } else {
       this.logger.debug(`✅ API Paytime já retornou boletos, não precisa buscar do banco local`);
     }
-    
+
+    // COMPLEMENTAR COM TRANSAÇÕES DE CARTÃO DO BANCO LOCAL
+    // Motivo: a API Paytime às vezes não retorna transações CREDIT na listagem geral
+    // (filtro de establishment pode remover, paginação pode deixar de fora, ou falhou antes de chegar)
+    // Estratégia:
+    //   - Se tem paytime_transaction_id → busca diretamente na API Paytime pelo ID (dado real)
+    //   - Se não tem paytime_transaction_id → nunca chegou no Paytime, usa dado local
+    this.logger.debug(`🔍 Verificando transações de cartão do banco local para estabelecimento ${establishmentId}...`);
+    try {
+      const unidadesCard = await this.unidadeRepository.find({
+        where: { paytime_establishment_id: establishmentId.toString() },
+        select: ['id'],
+      });
+
+      if (unidadesCard.length > 0) {
+        const unidadeIdsCard = unidadesCard.map(u => u.id);
+
+        const transacoesCartaoLocais = await this.transacaoRepository
+          .createQueryBuilder('t')
+          .leftJoinAndSelect('t.aluno', 'aluno')
+          .where('t.unidade_id IN (:...unidadeIds)', { unidadeIds: unidadeIdsCard })
+          .andWhere('t.metodo_pagamento = :metodo', { metodo: 'CARTAO' })
+          .orderBy('t.created_at', 'DESC')
+          .limit(50)
+          .getMany();
+
+        this.logger.debug(`💳 ${transacoesCartaoLocais.length} transação(ões) de cartão no banco local`);
+
+        // IDs já presentes na listagem da Paytime para deduplicar
+        const idsExistentes = new Set((data.data || []).map((t: any) => t._id || t.id));
+
+        // Separar em: tem ID Paytime (busca na API) vs não tem (usa local)
+        const comIdPaytime = transacoesCartaoLocais.filter(
+          t => t.paytime_transaction_id && !idsExistentes.has(t.paytime_transaction_id),
+        );
+        const semIdPaytime = transacoesCartaoLocais.filter(
+          t => !t.paytime_transaction_id,
+        );
+
+        this.logger.debug(`💳 Com paytime_transaction_id (buscar na API): ${comIdPaytime.length}, Sem (usar local): ${semIdPaytime.length}`);
+
+        // Buscar dados reais da Paytime para transações com ID
+        const fetchedFromPaytime = await Promise.all(
+          comIdPaytime.map(async t => {
+            try {
+              const paytimeData = await this.getTransaction(establishmentId, t.paytime_transaction_id);
+              this.logger.debug(`✅ Transação ${t.paytime_transaction_id} recuperada da Paytime — Status: ${paytimeData.status}`);
+              // Enriquecer com dados do aluno local
+              return {
+                ...paytimeData,
+                aluno: t.aluno ? {
+                  id: t.aluno.id,
+                  nome: t.aluno.nome_completo,
+                  email: t.aluno.email,
+                  telefone: t.aluno.telefone,
+                  unidade_id: t.unidade_id,
+                  numero_matricula: t.aluno.numero_matricula,
+                  status: t.aluno.status,
+                } : paytimeData.aluno || null,
+                _source: 'PAYTIME_INDIVIDUAL',
+              };
+            } catch (err) {
+              this.logger.warn(`⚠️ Falha ao buscar ${t.paytime_transaction_id} na Paytime: ${err.message} — usando dado local`);
+              // Fallback para dado local
+              return {
+                _id: t.paytime_transaction_id,
+                id: t.id,
+                status: t.status === 'PENDENTE' ? 'PENDING'
+                  : t.status === 'CONFIRMADA' ? 'PAID'
+                  : 'FAILED',
+                type: t.paytime_payment_type || 'CREDIT',
+                amount: Math.round(t.valor * 100),
+                created_at: t.created_at,
+                _source: 'LOCAL_FALLBACK',
+                establishment: { id: establishmentId },
+                card: t.paytime_metadata ? {
+                  brand_name: t.paytime_metadata.brand_name,
+                  first4_digits: t.paytime_metadata.first4_digits,
+                  last4_digits: t.paytime_metadata.last4_digits,
+                  holder_name: t.paytime_metadata.holder_name,
+                } : null,
+                client: t.aluno ? {
+                  document: t.aluno.cpf,
+                  first_name: t.aluno.nome_completo?.split(' ')[0] || '',
+                  last_name: t.aluno.nome_completo?.split(' ').slice(1).join(' ') || '',
+                  email: t.aluno.email,
+                } : null,
+                aluno: t.aluno ? {
+                  id: t.aluno.id,
+                  nome: t.aluno.nome_completo,
+                  email: t.aluno.email,
+                  telefone: t.aluno.telefone,
+                  unidade_id: t.unidade_id,
+                  numero_matricula: t.aluno.numero_matricula,
+                  status: t.aluno.status,
+                } : null,
+                observacoes: t.observacoes,
+              };
+            }
+          }),
+        );
+
+        // Formatar transações sem ID (nunca chegaram no Paytime)
+        const localOnly = semIdPaytime.map(t => ({
+          _id: `local-${t.id}`,
+          id: t.id,
+          status: t.status === 'PENDENTE' ? 'PENDING'
+            : t.status === 'CONFIRMADA' ? 'PAID'
+            : 'FAILED',
+          type: t.paytime_payment_type || 'CREDIT',
+          amount: Math.round(t.valor * 100),
+          created_at: t.created_at,
+          _source: 'LOCAL_DB',
+          establishment: { id: establishmentId },
+          card: null,
+          client: t.aluno ? {
+            document: t.aluno.cpf,
+            first_name: t.aluno.nome_completo?.split(' ')[0] || '',
+            last_name: t.aluno.nome_completo?.split(' ').slice(1).join(' ') || '',
+            email: t.aluno.email,
+          } : null,
+          aluno: t.aluno ? {
+            id: t.aluno.id,
+            nome: t.aluno.nome_completo,
+            email: t.aluno.email,
+            telefone: t.aluno.telefone,
+            unidade_id: t.unidade_id,
+            numero_matricula: t.aluno.numero_matricula,
+            status: t.aluno.status,
+          } : null,
+          observacoes: t.observacoes,
+        }));
+
+        const toAdd = [...fetchedFromPaytime, ...localOnly];
+
+        if (toAdd.length > 0) {
+          this.logger.debug(`➕ Adicionando ${toAdd.length} transação(ões) de cartão à listagem`);
+          data.data = [...(data.data || []), ...toAdd];
+          data.data.sort((a: any, b: any) =>
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+          );
+          data.total = (data.total || 0) + toAdd.length;
+        }
+      }
+    } catch (error) {
+      this.logger.error(`❌ Erro ao complementar transações de cartão: ${error.message}`);
+    }
+
     return data;
   }
 
@@ -1509,36 +1656,31 @@ export class PaytimeService {
   async getTransaction(establishmentId: number, transactionId: string) {
     const token = await this.authenticate();
 
+    // ATENÇÃO: GET /api/transactions/{id} NÃO usa establishment_id no header (per swagger).
+    // Enviar establishment_id causa 404 para transações de outros establishments (ex: marketplace).
+    const headers = {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    };
+
     const url = `${this.baseUrl}/api/transactions/${transactionId}`;
-    
-    this.logger.debug(`🔍 Buscando transação ${transactionId} do estabelecimento ${establishmentId}`);
+    this.logger.debug(`🔍 Buscando transação ${transactionId} em: ${url}`);
 
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-        'establishment_id': establishmentId.toString(),
-      },
-    });
+    const response = await fetch(url, { method: 'GET', headers });
 
-    if (!response.ok) {
-      if (response.status === 404) {
-        throw new NotFoundException(`Transação ${transactionId} não encontrada`);
-      }
-      
-      const errorText = await response.text();
-      this.logger.error(`❌ Erro ao buscar transação: ${response.status} - ${errorText}`);
-      throw new BadRequestException(
-        `Erro ao buscar transação: ${response.status} - ${errorText}`,
-      );
+    if (response.ok) {
+      const data = await response.json();
+      this.logger.debug(`✅ Transação ${transactionId} encontrada — Status: ${data.status}, Establishment: ${data.establishment?.id}`);
+      return data;
     }
 
-    const data = await response.json();
-    this.logger.debug(`✅ Transação ${transactionId} encontrada - Status: ${data.status}`);
-    this.logger.debug(`🔍 DADOS COMPLETOS DA TRANSAÇÃO: ${JSON.stringify(data, null, 2)}`);
-    
-    return data;
+    if (response.status !== 404) {
+      const errorText = await response.text();
+      this.logger.error(`❌ Erro ao buscar transação ${transactionId}: ${response.status} - ${errorText}`);
+      throw new BadRequestException(`Erro ao buscar transação: ${response.status} - ${errorText}`);
+    }
+
+    throw new NotFoundException(`Transação ${transactionId} não encontrada`);
   }
 
   /**
@@ -2020,9 +2162,26 @@ export class PaytimeService {
     const data = await response.json();
     this.logger.debug(`✅ Autenticação IDPAY concluída - resposta: ${JSON.stringify(data)}`);
 
-    // Buscar analyse_status: primeiro tenta na resposta do próprio POST,
-    // depois faz GETs se ainda estiver WAITING_AUTH
+    // ⚡ CRÍTICO: Paytime gera NOVO ID após autenticação IDPAY — salvar no banco imediatamente
     const finalTransactionId = data.new_transaction_id || data.transaction_id || transactionId;
+    if (data.new_transaction_id && data.new_transaction_id !== transactionId) {
+      this.logger.log(`🔄 [IDPAY] new_transaction_id recebido → atualizando banco: ${transactionId} → ${data.new_transaction_id}`);
+      try {
+        const transacaoParaAtualizar = await this.transacaoRepository.findOne({
+          where: { paytime_transaction_id: transactionId },
+        });
+        if (transacaoParaAtualizar) {
+          transacaoParaAtualizar.paytime_transaction_id = data.new_transaction_id;
+          await this.transacaoRepository.save(transacaoParaAtualizar);
+          this.logger.log(`✅ [IDPAY] paytime_transaction_id atualizado no banco para transação ${transacaoParaAtualizar.id}`);
+        } else {
+          this.logger.warn(`⚠️ [IDPAY] Transação com ID antigo ${transactionId} não encontrada no banco para atualizar`);
+        }
+      } catch (e) {
+        this.logger.error(`❌ [IDPAY] Erro ao atualizar new_transaction_id no banco: ${e.message}`);
+      }
+    }
+
     let analyse_status: string | undefined;
     const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
