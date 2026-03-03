@@ -137,12 +137,36 @@ export default function MinhasFaturas() {
 
       if (response.ok) {
         const transacoes = await response.json();
-        const faturasComPendente = new Set(
-          transacoes
-            .filter((t: any) => t.fatura_id && faturaIds.includes(t.fatura_id))
-            .map((t: any) => t.fatura_id)
+        const transacoesDasFaturas = transacoes.filter(
+          (t: any) => t.fatura_id && faturaIds.includes(t.fatura_id)
         );
-        setFaturasComPagamentoPendente(faturasComPendente);
+
+        const faturasComPendente = new Set(
+          transacoesDasFaturas.map((t: any) => t.fatura_id)
+        );
+        setFaturasComPagamentoPendente(faturasComPendente as Set<string>);
+
+        // Sincronizar status de todos os pagamentos pendentes com o Paytime automaticamente.
+        // Garante que pagamentos feitos externamente (sem webhook chegando no backend) sejam detectados.
+        for (const transacao of transacoesDasFaturas) {
+          try {
+            const statusRes = await fetch(
+              `${process.env.NEXT_PUBLIC_API_URL}/financeiro/pagamentos-online/status/${transacao.id}`,
+              { headers: { Authorization: `Bearer ${token}` } }
+            );
+            if (statusRes.ok) {
+              const statusData = await statusRes.json();
+              if (statusData.pago === true || statusData.status === "CONFIRMADA") {
+                // Boleto foi pago — recarregar faturas para refletir o status atualizado
+                console.log(`✅ Transação ${transacao.id} confirmada — recarregando faturas`);
+                await carregarMinhasFaturas();
+                return;
+              }
+            }
+          } catch (e) {
+            // Ignorar erros individuais de sync
+          }
+        }
       }
     } catch (error) {
       console.error("⚠️ Erro ao verificar transações:", error);
