@@ -23,7 +23,7 @@ import { Assinatura } from '../entities/assinatura.entity';
 import { Endereco } from '../../enderecos/endereco.entity';
 import { PaytimeService } from '../../paytime/paytime.service';
 import { CompletarDadosBoletoDto } from '../dto/completar-dados-boleto.dto';
-import * as dayjs from 'dayjs';
+import dayjs from 'dayjs';
 import * as utc from 'dayjs/plugin/utc';
 import * as timezone from 'dayjs/plugin/timezone';
 

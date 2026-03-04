@@ -91,9 +91,11 @@ export function useAntifraud() {
       setIdpaySdkConfig(config);
 
       // Inicializar SDK — pré-carrega o iframe para experiência mais fluida
-      const env = (config.environment?.toLowerCase() === "prod" || config.environment?.toLowerCase() === "production")
-        ? undefined  // produção: não passa env
-        : "uat";    // sandbox/homologação
+      // Só passa env:'uat' se explicitamente configurado como sandbox.
+      // Se o rykon-pay removeu o campo ou retorna 'prod'/'production'/null → produção sem env
+      const env = config.environment?.toLowerCase() === "uat" ? "uat" : undefined;
+
+      console.log(`🔐 [IDPAY] Ambiente SDK: ${env ?? "produção (sem env)"} (config.environment=${config.environment})`);
 
       IDPaySDK.init({
         type: "IFRAME",
@@ -126,6 +128,7 @@ export function useAntifraud() {
 
       return new Promise((resolve, reject) => {
         let settled = false;
+        // eslint-disable-next-line prefer-const
         let timeoutId: ReturnType<typeof setTimeout>;
         let domCheckId: ReturnType<typeof setTimeout> | null = null;
         let observer: MutationObserver | null = null;
