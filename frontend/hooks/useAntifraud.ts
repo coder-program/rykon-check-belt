@@ -125,16 +125,76 @@ export function useAntifraud() {
     ): Promise<IdpayFinishData> => {
 
       return new Promise((resolve, reject) => {
-        // Timeout de segurança: SDK pode não chamar onFinish em caso de
-        // "Domain not allowed" ou erros silenciosos — restaura o modal após 300s
-        // (5 minutos: tempo suficiente para o usuário escanear QR + completar biometria no celular)
         let settled = false;
-        const timeoutId = setTimeout(() => {
+        let timeoutId: ReturnType<typeof setTimeout>;
+        let domCheckId: ReturnType<typeof setTimeout> | null = null;
+        let observer: MutationObserver | null = null;
+
+        const settle = (fn: () => void) => {
           if (settled) return;
           settled = true;
-          console.error("❌ [IDPAY] Timeout: onFinish não foi chamado em 300s. Possível erro de domínio não permitido ou SDK bloqueado.");
-          console.error("❌ [IDPAY] Verifique: window.location.origin =", window.location.origin);
-          reject(new Error("IDPAY_ERROR: timeout — verifique se o domínio está na whitelist do IDPAY. Origin: " + window.location.origin));
+          clearTimeout(timeoutId);
+          if (domCheckId) clearTimeout(domCheckId);
+          observer?.disconnect();
+          fn();
+        };
+
+        // Detectar remoção do iframe do IDPAY do DOM.
+        // Quando o SDK recebe "Domain not allowed" ele chama "reset iframe"
+        // e remove o elemento quase imediatamente (< 3s) SEM chamar onFinish.
+        // Usamos MutationObserver para detectar isso rapidamente.
+        let iframeInserted = false;
+
+        console.log(`🌐 [IDPAY] Domínio atual (deve estar na whitelist Unico): ${window.location.origin}`);
+
+        observer = new MutationObserver(() => {
+          const idpayIframe = document.querySelector<HTMLIFrameElement>('iframe[src*="idpay"], iframe[src*="unico"]');
+          if (idpayIframe && !iframeInserted) {
+            iframeInserted = true;
+            console.log("✅ [IDPAY] Iframe inserido no DOM");
+
+            // Monitorar remoção do iframe (indica "reset iframe" / Domain not allowed)
+            const removalObserver = new MutationObserver(() => {
+              const stillExists = document.querySelector('iframe[src*="idpay"], iframe[src*="unico"]');
+              if (!stillExists && iframeInserted) {
+                removalObserver.disconnect();
+                // Aguardar brevemente para ver se onFinish chega junto
+                setTimeout(() => {
+                  settle(() => {
+                    console.error("❌ [IDPAY] Iframe removido pelo SDK sem onFinish — 'Domain not allowed' ou token inválido.");
+                    console.error("❌ [IDPAY] Origin atual:", window.location.origin);
+                    reject(new Error(
+                      "IDPAY_DOMAIN_ERROR: O domínio " + window.location.origin +
+                      " não está na whitelist do IDPAY. Cadastre este domínio no painel da Unico/IDPAY."
+                    ));
+                  });
+                }, 1500);
+              }
+            });
+            removalObserver.observe(document.body, { childList: true, subtree: true });
+          }
+        });
+        observer.observe(document.body, { childList: true, subtree: true });
+
+        // Verificar após 8s se o iframe sequer foi inserido (SDK bloqueado antes de montar)
+        domCheckId = setTimeout(() => {
+          if (!iframeInserted) {
+            settle(() => {
+              console.error("❌ [IDPAY] Iframe não foi inserido em 8s — SDK bloqueado. Origin:", window.location.origin);
+              reject(new Error(
+                "IDPAY_DOMAIN_ERROR: O SDK IDPAY não abriu em 8 segundos. Verifique se o domínio " +
+                window.location.origin + " está na whitelist do IDPAY."
+              ));
+            });
+          }
+        }, 8000);
+
+        // Timeout máximo de 300s para fluxo via QR code no celular (usuário demora)
+        timeoutId = setTimeout(() => {
+          settle(() => {
+            console.error("❌ [IDPAY] Timeout: onFinish não foi chamado em 300s.");
+            reject(new Error("IDPAY_ERROR: timeout — verifique se o domínio está na whitelist do IDPAY. Origin: " + window.location.origin));
+          });
         }, 300000);
 
         try {
@@ -142,23 +202,15 @@ export function useAntifraud() {
             transactionId: antifraudId,
             token: sessionToken,
             onFinish: (transaction: IdpayFinishData, type: string) => {
-              clearTimeout(timeoutId);
-
               if (type === "ERROR") {
                 console.warn("⚠️ [IDPAY] Fluxo interrompido por erro");
-                if (!settled) {
-                  settled = true;
-                  reject(new Error("IDPAY_ERROR: fluxo interrompido. O usuário pode tentar novamente."));
-                }
+                settle(() => reject(new Error("IDPAY_ERROR: fluxo interrompido. O usuário pode tentar novamente.")));
                 return;
               }
 
               // type === 'FINISH' ou undefined — captura biométrica concluída
-
               if (!settled) {
-                // Caminho normal: promise ainda não foi resolvida/rejeitada
-                settled = true;
-                resolve(transaction);
+                settle(() => resolve(transaction));
               } else {
                 // onFinish chegou DEPOIS do timeout — promise já rejeitada
                 // Chamar onLateFinish para garantir que a autenticação ocorra mesmo assim
@@ -168,12 +220,8 @@ export function useAntifraud() {
             },
           } as Parameters<typeof IDPaySDK.open>[0]);
         } catch (error) {
-          clearTimeout(timeoutId);
           console.error("❌ [IDPAY] Erro ao abrir iframe:", error);
-          if (!settled) {
-            settled = true;
-            reject(error);
-          }
+          settle(() => reject(error));
         }
       });
     },

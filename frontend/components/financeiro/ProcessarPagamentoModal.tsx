@@ -883,9 +883,15 @@ export default function ProcessarPagamentoModal({
 
                           } catch (error: any) {
                             console.error("❌ [IDPAY] Erro:", error);
+                            const isDomainError = error?.message?.includes("IDPAY_DOMAIN_ERROR");
                             const isTimeout = error?.message?.includes("timeout");
                             const isIdpayError = error?.message?.startsWith("IDPAY_ERROR");
-                            if (isTimeout) {
+                            if (isDomainError) {
+                              toast.error(
+                                "❌ Domínio não autorizado no IDPAY. Peça ao administrador para cadastrar este domínio no painel da Unico/IDPAY.",
+                                { duration: 10000 }
+                              );
+                            } else if (isTimeout) {
                               // Timeout: modal foi restaurado, onLateFinish ainda pode chegar
                               toast("⏳ Aguardando conclusão da biometria no celular...", { duration: 15000 });
                             } else if (isIdpayError) {
