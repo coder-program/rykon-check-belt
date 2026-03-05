@@ -2425,7 +2425,7 @@ export class PaytimeService {
     }
 
     const data = await response.json();
-    this.logger.debug(`✅ Session ID gerado: ${data.session_id}`);
+    this.logger.debug(`✅ Session ID gerado: ${data.sessionId || data.session_id}`);
     return data;
   }
 
