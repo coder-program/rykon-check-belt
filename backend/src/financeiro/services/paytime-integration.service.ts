@@ -1063,6 +1063,34 @@ export class PaytimeIntegrationService {
         paytime_metadata: novaMetadata,
       };
     } catch (error) {
+      // Transação expirada/não encontrada no Paytime → marcar como CANCELADA e não logar como ERROR
+      const isNotFound =
+        error.message?.includes('não encontrada') ||
+        error?.status === 404 ||
+        error?.response?.status === 404;
+
+      if (isNotFound) {
+        // Se ainda PENDENTE, marcar como CANCELADA
+        if (transacao.status === StatusTransacao.PENDENTE) {
+          transacao.status = StatusTransacao.CANCELADA;
+          transacao.observacoes = 'Transação expirada/não encontrada no Paytime';
+          await this.transacaoRepository.save(transacao);
+          this.logger.warn(
+            `⚠️ Transação ${transacao.id} marcada como CANCELADA — ID Paytime ${transacao.paytime_transaction_id} não encontrado (expirado)`,
+          );
+        } else {
+          // Já estava CANCELADA/FAILED localmente — apenas logar como debug
+          this.logger.debug(
+            `🔕 ID Paytime ${transacao.paytime_transaction_id} não encontrado (já ${transacao.status} localmente) — ignorando`,
+          );
+        }
+        return {
+          status: transacao.status,
+          pago: false,
+          paytime_metadata: transacao.paytime_metadata,
+        };
+      }
+
       this.logger.error(
         `Erro ao verificar status do pagamento: ${error.message}`,
       );
