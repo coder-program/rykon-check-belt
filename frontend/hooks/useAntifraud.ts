@@ -188,7 +188,6 @@ export function useAntifraud() {
                 if (resetCheckInterval) { clearInterval(resetCheckInterval); resetCheckInterval = null; }
                 console.error("❌ [IDPAY] Iframe removido/resetado pelo SDK — 'Domain not allowed' ou token inválido.");
                 console.error("❌ [IDPAY] Origin:", window.location.origin);
-                // Pequena espera para ver se onFinish chega junto
                 setTimeout(() => {
                   settle(() => reject(new Error(
                     "IDPAY_DOMAIN_ERROR: O domínio " + window.location.origin +
