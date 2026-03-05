@@ -132,13 +132,17 @@ export function useAntifraud() {
         let timeoutId: ReturnType<typeof setTimeout>;
         let domCheckId: ReturnType<typeof setTimeout> | null = null;
         let observer: MutationObserver | null = null;
+        let messageHandler: ((e: MessageEvent) => void) | null = null;
+        let resetCheckInterval: ReturnType<typeof setInterval> | null = null;
 
         const settle = (fn: () => void) => {
           if (settled) return;
           settled = true;
           clearTimeout(timeoutId);
           if (domCheckId) clearTimeout(domCheckId);
+          if (resetCheckInterval) clearInterval(resetCheckInterval);
           observer?.disconnect();
+          if (messageHandler) window.removeEventListener('message', messageHandler);
           fn();
         };
 
@@ -149,29 +153,66 @@ export function useAntifraud() {
         let iframeInserted = false;
 
         console.log(`🌐 [IDPAY] Domínio atual (deve estar na whitelist Unico): ${window.location.origin}`);
+        console.log(`📋 [IDPAY] Parâmetros enviados ao SDK:`, {
+          transactionId: antifraudId,
+          tokenPrimeiros20: sessionToken?.substring(0, 20) + '...',
+          sdkDisponivel: typeof IDPaySDK !== 'undefined',
+        });
+
+        // Interceptar mensagens postMessage do iframe da Unico.
+        // O SDK comunica via window.postMessage — isso PROVA que a mensagem
+        // "Domain not allowed" vem DOS SERVIDORES DA UNICO, não do nosso código.
+        messageHandler = (event: MessageEvent) => {
+          const isUnicoOrigin = event.origin?.includes('unico.io') || event.origin?.includes('idpay');
+          const isRelevantData = typeof event.data === 'string'
+            ? event.data.includes('domain') || event.data.includes('Domain') || event.data.includes('allowed') || event.data.includes('token') || event.data.includes('invalid')
+            : typeof event.data === 'object' && event.data !== null;
+          if (isUnicoOrigin || isRelevantData) {
+            console.log(`📨 [IDPAY] Mensagem recebida | Origem: "${event.origin}" | Dados:`, JSON.stringify(event.data));
+          }
+        };
+        window.addEventListener('message', messageHandler);
 
         observer = new MutationObserver(() => {
           const idpayIframe = document.querySelector<HTMLIFrameElement>('iframe[src*="idpay"], iframe[src*="unico"]');
           if (idpayIframe && !iframeInserted) {
             iframeInserted = true;
-            console.log("✅ [IDPAY] Iframe inserido no DOM");
+            console.log("✅ [IDPAY] Iframe inserido no DOM", { src: idpayIframe.src, id: idpayIframe.id });
 
-            // Monitorar remoção do iframe (indica "reset iframe" / Domain not allowed)
+            // Polling a cada 500ms para detectar "reset iframe":
+            // O SDK pode remover o iframe do DOM OU apenas limpar o src.
+            // Ambos indicam "Domain not allowed" / token inválido.
+            resetCheckInterval = setInterval(() => {
+              const iframeStillValid = document.querySelector('iframe[src*="idpay"], iframe[src*="unico"]');
+              if (!iframeStillValid) {
+                if (resetCheckInterval) { clearInterval(resetCheckInterval); resetCheckInterval = null; }
+                console.error("❌ [IDPAY] Iframe removido/resetado pelo SDK — 'Domain not allowed' ou token inválido.");
+                console.error("❌ [IDPAY] Origin:", window.location.origin);
+                // Pequena espera para ver se onFinish chega junto
+                setTimeout(() => {
+                  settle(() => reject(new Error(
+                    "IDPAY_DOMAIN_ERROR: O domínio " + window.location.origin +
+                    " foi rejeitado pela Unico. Cadastre no painel IDPAY."
+                  )));
+                }, 500);
+              }
+            }, 500);
+
+            // MutationObserver como backup para remoção do DOM
             const removalObserver = new MutationObserver(() => {
               const stillExists = document.querySelector('iframe[src*="idpay"], iframe[src*="unico"]');
               if (!stillExists && iframeInserted) {
                 removalObserver.disconnect();
-                // Aguardar brevemente para ver se onFinish chega junto
+                if (resetCheckInterval) { clearInterval(resetCheckInterval); resetCheckInterval = null; }
                 setTimeout(() => {
                   settle(() => {
-                    console.error("❌ [IDPAY] Iframe removido pelo SDK sem onFinish — 'Domain not allowed' ou token inválido.");
-                    console.error("❌ [IDPAY] Origin atual:", window.location.origin);
+                    console.error("❌ [IDPAY] [MutationObserver] Iframe removido do DOM — 'Domain not allowed'.");
                     reject(new Error(
                       "IDPAY_DOMAIN_ERROR: O domínio " + window.location.origin +
-                      " não está na whitelist do IDPAY. Cadastre este domínio no painel da Unico/IDPAY."
+                      " foi rejeitado pela Unico (MutationObserver)."
                     ));
                   });
-                }, 1500);
+                }, 500);
               }
             });
             removalObserver.observe(document.body, { childList: true, subtree: true });
@@ -192,13 +233,13 @@ export function useAntifraud() {
           }
         }, 8000);
 
-        // Timeout máximo de 300s para fluxo via QR code no celular (usuário demora)
+        // Timeout máximo de 60s — se domínio estiver ok e usuário demorar, onLateFinish garante o fluxo
         timeoutId = setTimeout(() => {
           settle(() => {
-            console.error("❌ [IDPAY] Timeout: onFinish não foi chamado em 300s.");
-            reject(new Error("IDPAY_ERROR: timeout — verifique se o domínio está na whitelist do IDPAY. Origin: " + window.location.origin));
+            console.error("❌ [IDPAY] Timeout: onFinish não foi chamado em 60s. Domínio:", window.location.origin);
+            reject(new Error("IDPAY_ERROR: timeout 60s — domínio pode não estar na whitelist. Origin: " + window.location.origin));
           });
-        }, 300000);
+        }, 60000);
 
         try {
           IDPaySDK.open({
