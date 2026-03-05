@@ -1070,7 +1070,6 @@ export class PaytimeIntegrationService {
         error?.response?.status === 404;
 
       if (isNotFound) {
-        // Se ainda PENDENTE, marcar como CANCELADA
         if (transacao.status === StatusTransacao.PENDENTE) {
           transacao.status = StatusTransacao.CANCELADA;
           transacao.observacoes = 'Transação expirada/não encontrada no Paytime';
