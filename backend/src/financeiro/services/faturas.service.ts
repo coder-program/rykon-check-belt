@@ -422,28 +422,37 @@ export class FaturasService {
     return await query.getCount();
   }
 
-  async findByAluno(alunoId: string): Promise<Fatura[]> {
+  async findByAluno(alunoId: string): Promise<any[]> {
     this.logger.log(`🔍 Buscando faturas para aluno: ${alunoId}`);
     
     const faturas = await this.faturaRepository.find({
       where: { aluno_id: alunoId },
-      relations: ['aluno', 'aluno.unidade', 'assinatura', 'assinatura.plano'],
+      relations: ['aluno', 'aluno.unidade', 'assinatura', 'assinatura.plano', 'transacoes'],
       order: { data_vencimento: 'DESC' },
     });
     
     this.logger.log(`📄 Encontradas ${faturas.length} faturas para o aluno ${alunoId}`);
     
-    if (faturas.length > 0) {
-      faturas.forEach((f, idx) => {
-        this.logger.log(
-          `  ${idx + 1}. ${f.numero_fatura} - ${f.status} - R$ ${f.valor_total} - Venc: ${f.data_vencimento}`
-        );
-      });
-    } else {
-      this.logger.warn(`⚠️ Nenhuma fatura encontrada para o aluno ${alunoId}`);
-    }
-    
-    return faturas;
+    // Mapear adicionando card_info da transação confirmada de cartão (se houver)
+    return faturas.map((f) => {
+      const transacaoCartao = (f.transacoes || []).find(
+        (t) =>
+          t.metodo_pagamento === 'CARTAO' ||
+          t.metodo_pagamento === 'CARTAO_CREDITO' ||
+          t.paytime_payment_type === 'CREDIT' ||
+          t.paytime_payment_type === 'DEBIT',
+      );
+      const cardInfo = transacaoCartao?.paytime_metadata
+        ? {
+            brand: transacaoCartao.paytime_metadata.brand_name || null,
+            last4: transacaoCartao.paytime_metadata.last4_digits || null,
+            holder: transacaoCartao.paytime_metadata.holder_name || null,
+          }
+        : null;
+
+      const { transacoes, ...rest } = f as any;
+      return { ...rest, card_info: cardInfo };
+    });
   }
 
   async parcelarFatura(

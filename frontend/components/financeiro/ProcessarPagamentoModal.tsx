@@ -316,6 +316,7 @@ export default function ProcessarPagamentoModal({
           },
           body: JSON.stringify({
             faturaId: fatura?.id,
+            dueDate: fatura?.data_vencimento, // Usar a data de vencimento da fatura
           }),
         }
       );
@@ -370,6 +371,7 @@ export default function ProcessarPagamentoModal({
           body: JSON.stringify({
             ...dadosCompletos,
             faturaId: fatura?.id,
+            dueDate: fatura?.data_vencimento, // Usar a data de vencimento da fatura
           }),
         }
       );

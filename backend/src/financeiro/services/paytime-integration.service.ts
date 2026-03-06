@@ -665,6 +665,21 @@ export class PaytimeIntegrationService {
           }
         }
 
+        // Verificar se a data de vencimento do boleto no Paytime bate com a da fatura
+        const dueDateEsperado = dto.dueDate || dayjs(fatura.data_vencimento as any).format('YYYY-MM-DD');
+        const dueDateBoleto = paytimeBoleto.expiration_at
+          ? dayjs(paytimeBoleto.expiration_at).format('YYYY-MM-DD')
+          : null;
+        if (dueDateBoleto && dueDateBoleto !== dueDateEsperado) {
+          this.logger.warn(
+            `⚠️ Boleto ${transacaoExistente.paytime_transaction_id} tem vencimento ${dueDateBoleto} mas fatura exige ${dueDateEsperado} — Cancelando para recriar com data correta`,
+          );
+          transacaoExistente.status = StatusTransacao.CANCELADA;
+          transacaoExistente.observacoes = `Vencimento incorreto (${dueDateBoleto} ≠ ${dueDateEsperado}) — recriado com data correta`;
+          await this.transacaoRepository.save(transacaoExistente);
+          continue;
+        }
+
         // Se o boleto está válido (PENDING ou PROCESSING recente com/sem dados), retornar
         if (
           paytimeBoleto.status === 'PENDING' ||
@@ -742,9 +757,22 @@ export class PaytimeIntegrationService {
     const transacaoSalva = await this.transacaoRepository.save(transacao);
 
     try {
-      // 4. Calcular data de vencimento (padrão: +3 dias úteis)
+      // 4. Calcular data de vencimento
+      // Se a data enviada for passada (fatura atrasada), gera +3 dias úteis a partir de hoje
+      const today = dayjs().tz('America/Sao_Paulo').startOf('day');
+      const dueDateFromDto = dto.dueDate
+        ? dayjs.tz(dto.dueDate, 'America/Sao_Paulo').startOf('day')
+        : null;
       const dueDate =
-        dto.dueDate || this.calcularDataVencimentoBoleto(dayjs().tz('America/Sao_Paulo').toDate(), 3);
+        dueDateFromDto && !dueDateFromDto.isBefore(today)
+          ? dto.dueDate
+          : this.calcularDataVencimentoBoleto(dayjs().tz('America/Sao_Paulo').toDate(), 3);
+
+      if (dueDateFromDto && dueDateFromDto.isBefore(today)) {
+        this.logger.warn(
+          `⚠️ Data de vencimento da fatura (${dto.dueDate}) está no passado — gerando boleto com +3 dias úteis: ${dueDate}`,
+        );
+      }
 
       // 4.5. Buscar dados para o boleto (com fallback para responsável)
       const dadosBoleto = this.obterDadosParaBoleto(fatura.aluno);
@@ -797,7 +825,6 @@ export class PaytimeIntegrationService {
       );
 
       // Calcular limit_date do desconto (5 dias antes do vencimento) — omitir se já passou
-      const today = dayjs().tz('America/Sao_Paulo').startOf('day');
       const discountLimitDate = dayjs(dueDate).tz('America/Sao_Paulo').subtract(5, 'day').startOf('day');
       const discountBlock = discountLimitDate.isBefore(today)
         ? undefined
@@ -808,8 +835,23 @@ export class PaytimeIntegrationService {
           };
 
       // 5. Chamar Paytime para criar boleto
+      const amountCentavos = Math.round(parseFloat(fatura.valor_total as any) * 100);
+
+      if (amountCentavos < 100) {
+        const valorFormatado = (amountCentavos / 100).toLocaleString('pt-BR', {
+          style: 'currency',
+          currency: 'BRL',
+        });
+        this.logger.error(
+          `❌ Valor da fatura abaixo do mínimo para boleto: ${amountCentavos} centavos (fatura ${fatura.id}, valor_total=${fatura.valor_total})`,
+        );
+        throw new BadRequestException(
+          `O valor desta fatura (${valorFormatado}) é inferior ao mínimo exigido pela operadora para boleto (R$ 1,00). Entre em contato com a administração para corrigir o valor da fatura.`,
+        );
+      }
+
       const boletoData = {
-        amount: Math.round(fatura.valor_total * 100), // Converter para centavos
+        amount: amountCentavos, // Converter para centavos
         expiration: dueDate, // Data de vencimento no formato YYYY-MM-DD
         payment_limit_date: paymentLimitDate, // Data limite para pagamento
         recharge: false,
@@ -1460,7 +1502,7 @@ export class PaytimeIntegrationService {
 
     // 7. Agora tentar gerar o boleto novamente
     return this.processarPagamentoBoleto(
-      { faturaId: dto.faturaId },
+      { faturaId: dto.faturaId, dueDate: dto.dueDate },
       userId,
     );
   }

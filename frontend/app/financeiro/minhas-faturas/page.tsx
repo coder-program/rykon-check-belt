@@ -31,19 +31,24 @@ interface Fatura {
   numero_fatura: string;
   descricao?: string;
   valor_original?: number | string;
-  valor_total?: number; // Para compatibilidade com ProcessarPagamentoModal
+  valor_total?: number;
   valor_pago?: number | string;
   status: "PENDENTE" | "PAGA" | "ATRASADA" | "CANCELADA";
   data_vencimento: string;
   data_pagamento?: string;
   metodo_pagamento?: string;
   observacoes?: string;
+  card_info?: {
+    brand?: string | null;  // ex: "MASTERCARD", "VISA", "ELO"
+    last4?: string | null;
+    holder?: string | null;
+  } | null;
   assinatura?: {
     plano?: {
       nome: string;
       tipo?: string;
     };
-    metodo_pagamento?: string; // Método de pagamento da assinatura
+    metodo_pagamento?: string;
   };
 }
 
@@ -53,7 +58,7 @@ export default function MinhasFaturas() {
   const [loading, setLoading] = useState(true);
   const [faturaParaPagar, setFaturaParaPagar] = useState<Fatura | null>(null);
   const [modalPagamentoOpen, setModalPagamentoOpen] = useState(false);
-  const [faturasComPagamentoPendente, setFaturasComPagamentoPendente] = useState<Set<string>>(new Set());
+  const [faturasComPagamentoPendente, setFaturasComPagamentoPendente] = useState<Map<string, { metodo: string; temBarcode: boolean }>>(new Map());
   const [alertVencimentoDismissed, setAlertVencimentoDismissed] = useState(false);
   const [alertVencidaDismissed, setAlertVencidaDismissed] = useState(false);
 
@@ -132,7 +137,7 @@ export default function MinhasFaturas() {
         .map(f => f.id);
       
       if (faturaIds.length === 0) {
-        setFaturasComPagamentoPendente(new Set());
+        setFaturasComPagamentoPendente(new Map());
         return;
       }
 
@@ -151,10 +156,14 @@ export default function MinhasFaturas() {
           (t: any) => t.fatura_id && faturaIds.includes(t.fatura_id)
         );
 
-        const faturasComPendente = new Set(
-          transacoesDasFaturas.map((t: any) => t.fatura_id)
-        );
-        setFaturasComPagamentoPendente(faturasComPendente as Set<string>);
+        const mapaFaturas = new Map<string, { metodo: string; temBarcode: boolean }>();
+        for (const t of transacoesDasFaturas) {
+          mapaFaturas.set(t.fatura_id, {
+            metodo: t.metodo_pagamento || "",
+            temBarcode: !!(t.paytime_metadata?.barcode || t.paytime_metadata?.digitable_line),
+          });
+        }
+        setFaturasComPagamentoPendente(mapaFaturas);
 
         // Sincronizar status de todos os pagamentos pendentes com o Paytime automaticamente.
         // Garante que pagamentos feitos externamente (sem webhook chegando no backend) sejam detectados.
@@ -429,56 +438,141 @@ export default function MinhasFaturas() {
                     ""
                   ).toUpperCase();
 
-                  const metodoBadge = metodo === "PIX" ? (
-                    <Badge className="bg-green-100 text-green-800 gap-1 font-normal">
-                      <QrCode className="h-3 w-3" /> Pix
-                    </Badge>
-                  ) : metodo === "CARTAO_CREDITO" || metodo === "CARTAO" ? (
-                    <Badge className="bg-blue-100 text-blue-800 gap-1 font-normal">
-                      <CreditCard className="h-3 w-3" /> Cartão
-                    </Badge>
-                  ) : metodo === "BOLETO" ? (
-                    <Badge className="bg-orange-100 text-orange-800 gap-1 font-normal">
-                      <Landmark className="h-3 w-3" /> Boleto
-                    </Badge>
-                  ) : metodo === "DINHEIRO" ? (
-                    <Badge className="bg-emerald-100 text-emerald-800 gap-1 font-normal">
-                      <Banknote className="h-3 w-3" /> Dinheiro
-                    </Badge>
-                  ) : metodo === "TRANSFERENCIA" ? (
-                    <Badge className="bg-purple-100 text-purple-800 gap-1 font-normal">
-                      <Wallet className="h-3 w-3" /> Transferência
-                    </Badge>
-                  ) : metodo ? (
-                    <Badge className="bg-gray-100 text-gray-700 font-normal">{metodo}</Badge>
-                  ) : null;
+                  const metodoBadge = (() => {
+                    // Badge de cartão: mostra bandeira + últimos 4 dígitos
+                    if (metodo === "CARTAO_CREDITO" || metodo === "CARTAO") {
+                      const brand = (fatura.card_info?.brand || "").toUpperCase();
+                      const last4 = fatura.card_info?.last4;
+
+                      const BrandIcon = () => {
+                        if (brand === "MASTERCARD" || brand === "MASTER") return (
+                          <svg viewBox="0 0 38 24" width="38" height="24" xmlns="http://www.w3.org/2000/svg" style={{borderRadius:3}}>
+                            <rect width="38" height="24" rx="3" fill="#252525"/>
+                            <circle cx="15" cy="12" r="7" fill="#EB001B"/>
+                            <circle cx="23" cy="12" r="7" fill="#F79E1B"/>
+                            <path d="M19 6.8a7 7 0 0 1 0 10.4A7 7 0 0 1 19 6.8z" fill="#FF5F00"/>
+                          </svg>
+                        );
+                        if (brand === "VISA") return (
+                          <svg viewBox="0 0 38 24" width="38" height="24" xmlns="http://www.w3.org/2000/svg" style={{borderRadius:3}}>
+                            <rect width="38" height="24" rx="3" fill="#1A1F71"/>
+                            <text x="5" y="17" fontFamily="Arial" fontWeight="bold" fontSize="13" fill="white" letterSpacing="1">VISA</text>
+                          </svg>
+                        );
+                        if (brand === "ELO") return (
+                          <svg viewBox="0 0 38 24" width="38" height="24" xmlns="http://www.w3.org/2000/svg" style={{borderRadius:3}}>
+                            <rect width="38" height="24" rx="3" fill="#000"/>
+                            <text x="5" y="17" fontFamily="Arial" fontWeight="bold" fontSize="14" fill="#FFD700" letterSpacing="0.5">elo</text>
+                          </svg>
+                        );
+                        if (brand === "AMEX" || brand === "AMERICAN_EXPRESS") return (
+                          <svg viewBox="0 0 38 24" width="38" height="24" xmlns="http://www.w3.org/2000/svg" style={{borderRadius:3}}>
+                            <rect width="38" height="24" rx="3" fill="#2E77BC"/>
+                            <text x="3" y="16" fontFamily="Arial" fontWeight="bold" fontSize="9" fill="white">AMEX</text>
+                          </svg>
+                        );
+                        if (brand === "HIPERCARD") return (
+                          <svg viewBox="0 0 38 24" width="38" height="24" xmlns="http://www.w3.org/2000/svg" style={{borderRadius:3}}>
+                            <rect width="38" height="24" rx="3" fill="#B3131F"/>
+                            <text x="2" y="16" fontFamily="Arial" fontWeight="bold" fontSize="8.5" fill="white">HIPER</text>
+                          </svg>
+                        );
+                        return <CreditCard className="h-4 w-4 text-blue-600" />;
+                      };
+
+                      return (
+                        <div className="flex items-center gap-1.5">
+                          <BrandIcon />
+                          <span className="text-xs text-gray-700 font-mono">
+                            {last4 ? `•••• ${last4}` : "Cartão"}
+                          </span>
+                        </div>
+                      );
+                    }
+                    if (metodo === "PIX") return (
+                      <Badge className="bg-green-100 text-green-800 gap-1 font-normal">
+                        <QrCode className="h-3 w-3" /> Pix
+                      </Badge>
+                    );
+                    if (metodo === "BOLETO") return (
+                      <Badge className="bg-orange-100 text-orange-800 gap-1 font-normal">
+                        <Landmark className="h-3 w-3" /> Boleto
+                      </Badge>
+                    );
+                    if (metodo === "DINHEIRO") return (
+                      <Badge className="bg-emerald-100 text-emerald-800 gap-1 font-normal">
+                        <Banknote className="h-3 w-3" /> Dinheiro
+                      </Badge>
+                    );
+                    if (metodo === "TRANSFERENCIA") return (
+                      <Badge className="bg-purple-100 text-purple-800 gap-1 font-normal">
+                        <Wallet className="h-3 w-3" /> Transferência
+                      </Badge>
+                    );
+                    return metodo ? <Badge className="bg-gray-100 text-gray-700 font-normal">{metodo}</Badge> : null;
+                  })();
 
                   return (
                     <tr key={fatura.id} className="border-b hover:bg-gray-50 transition-colors">
                       {/* Nº Fatura */}
                       <td className="px-4 py-3 font-mono text-xs text-gray-700">
                         {fatura.numero_fatura}
-                        {faturasComPagamentoPendente.has(fatura.id) && (
-                          <div className="mt-1">
-                            <Badge className="bg-blue-100 text-blue-800 gap-1 text-[10px]">
-                              <Loader2 className="h-2.5 w-2.5 animate-spin" />
-                              Processando
-                            </Badge>
-                          </div>
-                        )}
+                        {faturasComPagamentoPendente.has(fatura.id) && (() => {
+                          const info = faturasComPagamentoPendente.get(fatura.id)!;
+                          const éBoleto = info.metodo === "BOLETO";
+                          if (éBoleto && info.temBarcode) {
+                            return (
+                              <div className="mt-1">
+                                <Badge className="bg-orange-100 text-orange-800 gap-1 text-[10px]">
+                                  <Landmark className="h-2.5 w-2.5" />
+                                  Boleto gerado
+                                </Badge>
+                              </div>
+                            );
+                          }
+                          if (éBoleto && !info.temBarcode) {
+                            return (
+                              <div className="mt-1">
+                                <Badge className="bg-blue-100 text-blue-800 gap-1 text-[10px]">
+                                  <Loader2 className="h-2.5 w-2.5 animate-spin" />
+                                  Gerando boleto...
+                                </Badge>
+                              </div>
+                            );
+                          }
+                          // PIX ou outros
+                          return (
+                            <div className="mt-1">
+                              <Badge className="bg-blue-100 text-blue-800 gap-1 text-[10px]">
+                                <Loader2 className="h-2.5 w-2.5 animate-spin" />
+                                Processando
+                              </Badge>
+                            </div>
+                          );
+                        })()}
                       </td>
 
                       {/* Plano / Descrição */}
                       <td className="px-4 py-3 text-gray-800">
                         {fatura.assinatura?.plano?.nome ? (
-                          <span>
-                            {fatura.assinatura.plano.nome}
-                            {fatura.assinatura.plano.tipo && (
-                              <span className="ml-1 text-xs text-gray-400">
-                                ({fatura.assinatura.plano.tipo})
-                              </span>
-                            )}
-                          </span>
+                          <div className="flex flex-col gap-0.5">
+                            <span className="font-medium">{fatura.assinatura.plano.nome}</span>
+                            {fatura.assinatura.plano.tipo && (() => {
+                              const periodoMap: Record<string, { label: string; color: string }> = {
+                                MENSAL:    { label: "Mensal",    color: "bg-blue-100 text-blue-700" },
+                                TRIMESTRAL:{ label: "Trimestral",color: "bg-cyan-100 text-cyan-700" },
+                                SEMESTRAL: { label: "Semestral", color: "bg-purple-100 text-purple-700" },
+                                ANUAL:     { label: "Anual",     color: "bg-green-100 text-green-700" },
+                                AVULSO:    { label: "Avulso",    color: "bg-gray-100 text-gray-600" },
+                              };
+                              const cfg = periodoMap[fatura.assinatura!.plano!.tipo!] ?? { label: fatura.assinatura!.plano!.tipo!, color: "bg-gray-100 text-gray-600" };
+                              return (
+                                <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold w-fit ${cfg.color}`}>
+                                  {cfg.label}
+                                </span>
+                              );
+                            })()}
+                          </div>
                         ) : (
                           <span className="text-gray-500">{fatura.descricao || "—"}</span>
                         )}

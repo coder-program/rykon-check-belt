@@ -41,4 +41,8 @@ export class CompletarDadosBoletoDto {
   @IsNotEmpty({ message: 'ID da fatura é obrigatório' })
   @IsString()
   faturaId: string;
+
+  @IsOptional()
+  @IsString()
+  dueDate?: string; // Data de vencimento no formato YYYY-MM-DD
 }
