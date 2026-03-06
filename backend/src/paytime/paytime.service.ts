@@ -2161,6 +2161,14 @@ export class PaytimeService {
 
     const data = await response.json();
     this.logger.debug(`✅ Autenticação IDPAY concluída - resposta: ${JSON.stringify(data)}`);
+    
+    // 💳 Capturar card_token da resposta do POST authenticate (se present)
+    const cardTokenFromAuth = data.card_token || null;
+    if (cardTokenFromAuth) {
+      this.logger.log(`🔑 [IDPAY] card_token recebido do POST authenticate: ${cardTokenFromAuth.substring(0, 20)}...`);
+    } else {
+      this.logger.warn(`⚠️ [IDPAY] card_token não presente na resposta do POST authenticate`);
+    }
 
     // ⚡ CRÍTICO: Paytime gera NOVO ID após autenticação IDPAY — salvar no banco imediatamente
     const finalTransactionId = data.new_transaction_id || data.transaction_id || transactionId;
@@ -2291,13 +2299,14 @@ export class PaytimeService {
               }
 
               // Salvar token e dados_pagamento na assinatura (se disponíveis)
-              if (fatura?.assinatura_id && (lastTxCardData?.last4_digits || lastTxCardData?.token)) {
+              const meta = transacao.paytime_metadata as any;
+              if (fatura?.assinatura_id && (lastTxCardData?.last4_digits || lastTxCardData?.token || cardTokenFromAuth || meta?.last4_digits)) {
                 try {
-                  const cardToken = lastTxCardData?.token || null;
+                  const cardToken = cardTokenFromAuth || lastTxCardData?.token || null;
                   const dadosPagamento = {
-                    last4: lastTxCardData?.last4_digits || lastTxCardData?.last4 || null,
-                    brand: lastTxCardData?.brand_name || lastTxCardData?.brand || null,
-                    holder_name: lastTxCardData?.holder_name || null,
+                    last4: lastTxCardData?.last4_digits || lastTxCardData?.last4 || meta?.last4_digits || null,
+                    brand: lastTxCardData?.brand_name || lastTxCardData?.brand || meta?.brand_name || null,
+                    holder_name: lastTxCardData?.holder_name || meta?.holder_name || null,
                     tokenized_at: new Date().toISOString(),
                   };
                   if (cardToken) {

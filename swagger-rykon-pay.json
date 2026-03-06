@@ -546,6 +546,15 @@
               "example": "6839f1aeb5567b9f32ba1a",
               "type": "string"
             }
+          },
+          {
+            "name": "establishment_id",
+            "required": true,
+            "in": "header",
+            "description": "ID do estabelecimento (obrigatório para consulta via Paytime)",
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -1720,7 +1729,7 @@
     },
     "/api/transactions/split/pre": {
       "get": {
-        "description": "\nLista todas as regras de Split Pré configuradas para um estabelecimento específico.\n\n**🎯 O que é Split Pré?**\n\nSplit Pré são regras pré-configuradas de divisão automática de valores que são aplicadas **automaticamente**\nna criação da transação, sem necessidade de enviar o objeto `split` no payload.\n\n**Diferenças entre os tipos de Split:**\n\n| Tipo | Configuração | Aplicação | Flexibilidade |\n|------|--------------|-----------|---------------|\n| **Split na Transação** | Via API (objeto split no payload) | Caso a caso | Alta - cada transação pode ter regras diferentes |\n| **Split Pós-Transação** | Via API (endpoints dedicados) | Manual, após criação | Média - ajustes operacionais pontuais |\n| **Split Pré** | Painel Paytime | Automática | Baixa - regras pré-definidas sempre aplicadas |\n\n**✅ Vantagens do Split Pré:**\n\n- 🤖 **Automático:** não requer lógica no código cliente\n- 📋 **Centralizado:** configurado no painel Paytime\n- 🔄 **Consistente:** mesmas regras para todas as transações que atendem critérios\n- 🛡️ **Seguro:** não depende de payload correto na API\n\n**🔍 Informações Retornadas:**\n\nPara cada regra, você recebe:\n- **ID único** da regra\n- **Título descritivo** configurado\n- **Modalidade:** ALL, CREDIT, DEBIT, PIX\n- **Canal:** ALL, CHIP, TAP, SMART, ONLINE\n- **Tipo de divisão:** PERCENTAGE ou CURRENCY\n- **Parcelas:** número de parcelas (quando modalidade CREDIT)\n- **Status:** ativa (1) ou inativa (0)\n- **Metadados:** número de estabelecimentos participantes ativos\n\n**📊 Casos de Uso:**\n\n**1. Auditoria e Validação:**\n```typescript\n// Verificar se regra específica está ativa\nconst { data } = await api.get('/api/transactions/split/pre', {\n  headers: { establishment_id: '123456' }\n});\n\nconst pixRule = data.find(rule =>\n  rule.modality === 'PIX' && rule.active === 1\n);\nconsole.log('Regra PIX ativa:', pixRule);\n```\n\n**2. Dashboard de Configurações:**\n```typescript\n// Exibir lista de regras no painel\nconst { data, total } = await api.get('/api/transactions/split/pre', {\n  headers: { establishment_id: '123456' }\n});\n\ndata.forEach(rule => {\n  console.log(`${rule.title}: ${rule.__meta__.ecs_count} participantes`);\n});\n```\n\n**3. Detecção de Conflitos:**\n```typescript\n// Verificar se há múltiplas regras para mesma modalidade/canal\nconst creditOnlineRules = data.filter(r =>\n  r.modality === 'CREDIT' && r.channel === 'ONLINE' && r.active === 1\n);\n\nif (creditOnlineRules.length > 1) {\n  console.warn('Conflito detectado: múltiplas regras ativas');\n}\n```\n\n**⚠️ Observações Importantes:**\n\n- ⏱️ Regras só são aplicadas quando critérios (modalidade, canal, parcelas) são atendidos\n- 🔒 Configuração feita **apenas via painel Paytime** (não via API)\n- 📋 É possível ter múltiplas regras desde que não sejam conflitantes\n- ✅ Para detalhes completos de uma regra específica, use GET /api/transactions/split/pre/:splitId\n\n**📖 Campos da Resposta:**\n\n**Paginação:**\n- `total`: número total de regras encontradas\n- `perPage`: registros por página (padrão: 20)\n- `page`: página atual\n- `lastPage`: última página disponível\n\n**Cada Regra (data[]):**\n- `id`: identificador único\n- `title`: nome descritivo\n- `modality`: modalidade (ALL/CREDIT/DEBIT/PIX)\n- `channel`: canal (ALL/CHIP/TAP/SMART/ONLINE)\n- `division`: tipo (PERCENTAGE/CURRENCY)\n- `installment`: parcelas (quando CREDIT)\n- `establishment_id`: EC principal\n- `active`: status (1=ativo, 0=inativo)\n- `__meta__.ecs_count`: total de participantes ativos\n    ",
+        "description": "\nLista todas as regras de Split Pré configuradas para um estabelecimento específico.\n\n**🎯 O que é Split Pré?**\n\nSplit Pré são regras pré-configuradas de divisão automática de valores que são aplicadas **automaticamente**\nna criação da transação, sem necessidade de enviar o objeto `split` no payload.\n\n**Diferenças entre os tipos de Split:**\n\n| Tipo | Configuração | Aplicação | Flexibilidade |\n|------|--------------|-----------|---------------|\n| **Split na Transação** | Via API (objeto split no payload) | Caso a caso | Alta - cada transação pode ter regras diferentes |\n| **Split Pós-Transação** | Via API (endpoints dedicados) | Manual, após criação | Média - ajustes operacionais pontuais |\n| **Split Pré** | Painel Paytime | Automática | Baixa - regras pré-definidas sempre aplicadas |\n\n**✅ Vantagens do Split Pré:**\n\n- 🤖 **Automático:** não requer lógica no código cliente\n- 📋 **Centralizado:** configurado no painel Paytime\n- 🔄 **Consistente:** mesmas regras para todas as transações que atendem critérios\n- 🛡️ **Seguro:** não depende de payload correto na API\n\n**🔍 Informações Retornadas:**\n\nPara cada regra, você recebe:\n- **ID único** da regra\n- **Título descritivo** configurado\n- **Modalidade:** ALL, CREDIT, DEBIT, PIX\n- **Canal:** ALL, CHIP, TAP, SMART, ONLINE\n- **Tipo de divisão:** PERCENTAGE ou CURRENCY\n- **Parcelas:** número de parcelas (quando modalidade CREDIT)\n- **Status:** ativa (1) ou inativa (0)\n- **Metadados:** número de estabelecimentos participantes ativos\n\n**📊 Casos de Uso:**\n\n**1. Auditoria e Validação:**\n```typescript\n// Verificar se regra específica está ativa\nconst { data } = await api.get('/api/transactions/split/pre', {\n  headers: { establishment_id: '123456' }\n});\n\nconst pixRule = data.find(rule =>\n  rule.modality === 'PIX' && rule.active === 1\n);\n```\n\n**2. Dashboard de Configurações:**\n```typescript\n// Exibir lista de regras no painel\nconst { data, total } = await api.get('/api/transactions/split/pre', {\n  headers: { establishment_id: '123456' }\n});\n\ndata.forEach(rule => {\n  console.log(`${rule.title}: ${rule.__meta__.ecs_count} participantes`);\n});\n```\n\n**3. Detecção de Conflitos:**\n```typescript\n// Verificar se há múltiplas regras para mesma modalidade/canal\nconst creditOnlineRules = data.filter(r =>\n  r.modality === 'CREDIT' && r.channel === 'ONLINE' && r.active === 1\n);\n\nif (creditOnlineRules.length > 1) {\n  console.warn('Conflito detectado: múltiplas regras ativas');\n}\n```\n\n**⚠️ Observações Importantes:**\n\n- ⏱️ Regras só são aplicadas quando critérios (modalidade, canal, parcelas) são atendidos\n- 🔒 Configuração feita **apenas via painel Paytime** (não via API)\n- 📋 É possível ter múltiplas regras desde que não sejam conflitantes\n- ✅ Para detalhes completos de uma regra específica, use GET /api/transactions/split/pre/:splitId\n\n**📖 Campos da Resposta:**\n\n**Paginação:**\n- `total`: número total de regras encontradas\n- `perPage`: registros por página (padrão: 20)\n- `page`: página atual\n- `lastPage`: última página disponível\n\n**Cada Regra (data[]):**\n- `id`: identificador único\n- `title`: nome descritivo\n- `modality`: modalidade (ALL/CREDIT/DEBIT/PIX)\n- `channel`: canal (ALL/CHIP/TAP/SMART/ONLINE)\n- `division`: tipo (PERCENTAGE/CURRENCY)\n- `installment`: parcelas (quando CREDIT)\n- `establishment_id`: EC principal\n- `active`: status (1=ativo, 0=inativo)\n- `__meta__.ecs_count`: total de participantes ativos\n    ",
         "operationId": "TransactionsController_listSplitPreRules",
         "parameters": [
           {
@@ -2410,7 +2419,7 @@
     },
     "/api/antifraud/threeds/{id}/authenticate": {
       "post": {
-        "description": "\n**Envia o resultado da autenticação 3DS para a Paytime.**\n\nEste endpoint deve ser chamado **após** o SDK PagBank retornar o resultado da autenticação.\n\n### 📋 Quando Chamar?\n\nDepois que o método `PagSeguro.authenticate3DS()` retornar sucesso com um dos status:\n- `AUTH_FLOW_COMPLETED`\n- `AUTH_NOT_SUPPORTED`\n- `CHANGE_PAYMENT_METHOD`\n\n### 🔄 Fluxo Completo\n\n1. **Frontend chama SDK** `PagSeguro.authenticate3DS()`\n2. **SDK retorna resultado** com `id`, `status`, `authentication_status`\n3. **Frontend chama este endpoint** enviando o resultado\n4. **Backend envia para Paytime** via POST /v1/marketplace/transactions/:id/antifraud-auth\n5. **Paytime processa autenticação**\n6. **Novo ID pode ser retornado** (usar para consultas futuras)\n\n### 🆔 Novo ID da Transação\n\n**Importante:** Após autenticação 3DS bem-sucedida:\n- **Sem antifraude:** ID permanece o mesmo\n- **Com antifraude:** Novo ID é retornado no campo `new_transaction_id`\n\nUse sempre o **novo ID** (se fornecido) para consultas e operações futuras.\n\n### 💡 Exemplo de Uso\n\n```javascript\n// 1. SDK retorna resultado\nPagSeguro.authenticate3DS(request).then(result => {\n  // result contém: { id, status, authentication_status }\n\n  // 2. Enviar para backend\n  fetch('/api/antifraud/threeds/681258717903c84441e0e823/authenticate', {\n    method: 'POST',\n    headers: {\n      'Content-Type': 'application/json',\n      'establishment_id': '1234'\n    },\n    body: JSON.stringify({\n      id: result.id,\n      status: result.status,\n      authentication_status: result.authentication_status\n    })\n  })\n  .then(response => response.json())\n  .then(data => {\n    console.log('Autenticado:', data);\n    // Usar data.new_transaction_id se fornecido\n    const transactionId = data.new_transaction_id || data.transaction_id;\n    console.log('ID final da transação:', transactionId);\n  });\n});\n```\n\n### ⚠️ Tratamento de Erros\n\nSe o SDK retornar erro, ainda assim você pode tentar enviar:\n- `status: CHANGE_PAYMENT_METHOD`\n- `authentication_status: NOT_AUTHENTICATED`\n\nIsso permite que a Paytime tome decisão sobre prosseguir ou não.\n    ",
+        "description": "\n**Envia o resultado da autenticação 3DS para a Paytime.**\n\nEste endpoint deve ser chamado **após** o SDK PagBank retornar o resultado da autenticação.\n\n### 📋 Quando Chamar?\n\nDepois que o método `PagSeguro.authenticate3DS()` retornar sucesso com um dos status:\n- `AUTH_FLOW_COMPLETED`\n- `AUTH_NOT_SUPPORTED`\n- `CHANGE_PAYMENT_METHOD`\n\n### 🔄 Fluxo Completo\n\n1. **Frontend chama SDK** `PagSeguro.authenticate3DS()`\n2. **SDK retorna resultado** com `id`, `status`, `authentication_status`\n3. **Frontend chama este endpoint** enviando o resultado\n4. **Backend envia para Paytime** via POST /v1/marketplace/transactions/:id/antifraud-auth\n5. **Paytime processa autenticação**\n6. **Novo ID pode ser retornado** (usar para consultas futuras)\n\n### 🆔 Novo ID da Transação\n\n**Importante:** Após autenticação 3DS bem-sucedida:\n- **Sem antifraude:** ID permanece o mesmo\n- **Com antifraude:** Novo ID é retornado no campo `new_transaction_id`\n\nUse sempre o **novo ID** (se fornecido) para consultas e operações futuras.\n\n### 💡 Exemplo de Uso\n\n```javascript\n// 1. SDK retorna resultado\nPagSeguro.authenticate3DS(request).then(result => {\n  // result contém: { id, status, authentication_status }\n\n  // 2. Enviar para backend\n  fetch('/api/antifraud/threeds/681258717903c84441e0e823/authenticate', {\n    method: 'POST',\n    headers: {\n      'Content-Type': 'application/json',\n      'establishment_id': '1234'\n    },\n    body: JSON.stringify({\n      id: result.id,\n      status: result.status,\n      authentication_status: result.authentication_status\n    })\n  })\n  .then(response => response.json())\n  .then(data => {\n    // Usar data.new_transaction_id se fornecido\n    const transactionId = data.new_transaction_id || data.transaction_id;\n  });\n});\n```\n\n### ⚠️ Tratamento de Erros\n\nSe o SDK retornar erro, ainda assim você pode tentar enviar:\n- `status: CHANGE_PAYMENT_METHOD`\n- `authentication_status: NOT_AUTHENTICATED`\n\nIsso permite que a Paytime tome decisão sobre prosseguir ou não.\n    ",
         "operationId": "ThreeDSController_authenticate3DS",
         "parameters": [
           {
@@ -2563,7 +2572,7 @@
     },
     "/api/antifraud/idpay/{id}/authenticate": {
       "post": {
-        "description": "\n**Envia o resultado da autenticação biométrica IDPAY para a Paytime.**\n\nEste endpoint deve ser chamado **após** o SDK Unico retornar o resultado no callback `onFinish`.\n\n### 📋 Quando Chamar?\n\nDepois que o método `IDPaySDK.open()` invocar o callback `onFinish` com `type === 'FINISH'`:\n\n```javascript\nIDPaySDK.open({\n  transactionId,\n  token,\n  onFinish: (transaction, type) => {\n    if (type === 'FINISH') {\n      // ✅ Chamar este endpoint aqui\n      fetch('/api/antifraud/idpay/' + transactionId + '/authenticate', {\n        method: 'POST',\n        headers: {\n          'Content-Type': 'application/json',\n          'establishment_id': '1234'\n        },\n        body: JSON.stringify({\n          concluded: transaction.concluded,\n          capture_concluded: transaction.captureConcluded\n        })\n      });\n    } else if (type === 'ERROR') {\n      // ❌ Erro no fluxo IDPAY\n      console.error('IDPAY falhou');\n    }\n  }\n});\n```\n\n### 🔄 Fluxo Completo\n\n1. **Frontend abre SDK** `IDPaySDK.open()`\n2. **Usuário completa biometria** (selfie, documento, prova de vida)\n3. **SDK retorna resultado** via callback `onFinish`\n4. **Frontend chama este endpoint** com `concluded` e `capture_concluded`\n5. **Backend envia para Paytime** via POST /v1/marketplace/transactions/:id/antifraud-auth\n6. **Paytime processa autenticação**\n7. **Novo ID pode ser retornado** (usar para consultas futuras)\n\n### 🆔 Novo ID da Transação\n\n**Importante:** Após autenticação IDPAY bem-sucedida:\n- **Sem antifraude:** ID permanece o mesmo\n- **Com antifraude:** Novo ID é retornado no campo `new_transaction_id`\n\nUse sempre o **novo ID** (se fornecido) para consultas e operações futuras.\n\n### 📊 Campos do Body\n\n| Campo | Tipo | Descrição |\n|-------|------|-----------|\n| `concluded` | boolean | Se o fluxo de verificação foi concluído com sucesso |\n| `capture_concluded` | boolean | Se a captura biométrica foi realizada corretamente |\n\nAmbos os campos vêm do objeto `transaction` retornado pelo SDK:\n- `transaction.concluded`\n- `transaction.captureConcluded` (converter para snake_case)\n\n### 💡 Exemplo de Uso\n\n```typescript\n// 1. SDK retorna resultado\nIDPaySDK.open({\n  transactionId: antifraudId, // antifraud_id (passado internamente ao SDK)\n  token,\n  onFinish: async (transaction, type) => {\n    if (type === 'FINISH') {\n      // 2. Enviar para backend (path = transaction._id; body inclui antifraud_id como \"id\")\n      const response = await fetch(\n        '/api/antifraud/idpay/681258717903c84441e0e823/authenticate', // 681... = transaction._id\n        {\n          method: 'POST',\n          headers: {\n            'Content-Type': 'application/json',\n            'establishment_id': '1234'\n          },\n          body: JSON.stringify({\n            id: antifraudId,  // antifraud_id do array antifraud\n            concluded: transaction.concluded,\n            capture_concluded: transaction.captureConcluded\n          })\n        }\n      );\n\n      const data = await response.json();\n      console.log('Autenticação IDPAY:', data);\n\n      // 3. Usar novo ID se fornecido\n      const finalId = data.new_transaction_id || data.transaction_id;\n      console.log('ID final:', finalId);\n    } else if (type === 'ERROR') {\n      // Fluxo interrompido por erro\n      console.error('Erro no IDPAY');\n      // Pode tentar novamente ou usar outra forma de pagamento\n    }\n  }\n});\n```\n\n### ⚠️ Tratamento de Erros\n\nSe `type === 'ERROR'`:\n- **Não chamar** este endpoint\n- Transação permanece `PENDING`\n- **Pode tentar novamente** abrindo SDK novamente\n- Ou **oferecer outra forma** de pagamento\n\n### 🔒 Webhook\n\nApós autenticação bem-sucedida:\n- Status da transação é atualizado\n- **Webhook é disparado** (se configurado)\n- Use webhook para atualizar status no seu sistema\n    ",
+        "description": "\n**Envia o resultado da autenticação biométrica IDPAY para a Paytime.**\n\nEste endpoint deve ser chamado **após** o SDK Unico retornar o resultado no callback `onFinish`.\n\n### 📋 Quando Chamar?\n\nDepois que o método `IDPaySDK.open()` invocar o callback `onFinish` com `type === 'FINISH'`:\n\n```javascript\nIDPaySDK.open({\n  transactionId,\n  token,\n  onFinish: (transaction, type) => {\n    if (type === 'FINISH') {\n      // ✅ Chamar este endpoint aqui\n      fetch('/api/antifraud/idpay/' + transactionId + '/authenticate', {\n        method: 'POST',\n        headers: {\n          'Content-Type': 'application/json',\n          'establishment_id': '1234'\n        },\n        body: JSON.stringify({\n          concluded: transaction.concluded,\n          capture_concluded: transaction.captureConcluded\n        })\n      });\n    } else if (type === 'ERROR') {\n      // ❌ Erro no fluxo IDPAY\n      console.error('IDPAY falhou');\n    }\n  }\n});\n```\n\n### 🔄 Fluxo Completo\n\n1. **Frontend abre SDK** `IDPaySDK.open()`\n2. **Usuário completa biometria** (selfie, documento, prova de vida)\n3. **SDK retorna resultado** via callback `onFinish`\n4. **Frontend chama este endpoint** com `concluded` e `capture_concluded`\n5. **Backend envia para Paytime** via POST /v1/marketplace/transactions/:id/antifraud-auth\n6. **Paytime processa autenticação**\n7. **Novo ID pode ser retornado** (usar para consultas futuras)\n\n### 🆔 Novo ID da Transação\n\n**⚠️ AÇÃO OBRIGATÓRIA:** Após autenticação IDPAY bem-sucedida:\n- **Se `new_transaction_id` for retornado:** Você **DEVE** atualizar o ID no seu banco de dados\n- **O ID original deixa de ser válido** no Paytime após a autenticação\n- **Consultas futuras** com o ID antigo retornarão **404 Not Found**\n- **Se `card_token` for retornado:** Armazene-o para one-click pay em cobranças futuras\n\n```typescript\n// IMPLEMENTAÇÃO OBRIGATÓRIA:\nconst response = await authenticateIDPay(...);\n\nif (response.new_transaction_id) {\n  // ⚡ ATUALIZAR NO BANCO!\n  await db.transaction.update({\n    where: { paytime_id: response.transaction_id },\n    data: { paytime_id: response.new_transaction_id }\n  });\n}\n\nif (response.card_token) {\n  // 💳 SALVAR PARA ONE-CLICK PAY!\n  await db.user.update({ data: { card_token: response.card_token } });\n}\n```\n\n**Sem essa atualização, suas transações ficarão inacessíveis!**\n\n### 📊 Campos do Body\n\n| Campo | Tipo | Descrição |\n|-------|------|-----------|\n| `concluded` | boolean | Se o fluxo de verificação foi concluído com sucesso |\n| `capture_concluded` | boolean | Se a captura biométrica foi realizada corretamente |\n\nAmbos os campos vêm do objeto `transaction` retornado pelo SDK:\n- `transaction.concluded`\n- `transaction.captureConcluded` (converter para snake_case)\n\n### 💡 Exemplo de Uso\n\n```typescript\n// 1. SDK retorna resultado\nIDPaySDK.open({\n  transactionId: antifraudId, // antifraud_id (passado internamente ao SDK)\n  token,\n  onFinish: async (transaction, type) => {\n    if (type === 'FINISH') {\n      // 2. Enviar para backend (path = transaction._id; body inclui antifraud_id como \"id\")\n      const response = await fetch(\n        '/api/antifraud/idpay/681258717903c84441e0e823/authenticate', // 681... = transaction._id\n        {\n          method: 'POST',\n          headers: {\n            'Content-Type': 'application/json',\n            'establishment_id': '1234'\n          },\n          body: JSON.stringify({\n            id: antifraudId,  // antifraud_id do array antifraud\n            concluded: transaction.concluded,\n            capture_concluded: transaction.captureConcluded\n          })\n        }\n      );\n\n      const data = await response.json();\n\n      // 3. ⚠️ CRÍTICO: Salvar novo ID se fornecido\n      if (data.new_transaction_id) {\n        await database.updateTransactionId(\n          data.transaction_id,\n          data.new_transaction_id\n        );\n      }\n\n      // 4. 💳 Salvar token do cartão para one-click pay futuro\n      if (data.card_token) {\n        await database.saveCardToken(userId, data.card_token);\n        // Use este token em cobranças futuras: card: { token: data.card_token }\n      }\n\n      const finalId = data.new_transaction_id || data.transaction_id;\n    } else if (type === 'ERROR') {\n      // Fluxo interrompido por erro\n      console.error('Erro no IDPAY');\n      // Pode tentar novamente ou usar outra forma de pagamento\n    }\n  }\n});\n```\n\n### ⚠️ Tratamento de Erros\n\nSe `type === 'ERROR'`:\n- **Não chamar** este endpoint\n- Transação permanece `PENDING`\n- **Pode tentar novamente** abrindo SDK novamente\n- Ou **oferecer outra forma** de pagamento\n\n### 🔒 Webhook\n\nApós autenticação bem-sucedida:\n- Status da transação é atualizado\n- **Webhook é disparado** (se configurado)\n- Use webhook para atualizar status no seu sistema\n    ",
         "operationId": "IDPayController_authenticateIDPay",
         "parameters": [
           {
@@ -2584,6 +2593,22 @@
             "schema": {
               "type": "string",
               "example": "1234"
+            }
+          },
+          {
+            "name": "origin",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "referer",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
             }
           }
         ],
@@ -2626,14 +2651,15 @@
         },
         "responses": {
           "200": {
-            "description": "Autenticação IDPAY processada com sucesso",
+            "description": "Autenticação IDPAY processada com sucesso. ⚠️ IMPORTANTE: Se new_transaction_id estiver presente, você DEVE atualizar o ID no seu banco. O ID original deixa de ser válido. 💳 Se card_token estiver presente, armazene-o para habilitar one-click pay em cobranças futuras.",
             "schema": {
               "example": {
                 "message": "Autenticação IDPAY processada com sucesso",
                 "transaction_id": "681258717903c84441e0e823",
                 "concluded": true,
                 "capture_concluded": true,
-                "new_transaction_id": "681258717903c84441e0e999"
+                "new_transaction_id": "681258717903c84441e0e999",
+                "card_token": "6ed0cc99bbf3a2fa68f45cc55df7ec96501b02af64d081c08e12235794069928167ca"
               }
             },
             "content": {
@@ -2652,6 +2678,32 @@
           }
         },
         "summary": "Autenticar Transação IDPAY",
+        "tags": [
+          "Antifraud (IDPAY)"
+        ]
+      }
+    },
+    "/api/antifraud/idpay/report-sdk-error": {
+      "post": {
+        "description": "Registra no servidor erros retornados pelo SDK Unico no frontend. Use quando o SDK retornar eventos como \"invalidToken\" ou \"Domain not allowed\". Gera logs de evidência em produção comprovando que o erro é originado na Unico, não no rykon-pay.",
+        "operationId": "IDPayController_reportSDKError",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReportSDKErrorDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Erro registrado. Logs gerados no servidor com análise da causa raiz."
+          }
+        },
+        "summary": "Reportar erro do SDK Unico/IDPAY",
         "tags": [
           "Antifraud (IDPAY)"
         ]
@@ -9490,8 +9542,13 @@
           },
           "new_transaction_id": {
             "type": "string",
-            "description": "Novo ID da transação (se houve mudança após autenticação)",
+            "description": "⚠️ CRÍTICO: Novo ID da transação retornado pelo Paytime após autenticação IDPAY. Se este campo estiver presente, você DEVE atualizar o transaction_id no seu banco de dados. O ID original deixa de ser válido e consultas futuras devem usar este novo ID. Não fazer isso resultará em erro 404 ao buscar a transação.",
             "example": "681258717903c84441e0e999"
+          },
+          "card_token": {
+            "type": "string",
+            "description": "Token do cartão gerado pela Paytime após autenticação IDPAY concluída. Presente somente quando create_token: true foi enviado na criação da transação e a autenticação antifraude foi aprovada. Armazene este token para uso em cobranças futuras sem redigitar os dados do cartão (one-click pay).",
+            "example": "6ed0cc99bbf3a2fa68f45cc55df7ec96501b02af64d081c08e12235794069928167ca"
           }
         },
         "required": [
@@ -9499,6 +9556,45 @@
           "transaction_id",
           "concluded",
           "capture_concluded"
+        ]
+      },
+      "ReportSDKErrorDto": {
+        "type": "object",
+        "properties": {
+          "event_name": {
+            "type": "string",
+            "description": "Nome do evento retornado pelo SDK Unico (ex: invalidToken, domainNotAllowed)",
+            "example": "invalidToken"
+          },
+          "domain": {
+            "type": "string",
+            "description": "Domínio atual da página onde o SDK foi carregado",
+            "example": "https://teamcruz.rykonfit.com.br"
+          },
+          "transaction_id": {
+            "type": "string",
+            "description": "ID da transação que estava sendo autenticada",
+            "example": "973a4ef1-777b-4759-b2eb-714b9eee4800"
+          },
+          "unico_host": {
+            "type": "string",
+            "description": "Host Unico retornado pelo SDK (ex: https://idpay.unico.io)",
+            "example": "https://idpay.unico.io"
+          },
+          "sdk_version": {
+            "type": "string",
+            "description": "Versão do SDK Unico em uso",
+            "example": "2.1.2"
+          },
+          "error_message": {
+            "type": "string",
+            "description": "Mensagem de erro retornada pelo SDK",
+            "example": "Domain not allowed"
+          }
+        },
+        "required": [
+          "event_name",
+          "domain"
         ]
       },
       "LiquidationMetaDto": {

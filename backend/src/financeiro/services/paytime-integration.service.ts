@@ -1758,13 +1758,23 @@ export class PaytimeIntegrationService {
       assinatura.unidade_id,
     );
 
-    // 3. Buscar dados do aluno (pode não estar em relations)
+    // 3. Buscar dados do aluno (com endereço, se disponível)
     if (!fatura.aluno && fatura.aluno_id) {
       const aluno = await this.alunoRepository.findOne({
         where: { id: fatura.aluno_id },
+        relations: ['endereco'],
       });
       if (aluno) {
         fatura.aluno = aluno;
+      }
+    } else if (fatura.aluno && !fatura.aluno.endereco && fatura.aluno.endereco_id) {
+      // Carregar endereço se não veio nas relations
+      const aluno = await this.alunoRepository.findOne({
+        where: { id: fatura.aluno.id },
+        relations: ['endereco'],
+      });
+      if (aluno?.endereco) {
+        fatura.aluno.endereco = aluno.endereco;
       }
     }
 
@@ -1787,19 +1797,34 @@ export class PaytimeIntegrationService {
     const transacaoSalva = await this.transacaoRepository.save(transacao);
 
     try {
+      const client: Record<string, unknown> = {
+        first_name: fatura.aluno.nome_completo.split(' ')[0],
+        last_name: fatura.aluno.nome_completo.split(' ').slice(1).join(' ') || 'Cliente',
+        document: fatura.aluno.cpf?.replace(/\D/g, ''),
+        phone: fatura.aluno.telefone?.replace(/\D/g, '') || '00000000000',
+        email: fatura.aluno.email || `aluno${fatura.aluno_id}@teamcruz.com`,
+      };
+
+      // Incluir endereço se disponível (exigido pelo swagger para cobranças CREDIT)
+      const end = fatura.aluno.endereco;
+      if (end?.cep) {
+        client.address = {
+          street: end.logradouro || 'Rua não informada',
+          number: end.numero || 'S/N',
+          neighborhood: end.bairro || 'Bairro não informado',
+          city: end.cidade || 'Cidade não informada',
+          state: end.estado || 'XX',
+          zip_code: end.cep.replace(/\D/g, ''),
+        };
+      }
+
       // 5. Criar payload SOMENTE COM TOKEN
       const paymentData = {
         payment_type: 'CREDIT',
         amount: Math.round(fatura.valor_total * 100),
         installments: 1,
         interest: 'ESTABLISHMENT',
-        client: {
-          first_name: fatura.aluno.nome_completo.split(' ')[0],
-          last_name: fatura.aluno.nome_completo.split(' ').slice(1).join(' ') || 'Cliente',
-          document: fatura.aluno.cpf?.replace(/\D/g, ''),
-          phone: fatura.aluno.telefone?.replace(/\D/g, '') || '00000000000',
-          email: fatura.aluno.email || `aluno${fatura.aluno_id}@teamcruz.com`,
-        },
+        client,
         card: {
           token: assinatura.token_cartao, // ← SÓ O TOKEN, SEM DADOS DO CARTÃO
         },

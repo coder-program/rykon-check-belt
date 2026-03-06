@@ -442,6 +442,16 @@ export class FaturasService {
       .getMany();
     this.logger.debug(`🔑 Assinaturas com token para aluno ${alunoId}: ${assinaturasComToken.length} | tokens: ${assinaturasComToken.map(a => a.token_cartao?.substring(0,8)).join(',')}`);
     const assinaturaComToken = assinaturasComToken[0] ?? null;
+
+    // Buscar assinaturas com dados_pagamento (para exibir info do cartão mesmo sem token)
+    const assinaturasComDados = await this.assinaturaRepository
+      .createQueryBuilder('a')
+      .select(['a.id', 'a.token_cartao', 'a.dados_pagamento'])
+      .where('a.aluno_id = :alunoId', { alunoId })
+      .andWhere('a.dados_pagamento IS NOT NULL')
+      .orderBy('a.updated_at', 'DESC')
+      .getMany();
+    const assinaturaComDados = assinaturasComDados[0] ?? null;
     
     // Log das assinaturas carregadas via relação nas faturas
     faturas.forEach(f => {
@@ -471,11 +481,13 @@ export class FaturasService {
       const tokenNaAssinatura = !!(f.assinatura?.token_cartao);
       const tokenSalvo = tokenNaAssinatura || !!assinaturaComToken;
 
-      // dados_pagamento: preferir da assinatura da fatura, fallback para a que tem token
+      // dados_pagamento: preferir da assinatura da fatura, depois qualquer assinatura com dados
       const dadosPgto = (f.assinatura as any)?.dados_pagamento
         || (assinaturaComToken as any)?.dados_pagamento
+        || (assinaturaComDados as any)?.dados_pagamento
         || null;
-      const cardInfoAssinatura = tokenSalvo && dadosPgto
+      // Mostrar card info sempre que tiver dados_pagamento (mesmo sem token)
+      const cardInfoAssinatura = dadosPgto
         ? {
             brand: dadosPgto.brand || dadosPgto.brand_name || null,
             last4: dadosPgto.last4 || dadosPgto.last4_digits || null,
