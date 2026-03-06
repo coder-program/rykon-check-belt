@@ -20,7 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Edit, XCircle, DollarSign, Loader2 } from "lucide-react";
+import { Plus, Edit, XCircle, DollarSign, Loader2, QrCode, CreditCard, Landmark, Banknote, Wallet } from "lucide-react";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 
 interface Plano {
@@ -426,6 +426,32 @@ export default function Planos() {
     ).length;
   };
 
+  const getMetodosPlano = (planoId: string): string[] => {
+    return [...new Set(
+      assinaturas
+        .filter((a) => a.plano_id === planoId && a.status === "ATIVA")
+        .map((a) => a.metodo_pagamento)
+        .filter(Boolean)
+    )] as string[];
+  };
+
+  const metodoBadge = (metodo: string) => {
+    const map: Record<string, { label: string; color: string; Icon: React.ElementType }> = {
+      PIX:            { label: "PIX",     color: "bg-green-100 text-green-800",   Icon: QrCode },
+      BOLETO:         { label: "Boleto",  color: "bg-orange-100 text-orange-800", Icon: Landmark },
+      CARTAO_CREDITO: { label: "Cartão",  color: "bg-blue-100 text-blue-800",    Icon: CreditCard },
+      CARTAO:         { label: "Cartão",  color: "bg-blue-100 text-blue-800",    Icon: CreditCard },
+      DINHEIRO:       { label: "Dinheiro",color: "bg-emerald-100 text-emerald-800", Icon: Banknote },
+      TRANSFERENCIA:  { label: "Transfer.",color: "bg-purple-100 text-purple-800", Icon: Wallet },
+    };
+    const cfg = map[metodo] ?? { label: metodo, color: "bg-gray-100 text-gray-700", Icon: Wallet };
+    return (
+      <span key={metodo} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${cfg.color}`}>
+        <cfg.Icon className="h-3 w-3" />{cfg.label}
+      </span>
+    );
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -482,188 +508,139 @@ export default function Planos() {
         </Card>
       )}
 
-      {/* Grid de Planos */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredPlanos.map((plano) => (
-          <Card
-            key={plano.id}
-            className={
-              !plano.ativo
-                ? "border-2 border-red-300 bg-gray-50 opacity-75"
-                : ""
-            }
-          >
-            <CardHeader>
-              <div className="flex justify-between items-start">
-                <div className="flex-1">
-                  <CardTitle
-                    className={`text-xl ${!plano.ativo ? "text-gray-500" : ""}`}
-                  >
-                    {plano.nome}
-                    {!plano.ativo && (
-                      <span className="text-red-600 ml-2">(Inativo)</span>
-                    )}
-                  </CardTitle>
-                  <div className="flex gap-2 mt-2">
-                    {getTipoBadge(plano.tipo)}
-                    {!plano.ativo && (
-                      <Badge className="bg-red-100 text-red-800 border border-red-300">
-                        🚫 Indisponível
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleEdit(plano)}
-                  >
-                    <Edit className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleDelete(plano.id)}
-                    title="Inativar plano"
-                  >
-                    <XCircle className="h-4 w-4 text-orange-600" />
-                  </Button>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* Preço */}
-              <div className="text-center py-4 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg">
-                <p className="text-3xl font-bold">
-                  {formatCurrency(plano.valor)}
-                </p>
-                <p className="text-sm mt-1">
-                  {getPeriodoTexto(plano.tipo, plano.duracao_dias)}
-                </p>
-              </div>
-
-              {/* Descrição */}
-              {plano.descricao && (
-                <div>
-                  <p className="text-sm text-gray-600">{plano.descricao}</p>
-                </div>
-              )}
-
-              {/* Benefícios */}
-              {plano.beneficios && (
-                <div>
-                  <p className="text-sm font-medium text-gray-700 mb-2">
-                    Benefícios:
-                  </p>
-                  <div className="space-y-1">
-                    {plano.beneficios.split("\n").map((beneficio, index) => (
-                      <p
-                        key={index}
-                        className="text-sm text-gray-600 flex items-start"
-                      >
-                        <span className="text-green-600 mr-2">✓</span>
-                        {beneficio}
-                      </p>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Limite de Alunos */}
-              {plano.max_alunos && (
-                <div className="pt-2 border-t">
-                  {(() => {
-                    const alunosAtivos = contarAlunosAtivos(plano.id);
-                    const percentualOcupacao =
-                      (alunosAtivos / plano.max_alunos) * 100;
-                    const corStatus =
-                      percentualOcupacao >= 100
-                        ? "text-red-600"
-                        : percentualOcupacao >= 80
-                        ? "text-orange-600"
-                        : "text-green-600";
-
-                    return (
-                      <div>
-                        <p className="text-sm text-gray-600 mb-1">
-                          Máximo de {plano.max_alunos} aluno(s)
+      {/* Tabela de Planos */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Planos ({filteredPlanos.length})</CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b bg-gray-50 text-gray-600 text-xs uppercase tracking-wide">
+                  <th className="px-4 py-3 text-left">Nome</th>
+                  <th className="px-4 py-3 text-left">Tipo</th>
+                  <th className="px-4 py-3 text-left">Unidade</th>
+                  <th className="px-4 py-3 text-right">Valor</th>
+                  <th className="px-4 py-3 text-center">Duração</th>
+                  <th className="px-4 py-3 text-center">Alunos</th>
+                  <th className="px-4 py-3 text-left">Pagamento</th>
+                  <th className="px-4 py-3 text-left">Descrição</th>
+                  <th className="px-4 py-3 text-center">Status</th>
+                  <th className="px-4 py-3 text-center">Ações</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {filteredPlanos.map((plano) => {
+                  const alunosAtivos = contarAlunosAtivos(plano.id);
+                  const ocupacaoPercent = plano.max_alunos
+                    ? (alunosAtivos / plano.max_alunos) * 100
+                    : null;
+                  return (
+                    <tr
+                      key={plano.id}
+                      className={`hover:bg-gray-50 transition-colors ${!plano.ativo ? "opacity-60" : ""}`}
+                    >
+                      <td className="px-4 py-3 font-semibold text-gray-900">
+                        {plano.nome}
+                      </td>
+                      <td className="px-4 py-3">
+                        {getTipoBadge(plano.tipo)}
+                      </td>
+                      <td className="px-4 py-3 text-gray-600 text-xs">
+                        {plano.unidade_nome ? (
+                          <span className="text-blue-600 font-medium">📍 {plano.unidade_nome}</span>
+                        ) : "—"}
+                      </td>
+                      <td className="px-4 py-3 text-right font-bold text-gray-900">
+                        {formatCurrency(plano.valor)}
+                        <p className="text-xs text-gray-400 font-normal">
+                          {getPeriodoTexto(plano.tipo, plano.duracao_dias)}
                         </p>
-                        <div className="flex items-center gap-2">
-                          <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
-                            <div
-                              className={`h-full transition-all ${
-                                percentualOcupacao >= 100
-                                  ? "bg-red-500"
-                                  : percentualOcupacao >= 80
-                                  ? "bg-orange-500"
-                                  : "bg-green-500"
-                              }`}
-                              style={{
-                                width: `${Math.min(percentualOcupacao, 100)}%`,
-                              }}
-                            />
+                      </td>
+                      <td className="px-4 py-3 text-center text-gray-600 text-xs">
+                        {plano.duracao_dias} dias
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        {plano.max_alunos ? (
+                          <div className="flex flex-col items-center gap-1">
+                            <span className={`text-xs font-semibold ${
+                              ocupacaoPercent! >= 100 ? "text-red-600" :
+                              ocupacaoPercent! >= 80 ? "text-orange-600" : "text-green-600"
+                            }`}>
+                              {alunosAtivos}/{plano.max_alunos}
+                            </span>
+                            <div className="w-16 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                              <div
+                                className={`h-full rounded-full ${
+                                  ocupacaoPercent! >= 100 ? "bg-red-500" :
+                                  ocupacaoPercent! >= 80 ? "bg-orange-500" : "bg-green-500"
+                                }`}
+                                style={{ width: `${Math.min(ocupacaoPercent!, 100)}%` }}
+                              />
+                            </div>
                           </div>
-                          <span
-                            className={`text-sm font-semibold ${corStatus}`}
-                          >
-                            {alunosAtivos}/{plano.max_alunos}
-                          </span>
-                        </div>
-                        {percentualOcupacao >= 100 && (
-                          <p className="text-xs text-red-600 font-medium mt-1">
-                            ⚠️ Plano completo
-                          </p>
+                        ) : (
+                          <span className="text-xs text-gray-400">Ilimitado</span>
                         )}
-                        {percentualOcupacao >= 80 &&
-                          percentualOcupacao < 100 && (
-                            <p className="text-xs text-orange-600 font-medium mt-1">
-                              ⚡ Poucas vagas restantes
-                            </p>
-                          )}
-                      </div>
-                    );
-                  })()}
-                </div>
-              )}
-
-              {/* Informações Extras */}
-              <div className="pt-2 border-t text-xs text-gray-500 space-y-1">
-                <p>
-                  Duração:{" "}
-                  {TIPOS_PLANO.find((t) => t.value === plano.tipo)?.label ||
-                    plano.duracao_dias + " dias"}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex flex-wrap gap-1">
+                          {getMetodosPlano(plano.id).length > 0
+                            ? getMetodosPlano(plano.id).map((m) => metodoBadge(m))
+                            : <span className="text-xs text-gray-400">—</span>}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-gray-500 text-xs max-w-[200px] truncate">
+                        {plano.descricao || "—"}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        {plano.ativo ? (
+                          <Badge className="bg-green-100 text-green-800">Ativo</Badge>
+                        ) : (
+                          <Badge className="bg-red-100 text-red-800">Inativo</Badge>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center justify-center gap-1">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleEdit(plano)}
+                            title="Editar"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleDelete(plano.id)}
+                            title="Inativar"
+                          >
+                            <XCircle className="h-4 w-4 text-orange-600" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+            {filteredPlanos.length === 0 && (
+              <div className="text-center py-12 text-gray-500">
+                <DollarSign className="h-16 w-16 mx-auto mb-4 text-gray-300" />
+                <p className="text-lg font-medium">
+                  {planos.length === 0 ? "Nenhum plano cadastrado" : "Nenhum plano encontrado para esta unidade"}
                 </p>
-                {plano.unidade_nome && (
-                  <p className="text-blue-600 font-medium">
-                    📍 {plano.unidade_nome}
-                  </p>
-                )}
+                <Button onClick={() => setShowDialog(true)} className="mt-4">
+                  <Plus className="mr-2 h-4 w-4" />
+                  {planos.length === 0 ? "Criar Primeiro Plano" : "Novo Plano"}
+                </Button>
               </div>
-            </CardContent>
-          </Card>
-        ))}
-
-        {filteredPlanos.length === 0 && (
-          <div className="col-span-full text-center py-12 text-gray-500">
-            <DollarSign className="h-16 w-16 mx-auto mb-4 text-gray-300" />
-            <p className="text-lg font-medium">
-              {planos.length === 0
-                ? "Nenhum plano cadastrado"
-                : "Nenhum plano encontrado para esta unidade"}
-            </p>
-            <p className="text-sm mt-2">
-              {planos.length === 0
-                ? "Comece criando seu primeiro plano de assinatura"
-                : "Selecione outra unidade ou crie um novo plano"}
-            </p>
-            <Button onClick={() => setShowDialog(true)} className="mt-4">
-              <Plus className="mr-2 h-4 w-4" />
-              {planos.length === 0 ? "Criar Primeiro Plano" : "Novo Plano"}
-            </Button>
+            )}
           </div>
-        )}
-      </div>
+        </CardContent>
+      </Card>
 
       {/* Dialog de Plano */}
       <Dialog open={showDialog} onOpenChange={setShowDialog}>

@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatarData, formatarMoeda } from "@/lib/utils/dateUtils";
+import dayjs from "dayjs";
 import {
   DollarSign,
   Clock,
@@ -14,6 +15,13 @@ import {
   ArrowLeft,
   CreditCard,
   Loader2,
+  QrCode,
+  Landmark,
+  Banknote,
+  Wallet,
+  TriangleAlert,
+  X,
+  ShieldAlert,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import ProcessarPagamentoModal from "@/components/financeiro/ProcessarPagamentoModal";
@@ -46,6 +54,8 @@ export default function MinhasFaturas() {
   const [faturaParaPagar, setFaturaParaPagar] = useState<Fatura | null>(null);
   const [modalPagamentoOpen, setModalPagamentoOpen] = useState(false);
   const [faturasComPagamentoPendente, setFaturasComPagamentoPendente] = useState<Set<string>>(new Set());
+  const [alertVencimentoDismissed, setAlertVencimentoDismissed] = useState(false);
+  const [alertVencidaDismissed, setAlertVencidaDismissed] = useState(false);
 
   useEffect(() => {
     carregarMinhasFaturas();
@@ -232,6 +242,34 @@ export default function MinhasFaturas() {
       )[0],
   };
 
+  // Alertas: apenas PIX ou BOLETO
+  const isPIXouBoleto = (f: Fatura) => {
+    const m = (f.metodo_pagamento || f.assinatura?.metodo_pagamento || "").toUpperCase();
+    return m === "PIX" || m === "BOLETO";
+  };
+
+  const hoje = dayjs().startOf("day");
+  const daqui4Dias = hoje.add(4, "day");
+
+  const faturasVencendoEmBreve = faturas.filter((f) => {
+    if (f.status !== "PENDENTE") return false;
+    if (!isPIXouBoleto(f)) return false;
+    const venc = dayjs(f.data_vencimento);
+    return (venc.isSame(hoje, "day") || venc.isAfter(hoje)) && (venc.isSame(daqui4Dias, "day") || venc.isBefore(daqui4Dias));
+  });
+
+  const faturasVencidas = faturas.filter((f) => {
+    if (!isPIXouBoleto(f)) return false;
+    if (f.status === "ATRASADA" || f.status === "VENCIDA") return true;
+    // PENDENTE mas com vencimento no passado (job ainda não rodou)
+    if (f.status === "PENDENTE" && dayjs(f.data_vencimento).startOf("day").isBefore(hoje)) return true;
+    return false;
+  });
+
+  const diasParaVencer = (dataVencimento: string) => {
+    return dayjs(dataVencimento).startOf("day").diff(hoje, "day");
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -256,6 +294,63 @@ export default function MinhasFaturas() {
           <p className="text-gray-600 mt-1">Acompanhe seus pagamentos</p>
         </div>
       </div>
+
+      {/* ── Alerta: fatura vencida ─────────────────────────────── */}
+      {faturasVencidas.length > 0 && !alertVencidaDismissed && (
+        <div className="flex items-start gap-3 rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-red-900 shadow-sm">
+          <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-red-600" />
+          <div className="flex-1 text-sm">
+            <p className="font-bold text-red-700">
+              {faturasVencidas.length === 1
+                ? "Fatura vencida — risco de bloqueio de acesso!"
+                : `${faturasVencidas.length} faturas vencidas — risco de bloqueio de acesso!`}
+            </p>
+            <p className="mt-0.5 text-red-700">
+              {faturasVencidas.length === 1
+                ? `A fatura ${faturasVencidas[0].numero_fatura} (${formatarMoeda(parseFloat(faturasVencidas[0].valor_original?.toString()) || 0)}) está em atraso via ${(faturasVencidas[0].metodo_pagamento || faturasVencidas[0].assinatura?.metodo_pagamento || "PIX/Boleto").toUpperCase() === "PIX" ? "Pix" : "Boleto"}. Regularize agora para evitar a suspensão imediata do seu acesso à academia.`
+                : `Você possui ${faturasVencidas.length} faturas em atraso via Pix/Boleto. Regularize sua situação agora para evitar a suspensão do seu acesso à academia.`}
+            </p>
+          </div>
+          <button
+            onClick={() => setAlertVencidaDismissed(true)}
+            className="ml-2 rounded p-1 hover:bg-red-100 text-red-500"
+            aria-label="Fechar"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
+
+      {/* ── Alerta: vencimento próximo ────────────────────────────── */}
+      {faturasVencendoEmBreve.length > 0 && !alertVencimentoDismissed && (
+        <div className="flex items-start gap-3 rounded-lg border border-orange-300 bg-orange-50 px-4 py-3 text-orange-900 shadow-sm">
+          <TriangleAlert className="mt-0.5 h-5 w-5 shrink-0 text-orange-500" />
+          <div className="flex-1 text-sm">
+            <p className="font-bold text-orange-700">
+              {faturasVencendoEmBreve.length === 1
+                ? "Sua fatura vence em breve — não deixe para a última hora!"
+                : `${faturasVencendoEmBreve.length} faturas vencem nos próximos 4 dias!`}
+            </p>
+            <p className="mt-0.5 text-orange-700">
+              {faturasVencendoEmBreve.length === 1 ? (() => {
+                const f = faturasVencendoEmBreve[0];
+                const dias = diasParaVencer(f.data_vencimento);
+                const metodo = (f.metodo_pagamento || f.assinatura?.metodo_pagamento || "").toUpperCase() === "PIX" ? "Pix" : "Boleto";
+                return dias === 0
+                  ? `A fatura ${f.numero_fatura} (${formatarMoeda(parseFloat(f.valor_original?.toString()) || 0)}) vence HOJE via ${metodo}. Pague agora para manter seu acesso garantido.`
+                  : `A fatura ${f.numero_fatura} (${formatarMoeda(parseFloat(f.valor_original?.toString()) || 0)}) vence em ${dias} dia${dias > 1 ? "s" : ""} via ${metodo}. Realize o pagamento com antecedência para evitar contratempos.`;
+              })() : `Você tem ${faturasVencendoEmBreve.length} faturas via Pix/Boleto com vencimento nos próximos 4 dias. Pague com antecedência para manter seu acesso à academia.`}
+            </p>
+          </div>
+          <button
+            onClick={() => setAlertVencimentoDismissed(true)}
+            className="ml-2 rounded p-1 hover:bg-orange-100 text-orange-500"
+            aria-label="Fechar"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
 
       {/* Cards de Resumo */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -311,83 +406,130 @@ export default function MinhasFaturas() {
         <CardHeader>
           <CardTitle>Histórico de Faturas</CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {faturas.map((fatura) => (
-              <div
-                key={fatura.id}
-                className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 flex-wrap">
-                    <p className="font-semibold text-gray-900">
-                      {fatura.numero_fatura}
-                    </p>
-                    {getStatusBadge(fatura.status)}
-                    {/* Badge de pagamento em processamento */}
-                    {faturasComPagamentoPendente.has(fatura.id) && (
-                      <Badge className="bg-blue-100 text-blue-800">
-                        <Loader2 className="mr-1 h-3 w-3 animate-spin" />
-                        Pagamento em Processamento
-                      </Badge>
-                    )}
-                  </div>
-                  
-                  {/* Descrição/Plano */}
-                  {fatura.descricao && (
-                    <p className="text-sm font-medium text-gray-700 mt-2">
-                      {fatura.descricao}
-                    </p>
-                  )}
-                  
-                  {/* Plano da assinatura */}
-                  {fatura.assinatura?.plano?.nome && (
-                    <p className="text-sm text-blue-600 mt-1">
-                      📋 Plano: {fatura.assinatura.plano.nome}
-                      {fatura.assinatura.plano.tipo && ` (${fatura.assinatura.plano.tipo})`}
-                    </p>
-                  )}
-                  
-                  <p className="text-sm text-gray-500 mt-1">
-                    📅 Vencimento: {formatarData(fatura.data_vencimento)}
-                  </p>
-                  
-                  {fatura.status === "PAGA" && fatura.data_pagamento && (
-                    <p className="text-xs text-green-600 mt-1">
-                      ✅ Pago em {formatarData(fatura.data_pagamento)} via{" "}
-                      {fatura.metodo_pagamento}
-                    </p>
-                  )}
-                  
-                  {fatura.status !== "PAGA" && fatura.metodo_pagamento && (
-                    <p className="text-xs text-gray-500 mt-1">
-                      💳 Método: {fatura.metodo_pagamento}
-                    </p>
-                  )}
-                </div>
-                <div className="text-right">
-                {(fatura.status === "PENDENTE" ||
-                  fatura.status === "ATRASADA") && (
-                  <Button
-                    onClick={() => handlePagarOnline(fatura)}
-                    className="ml-4"
-                    variant="default"
-                  >
-                    <CreditCard className="w-4 h-4 mr-2" />
-                    Pagar Online
-                  </Button>
-                )}
-                  <p className="text-xl font-bold text-gray-900">
-                    {formatarMoeda(parseFloat(fatura.valor_original?.toString()) || 0)}
-                  </p>
-                  {fatura.status === "ATRASADA" && (
-                    <p className="text-xs text-red-600 mt-1">
-                      ⚠️ Pagamento em atraso
-                    </p>
-                  )}
-                </div>
-              </div>
-            ))}
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+                  <th className="px-4 py-3 text-left">Nº Fatura</th>
+                  <th className="px-4 py-3 text-left">Plano / Descrição</th>
+                  <th className="px-4 py-3 text-left">Status</th>
+                  <th className="px-4 py-3 text-left">Pagamento</th>
+                  <th className="px-4 py-3 text-left">Vencimento</th>
+                  <th className="px-4 py-3 text-left">Pago em</th>
+                  <th className="px-4 py-3 text-right">Valor</th>
+                  <th className="px-4 py-3 text-center">Ação</th>
+                </tr>
+              </thead>
+              <tbody>
+                {faturas.map((fatura) => {
+                  const metodo = (
+                    fatura.metodo_pagamento ||
+                    fatura.assinatura?.metodo_pagamento ||
+                    ""
+                  ).toUpperCase();
+
+                  const metodoBadge = metodo === "PIX" ? (
+                    <Badge className="bg-green-100 text-green-800 gap-1 font-normal">
+                      <QrCode className="h-3 w-3" /> Pix
+                    </Badge>
+                  ) : metodo === "CARTAO_CREDITO" || metodo === "CARTAO" ? (
+                    <Badge className="bg-blue-100 text-blue-800 gap-1 font-normal">
+                      <CreditCard className="h-3 w-3" /> Cartão
+                    </Badge>
+                  ) : metodo === "BOLETO" ? (
+                    <Badge className="bg-orange-100 text-orange-800 gap-1 font-normal">
+                      <Landmark className="h-3 w-3" /> Boleto
+                    </Badge>
+                  ) : metodo === "DINHEIRO" ? (
+                    <Badge className="bg-emerald-100 text-emerald-800 gap-1 font-normal">
+                      <Banknote className="h-3 w-3" /> Dinheiro
+                    </Badge>
+                  ) : metodo === "TRANSFERENCIA" ? (
+                    <Badge className="bg-purple-100 text-purple-800 gap-1 font-normal">
+                      <Wallet className="h-3 w-3" /> Transferência
+                    </Badge>
+                  ) : metodo ? (
+                    <Badge className="bg-gray-100 text-gray-700 font-normal">{metodo}</Badge>
+                  ) : null;
+
+                  return (
+                    <tr key={fatura.id} className="border-b hover:bg-gray-50 transition-colors">
+                      {/* Nº Fatura */}
+                      <td className="px-4 py-3 font-mono text-xs text-gray-700">
+                        {fatura.numero_fatura}
+                        {faturasComPagamentoPendente.has(fatura.id) && (
+                          <div className="mt-1">
+                            <Badge className="bg-blue-100 text-blue-800 gap-1 text-[10px]">
+                              <Loader2 className="h-2.5 w-2.5 animate-spin" />
+                              Processando
+                            </Badge>
+                          </div>
+                        )}
+                      </td>
+
+                      {/* Plano / Descrição */}
+                      <td className="px-4 py-3 text-gray-800">
+                        {fatura.assinatura?.plano?.nome ? (
+                          <span>
+                            {fatura.assinatura.plano.nome}
+                            {fatura.assinatura.plano.tipo && (
+                              <span className="ml-1 text-xs text-gray-400">
+                                ({fatura.assinatura.plano.tipo})
+                              </span>
+                            )}
+                          </span>
+                        ) : (
+                          <span className="text-gray-500">{fatura.descricao || "—"}</span>
+                        )}
+                      </td>
+
+                      {/* Status */}
+                      <td className="px-4 py-3">{getStatusBadge(fatura.status)}</td>
+
+                      {/* Método de Pagamento */}
+                      <td className="px-4 py-3">{metodoBadge ?? <span className="text-gray-400">—</span>}</td>
+
+                      {/* Vencimento */}
+                      <td className="px-4 py-3 text-gray-600">
+                        {formatarData(fatura.data_vencimento)}
+                      </td>
+
+                      {/* Pago em */}
+                      <td className="px-4 py-3 text-gray-600">
+                        {fatura.status === "PAGA" && fatura.data_pagamento
+                          ? formatarData(fatura.data_pagamento)
+                          : <span className="text-gray-400">—</span>}
+                      </td>
+
+                      {/* Valor */}
+                      <td className="px-4 py-3 text-right font-semibold text-gray-900">
+                        {formatarMoeda(parseFloat(fatura.valor_original?.toString()) || 0)}
+                        {fatura.status === "ATRASADA" && (
+                          <div className="text-[10px] text-red-500 font-normal mt-0.5">em atraso</div>
+                        )}
+                      </td>
+
+                      {/* Ação */}
+                      <td className="px-4 py-3 text-center">
+                        {(fatura.status === "PENDENTE" || fatura.status === "ATRASADA") ? (
+                          <Button
+                            size="sm"
+                            onClick={() => handlePagarOnline(fatura)}
+                          >
+                            <CreditCard className="w-3.5 h-3.5 mr-1.5" />
+                            Pagar
+                          </Button>
+                        ) : (
+                          <span className="text-gray-400">—</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+
             {faturas.length === 0 && (
               <div className="text-center py-12 text-gray-500">
                 <DollarSign className="h-16 w-16 mx-auto mb-4 text-gray-300" />

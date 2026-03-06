@@ -12,6 +12,7 @@ import * as timezone from 'dayjs/plugin/timezone';
 dayjs.extend(utc);
 dayjs.extend(timezone);
 import { Fatura, StatusFatura } from '../entities/fatura.entity';
+import { Assinatura } from '../entities/assinatura.entity';
 import {
   Transacao,
   TipoTransacao,
@@ -39,6 +40,8 @@ export class PaytimeWebhookService {
     private transacaoRepository: Repository<Transacao>,
     @InjectRepository(Fatura)
     private faturaRepository: Repository<Fatura>,
+    @InjectRepository(Assinatura)
+    private assinaturaRepository: Repository<Assinatura>,
   ) {}
 
   /**
@@ -268,6 +271,79 @@ export class PaytimeWebhookService {
     }
 
     await this.faturaRepository.save(fatura);
+
+    // Renovar assinatura automaticamente quando paga integralmente
+    if (fatura.status === StatusFatura.PAGA && fatura.assinatura_id) {
+      try {
+        const assinatura = await this.assinaturaRepository.findOne({
+          where: { id: fatura.assinatura_id },
+          relations: ['plano'],
+        });
+        if (assinatura && assinatura.plano) {
+          const duracaoDias = assinatura.plano.duracao_dias || 30;
+          const base = assinatura.data_fim
+            ? dayjs(assinatura.data_fim).tz('America/Sao_Paulo')
+            : dayjs().tz('America/Sao_Paulo');
+          const novaDataFim = base.add(duracaoDias, 'day').toDate();
+          assinatura.data_fim = novaDataFim;
+          assinatura.proxima_cobranca = dayjs(novaDataFim).subtract(5, 'day').toDate();
+          if (assinatura.status === 'EXPIRADA' || assinatura.status === 'INADIMPLENTE') {
+            assinatura.status = 'ATIVA' as any;
+          }
+          await this.assinaturaRepository.save(assinatura);
+          this.logger.log(`🔄 [Webhook] Assinatura ${assinatura.id} renovada: data_fim → ${dayjs(novaDataFim).format('DD/MM/YYYY')}`);
+
+          // Gerar fatura do próximo mês
+          try {
+            const hoje = dayjs().tz('America/Sao_Paulo');
+            const diaVenc = assinatura.dia_vencimento || 10;
+            const proximoVencimento = hoje.add(1, 'month').date(diaVenc).startOf('day').toDate();
+            const inicioProxMes = hoje.add(1, 'month').startOf('month').toDate();
+            const fimProxMes = hoje.add(1, 'month').endOf('month').toDate();
+
+            const faturaExistente = await this.faturaRepository
+              .createQueryBuilder('f')
+              .where('f.assinatura_id = :aid', { aid: assinatura.id })
+              .andWhere('f.data_vencimento >= :inicio', { inicio: inicioProxMes })
+              .andWhere('f.data_vencimento <= :fim', { fim: fimProxMes })
+              .getOne();
+
+            if (!faturaExistente) {
+              const ultimaFatura = await this.faturaRepository
+                .createQueryBuilder('f')
+                .orderBy('f.numero_fatura', 'DESC')
+                .getOne();
+              const proximoNum = ultimaFatura
+                ? parseInt(ultimaFatura.numero_fatura.split('-')[1]) + 1
+                : 1;
+              const numeroFatura = `FAT-${proximoNum.toString().padStart(6, '0')}`;
+              const mesVenc = proximoVencimento.getMonth() + 1;
+              const anoVenc = proximoVencimento.getFullYear();
+
+              await this.faturaRepository.save({
+                numero_fatura: numeroFatura,
+                assinatura_id: assinatura.id,
+                aluno_id: assinatura.aluno_id,
+                descricao: `Mensalidade - ${assinatura.plano.nome} - ${mesVenc.toString().padStart(2, '0')}/${anoVenc}`,
+                valor_original: assinatura.valor,
+                valor_desconto: 0,
+                valor_acrescimo: 0,
+                valor_total: assinatura.valor,
+                valor_pago: 0,
+                data_vencimento: proximoVencimento,
+                status: StatusFatura.PENDENTE,
+                metodo_pagamento: assinatura.metodo_pagamento,
+              });
+              this.logger.log(`📄 [Webhook] Próxima fatura gerada: ${numeroFatura} — venc. ${dayjs(proximoVencimento).format('DD/MM/YYYY')}`);
+            }
+          } catch (fErr) {
+            this.logger.error(`⚠️ [Webhook] Erro ao gerar próxima fatura: ${fErr.message}`);
+          }
+        }
+      } catch (err) {
+        this.logger.error(`⚠️ [Webhook] Erro ao renovar assinatura: ${err.message}`);
+      }
+    }
 
     this.logger.log(
       `Fatura ${fatura.numero_fatura} atualizada - Status: ${fatura.status}, Valor pago: R$ ${fatura.valor_pago}`,

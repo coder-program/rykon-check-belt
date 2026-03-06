@@ -42,6 +42,11 @@ import {
   RefreshCw,
   Eye,
   CreditCard,
+  QrCode,
+  Banknote,
+  Landmark,
+  Wallet,
+  DollarSign,
 } from "lucide-react";
 import FiltroUnidade from "@/components/financeiro/FiltroUnidade";
 import AtualizarCartaoModal from "@/components/financeiro/AtualizarCartaoModal";
@@ -807,103 +812,129 @@ export default function Assinaturas() {
         <CardHeader>
           <CardTitle>Assinaturas ({filteredAssinaturas.length})</CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {filteredAssinaturas.map((assinatura) => (
-              <div
-                key={assinatura.id}
-                className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                <div className="flex-1">
-                  <div className="flex items-center gap-3">
-                    <p className="font-semibold text-gray-900">
-                      {assinatura.aluno_nome || "Aluno N/A"}
-                    </p>
-                    {getStatusBadge(assinatura.status)}
-                  </div>
-                  <p className="text-sm text-gray-600 mt-1">
-                    Plano: {assinatura.plano_nome || "N/A"}
-                  </p>
-                  <div className="flex items-center gap-2 mt-1">
-                    <p className="text-sm text-gray-500">
-                      Início: {formatarData(assinatura.data_inicio)}
-                      {assinatura.data_fim &&
-                        ` • Fim: ${formatarData(assinatura.data_fim)}`}
-                    </p>
-                    {assinatura.data_fim &&
-                      assinatura.status === "ATIVA" &&
-                      getAlertaVencimento(assinatura.data_fim)}
-                  </div>
-                </div>
-                <div className="flex items-center gap-4">
-                  <div className="text-right">
-                    <p className="text-xl font-bold text-gray-900">
-                      {formatarMoeda(assinatura.valor_mensal)}
-                    </p>
-                    <p className="text-xs text-gray-500">/mês</p>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => {
-                        setSelectedAssinatura(assinatura);
-                        setShowDetalhesDialog(true);
-                      }}
-                      title="Ver Detalhes"
-                    >
-                      <Eye className="h-4 w-4" />
-                    </Button>
-                    {assinatura.status === "ATIVA" && (
-                      <>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleRenovar(assinatura.id)}
-                          disabled={processando}
-                          title="Renovar Assinatura"
-                        >
-                          <RefreshCw
-                            className={`h-4 w-4 ${
-                              processando ? "animate-spin" : ""
-                            }`}
-                          />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handlePausar(assinatura.id)}
-                          disabled={processando}
-                          title="Pausar Assinatura"
-                        >
-                          <PauseCircle className="h-4 w-4 text-orange-600" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleCancelar(assinatura.id)}
-                          disabled={processando}
-                          title="Cancelar Assinatura"
-                        >
-                          <XCircle className="h-4 w-4 text-red-600" />
-                        </Button>
-                      </>
-                    )}
-                    {assinatura.status === "PAUSADA" && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleReativar(assinatura.id)}
-                        disabled={processando}
-                        title="Reativar Assinatura"
-                      >
-                        <RefreshCw className="h-4 w-4 text-green-600" />
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))}
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b bg-gray-50 text-gray-600 text-xs uppercase tracking-wide">
+                  <th className="px-4 py-3 text-left">Aluno</th>
+                  <th className="px-4 py-3 text-left">Plano</th>
+                  <th className="px-4 py-3 text-left">Status</th>
+                  <th className="px-4 py-3 text-left">Pagamento</th>
+                  <th className="px-4 py-3 text-center">Dia Venc.</th>
+                  <th className="px-4 py-3 text-left">Início</th>
+                  <th className="px-4 py-3 text-left">Fim</th>
+                  <th className="px-4 py-3 text-right">Valor/mês</th>
+                  <th className="px-4 py-3 text-center">Ações</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {filteredAssinaturas.map((assinatura) => {
+                  const metodoPgto = (() => {
+                    const map: Record<string, { label: string; icon: React.ReactNode; color: string }> = {
+                      PIX: { label: "Pix", icon: <QrCode className="h-3 w-3" />, color: "bg-green-100 text-green-700" },
+                      CARTAO_CREDITO: { label: "Créd.", icon: <CreditCard className="h-3 w-3" />, color: "bg-blue-100 text-blue-700" },
+                      CARTAO_DEBITO: { label: "Déb.", icon: <CreditCard className="h-3 w-3" />, color: "bg-indigo-100 text-indigo-700" },
+                      BOLETO: { label: "Boleto", icon: <Landmark className="h-3 w-3" />, color: "bg-orange-100 text-orange-700" },
+                      DINHEIRO: { label: "Dinheiro", icon: <Banknote className="h-3 w-3" />, color: "bg-emerald-100 text-emerald-700" },
+                      TRANSFERENCIA: { label: "Transfer.", icon: <Wallet className="h-3 w-3" />, color: "bg-purple-100 text-purple-700" },
+                    };
+                    return map[(assinatura.metodo_pagamento || "").toUpperCase()] ?? { label: assinatura.metodo_pagamento || "—", icon: <DollarSign className="h-3 w-3" />, color: "bg-gray-100 text-gray-700" };
+                  })();
+                  return (
+                    <tr key={assinatura.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-4 py-3 font-medium text-gray-900">
+                        {assinatura.aluno_nome || "N/A"}
+                      </td>
+                      <td className="px-4 py-3 text-gray-600">
+                        {assinatura.plano_nome || "N/A"}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-1">
+                          {getStatusBadge(assinatura.status)}
+                          {assinatura.data_fim && assinatura.status === "ATIVA" && getAlertaVencimento(assinatura.data_fim)}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${metodoPgto.color}`}>
+                          {metodoPgto.icon}
+                          {metodoPgto.label}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-center text-gray-700 font-medium">
+                        dia {assinatura.dia_vencimento}
+                      </td>
+                      <td className="px-4 py-3 text-gray-600">
+                        {formatarData(assinatura.data_inicio)}
+                      </td>
+                      <td className="px-4 py-3 text-gray-500">
+                        {assinatura.data_fim ? formatarData(assinatura.data_fim) : "—"}
+                      </td>
+                      <td className="px-4 py-3 text-right font-bold text-gray-900">
+                        {formatarMoeda(assinatura.valor_mensal)}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center justify-center gap-1">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setSelectedAssinatura(assinatura);
+                              setShowDetalhesDialog(true);
+                            }}
+                            title="Ver Detalhes"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          {assinatura.status === "ATIVA" && (
+                            <>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleRenovar(assinatura.id)}
+                                disabled={processando}
+                                title="Renovar"
+                              >
+                                <RefreshCw className={`h-4 w-4 ${processando ? "animate-spin" : ""}`} />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handlePausar(assinatura.id)}
+                                disabled={processando}
+                                title="Pausar"
+                              >
+                                <PauseCircle className="h-4 w-4 text-orange-600" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleCancelar(assinatura.id)}
+                                disabled={processando}
+                                title="Cancelar"
+                              >
+                                <XCircle className="h-4 w-4 text-red-600" />
+                              </Button>
+                            </>
+                          )}
+                          {assinatura.status === "PAUSADA" && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleReativar(assinatura.id)}
+                              disabled={processando}
+                              title="Reativar"
+                            >
+                              <RefreshCw className="h-4 w-4 text-green-600" />
+                            </Button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
             {filteredAssinaturas.length === 0 && (
               <div className="text-center py-12 text-gray-500">
                 Nenhuma assinatura encontrada

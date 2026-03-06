@@ -445,70 +445,86 @@ export default function Extrato() {
         <CardHeader>
           <CardTitle>Transações ({transacoes.length})</CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {transacoes.map((transacao) => (
-              <div
-                key={transacao.id}
-                className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                <div className="flex items-center gap-4 flex-1">
-                  <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center">
-                    {transacao.tipo === "RECEITA" ||
-                    transacao.tipo === "ENTRADA" ? (
-                      <ArrowUpRight className="h-6 w-6 text-green-600" />
-                    ) : (
-                      <ArrowDownRight className="h-6 w-6 text-red-600" />
-                    )}
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3">
-                      {getTipoBadge(transacao.tipo)}
-                      <Badge variant="outline">{transacao.origem}</Badge>
-                      {transacao.status && getStatusBadge(transacao.status)}
-                    </div>
-                    <p className="font-semibold text-gray-900 mt-1">
-                      {transacao.descricao || "Sem descrição"}
-                    </p>
-                    {transacao.unidade_nome && (
-                      <p className="text-sm text-gray-600">
-                        🏢 Unidade: {transacao.unidade_nome}
-                      </p>
-                    )}
-                    {transacao.aluno_nome && (
-                      <p className="text-sm text-gray-600">
-                        👤 Aluno: {transacao.aluno_nome}
-                      </p>
-                    )}
-                    <p className="text-xs text-gray-500 mt-1">
-                      {formatDate(transacao.data || transacao.data_transacao)}
-                    </p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p
-                    className={`text-xl font-bold ${
-                      transacao.tipo === "RECEITA" ||
-                      transacao.tipo === "ENTRADA"
-                        ? "text-green-600"
-                        : "text-red-600"
-                    }`}
-                  >
-                    {transacao.tipo === "RECEITA" ||
-                    transacao.tipo === "ENTRADA"
-                      ? "+"
-                      : "-"}
-                    {formatCurrency(Number(transacao.valor || 0))}
-                  </p>
-                </div>
-              </div>
-            ))}
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+                  <th className="px-4 py-3 text-left">Data</th>
+                  <th className="px-4 py-3 text-left">Tipo</th>
+                  <th className="px-4 py-3 text-left">Origem</th>
+                  <th className="px-4 py-3 text-left">Descrição</th>
+                  {isFranqueado && <th className="px-4 py-3 text-left">Unidade</th>}
+                  <th className="px-4 py-3 text-left">Aluno</th>
+                  <th className="px-4 py-3 text-left">Status</th>
+                  <th className="px-4 py-3 text-right">Valor</th>
+                </tr>
+              </thead>
+              <tbody>
+                {transacoes.map((transacao) => {
+                  const isReceita =
+                    transacao.tipo === "RECEITA" || transacao.tipo === "ENTRADA";
+                  return (
+                    <tr
+                      key={transacao.id}
+                      className="border-b hover:bg-gray-50 transition-colors"
+                    >
+                      {/* Data */}
+                      <td className="px-4 py-3 text-gray-500 whitespace-nowrap text-xs">
+                        {formatDate(transacao.data || transacao.data_transacao)}
+                      </td>
+
+                      {/* Tipo */}
+                      <td className="px-4 py-3">{getTipoBadge(transacao.tipo)}</td>
+
+                      {/* Origem */}
+                      <td className="px-4 py-3">
+                        <Badge variant="outline">{transacao.origem}</Badge>
+                      </td>
+
+                      {/* Descrição */}
+                      <td className="px-4 py-3 text-gray-800">
+                        {transacao.descricao || <span className="text-gray-400">—</span>}
+                      </td>
+
+                      {/* Unidade (só franqueado) */}
+                      {isFranqueado && (
+                        <td className="px-4 py-3 text-gray-600 text-xs">
+                          {transacao.unidade_nome || <span className="text-gray-400">—</span>}
+                        </td>
+                      )}
+
+                      {/* Aluno */}
+                      <td className="px-4 py-3 text-gray-600 text-xs">
+                        {transacao.aluno_nome || <span className="text-gray-400">—</span>}
+                      </td>
+
+                      {/* Status */}
+                      <td className="px-4 py-3">
+                        {transacao.status
+                          ? getStatusBadge(transacao.status)
+                          : <span className="text-gray-400">—</span>}
+                      </td>
+
+                      {/* Valor */}
+                      <td
+                        className={`px-4 py-3 text-right font-semibold tabular-nums ${
+                          isReceita ? "text-green-600" : "text-red-600"
+                        }`}
+                      >
+                        {isReceita ? "+" : "−"}
+                        {formatCurrency(Number(transacao.valor || 0))}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+
             {transacoes.length === 0 && (
               <div className="text-center py-12 text-gray-500">
                 <Calendar className="h-16 w-16 mx-auto mb-4 text-gray-300" />
-                <p className="text-lg font-medium">
-                  Nenhuma transação encontrada
-                </p>
+                <p className="text-lg font-medium">Nenhuma transação encontrada</p>
                 <p className="text-sm mt-2">
                   Tente ajustar os filtros ou o período selecionado
                 </p>

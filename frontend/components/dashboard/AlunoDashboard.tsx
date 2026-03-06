@@ -27,8 +27,12 @@ import {
   UserPlus,
   CheckCircle2,
   CreditCard,
+  TriangleAlert,
+  ShieldAlert,
+  X,
 } from "lucide-react";
 import { getStatusGraduacao, StatusGraduacao } from "@/lib/graduacaoApi";
+import dayjs from "dayjs";
 import { http } from "@/lib/api";
 import { Modalidade } from "@/lib/peopleApi";
 import DependenteForm from "@/components/alunos/DependenteForm";
@@ -314,6 +318,9 @@ export default function AlunoDashboard({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [loadingCheckin, setLoadingCheckin] = useState<string | null>(null);
+  const [faturasDash, setFaturasDash] = useState<any[]>([]);
+  const [alertVencimentoDismissed, setAlertVencimentoDismissed] = useState(false);
+  const [alertVencidaDismissed, setAlertVencidaDismissed] = useState(false);
 
   // Seletor de modalidade (igual ao dash de gerente/franqueado)
   const modalidadeSelector = useModalidadeSelector(
@@ -329,6 +336,19 @@ export default function AlunoDashboard({
         ((m.nome ?? "").toLowerCase()).includes("jitsu") ||
         ((m.nome ?? "").toLowerCase()).includes("bjj")
       );
+
+  // Carregar faturas do aluno para exibir alertas de vencimento
+  useEffect(() => {
+    if (!resolvedAlunoId) return;
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    fetch(`${process.env.NEXT_PUBLIC_API_URL}/faturas/aluno/${resolvedAlunoId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => r.ok ? r.json() : [])
+      .then((data) => setFaturasDash(Array.isArray(data) ? data : []))
+      .catch(() => {});
+  }, [resolvedAlunoId]);
 
   // Re-buscar ranking quando modalidade selecionada mudar
   useEffect(() => {
@@ -1198,6 +1218,87 @@ export default function AlunoDashboard({
             </CardContent>
           </Card>
         )}
+
+        {/* ── Alertas de vencimento de fatura ──────────────────────────── */}
+        {(() => {
+          const isPIXouBoleto = (f: any) => {
+            const m = (f.metodo_pagamento || f.assinatura?.metodo_pagamento || "").toUpperCase();
+            return m === "PIX" || m === "BOLETO";
+          };
+          const hoje = dayjs().startOf("day");
+          const daqui4 = hoje.add(4, "day");
+
+          const vencendoEmBreve = faturasDash.filter((f) => {
+            if (f.status !== "PENDENTE") return false;
+            if (!isPIXouBoleto(f)) return false;
+            const v = dayjs(f.data_vencimento);
+            return (v.isSame(hoje, "day") || v.isAfter(hoje)) && (v.isSame(daqui4, "day") || v.isBefore(daqui4));
+          });
+          const vencidas = faturasDash.filter((f) => {
+            if (!isPIXouBoleto(f)) return false;
+            if (f.status === "ATRASADA" || f.status === "VENCIDA") return true;
+            if (f.status === "PENDENTE" && dayjs(f.data_vencimento).startOf("day").isBefore(hoje)) return true;
+            return false;
+          });
+          const diasPara = (d: string) => dayjs(d).startOf("day").diff(hoje, "day");
+          const moeda = (v: any) =>
+            new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(
+              parseFloat(v?.toString() || "0")
+            );
+
+          return (
+            <>
+              {/* Fatura vencida */}
+              {vencidas.length > 0 && !alertVencidaDismissed && (
+                <div className="flex items-start gap-3 rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-red-900 shadow-sm mb-4">
+                  <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-red-600" />
+                  <div className="flex-1 text-sm">
+                    <p className="font-bold text-red-700">
+                      {vencidas.length === 1
+                        ? "Fatura vencida — risco de bloqueio de acesso!"
+                        : `${vencidas.length} faturas vencidas — risco de bloqueio de acesso!`}
+                    </p>
+                    <p className="mt-0.5 text-red-700">
+                      {vencidas.length === 1
+                        ? `A fatura ${vencidas[0].numero_fatura} (${moeda(vencidas[0].valor_original)}) está em atraso. Regularize agora para evitar a suspensão imediata do seu acesso à academia.`
+                        : `Você possui ${vencidas.length} faturas em atraso via Pix/Boleto. Regularize sua situação agora para evitar a suspensão do acesso à academia.`}
+                    </p>
+                  </div>
+                  <button onClick={() => setAlertVencidaDismissed(true)} className="ml-2 rounded p-1 hover:bg-red-100 text-red-500" aria-label="Fechar">
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
+
+              {/* Vencimento próximo */}
+              {vencendoEmBreve.length > 0 && !alertVencimentoDismissed && (
+                <div className="flex items-start gap-3 rounded-lg border border-orange-300 bg-orange-50 px-4 py-3 text-orange-900 shadow-sm mb-4">
+                  <TriangleAlert className="mt-0.5 h-5 w-5 shrink-0 text-orange-500" />
+                  <div className="flex-1 text-sm">
+                    <p className="font-bold text-orange-700">
+                      {vencendoEmBreve.length === 1
+                        ? "Sua fatura vence em breve — não deixe para a última hora!"
+                        : `${vencendoEmBreve.length} faturas vencem nos próximos 4 dias!`}
+                    </p>
+                    <p className="mt-0.5 text-orange-700">
+                      {vencendoEmBreve.length === 1 ? (() => {
+                        const f = vencendoEmBreve[0];
+                        const dias = diasPara(f.data_vencimento);
+                        const met = (f.metodo_pagamento || f.assinatura?.metodo_pagamento || "").toUpperCase() === "PIX" ? "Pix" : "Boleto";
+                        return dias === 0
+                          ? `A fatura ${f.numero_fatura} (${moeda(f.valor_original)}) vence HOJE via ${met}. Pague agora para manter seu acesso garantido.`
+                          : `A fatura ${f.numero_fatura} (${moeda(f.valor_original)}) vence em ${dias} dia${dias > 1 ? "s" : ""} via ${met}. Pague com antecedência para evitar contratempos.`;
+                      })() : `Você tem ${vencendoEmBreve.length} faturas via Pix/Boleto vencendo nos próximos 4 dias. Pague com antecedência para manter seu acesso à academia.`}
+                    </p>
+                  </div>
+                  <button onClick={() => setAlertVencimentoDismissed(true)} className="ml-2 rounded p-1 hover:bg-orange-100 text-orange-500" aria-label="Fechar">
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
+            </>
+          );
+        })()}
 
         {/* Graduação Atual */}
         {!loading && !error && hasJiu && (

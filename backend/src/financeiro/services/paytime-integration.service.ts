@@ -1169,6 +1169,104 @@ export class PaytimeIntegrationService {
   }
 
   /**
+   * Renovar assinatura automaticamente após pagamento confirmado
+   */
+  private async renovarAssinatura(assinaturaId: string): Promise<void> {
+    try {
+      const assinatura = await this.assinaturaRepository.findOne({
+        where: { id: assinaturaId },
+        relations: ['plano'],
+      });
+
+      if (!assinatura || !assinatura.plano) return;
+
+      const duracaoDias = assinatura.plano.duracao_dias || 30;
+      const baseRenovacao = assinatura.data_fim
+        ? dayjs(assinatura.data_fim).tz('America/Sao_Paulo')
+        : dayjs().tz('America/Sao_Paulo');
+
+      const novaDataFim = baseRenovacao.add(duracaoDias, 'day').toDate();
+      assinatura.data_fim = novaDataFim;
+      assinatura.proxima_cobranca = dayjs(novaDataFim).subtract(5, 'day').toDate();
+
+      if (assinatura.status === 'EXPIRADA' || assinatura.status === 'INADIMPLENTE') {
+        assinatura.status = 'ATIVA' as any;
+      }
+
+      await this.assinaturaRepository.save(assinatura);
+      this.logger.log(
+        `🔄 Assinatura ${assinaturaId} renovada: data_fim → ${dayjs(novaDataFim).format('DD/MM/YYYY')} (+${duracaoDias} dias)`,
+      );
+
+      // Gerar fatura do próximo mês automaticamente
+      await this.gerarProximaFatura(assinatura);
+    } catch (err) {
+      this.logger.error(`⚠️ Erro ao renovar assinatura ${assinaturaId}: ${err.message}`);
+    }
+  }
+
+  private async gerarProximaFatura(assinatura: Assinatura): Promise<void> {
+    try {
+      const hoje = dayjs().tz('America/Sao_Paulo');
+      const diaVenc = assinatura.dia_vencimento || 10;
+
+      const proximoVencimento = hoje
+        .add(1, 'month')
+        .date(diaVenc)
+        .startOf('day')
+        .toDate();
+
+      const inicioProximoMes = hoje.add(1, 'month').startOf('month').toDate();
+      const fimProximoMes = hoje.add(1, 'month').endOf('month').toDate();
+
+      const faturaExistente = await this.faturaRepository
+        .createQueryBuilder('f')
+        .where('f.assinatura_id = :aid', { aid: assinatura.id })
+        .andWhere('f.data_vencimento >= :inicio', { inicio: inicioProximoMes })
+        .andWhere('f.data_vencimento <= :fim', { fim: fimProximoMes })
+        .getOne();
+
+      if (faturaExistente) {
+        this.logger.log(`ℹ️ Fatura do próximo mês já existe para assinatura ${assinatura.id} (${faturaExistente.numero_fatura})`);
+        return;
+      }
+
+      const ultimaFatura = await this.faturaRepository
+        .createQueryBuilder('f')
+        .orderBy('f.numero_fatura', 'DESC')
+        .getOne();
+      const proximoNum = ultimaFatura
+        ? parseInt(ultimaFatura.numero_fatura.split('-')[1]) + 1
+        : 1;
+      const numeroFatura = `FAT-${proximoNum.toString().padStart(6, '0')}`;
+
+      const mesVenc = proximoVencimento.getMonth() + 1;
+      const anoVenc = proximoVencimento.getFullYear();
+
+      await this.faturaRepository.save({
+        numero_fatura: numeroFatura,
+        assinatura_id: assinatura.id,
+        aluno_id: assinatura.aluno_id,
+        descricao: `Mensalidade - ${assinatura.plano.nome} - ${mesVenc.toString().padStart(2, '0')}/${anoVenc}`,
+        valor_original: assinatura.valor,
+        valor_desconto: 0,
+        valor_acrescimo: 0,
+        valor_total: assinatura.valor,
+        valor_pago: 0,
+        data_vencimento: proximoVencimento,
+        status: StatusFatura.PENDENTE,
+        metodo_pagamento: assinatura.metodo_pagamento,
+      });
+
+      this.logger.log(
+        `📄 Próxima fatura gerada automaticamente: ${numeroFatura} — venc. ${dayjs(proximoVencimento).format('DD/MM/YYYY')}`,
+      );
+    } catch (err) {
+      this.logger.error(`⚠️ [Paytime] Erro ao gerar próxima fatura para assinatura ${assinatura.id}: ${err.message}`);
+    }
+  }
+
+  /**
    * Baixar fatura após pagamento confirmado
    */
   private async baixarFatura(
@@ -1185,6 +1283,11 @@ export class PaytimeIntegrationService {
     }
 
     await this.faturaRepository.save(fatura);
+
+    // Renovar assinatura automaticamente
+    if (fatura.status === StatusFatura.PAGA && fatura.assinatura_id) {
+      await this.renovarAssinatura(fatura.assinatura_id);
+    }
 
     this.logger.log(
       `Fatura ${fatura.numero_fatura} baixada - Valor pago: R$ ${fatura.valor_pago}`,
@@ -1671,6 +1774,11 @@ export class PaytimeIntegrationService {
         fatura.data_pagamento = dayjs().tz('America/Sao_Paulo').toDate();
         fatura.valor_pago = fatura.valor_total;
         await this.faturaRepository.save(fatura);
+
+        // Renovar assinatura automaticamente
+        if (fatura.assinatura_id) {
+          await this.renovarAssinatura(fatura.assinatura_id);
+        }
         
         this.logger.log(`✅ Cobrança recorrente APROVADA - Fatura ${fatura.numero_fatura} paga`);
 

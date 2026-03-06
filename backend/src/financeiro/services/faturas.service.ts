@@ -230,9 +230,128 @@ export class FaturasService {
       criado_por: user.id,
     });
 
-    const transacaoSalva = await this.transacaoRepository.save(transacao);
+    await this.transacaoRepository.save(transacao);
+
+    // Renovar assinatura automaticamente quando fatura é paga integralmente
+    if (
+      faturaAtualizada.status === StatusFatura.PAGA &&
+      faturaAtualizada.assinatura_id
+    ) {
+      try {
+        const assinatura = await this.assinaturaRepository.findOne({
+          where: { id: faturaAtualizada.assinatura_id },
+          relations: ['plano'],
+        });
+
+        if (assinatura && assinatura.plano) {
+          const duracaoDias = assinatura.plano.duracao_dias || 30;
+
+          // Estende a partir do data_fim atual (ou hoje se já expirou)
+          const baseRenovacao = assinatura.data_fim
+            ? dayjs(assinatura.data_fim).tz('America/Sao_Paulo')
+            : dayjs().tz('America/Sao_Paulo');
+
+          const novaDataFim = baseRenovacao
+            .add(duracaoDias, 'day')
+            .toDate();
+
+          const novaProximaCobranca = dayjs(novaDataFim)
+            .subtract(5, 'day')
+            .toDate();
+
+          assinatura.data_fim = novaDataFim;
+          assinatura.proxima_cobranca = novaProximaCobranca;
+
+          // Reativar assinatura se estava expirada ou inadimplente
+          if (
+            assinatura.status === 'EXPIRADA' ||
+            assinatura.status === 'INADIMPLENTE'
+          ) {
+            assinatura.status = 'ATIVA' as any;
+          }
+
+          await this.assinaturaRepository.save(assinatura);
+
+          this.logger.log(
+            `🔄 Assinatura ${assinatura.id} renovada automaticamente: data_fim → ${dayjs(novaDataFim).format('DD/MM/YYYY')} (+${duracaoDias} dias)`,
+          );
+
+          // Gerar fatura do próximo mês
+          await this.gerarProximaFatura(assinatura);
+        }
+      } catch (err) {
+        // Não falha o pagamento por erro na renovação
+        this.logger.error(
+          `⚠️ Erro ao renovar assinatura ${faturaAtualizada.assinatura_id}: ${err.message}`,
+        );
+      }
+    }
 
     return faturaAtualizada;
+  }
+
+  private async gerarProximaFatura(assinatura: Assinatura): Promise<void> {
+    try {
+      const hoje = dayjs().tz('America/Sao_Paulo');
+      const diaVenc = assinatura.dia_vencimento || 10;
+
+      // Vencimento no próximo mês no dia configurado da assinatura
+      const proximoVencimento = hoje
+        .add(1, 'month')
+        .date(diaVenc)
+        .startOf('day')
+        .toDate();
+
+      const inicioProximoMes = hoje.add(1, 'month').startOf('month').toDate();
+      const fimProximoMes = hoje.add(1, 'month').endOf('month').toDate();
+
+      // Verificar se já existe fatura para o próximo mês
+      const faturaExistente = await this.faturaRepository
+        .createQueryBuilder('f')
+        .where('f.assinatura_id = :aid', { aid: assinatura.id })
+        .andWhere('f.data_vencimento >= :inicio', { inicio: inicioProximoMes })
+        .andWhere('f.data_vencimento <= :fim', { fim: fimProximoMes })
+        .getOne();
+
+      if (faturaExistente) {
+        this.logger.log(`ℹ️ Fatura do próximo mês já existe para assinatura ${assinatura.id} (${faturaExistente.numero_fatura})`);
+        return;
+      }
+
+      // Gerar número sequencial
+      const ultimaFatura = await this.faturaRepository
+        .createQueryBuilder('f')
+        .orderBy('f.numero_fatura', 'DESC')
+        .getOne();
+      const proximoNum = ultimaFatura
+        ? parseInt(ultimaFatura.numero_fatura.split('-')[1]) + 1
+        : 1;
+      const numeroFatura = `FAT-${proximoNum.toString().padStart(6, '0')}`;
+
+      const mesVenc = proximoVencimento.getMonth() + 1;
+      const anoVenc = proximoVencimento.getFullYear();
+
+      await this.faturaRepository.save({
+        numero_fatura: numeroFatura,
+        assinatura_id: assinatura.id,
+        aluno_id: assinatura.aluno_id,
+        descricao: `Mensalidade - ${assinatura.plano.nome} - ${mesVenc.toString().padStart(2, '0')}/${anoVenc}`,
+        valor_original: assinatura.valor,
+        valor_desconto: 0,
+        valor_acrescimo: 0,
+        valor_total: assinatura.valor,
+        valor_pago: 0,
+        data_vencimento: proximoVencimento,
+        status: StatusFatura.PENDENTE,
+        metodo_pagamento: assinatura.metodo_pagamento,
+      });
+
+      this.logger.log(
+        `📄 Próxima fatura gerada automaticamente: ${numeroFatura} — venc. ${dayjs(proximoVencimento).format('DD/MM/YYYY')}`,
+      );
+    } catch (err) {
+      this.logger.error(`⚠️ Erro ao gerar próxima fatura para assinatura ${assinatura.id}: ${err.message}`);
+    }
   }
 
   async cancelar(id: string, motivo: string): Promise<Fatura> {

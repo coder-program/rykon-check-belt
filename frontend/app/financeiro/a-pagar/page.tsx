@@ -647,80 +647,91 @@ export default function ContasAPagar() {
         </CardContent>
       </Card>
 
-      {/* Lista de Despesas */}
+      {/* Tabela de Despesas */}
       <Card>
         <CardHeader>
           <CardTitle>Despesas ({filteredDespesas.length})</CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {filteredDespesas.map((despesa) => (
-              <div
-                key={despesa.id}
-                className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                <div className="flex-1">
-                  <div className="flex items-center gap-3">
-                    <Badge variant="outline">{despesa.categoria}</Badge>
-                    {getStatusBadge(despesa.status)}
-                    {despesa.recorrencia !== "UNICA" && (
-                      <Badge className="bg-blue-100 text-blue-800">
-                        {despesa.recorrencia}
-                      </Badge>
-                    )}
-                  </div>
-                  <p className="font-semibold text-gray-900 mt-2">
-                    {despesa.descricao}
-                  </p>
-                  <p className="text-sm text-gray-500">
-                    Vencimento: {formatDate(despesa.data_vencimento)}
-                  </p>
-                </div>
-                <div className="flex items-center gap-4">
-                  <div className="text-right">
-                    <p className="text-xl font-bold text-gray-900">
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b bg-gray-50 text-gray-600 text-xs uppercase tracking-wide">
+                  <th className="px-4 py-3 text-left">Descrição</th>
+                  <th className="px-4 py-3 text-left">Categoria</th>
+                  <th className="px-4 py-3 text-left">Status</th>
+                  <th className="px-4 py-3 text-left">Recorrência</th>
+                  <th className="px-4 py-3 text-left">Vencimento</th>
+                  <th className="px-4 py-3 text-left">Pago em</th>
+                  <th className="px-4 py-3 text-right">Valor</th>
+                  <th className="px-4 py-3 text-center">Ações</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {filteredDespesas.map((despesa) => (
+                  <tr key={despesa.id} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-4 py-3 font-medium text-gray-900">
+                      {despesa.descricao}
+                    </td>
+                    <td className="px-4 py-3">
+                      <Badge variant="outline">{despesa.categoria}</Badge>
+                    </td>
+                    <td className="px-4 py-3">
+                      {getStatusBadge(despesa.status)}
+                    </td>
+                    <td className="px-4 py-3">
+                      {despesa.recorrencia && despesa.recorrencia !== "UNICA" ? (
+                        <Badge className="bg-blue-100 text-blue-800">{despesa.recorrencia}</Badge>
+                      ) : (
+                        <span className="text-gray-400 text-xs">Única</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-gray-600">
+                      {formatDate(despesa.data_vencimento)}
+                    </td>
+                    <td className="px-4 py-3 text-gray-500 text-xs">
+                      {despesa.data_pagamento ? formatDate(despesa.data_pagamento) : "—"}
+                    </td>
+                    <td className="px-4 py-3 text-right font-bold text-gray-900">
                       {formatCurrency(despesa.valor)}
-                    </p>
-                  </div>
-                  <div className="flex gap-2">
-                    {(despesa.status === "A_PAGAR" ||
-                      despesa.status === "ATRASADA") && (
-                      <Button
-                        size="sm"
-                        variant="default"
-                        className="bg-green-600 hover:bg-green-700"
-                        onClick={() => openBaixaDialog(despesa)}
-                        title="Registrar Pagamento"
-                      >
-                        <DollarSign className="h-4 w-4" />
-                      </Button>
-                    )}
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleEdit(despesa)}
-                      title="Editar Despesa"
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleDelete(despesa)}
-                      disabled={despesa.status === "PAGA"}
-                      className={
-                        despesa.status === "PAGA"
-                          ? "opacity-50 cursor-not-allowed"
-                          : ""
-                      }
-                      title="Excluir Despesa"
-                    >
-                      <Trash2 className="h-4 w-4 text-red-600" />
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            ))}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center justify-center gap-1">
+                        {(despesa.status === "A_PAGAR" || despesa.status === "ATRASADA") && (
+                          <Button
+                            size="sm"
+                            variant="default"
+                            className="bg-green-600 hover:bg-green-700"
+                            onClick={() => openBaixaDialog(despesa)}
+                            title="Registrar Pagamento"
+                          >
+                            <DollarSign className="h-4 w-4" />
+                          </Button>
+                        )}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleEdit(despesa)}
+                          title="Editar"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleDelete(despesa)}
+                          disabled={despesa.status === "PAGA"}
+                          className={despesa.status === "PAGA" ? "opacity-50 cursor-not-allowed" : ""}
+                          title="Excluir"
+                        >
+                          <Trash2 className="h-4 w-4 text-red-600" />
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
             {filteredDespesas.length === 0 && (
               <div className="text-center py-12 text-gray-500">
                 Nenhuma despesa encontrada

@@ -41,6 +41,11 @@ import {
   X,
   Plus,
   Receipt,
+  CreditCard,
+  Banknote,
+  QrCode,
+  Landmark,
+  Wallet,
 } from "lucide-react";
 import FiltroUnidade from "@/components/financeiro/FiltroUnidade";
 import { useFiltroUnidade } from "@/hooks/useFiltroUnidade";
@@ -290,6 +295,19 @@ export default function ContasAReceber() {
     return badges[status as keyof typeof badges] || null;
   };
 
+  const getMetodoPagamentoInfo = (metodo?: string) => {
+    if (!metodo) return null;
+    const map: Record<string, { label: string; icon: React.ReactNode; color: string }> = {
+      PIX: { label: "Pix", icon: <QrCode className="h-3 w-3" />, color: "bg-green-100 text-green-700" },
+      CARTAO_CREDITO: { label: "Cartão de Crédito", icon: <CreditCard className="h-3 w-3" />, color: "bg-blue-100 text-blue-700" },
+      CARTAO_DEBITO: { label: "Cartão de Débito", icon: <CreditCard className="h-3 w-3" />, color: "bg-indigo-100 text-indigo-700" },
+      BOLETO: { label: "Boleto", icon: <Landmark className="h-3 w-3" />, color: "bg-orange-100 text-orange-700" },
+      DINHEIRO: { label: "Dinheiro", icon: <Banknote className="h-3 w-3" />, color: "bg-emerald-100 text-emerald-700" },
+      TRANSFERENCIA: { label: "Transferência", icon: <Wallet className="h-3 w-3" />, color: "bg-purple-100 text-purple-700" },
+    };
+    return map[metodo.toUpperCase()] ?? { label: metodo, icon: <DollarSign className="h-3 w-3" />, color: "bg-gray-100 text-gray-700" };
+  };
+
   // Removidas - usando formatarData e formatarMoeda do dateUtils
 
   const totais = {
@@ -482,109 +500,121 @@ export default function ContasAReceber() {
         <CardHeader>
           <CardTitle>Faturas ({filteredFaturas.length})</CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {filteredFaturas.map((fatura) => (
-              <div
-                key={fatura.id}
-                className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                <div className="flex-1">
-                  <div className="flex items-center gap-3">
-                    <p className="font-semibold text-gray-900">
-                      {fatura.numero_fatura}
-                    </p>
-                    {getStatusBadge(fatura.status)}
-                  </div>
-                  <p className="text-sm text-gray-600 mt-1">
-                    Aluno: {fatura.aluno_nome || "N/A"}
-                  </p>
-                  <p className="text-sm text-gray-500">
-                    Vencimento: {formatarData(fatura.data_vencimento)}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <p className="text-xl font-bold text-gray-900">
-                    {formatarMoeda(Number(fatura.valor_original) || 0)}
-                  </p>
-                  {fatura.status === "PAGA" && fatura.data_pagamento && (
-                    <div className="mt-1 space-y-2">
-                      <p className="text-xs text-gray-500">
-                        Pago em {formatarData(fatura.data_pagamento)}
-                      </p>
-                      <Button
-                        onClick={async () => {
-                          try {
-                            const token = localStorage.getItem("token");
-                            const response = await fetch(
-                              `${process.env.NEXT_PUBLIC_API_URL}/faturas/${fatura.id}/recibo`,
-                              {
-                                headers: {
-                                  Authorization: `Bearer ${token}`,
-                                },
-                              }
-                            );
-
-                            if (!response.ok) {
-                              throw new Error("Erro ao gerar recibo");
-                            }
-
-                            // Converter resposta para blob e fazer download
-                            const blob = await response.blob();
-                            const url = window.URL.createObjectURL(blob);
-                            const a = document.createElement("a");
-                            a.href = url;
-                            a.download = `recibo-${fatura.numero_fatura}.pdf`;
-                            document.body.appendChild(a);
-                            a.click();
-                            window.URL.revokeObjectURL(url);
-                            document.body.removeChild(a);
-
-                            toast.success("Recibo gerado com sucesso!");
-                          } catch (error) {
-                            console.error("Erro ao gerar recibo:", error);
-                            toast.error("Erro ao gerar recibo");
-                          }
-                        }}
-                        size="sm"
-                        variant="outline"
-                        className="w-full"
-                      >
-                        <Receipt className="mr-1 h-4 w-4" />
-                        Gerar Comprovante
-                      </Button>
-                    </div>
-                  )}
-                  {(fatura.status === "PENDENTE" ||
-                    fatura.status === "ATRASADA") && (
-                    <div className="flex gap-2 mt-2">
-                      <Button
-                        onClick={() => {
-                          setSelectedFatura(fatura);
-                          setValorPago(fatura.valor_original.toString());
-                          setShowPagarDialog(true);
-                        }}
-                        size="sm"
-                      >
-                        <DollarSign className="mr-1 h-4 w-4" />
-                        Registrar Pagamento
-                      </Button>
-                      <Button
-                        onClick={() => {
-                          setSelectedFatura(fatura);
-                          setShowCancelarDialog(true);
-                        }}
-                        size="sm"
-                        variant="destructive"
-                      >
-                        <X className="mr-1 h-4 w-4" />
-                        Cancelar
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b bg-gray-50 text-gray-600 text-xs uppercase tracking-wide">
+                  <th className="px-4 py-3 text-left">Nº Fatura</th>
+                  <th className="px-4 py-3 text-left">Aluno</th>
+                  <th className="px-4 py-3 text-left">Status</th>
+                  <th className="px-4 py-3 text-left">Vencimento</th>
+                  <th className="px-4 py-3 text-left">Pagamento</th>
+                  <th className="px-4 py-3 text-left">Pago em</th>
+                  <th className="px-4 py-3 text-right">Valor</th>
+                  <th className="px-4 py-3 text-center">Ações</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {filteredFaturas.map((fatura) => {
+                  const info = getMetodoPagamentoInfo(fatura.metodo_pagamento);
+                  return (
+                    <tr key={fatura.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-4 py-3 font-semibold text-gray-900">
+                        {fatura.numero_fatura}
+                      </td>
+                      <td className="px-4 py-3 text-gray-700">
+                        {fatura.aluno_nome || "N/A"}
+                      </td>
+                      <td className="px-4 py-3">
+                        {getStatusBadge(fatura.status)}
+                      </td>
+                      <td className="px-4 py-3 text-gray-600">
+                        {formatarData(fatura.data_vencimento)}
+                      </td>
+                      <td className="px-4 py-3">
+                        {info ? (
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${info.color}`}>
+                            {info.icon}
+                            {info.label}
+                          </span>
+                        ) : (
+                          <span className="text-gray-400">—</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-gray-500 text-xs">
+                        {fatura.data_pagamento ? formatarData(fatura.data_pagamento) : "—"}
+                      </td>
+                      <td className="px-4 py-3 text-right font-bold text-gray-900">
+                        {formatarMoeda(Number(fatura.valor_original) || 0)}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center justify-center gap-1">
+                          {fatura.status === "PAGA" && fatura.data_pagamento && (
+                            <Button
+                              onClick={async () => {
+                                try {
+                                  const token = localStorage.getItem("token");
+                                  const response = await fetch(
+                                    `${process.env.NEXT_PUBLIC_API_URL}/faturas/${fatura.id}/recibo`,
+                                    { headers: { Authorization: `Bearer ${token}` } }
+                                  );
+                                  if (!response.ok) throw new Error("Erro ao gerar recibo");
+                                  const blob = await response.blob();
+                                  const url = window.URL.createObjectURL(blob);
+                                  const a = document.createElement("a");
+                                  a.href = url;
+                                  a.download = `recibo-${fatura.numero_fatura}.pdf`;
+                                  document.body.appendChild(a);
+                                  a.click();
+                                  window.URL.revokeObjectURL(url);
+                                  document.body.removeChild(a);
+                                  toast.success("Recibo gerado com sucesso!");
+                                } catch (error) {
+                                  console.error("Erro ao gerar recibo:", error);
+                                  toast.error("Erro ao gerar recibo");
+                                }
+                              }}
+                              size="sm"
+                              variant="outline"
+                              title="Gerar Comprovante"
+                            >
+                              <Receipt className="h-4 w-4" />
+                            </Button>
+                          )}
+                          {(fatura.status === "PENDENTE" || fatura.status === "ATRASADA") && (
+                            <>
+                              <Button
+                                onClick={() => {
+                                  setSelectedFatura(fatura);
+                                  setValorPago(fatura.valor_original.toString());
+                                  setShowPagarDialog(true);
+                                }}
+                                size="sm"
+                                title="Registrar Pagamento"
+                              >
+                                <DollarSign className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                onClick={() => {
+                                  setSelectedFatura(fatura);
+                                  setShowCancelarDialog(true);
+                                }}
+                                size="sm"
+                                variant="destructive"
+                                title="Cancelar Fatura"
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
             {filteredFaturas.length === 0 && (
               <div className="text-center py-12 text-gray-500">
                 Nenhuma fatura encontrada
