@@ -432,6 +432,23 @@ export class FaturasService {
     });
     
     this.logger.log(`📄 Encontradas ${faturas.length} faturas para o aluno ${alunoId}`);
+
+    // Buscar TODAS as assinaturas do aluno que tenham token salvo
+    const assinaturasComToken = await this.assinaturaRepository
+      .createQueryBuilder('a')
+      .select(['a.id', 'a.token_cartao', 'a.dados_pagamento'])
+      .where('a.aluno_id = :alunoId', { alunoId })
+      .andWhere('a.token_cartao IS NOT NULL')
+      .getMany();
+    this.logger.debug(`🔑 Assinaturas com token para aluno ${alunoId}: ${assinaturasComToken.length} | tokens: ${assinaturasComToken.map(a => a.token_cartao?.substring(0,8)).join(',')}`);
+    const assinaturaComToken = assinaturasComToken[0] ?? null;
+    
+    // Log das assinaturas carregadas via relação nas faturas
+    faturas.forEach(f => {
+      if (f.assinatura) {
+        this.logger.debug(`📋 Fatura ${f.numero_fatura} | assinatura.id=${f.assinatura.id} | token_cartao=${f.assinatura.token_cartao ? f.assinatura.token_cartao.substring(0,8)+'...' : 'null'}`);
+      }
+    });
     
     // Mapear adicionando card_info da transação confirmada de cartão (se houver)
     return faturas.map((f) => {
@@ -450,8 +467,23 @@ export class FaturasService {
           }
         : null;
 
+      // token_salvo = true se a assinatura DA FATURA tem token OU se qualquer assinatura do aluno tem
+      const tokenNaAssinatura = !!(f.assinatura?.token_cartao);
+      const tokenSalvo = tokenNaAssinatura || !!assinaturaComToken;
+
+      // dados_pagamento: preferir da assinatura da fatura, fallback para a que tem token
+      const dadosPgto = (f.assinatura as any)?.dados_pagamento
+        || (assinaturaComToken as any)?.dados_pagamento
+        || null;
+      const cardInfoAssinatura = tokenSalvo && dadosPgto
+        ? {
+            brand: dadosPgto.brand || dadosPgto.brand_name || null,
+            last4: dadosPgto.last4 || dadosPgto.last4_digits || null,
+          }
+        : null;
+
       const { transacoes, ...rest } = f as any;
-      return { ...rest, card_info: cardInfo };
+      return { ...rest, card_info: cardInfo, token_salvo: tokenSalvo, card_info_assinatura: cardInfoAssinatura };
     });
   }
 

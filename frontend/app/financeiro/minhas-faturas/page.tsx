@@ -25,6 +25,16 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import ProcessarPagamentoModal from "@/components/financeiro/ProcessarPagamentoModal";
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Zap } from "lucide-react";
 
 interface Fatura {
   id: string;
@@ -39,9 +49,14 @@ interface Fatura {
   metodo_pagamento?: string;
   observacoes?: string;
   card_info?: {
-    brand?: string | null;  // ex: "MASTERCARD", "VISA", "ELO"
+    brand?: string | null;
     last4?: string | null;
     holder?: string | null;
+  } | null;
+  token_salvo?: boolean;
+  card_info_assinatura?: {
+    brand?: string | null;
+    last4?: string | null;
   } | null;
   assinatura?: {
     plano?: {
@@ -61,6 +76,10 @@ export default function MinhasFaturas() {
   const [faturasComPagamentoPendente, setFaturasComPagamentoPendente] = useState<Map<string, { metodo: string; temBarcode: boolean }>>(new Map());
   const [alertVencimentoDismissed, setAlertVencimentoDismissed] = useState(false);
   const [alertVencidaDismissed, setAlertVencidaDismissed] = useState(false);
+  const [confirmTokenPagar, setConfirmTokenPagar] = useState<Fatura | null>(null);
+  const [loadingTokenPay, setLoadingTokenPay] = useState(false);
+  const [tokenPayError, setTokenPayError] = useState<string | null>(null);
+  const [modalInitialTab, setModalInitialTab] = useState<string | undefined>(undefined);
 
   useEffect(() => {
     carregarMinhasFaturas();
@@ -114,11 +133,45 @@ export default function MinhasFaturas() {
       );
 
       if (faturasResponse.ok) {
-        const faturasData = await faturasResponse.json();
-        setFaturas(faturasData);
+        const faturasData: Fatura[] = await faturasResponse.json();
+
+        // Cross-reference: se qualquer fatura tem token_salvo=true, usamos para todas as faturas CARTAO
+        const cardInfoRef = faturasData
+          .filter((f) => f.card_info?.last4)
+          .sort((a, b) => (b.data_pagamento || "").localeCompare(a.data_pagamento || ""))[0]
+          ?.card_info;
+        const anyTokenSalvo = faturasData.some((f) => f.token_salvo);
+        const cardInfoTokenRef = faturasData.find((f) => f.token_salvo && f.card_info_assinatura?.last4)?.card_info_assinatura
+          || faturasData.find((f) => f.token_salvo && f.card_info?.last4)?.card_info
+          || cardInfoRef;
+
+        const enriched = faturasData.map((f) => {
+          const isCartao = ["CARTAO", "CARTAO_CREDITO"].includes(
+            (f.metodo_pagamento || f.assinatura?.metodo_pagamento || "").toUpperCase()
+          );
+          if (!isCartao) return f;
+
+          const hasLast4 = !!(f.card_info?.last4 || f.card_info_assinatura?.last4);
+          const enrichedCard = !hasLast4 && cardInfoRef
+            ? { brand: cardInfoRef.brand, last4: cardInfoRef.last4 }
+            : f.card_info_assinatura;
+
+          // Se qualquer assinatura do aluno tem token salvo, todas as faturas CARTAO podem usar
+          const tokenSalvo = f.token_salvo || (anyTokenSalvo && isCartao);
+
+          return {
+            ...f,
+            token_salvo: tokenSalvo,
+            card_info_assinatura: enrichedCard || (tokenSalvo && cardInfoTokenRef
+              ? { brand: cardInfoTokenRef.brand, last4: cardInfoTokenRef.last4 }
+              : f.card_info_assinatura),
+          };
+        });
+
+        setFaturas(enriched);
         
         // Buscar transações pendentes para cada fatura
-        await verificarTransacoesPendentes(faturasData, token);
+        await verificarTransacoesPendentes(enriched, token);
       } else {
         console.error("❌ Erro ao buscar faturas:", faturasResponse.status, faturasResponse.statusText);
       }
@@ -195,15 +248,56 @@ export default function MinhasFaturas() {
   // Removidas - usando formatarData e formatarMoeda do dateUtils
 
   const handlePagarOnline = (fatura: Fatura) => {
-    // Preparar fatura com os campos esperados pelo modal
+    // Se tem cartão salvo, mostra diálogo de confirmação rápida
+    if (fatura.token_salvo) {
+      setTokenPayError(null);
+      setConfirmTokenPagar(fatura);
+      return;
+    }
+    abrirModalPagamento(fatura);
+  };
+
+  const abrirModalPagamento = (fatura: Fatura, initialTab?: string) => {
     const faturaParaModal = {
       ...fatura,
       valor_total: parseFloat(fatura.valor_original?.toString() || "0"),
-      // Usar metodo_pagamento da fatura, ou metodo_pagamento da assinatura como fallback
       metodo_pagamento: fatura.metodo_pagamento || fatura.assinatura?.metodo_pagamento,
     };
     setFaturaParaPagar(faturaParaModal as any);
+    setModalInitialTab(initialTab);
     setModalPagamentoOpen(true);
+  };
+
+  const alterarCartao = (fatura: Fatura) => {
+    setConfirmTokenPagar(null);
+    abrirModalPagamento(fatura, "cartao");
+  };
+
+  const pagarFaturaComToken = async () => {
+    if (!confirmTokenPagar) return;
+    setLoadingTokenPay(true);
+    setTokenPayError(null);
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/faturas/${confirmTokenPagar.id}/pagar-com-token`,
+        {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || "Erro ao processar pagamento");
+      }
+      setConfirmTokenPagar(null);
+      await carregarMinhasFaturas();
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Erro ao processar pagamento. Tente novamente.";
+      setTokenPayError(msg);
+    } finally {
+      setLoadingTokenPay(false);
+    }
   };
 
   const handlePagamentoSuccess = () => {
@@ -441,8 +535,9 @@ export default function MinhasFaturas() {
                   const metodoBadge = (() => {
                     // Badge de cartão: mostra bandeira + últimos 4 dígitos
                     if (metodo === "CARTAO_CREDITO" || metodo === "CARTAO") {
-                      const brand = (fatura.card_info?.brand || "").toUpperCase();
-                      const last4 = fatura.card_info?.last4;
+                      // card_info vem de transação confirmada; card_info_assinatura é fallback da assinatura (faturas pendentes)
+                      const brand = (fatura.card_info?.brand || fatura.card_info_assinatura?.brand || "").toUpperCase();
+                      const last4 = fatura.card_info?.last4 || fatura.card_info_assinatura?.last4;
 
                       const BrandIcon = () => {
                         if (brand === "MASTERCARD" || brand === "MASTER") return (
@@ -481,11 +576,21 @@ export default function MinhasFaturas() {
                       };
 
                       return (
-                        <div className="flex items-center gap-1.5">
-                          <BrandIcon />
-                          <span className="text-xs text-gray-700 font-mono">
-                            {last4 ? `•••• ${last4}` : "Cartão"}
-                          </span>
+                        <div className="flex flex-col gap-0.5">
+                          <div className="flex items-center gap-1.5">
+                            <BrandIcon />
+                            <span className="text-xs text-gray-700 font-mono">
+                              {last4 ? `•••• ${last4}` : "Cartão"}
+                            </span>
+                          </div>
+                          {fatura.token_salvo && (["PENDENTE", "ATRASADA", "VENCIDA"] as string[]).includes(fatura.status) && (
+                            <button
+                              className="text-[10px] text-blue-500 hover:text-blue-700 underline underline-offset-2 text-left w-fit"
+                              onClick={() => alterarCartao(fatura)}
+                            >
+                              Alterar cartão
+                            </button>
+                          )}
                         </div>
                       );
                     }
@@ -606,15 +711,44 @@ export default function MinhasFaturas() {
 
                       {/* Ação */}
                       <td className="px-4 py-3 text-center">
-                        {(fatura.status === "PENDENTE" || fatura.status === "ATRASADA") ? (
-                          <Button
-                            size="sm"
-                            onClick={() => handlePagarOnline(fatura)}
-                          >
-                            <CreditCard className="w-3.5 h-3.5 mr-1.5" />
-                            Pagar
-                          </Button>
-                        ) : (
+                        {(["PENDENTE", "ATRASADA", "VENCIDA"] as string[]).includes(fatura.status) ? (() => {
+                          const isCartao = ["CARTAO", "CARTAO_CREDITO"].includes(metodo);
+                          const last4Disp = fatura.card_info?.last4 || fatura.card_info_assinatura?.last4;
+
+                          return (
+                            <div className="flex flex-col items-center gap-1">
+                              <Button
+                                size="sm"
+                                onClick={() => handlePagarOnline(fatura)}
+                              >
+                                {fatura.token_salvo ? (
+                                  <>
+                                    <Zap className="w-3.5 h-3.5 mr-1.5" />
+                                    Pagar •••• {last4Disp || "cartão"}
+                                  </>
+                                ) : isCartao && last4Disp ? (
+                                  <>
+                                    <CreditCard className="w-3.5 h-3.5 mr-1.5" />
+                                    Pagar •••• {last4Disp}
+                                  </>
+                                ) : (
+                                  <>
+                                    <CreditCard className="w-3.5 h-3.5 mr-1.5" />
+                                    Pagar
+                                  </>
+                                )}
+                              </Button>
+                              {(fatura.token_salvo || (isCartao && last4Disp)) && (
+                                <button
+                                  className="text-[11px] text-blue-600 underline underline-offset-2 hover:text-blue-800"
+                                  onClick={() => alterarCartao(fatura)}
+                                >
+                                  Alterar cartão
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })() : (
                           <span className="text-gray-400">—</span>
                         )}
                       </td>
@@ -662,12 +796,57 @@ export default function MinhasFaturas() {
         </Card>
       )}
 
+      {/* Confirmação Pagar com Cartão Salvo */}
+      <AlertDialog open={!!confirmTokenPagar} onOpenChange={(open) => { if (!open && !loadingTokenPay) setConfirmTokenPagar(null); }}>
+        <AlertDialogContent className="max-w-sm">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Zap className="h-5 w-5 text-blue-600" />
+              Confirmar pagamento
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-left">
+              Cobrar{" "}
+              <span className="font-semibold text-gray-900">{formatarMoeda(parseFloat(confirmTokenPagar?.valor_original?.toString() || "0"))}</span>{" "}
+              no cartão salvo:{" "}
+              <span className="inline-flex items-center gap-1.5 bg-gray-100 rounded px-2 py-0.5 text-sm font-medium text-gray-800">
+                <CreditCard className="h-3.5 w-3.5 text-gray-500" />
+                {confirmTokenPagar?.card_info_assinatura?.brand || "Cartão"} •••• {confirmTokenPagar?.card_info_assinatura?.last4 || "----"}
+              </span>
+              {tokenPayError && (
+                <span className="block text-sm text-red-600 bg-red-50 rounded px-3 py-2 mt-2">{tokenPayError}</span>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col gap-2 sm:flex-col">
+            <Button
+              className="w-full"
+              onClick={pagarFaturaComToken}
+              disabled={loadingTokenPay}
+            >
+              {loadingTokenPay ? (
+                <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Processando...</>
+              ) : (
+                <><Zap className="h-4 w-4 mr-2" />Confirmar cobrança</>
+              )}
+            </Button>
+            <AlertDialogCancel
+              disabled={loadingTokenPay}
+              onClick={() => { setConfirmTokenPagar(null); if (confirmTokenPagar) alterarCartao(confirmTokenPagar); }}
+              className="w-full"
+            >
+              Alterar cartão
+            </AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Modal de Pagamento */}
       <ProcessarPagamentoModal
         fatura={faturaParaPagar}
         open={modalPagamentoOpen}
         onClose={() => setModalPagamentoOpen(false)}
         onSuccess={handlePagamentoSuccess}
+        initialTab={modalInitialTab}
       />
     </div>
   );

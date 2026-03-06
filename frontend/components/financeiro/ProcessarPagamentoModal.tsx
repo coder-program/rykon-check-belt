@@ -43,6 +43,7 @@ interface ProcessarPagamentoModalProps {
   open: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  initialTab?: string;
 }
 
 export default function ProcessarPagamentoModal({
@@ -50,6 +51,7 @@ export default function ProcessarPagamentoModal({
   open,
   onClose,
   onSuccess,
+  initialTab,
 }: ProcessarPagamentoModalProps) {
   const queryClient = useQueryClient();
   const {
@@ -88,7 +90,16 @@ export default function ProcessarPagamentoModal({
     ? metodosOnline.includes(fatura.metodo_pagamento.toUpperCase())
     : true; // Se não tiver método definido, permite todos
   
-  const [activeTab, setActiveTab] = useState(() => getTabFromMetodoPagamento(fatura?.metodo_pagamento));
+  const [activeTab, setActiveTab] = useState(() => initialTab || getTabFromMetodoPagamento(fatura?.metodo_pagamento));
+
+  // Resetar aba quando modal abre (ex: "Alterar cartão" força aba cartao)
+  useEffect(() => {
+    if (open) {
+      setActiveTab(initialTab || getTabFromMetodoPagamento(fatura?.metodo_pagamento));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, initialTab]);
+
   const [transacaoId, setTransacaoId] = useState<string | null>(null);
 
   // Estados PIX

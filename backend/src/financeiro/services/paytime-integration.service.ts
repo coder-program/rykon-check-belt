@@ -422,6 +422,7 @@ export class PaytimeIntegrationService {
           expiration_month: parseInt(dto.card.expiration_month, 10),
           expiration_year: parseInt(dto.card.expiration_year, 10),
           security_code: dto.card.cvv,
+          create_token: true, // ← Solicitar tokenização para uso futuro
         },
         // Session ID do ClearSale (Paytime detecta automaticamente o tipo de antifraude)
         ...(dto.session_id && { session_id: dto.session_id }),
@@ -499,6 +500,30 @@ export class PaytimeIntegrationService {
           antifraud_id: paytimeResponse.antifraud[0].antifraud_id,
         } : null,
       };
+
+      // 5.5. SALVAR TOKEN retornado pelo Paytime (se houver)
+      if (paytimeResponse.card?.token && fatura.assinatura_id) {
+        try {
+          const assinaturaParaTokenizar = await this.assinaturaRepository.findOne({ where: { id: fatura.assinatura_id } });
+          if (assinaturaParaTokenizar) {
+            assinaturaParaTokenizar.token_cartao = paytimeResponse.card.token;
+            assinaturaParaTokenizar.dados_pagamento = {
+              last4: paytimeResponse.card.last4_digits || paytimeResponse.card.last4,
+              brand: paytimeResponse.card.brand_name || paytimeResponse.card.brand,
+              exp_month: dto.card.expiration_month,
+              exp_year: dto.card.expiration_year,
+              holder_name: dto.card.holder_name,
+              tokenized_at: dayjs().tz('America/Sao_Paulo').toISOString(),
+            };
+            await this.assinaturaRepository.save(assinaturaParaTokenizar);
+            this.logger.log(`🔑 TOKEN CARTÃO salvo na assinatura ${fatura.assinatura_id}: ${paytimeResponse.card.token.substring(0,20)}...`);
+          }
+        } catch (tokenErr) {
+          this.logger.error(`⚠️ Erro ao salvar token na assinatura: ${tokenErr.message}`);
+        }
+      } else if (!paytimeResponse.card?.token) {
+        this.logger.warn(`⚠️ Paytime NÃO retornou card.token no response de processarPagamentoCartao`);
+      }
 
       // 6. Atualizar status da transação baseado na resposta
       // Status possíveis: CREATED, PENDING, PAID, APPROVED, FAILED, REFUNDED, DISPUTED, CANCELED, CHARGEBACK

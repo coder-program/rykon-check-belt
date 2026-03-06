@@ -14,6 +14,7 @@ import {
   Res,
   HttpStatus,
   Logger,
+  BadRequestException,
 } from '@nestjs/common';
 import { Response } from 'express';
 import { DataSource } from 'typeorm';
@@ -21,6 +22,8 @@ import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { FaturasService } from '../services/faturas.service';
 import { NotificacoesService } from '../services/notificacoes.service';
 import { RecibosService } from '../services/recibos.service';
+import { PaytimeIntegrationService } from '../services/paytime-integration.service';
+import { StatusFatura } from '../entities/fatura.entity';
 import {
   CreateFaturaDto,
   UpdateFaturaDto,
@@ -36,6 +39,7 @@ export class FaturasController {
     private readonly faturasService: FaturasService,
     private readonly notificacoesService: NotificacoesService,
     private readonly recibosService: RecibosService,
+    private readonly paytimeIntegrationService: PaytimeIntegrationService,
     @Inject(DataSource) private dataSource: DataSource,
   ) {}
 
@@ -157,6 +161,39 @@ export class FaturasController {
   findByAluno(@Param('alunoId') alunoId: string) {
     this.logger.log(`📥 [GET] /faturas/aluno/${alunoId}`);
     return this.faturasService.findByAluno(alunoId);
+  }
+
+  @Post(':id/pagar-com-token')
+  async pagarComToken(@Param('id') id: string) {
+    const fatura = await this.faturasService.findOne(id);
+
+    if (fatura.status !== StatusFatura.PENDENTE) {
+      throw new BadRequestException('Fatura não está com status PENDENTE');
+    }
+
+    // Usar token da assinatura da fatura, ou fallback: qualquer assinatura do aluno com token
+    let assinaturaComToken = fatura.assinatura?.token_cartao ? fatura.assinatura : null;
+
+    if (!assinaturaComToken && fatura.aluno_id) {
+      const assinaturas = await this.dataSource.query(
+        `SELECT id, token_cartao, dados_pagamento, aluno_id, unidade_id
+         FROM teamcruz.assinaturas
+         WHERE aluno_id = $1 AND token_cartao IS NOT NULL
+         LIMIT 1`,
+        [fatura.aluno_id],
+      );
+      if (assinaturas.length > 0) {
+        assinaturaComToken = assinaturas[0];
+      }
+    }
+
+    if (!assinaturaComToken) {
+      throw new BadRequestException(
+        'Nenhum cartão salvo encontrado. Utilize o formulário de pagamento para inserir os dados do cartão.',
+      );
+    }
+
+    return this.paytimeIntegrationService.cobrarComToken(assinaturaComToken as any, fatura);
   }
 
   @Post(':id/enviar-cobranca-whatsapp')
