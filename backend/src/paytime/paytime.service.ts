@@ -2183,6 +2183,7 @@ export class PaytimeService {
     }
 
     let analyse_status: string | undefined;
+    let lastTxCardData: any = null; // Dados do cartão do GET após IDPAY (pode ter token)
     const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
     // 1. Verificar se a resposta do POST já tem o status definitivo
@@ -2221,6 +2222,10 @@ export class PaytimeService {
               this.logger.debug(`📍 [IDPAY] analyse_status via GET (tentativa ${i + 1}): ${status}`);
               if (status && status !== 'WAITING_AUTH') {
                 analyse_status = status;
+                lastTxCardData = txData?.card || null; // Capturar dados do cartão (pode ter token)
+                if (lastTxCardData?.token) {
+                  this.logger.log(`🔑 [IDPAY] card.token encontrado no GET: ${lastTxCardData.token.substring(0,20)}...`);
+                }
                 break;
               }
             } else {
@@ -2283,6 +2288,35 @@ export class PaytimeService {
                 fatura.valor_pago = transacao.valor;
                 await this.faturaRepository.save(fatura);
                 this.logger.log(`✅ [IDPAY] Fatura ${fatura.id} baixada com sucesso`);
+              }
+
+              // Salvar token e dados_pagamento na assinatura (se disponíveis)
+              if (fatura?.assinatura_id && (lastTxCardData?.last4_digits || lastTxCardData?.token)) {
+                try {
+                  const cardToken = lastTxCardData?.token || null;
+                  const dadosPagamento = {
+                    last4: lastTxCardData?.last4_digits || lastTxCardData?.last4 || null,
+                    brand: lastTxCardData?.brand_name || lastTxCardData?.brand || null,
+                    holder_name: lastTxCardData?.holder_name || null,
+                    tokenized_at: new Date().toISOString(),
+                  };
+                  if (cardToken) {
+                    await this.faturaRepository.manager.query(
+                      `UPDATE teamcruz.assinaturas SET token_cartao = $1, dados_pagamento = $2 WHERE id = $3`,
+                      [cardToken, JSON.stringify(dadosPagamento), fatura.assinatura_id]
+                    );
+                    this.logger.log(`🔑 [IDPAY] token_cartao + dados_pagamento salvos na assinatura ${fatura.assinatura_id}`);
+                  } else {
+                    // Salva apenas dados_pagamento (last4/brand) mesmo sem token
+                    await this.faturaRepository.manager.query(
+                      `UPDATE teamcruz.assinaturas SET dados_pagamento = $1 WHERE id = $2 AND (dados_pagamento IS NULL OR dados_pagamento->>'last4' IS NULL)`,
+                      [JSON.stringify(dadosPagamento), fatura.assinatura_id]
+                    );
+                    this.logger.log(`💳 [IDPAY] dados_pagamento (sem token) salvos na assinatura ${fatura.assinatura_id}: last4=${dadosPagamento.last4}`);
+                  }
+                } catch (tokenErr) {
+                  this.logger.error(`⚠️ [IDPAY] Erro ao salvar token/dados_pagamento na assinatura: ${tokenErr.message}`);
+                }
               }
             }
           } else if (['FAILED', 'INCONCLUSIVE', 'WAITING_AUTH'].includes(analyse_status) && transacao.status === StatusTransacao.PENDENTE) {
