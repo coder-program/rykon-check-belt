@@ -109,7 +109,7 @@ export class ConviteCadastroService {
     };
   }
 
-  async listarConvites(unidadeId?: string) {
+  async listarConvites(unidadeId?: string, franqueadoId?: string) {
     const query = this.conviteRepository
       .createQueryBuilder('c')
       .leftJoinAndSelect('c.unidade', 'unidade')
@@ -118,6 +118,8 @@ export class ConviteCadastroService {
 
     if (unidadeId) {
       query.andWhere('c.unidade_id = :unidadeId', { unidadeId });
+    } else if (franqueadoId) {
+      query.andWhere('unidade.franqueado_id = :franqueadoId', { franqueadoId });
     }
 
     const convites = await query.getMany();

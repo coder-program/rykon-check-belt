@@ -8,6 +8,7 @@ import {
   UseGuards,
   Request,
   Delete,
+  ForbiddenException,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -23,10 +24,45 @@ import {
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { Public } from '../auth/decorators/public.decorator';
 
+const PERFIS_ADMIN_SEM_FILTRO_CONVITE = ['MASTER', 'GERENTE'];
+
 @ApiTags('Convites de Cadastro')
 @Controller('convites-cadastro')
 export class ConviteCadastroController {
   constructor(private readonly conviteService: ConviteCadastroService) {}
+
+  /** Resolve filtro seguro baseado no perfil do usuário */
+  private resolveFilter(user: any, queryUnidadeId?: string): { unidadeId?: string; franqueadoId?: string } {
+    const perfis: string[] =
+      user?.perfis?.map((p: any) =>
+        (typeof p === 'string' ? p : p.nome)?.toUpperCase(),
+      ) ?? [];
+
+    console.log('[Convites][resolveFilter] user.id=', user?.id, '| perfis=', perfis);
+    console.log('[Convites][resolveFilter] gerente_unidade=', user?.gerente_unidade?.unidade_id, '| recepcionista=', user?.recepcionista_unidade?.unidade_id, '| franqueado=', user?.franqueado?.id);
+
+    // MASTER e GERENTE: sem filtro (vê tudo)
+    if (perfis.some((p) => PERFIS_ADMIN_SEM_FILTRO_CONVITE.includes(p))) {
+      console.log('[Convites][resolveFilter] => sem filtro (admin global)');
+      return {};
+    }
+
+    // FRANQUEADO: filtra pelas unidades do seu franqueado_id
+    if (perfis.includes('FRANQUEADO')) {
+      const franqueadoId = user?.franqueado?.id;
+      console.log('[Convites][resolveFilter] => FRANQUEADO, franqueadoId=', franqueadoId);
+      if (!franqueadoId) throw new ForbiddenException('Franqueado sem ID vinculado');
+      return { franqueadoId };
+    }
+
+    // RECEPCIONISTA / GERENTE_UNIDADE: filtra pela unidade do JWT
+    const unidadeId =
+      user?.gerente_unidade?.unidade_id ??
+      user?.recepcionista_unidade?.unidade_id;
+    console.log('[Convites][resolveFilter] => unidade do JWT=', unidadeId);
+    if (!unidadeId) throw new ForbiddenException('Usuário sem unidade vinculada');
+    return { unidadeId };
+  }
 
   @Post()
   @UseGuards(JwtAuthGuard)
@@ -42,8 +78,13 @@ export class ConviteCadastroController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Listar convites' })
   @ApiResponse({ status: 200, description: 'Lista de convites' })
-  async listarConvites(@Query('unidadeId') unidadeId?: string) {
-    return await this.conviteService.listarConvites(unidadeId);
+  async listarConvites(
+    @Request() req: any,
+    @Query('unidadeId') unidadeId?: string,
+  ) {
+    const { unidadeId: unidadeIdSegura, franqueadoId } = this.resolveFilter(req.user, unidadeId);
+    console.log('[Convites][listarConvites] unidadeIdSegura=', unidadeIdSegura, '| franqueadoId=', franqueadoId);
+    return await this.conviteService.listarConvites(unidadeIdSegura, franqueadoId);
   }
 
   @Get('validar/:token')

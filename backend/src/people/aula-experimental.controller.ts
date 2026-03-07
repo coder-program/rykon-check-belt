@@ -20,6 +20,7 @@ import {
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 const PERFIS_PERMITIDOS = ['RECEPCIONISTA', 'GERENTE_UNIDADE', 'GERENTE', 'FRANQUEADO', 'MASTER'];
+const PERFIS_ADMIN_SEM_FILTRO = ['MASTER', 'GERENTE'];
 
 @Controller('aula-experimental')
 @UseGuards(JwtAuthGuard)
@@ -33,6 +34,39 @@ export class AulaExperimentalController {
       ) ?? [];
     const temPermissao = perfis.some((p) => PERFIS_PERMITIDOS.includes(p));
     if (!temPermissao) throw new ForbiddenException('Acesso negado');
+  }
+
+  /** Resolve filtro seguro baseado no perfil do usuário */
+  private resolveFilter(user: any, queryUnidadeId?: string): { unidadeId?: string; franqueadoId?: string } {
+    const perfis: string[] =
+      user?.perfis?.map((p: any) =>
+        (typeof p === 'string' ? p : p.nome)?.toUpperCase(),
+      ) ?? [];
+
+    console.log('[AulaExp][resolveFilter] user.id=', user?.id, '| perfis=', perfis);
+    console.log('[AulaExp][resolveFilter] gerente_unidade=', user?.gerente_unidade?.unidade_id, '| recepcionista=', user?.recepcionista_unidade?.unidade_id, '| franqueado=', user?.franqueado?.id);
+
+    // MASTER e GERENTE: sem filtro (vê tudo)
+    if (perfis.some((p) => PERFIS_ADMIN_SEM_FILTRO.includes(p))) {
+      console.log('[AulaExp][resolveFilter] => sem filtro (admin global)');
+      return {};
+    }
+
+    // FRANQUEADO: filtra pelas unidades do seu franqueado_id
+    if (perfis.includes('FRANQUEADO')) {
+      const franqueadoId = user?.franqueado?.id;
+      console.log('[AulaExp][resolveFilter] => FRANQUEADO, franqueadoId=', franqueadoId);
+      if (!franqueadoId) throw new ForbiddenException('Franqueado sem ID vinculado');
+      return { franqueadoId };
+    }
+
+    // RECEPCIONISTA / GERENTE_UNIDADE: filtra pela unidade do JWT
+    const unidadeId =
+      user?.gerente_unidade?.unidade_id ??
+      user?.recepcionista_unidade?.unidade_id;
+    console.log('[AulaExp][resolveFilter] => unidade do JWT=', unidadeId);
+    if (!unidadeId) throw new ForbiddenException('Usuário sem unidade vinculada');
+    return { unidadeId };
   }
 
   // ── CONFIG ─────────────────────────────────────────────────────────
@@ -67,7 +101,9 @@ export class AulaExperimentalController {
     @Query('modalidadeId') modalidadeId?: string,
   ) {
     this.assertPermissao(req.user);
-    return this.service.listar(unidadeId, modalidadeId);
+    const { unidadeId: unidadeIdSegura, franqueadoId } = this.resolveFilter(req.user, unidadeId);
+    console.log('[AulaExp][listar] unidadeIdSegura=', unidadeIdSegura, '| franqueadoId=', franqueadoId, '| modalidadeId=', modalidadeId);
+    return this.service.listar(unidadeIdSegura, modalidadeId, franqueadoId);
   }
 
   @Post()

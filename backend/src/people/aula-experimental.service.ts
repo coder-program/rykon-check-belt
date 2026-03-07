@@ -63,17 +63,14 @@ export class AulaExperimentalService {
       .createQueryBuilder('a')
       .leftJoinAndSelect('a.unidade', 'unidade')
       .leftJoinAndSelect('a.modalidade', 'modalidade')
-      .leftJoinAndSelect('a.criador', 'criador')
+      .leftJoin('a.criador', 'criador')
+      .addSelect(['criador.id', 'criador.nome', 'criador.username', 'criador.email'])
       .orderBy('a.data_aula', 'DESC')
       .addOrderBy('a.horario', 'ASC');
 
     if (franqueado_id) {
-      qb.innerJoin(
-        'unidade.franqueados',
-        'franqueado',
-        'franqueado.id = :fid',
-        { fid: franqueado_id },
-      );
+      // unidade já está joined — filtra pela coluna franqueado_id da unidade
+      qb.andWhere('unidade.franqueado_id = :franqueado_id', { franqueado_id });
     } else if (unidade_id) {
       qb.where('a.unidade_id = :unidade_id', { unidade_id });
     }

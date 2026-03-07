@@ -473,6 +473,7 @@ export default function ConvitesPage() {
                 <thead className="bg-slate-50/80 border-b border-slate-100">
                   <tr>
                     <th className="text-left px-4 py-3 font-medium text-slate-600">Nome</th>
+                    <th className="text-left px-4 py-3 font-medium text-slate-600">Unidade</th>
                     <th className="text-left px-4 py-3 font-medium text-slate-600">Modalidade</th>
                     <th className="text-left px-4 py-3 font-medium text-slate-600">Contato</th>
                     <th className="text-left px-4 py-3 font-medium text-slate-600">Data/Horário</th>
@@ -487,6 +488,11 @@ export default function ConvitesPage() {
                       <td className="px-4 py-3">
                         <div className="font-medium">{ag.nome}</div>
                         {ag.cpf && <div className="text-xs text-gray-500">{ag.cpf}</div>}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="text-sm text-slate-700">
+                          {ag.unidade?.nome ?? ag.unidade_id.slice(0, 8) + "..."}
+                        </span>
                       </td>
                       <td className="px-4 py-3">
                         <span className="inline-flex items-center gap-1.5 text-xs bg-indigo-50 text-indigo-700 border border-indigo-200 px-2.5 py-1 rounded-full font-medium">
