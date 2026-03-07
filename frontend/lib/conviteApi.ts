@@ -8,8 +8,9 @@ export interface CriarConviteDto {
   nome_pre_cadastro?: string;
   cpf?: string;
   observacoes?: string;
-  /** Se preenchido, cria um agendamento de aula experimental junto com o convite */
+  /** Se preenchido, cria agend. de aula experimental junto com o convite (atomicamente) */
   agendamento?: {
+    modalidade_id: string;
     data_aula: string;  // YYYY-MM-DD
     horario: string;    // HH:mm
     observacoes?: string;

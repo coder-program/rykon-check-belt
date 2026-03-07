@@ -50,16 +50,23 @@ function getEsporteIcon(nome?: string): React.ReactNode {
   return <Dumbbell size={15} />;
 }
 
+interface Unidade {
+  id: string;
+  nome: string;
+}
+
 interface ConviteModalProps {
   isOpen: boolean;
   onClose: () => void;
   unidadeId?: string;
+  unidades?: Unidade[];
 }
 
 export default function ConviteModal({
   isOpen,
   onClose,
   unidadeId,
+  unidades = [],
 }: ConviteModalProps) {
   const [formData, setFormData] = useState<CriarConviteDto>({
     tipo_cadastro: "ALUNO",
@@ -81,29 +88,36 @@ export default function ConviteModal({
 
   // Carregar modalidades da unidade
   useEffect(() => {
-    if (unidadeId) {
-      listUnidadeModalidades({ unidade_id: unidadeId })
+    const uid = formData.unidade_id;
+    if (uid) {
+      listUnidadeModalidades({ unidade_id: uid })
         .then((data) => setModalidades(data.filter((m) => m.ativa)))
         .catch(() => setModalidades([]));
     } else {
       setModalidades([]);
     }
-  }, [unidadeId]);
+  }, [formData.unidade_id]);
 
   // Carregar config da modalidade selecionada
   useEffect(() => {
-    if (unidadeId && modalidadeAulaId) {
+    const uid = formData.unidade_id;
+    if (uid && modalidadeAulaId) {
       aulaExperimentalApi
-        .getConfig(unidadeId, modalidadeAulaId)
+        .getConfig(uid, modalidadeAulaId)
         .then(setConfig)
         .catch(() => setConfig(null));
     } else {
       setConfig(null);
     }
-  }, [unidadeId, modalidadeAulaId]);
+  }, [formData.unidade_id, modalidadeAulaId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!formData.unidade_id) {
+      toast.error("Selecione uma unidade para criar o convite");
+      return;
+    }
 
     if (agendamentoAtivado && (!modalidadeAulaId || !dataAula || !horarioAula)) {
       toast.error("Preencha modalidade, data e horário da aula experimental");
@@ -113,22 +127,19 @@ export default function ConviteModal({
     setLoading(true);
 
     try {
-      const response = await conviteApi.criarConvite(formData);
+      const payload: CriarConviteDto = {
+        ...formData,
+        // Inclui agendamento embutido se o toggle está ativo
+        agendamento:
+          agendamentoAtivado && modalidadeAulaId && dataAula && horarioAula
+            ? { modalidade_id: modalidadeAulaId, data_aula: dataAula, horario: horarioAula }
+            : undefined,
+      };
 
-      // Se agendamento ativado, criar junto
-      if (agendamentoAtivado && formData.unidade_id && modalidadeAulaId && dataAula && horarioAula) {
-        await aulaExperimentalApi.criar({
-          unidade_id: formData.unidade_id,
-          modalidade_id: modalidadeAulaId,
-          convite_id: response.convite?.id,
-          nome: formData.nome_pre_cadastro || "Não informado",
-          email: formData.email,
-          telefone: formData.telefone,
-          cpf: formData.cpf,
-          data_aula: dataAula,
-          horario: horarioAula,
-        });
-        toast.success("Agendamento de aula experimental criado!");
+      const response = await conviteApi.criarConvite(payload);
+
+      if (agendamentoAtivado) {
+        toast.success("Convite e agendamento criados com sucesso!");
       }
 
       setResult({
@@ -226,6 +237,29 @@ export default function ConviteModal({
 
         {!result ? (
           <form onSubmit={handleSubmit} className="space-y-4">
+
+            {/* Seletor de unidade — exibido apenas quando nenhuma unidade foi pré-selecionada */}
+            {!unidadeId && unidades.length > 0 && (
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">
+                  Unidade <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={formData.unidade_id || ""}
+                  onChange={(e) =>
+                    setFormData({ ...formData, unidade_id: e.target.value || undefined })
+                  }
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-400 focus:outline-none bg-slate-50"
+                  required
+                >
+                  <option value="">Selecione a unidade...</option>
+                  {unidades.map((u) => (
+                    <option key={u.id} value={u.id}>{u.nome}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             <div>
               <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">
                 Tipo de Cadastro <span className="text-red-500">*</span>

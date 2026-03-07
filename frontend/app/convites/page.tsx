@@ -816,6 +816,7 @@ export default function ConvitesPage() {
         isOpen={conviteModalOpen}
         onClose={() => setConviteModalOpen(false)}
         unidadeId={unidadeId || undefined}
+        unidades={unidades}
       />
       </div>
     </div>

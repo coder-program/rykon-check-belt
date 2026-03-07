@@ -17,6 +17,7 @@ import { Usuario } from '../usuarios/entities/usuario.entity';
 import { Aluno, StatusAluno, Genero } from './entities/aluno.entity';
 import { AlunoConvenio, AlunoConvenioStatus } from '../financeiro/entities/aluno-convenio.entity';
 import { Convenio } from '../financeiro/entities/convenio.entity';
+import { AgendamentoAulaExperimental } from './entities/agendamento-aula-experimental.entity';
 import * as bcrypt from 'bcrypt';
 import * as dayjs from 'dayjs';
 import * as utc from 'dayjs/plugin/utc';
@@ -42,9 +43,17 @@ export class ConviteCadastroService {
     private alunoConvenioRepository: Repository<AlunoConvenio>,
     @InjectRepository(Convenio)
     private convenioRepository: Repository<Convenio>,
+    @InjectRepository(AgendamentoAulaExperimental)
+    private agendamentoRepository: Repository<AgendamentoAulaExperimental>,
   ) {}
 
   async criarConvite(dto: CriarConviteDto, criadoPorId: string) {
+    if (!dto.unidade_id) {
+      throw new BadRequestException(
+        'Selecione uma unidade para criar o convite',
+      );
+    }
+
     const token = randomBytes(32).toString('hex');
     const dataExpiracao = dayjs()
       .tz('America/Sao_Paulo')
@@ -66,6 +75,24 @@ export class ConviteCadastroService {
     });
 
     const salvo = await this.conviteRepository.save(convite);
+
+    // Criar agendamento de aula experimental atomicamente, se enviado
+    if (dto.agendamento) {
+      const ag = this.agendamentoRepository.create({
+        unidade_id: dto.unidade_id,
+        modalidade_id: dto.agendamento.modalidade_id,
+        convite_id: salvo.id,
+        nome: dto.nome_pre_cadastro || 'Não informado',
+        email: dto.email ?? null,
+        telefone: dto.telefone ?? null,
+        cpf: dto.cpf ?? null,
+        data_aula: dto.agendamento.data_aula,
+        horario: dto.agendamento.horario,
+        observacoes: dto.agendamento.observacoes ?? null,
+        criado_por: criadoPorId,
+      });
+      await this.agendamentoRepository.save(ag);
+    }
 
     const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
     const link = `${baseUrl}/cadastro/${token}`;

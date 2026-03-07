@@ -1,5 +1,25 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsEmail, IsOptional, IsEnum, IsUUID } from 'class-validator';
+import { IsString, IsEmail, IsOptional, IsEnum, IsUUID, IsDateString, ValidateNested } from 'class-validator';
+import { Type } from 'class-transformer';
+
+export class AgendamentoConviteDto {
+  @ApiProperty({ description: 'ID da modalidade' })
+  @IsUUID()
+  modalidade_id: string;
+
+  @ApiProperty({ description: 'Data da aula (YYYY-MM-DD)' })
+  @IsDateString()
+  data_aula: string;
+
+  @ApiProperty({ description: 'Horário da aula (HH:mm)' })
+  @IsString()
+  horario: string;
+
+  @ApiProperty({ description: 'Observações', required: false })
+  @IsString()
+  @IsOptional()
+  observacoes?: string;
+}
 
 export class CriarConviteDto {
   @ApiProperty({
@@ -38,6 +58,12 @@ export class CriarConviteDto {
   @IsString()
   @IsOptional()
   observacoes?: string;
+
+  @ApiProperty({ description: 'Agendamento de aula experimental embutido', required: false, type: AgendamentoConviteDto })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => AgendamentoConviteDto)
+  agendamento?: AgendamentoConviteDto;
 }
 
 export class CompletarCadastroDto {
