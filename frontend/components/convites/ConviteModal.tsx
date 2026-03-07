@@ -136,8 +136,6 @@ export default function ConviteModal({
           : undefined,
       };
 
-      console.log('[ConviteModal] temAgendamento:', temAgendamento, '| payload.agendamento:', JSON.stringify(payload.agendamento));
-
       const response = await conviteApi.criarConvite(payload);
 
       if (temAgendamento) {
