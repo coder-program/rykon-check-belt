@@ -31,6 +31,7 @@ import {
   Settings,
   CheckCircle,
   Dumbbell,
+  MonitorPlay,
 } from "lucide-react";
 export default function GerenteDashboard() {
   const { user } = useAuth();
@@ -289,6 +290,13 @@ export default function GerenteDashboard() {
       icon: Dumbbell,
       action: () => router.push("/modalidades"),
       color: "bg-purple-500",
+    },
+    {
+      title: "Tutoriais do Sistema",
+      description: "Como usar as funcionalidades e novidades",
+      icon: MonitorPlay,
+      action: () => router.push("/videos"),
+      color: "bg-indigo-600",
     },
     // TODO: Implementar funcionalidade de relatórios
     // {

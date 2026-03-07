@@ -26,6 +26,7 @@ import {
   Wallet,
   List,
   ChevronRight,
+  MonitorPlay,
 } from "lucide-react";
 
 export default function AdminSistemaPage() {
@@ -126,6 +127,14 @@ export default function AdminSistemaPage() {
       description: "Parâmetros globais do sistema",
       color: "gray",
       route: "/admin/configuracoes",
+      active: true,
+    },
+    {
+      icon: MonitorPlay,
+      title: "Tutoriais do Sistema",
+      description: "Vídeos explicativos sobre as funcionalidades",
+      color: "red",
+      route: "/admin/videos",
       active: true,
     },
   ];

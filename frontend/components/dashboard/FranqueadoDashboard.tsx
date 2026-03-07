@@ -40,6 +40,7 @@ import {
   Settings,
   Dumbbell,
   ArrowRight,
+  MonitorPlay,
 } from "lucide-react";
 
 export default function FranqueadoDashboard() {
@@ -452,6 +453,13 @@ export default function FranqueadoDashboard() {
       icon: DollarSign,
       action: () => router.push("/financeiro/dashboard"),
       color: "bg-emerald-500",
+    },
+    {
+      title: "Tutoriais do Sistema",
+      description: "Como usar as funcionalidades e novidades",
+      icon: MonitorPlay,
+      action: () => router.push("/videos"),
+      color: "bg-indigo-600",
     },
     // TODO: Implementar funcionalidade de relatórios
     // {

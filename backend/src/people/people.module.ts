@@ -9,6 +9,7 @@ import { GerenteUnidadesController } from './controllers/gerente-unidades.contro
 import { ConviteCadastroController } from './convite-cadastro.controller';
 import { ContratosController } from './controllers/contratos.controller';
 import { AulaExperimentalController } from './aula-experimental.controller';
+import { VideoTreinamentoController } from './video-treinamento.controller';
 import { AlunosService } from './services/alunos.service';
 import { ProfessoresService } from './services/professores.service';
 import { FranqueadosService } from './services/franqueados.service';
@@ -19,6 +20,7 @@ import { GerenteUnidadesService } from './services/gerente-unidades.service';
 import { ConviteCadastroService } from './convite-cadastro.service';
 import { ContratosService } from './services/contratos.service';
 import { AulaExperimentalService } from './aula-experimental.service';
+import { VideoTreinamentoService } from './video-treinamento.service';
 import { UsuariosModule } from '../usuarios/usuarios.module';
 import { EnderecosModule } from '../enderecos/enderecos.module';
 import { Franqueado } from './entities/franqueado.entity';
@@ -40,6 +42,7 @@ import { ContratoUnidade } from './entities/contrato-unidade.entity';
 import { ContratoAssinaturaHistorico } from './entities/contrato-assinatura-historico.entity';
 import { AgendamentoAulaExperimental } from './entities/agendamento-aula-experimental.entity';
 import { ConfigAulaExperimental } from './entities/config-aula-experimental.entity';
+import { VideoTreinamento } from './entities/video-treinamento.entity';
 import { AlunoUnidadeService } from './services/aluno-unidade.service';
 import { AlunoModalidadeService } from './services/aluno-modalidade.service';
 import { Modalidade } from '../modalidades/entities/modalidade.entity';
@@ -73,6 +76,7 @@ import { Presenca } from '../presenca/entities/presenca.entity';
       ContratoAssinaturaHistorico,
       AgendamentoAulaExperimental,
       ConfigAulaExperimental,
+      VideoTreinamento,
       Endereco,
       Usuario,
       AlunoConvenio,
@@ -91,6 +95,7 @@ import { Presenca } from '../presenca/entities/presenca.entity';
     ConviteCadastroController,
     ContratosController,
     AulaExperimentalController,
+    VideoTreinamentoController,
   ],
   providers: [
     AlunosService,
@@ -105,6 +110,7 @@ import { Presenca } from '../presenca/entities/presenca.entity';
     ConviteCadastroService,
     ContratosService,
     AulaExperimentalService,
+    VideoTreinamentoService,
   ],
   exports: [
     AlunosService,
