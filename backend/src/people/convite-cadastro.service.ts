@@ -45,12 +45,34 @@ export class ConviteCadastroService {
   ) {}
 
   async criarConvite(dto: CriarConviteDto, criadoPorId: string) {
-    // Apenas gerar link público de cadastro
+    const token = randomBytes(32).toString('hex');
+    const dataExpiracao = dayjs()
+      .tz('America/Sao_Paulo')
+      .add(7, 'day')
+      .toDate();
+
+    const convite = this.conviteRepository.create({
+      token,
+      tipo_cadastro: dto.tipo_cadastro,
+      unidade_id: dto.unidade_id ?? null,
+      email: dto.email ?? null,
+      telefone: dto.telefone ?? null,
+      nome_pre_cadastro: dto.nome_pre_cadastro ?? null,
+      cpf: dto.cpf ?? null,
+      observacoes: dto.observacoes ?? null,
+      usado: false,
+      criado_por: criadoPorId,
+      data_expiracao: dataExpiracao,
+    });
+
+    const salvo = await this.conviteRepository.save(convite);
+
     const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-    const link = `${baseUrl}/register`;
+    const link = `${baseUrl}/cadastro/${token}`;
 
     return {
-      telefone: dto.telefone,
+      success: true,
+      convite: salvo,
       link,
       linkWhatsApp: this.gerarLinkWhatsApp(
         dto.telefone,

@@ -41,7 +41,6 @@ import {
   Dumbbell,
   ArrowRight,
 } from "lucide-react";
-import ConviteModal from "@/components/convites/ConviteModal";
 
 export default function FranqueadoDashboard() {
   const { user } = useAuth();
@@ -49,7 +48,6 @@ export default function FranqueadoDashboard() {
   const [expandedUnidadeId, setExpandedUnidadeId] = useState<string | null>(
     null
   );
-  const [conviteModalOpen, setConviteModalOpen] = useState(false);
 
   // Função para mapear status da unidade para texto legível
   const getStatusText = (status: string) => {
@@ -346,18 +344,11 @@ export default function FranqueadoDashboard() {
 
   const quickActions = [
     {
-      title: "Enviar Convite",
-      description: "Link de cadastro para aluno",
+      title: "Convites",
+      description: "Enviar convites e aulas experimentais",
       icon: Mail,
-      action: () => setConviteModalOpen(true),
-      color: "bg-blue-500",
-    },
-    {
-      title: "Agendamentos",
-      description: "Aulas experimentais e convites",
-      icon: Calendar,
       action: () => router.push("/convites"),
-      color: "bg-indigo-500",
+      color: "bg-blue-500",
     },
     {
       title: "TeamCruz Dashboard",
@@ -813,11 +804,6 @@ export default function FranqueadoDashboard() {
         </Card>
       </div>
 
-      {/* Modal de Convite */}
-      <ConviteModal
-        isOpen={conviteModalOpen}
-        onClose={() => setConviteModalOpen(false)}
-      />
     </div>
   );
 }

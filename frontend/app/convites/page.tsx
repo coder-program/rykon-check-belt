@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   aulaExperimentalApi,
   conviteApi,
@@ -10,6 +10,7 @@ import {
 import { listUnidadeModalidades, UnidadeModalidade } from "@/lib/peopleApi";
 import { useFiltroUnidade } from "@/hooks/useFiltroUnidade";
 import { toast } from "react-hot-toast";
+import ConviteModal from "@/components/convites/ConviteModal";
 import {
   Calendar,
   Settings,
@@ -21,7 +22,19 @@ import {
   RefreshCw,
   Users,
   CalendarCheck,
+  Plus,
+  Mail,
+  Dumbbell,
 } from "lucide-react";
+import {
+  GiHighKick,
+  GiBoxingGlove,
+  GiKimono,
+  GiFist,
+  GiMeditation,
+  GiWeightLiftingUp,
+  GiMuscleUp,
+} from "react-icons/gi";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -56,8 +69,28 @@ function formatarDataBR(iso: string) {
   return `${d}/${m}/${y}`;
 }
 
+function getEsporteIcon(nome?: string): React.ReactNode {
+  const n = (nome ?? "").toLowerCase();
+  if (n.includes("muay") || n.includes("kickbox") || n.includes("karate") || n.includes("taekwondo"))
+    return <GiHighKick size={13} />;
+  if (n.includes("box"))
+    return <GiBoxingGlove size={13} />;
+  if (n.includes("jiu") || n.includes("judo") || n.includes("bjj"))
+    return <GiKimono size={13} />;
+  if (n.includes("mma") || n.includes("luta") || n.includes("wrestling") || n.includes("krav"))
+    return <GiFist size={13} />;
+  if (n.includes("yoga") || n.includes("pilates") || n.includes("medita"))
+    return <GiMeditation size={13} />;
+  if (n.includes("cross") || n.includes("funcional"))
+    return <GiWeightLiftingUp size={13} />;
+  if (n.includes("muscula") || n.includes("gym"))
+    return <GiMuscleUp size={13} />;
+  return <Dumbbell size={13} />;
+}
+
 export default function ConvitesPage() {
   const [tab, setTab] = useState<TabType>("agendamentos");
+  const [conviteModalOpen, setConviteModalOpen] = useState(false);
   const {
     isFranqueado,
     unidades,
@@ -262,48 +295,67 @@ export default function ConvitesPage() {
   };
 
   return (
-    <div className="p-6 space-y-6 max-w-7xl mx-auto">
-      {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="text-2xl font-bold">Convites & Aulas Experimentais</h1>
-          <p className="text-gray-500 text-sm">
-            Gerencie convites enviados e agendamentos de aulas experimentais
-          </p>
-        </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          {isFranqueado && unidades.length > 0 && (
-            <select
-              value={unidadeSelecionada}
-              onChange={(e) => setUnidadeSelecionada(e.target.value)}
-              className="border rounded-lg px-3 py-2 text-sm"
-            >
-              <option value="todas">Todas as unidades</option>
-              {unidades.map((u) => (
-                <option key={u.id} value={u.id}>{u.nome}</option>
-              ))}
-            </select>
-          )}
-          <button
-            onClick={abrirConfig}
-            className="flex items-center gap-1.5 px-3 py-2 border rounded-lg text-sm hover:bg-gray-50"
-            title="Configurar aula experimental da unidade"
-          >
-            <Settings size={15} />
-            Configurar
-          </button>
-          <button
-            onClick={tab === "agendamentos" ? carregarAgendamentos : carregarConvites}
-            className="flex items-center gap-1.5 px-3 py-2 border rounded-lg text-sm hover:bg-gray-50"
-          >
-            <RefreshCw size={15} />
-            Atualizar
-          </button>
+    <div className="min-h-screen" style={{ background: "linear-gradient(160deg, #e2e6f3 0%, #eaecf8 40%, #e6e9f5 100%)" }}>
+      {/* Hero Header */}
+      <div className="bg-linear-to-r from-[#0f172a] via-[#1e3a8a] to-[#312e81] shadow-xl">
+        <div className="max-w-7xl mx-auto px-6 py-7">
+          <div className="flex items-center justify-between gap-4 flex-wrap">
+            <div className="flex items-center gap-4">
+              <div className="w-11 h-11 rounded-xl bg-white/10 border border-white/20 flex items-center justify-center backdrop-blur-sm shrink-0">
+                <Mail className="h-5 w-5 text-white" />
+              </div>
+              <div>
+                <h1 className="text-xl font-bold text-white tracking-tight leading-tight">
+                  Convites & Aulas Experimentais
+                </h1>
+                <p className="text-blue-200/70 text-xs mt-0.5">
+                  Gerencie convites enviados e agendamentos de aulas experimentais
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              {isFranqueado && unidades.length > 0 && (
+                <select
+                  value={unidadeSelecionada}
+                  onChange={(e) => setUnidadeSelecionada(e.target.value)}
+                  className="border border-white/20 bg-white/10 text-white rounded-lg px-3 py-2 text-sm backdrop-blur-sm"
+                >
+                  <option value="todas" className="text-gray-900 bg-white">Todas as unidades</option>
+                  {unidades.map((u) => (
+                    <option key={u.id} value={u.id} className="text-gray-900 bg-white">{u.nome}</option>
+                  ))}
+                </select>
+              )}
+              <button
+                onClick={abrirConfig}
+                className="flex items-center gap-1.5 px-3 py-2 border border-white/20 bg-white/10 text-white rounded-lg text-sm hover:bg-white/20 backdrop-blur-sm transition-colors"
+                title="Configurar aula experimental da unidade"
+              >
+                <Settings size={15} />
+                Configurar
+              </button>
+              <button
+                onClick={tab === "agendamentos" ? carregarAgendamentos : carregarConvites}
+                className="flex items-center gap-1.5 px-3 py-2 border border-white/20 bg-white/10 text-white rounded-lg text-sm hover:bg-white/20 backdrop-blur-sm transition-colors"
+              >
+                <RefreshCw size={15} />
+                Atualizar
+              </button>
+              <button
+                onClick={() => setConviteModalOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-2 bg-blue-500 text-white rounded-lg text-sm hover:bg-blue-400 shadow-lg shadow-blue-900/40 transition-colors"
+              >
+                <Plus size={15} />
+                Novo Convite
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
+      <div className="max-w-7xl mx-auto px-6 py-6 space-y-4">
       {/* Tabs */}
-      <div className="border-b flex gap-0">
+      <div className="border-b border-slate-200/80 flex gap-0">
         <button
           onClick={() => setTab("agendamentos")}
           className={`flex items-center gap-2 px-5 py-2.5 text-sm font-medium border-b-2 transition-colors ${
@@ -342,81 +394,102 @@ export default function ConvitesPage() {
       {tab === "agendamentos" && (
         <div className="space-y-4">
           {/* Filtros */}
-          <div className="flex gap-2 flex-wrap items-center">
+          <div className="bg-white/70 backdrop-blur-sm border border-white/80 rounded-2xl shadow-sm px-4 py-3 flex gap-2 flex-wrap items-center">
             <div className="relative">
-              <Search size={14} className="absolute left-2.5 top-2.5 text-gray-400" />
+              <Search size={14} className="absolute left-2.5 top-2.5 text-slate-400" />
               <input
                 value={busca}
                 onChange={(e) => setBusca(e.target.value)}
                 placeholder="Buscar por nome, e-mail, CPF..."
-                className="pl-8 pr-3 py-2 border rounded-lg text-sm w-64"
+                className="pl-8 pr-3 py-2 border border-slate-200 rounded-xl text-sm w-60 bg-white/80 focus:ring-2 focus:ring-blue-400 focus:outline-none"
               />
             </div>
             {modalidades.length > 0 && (
-              <select
-                value={modalidadeFiltroId}
-                onChange={(e) => setModalidadeFiltroId(e.target.value)}
-                className="border rounded-lg px-3 py-2 text-sm"
-              >
-                <option value="">Todas modalidades</option>
-                {modalidades.map((m) => (
-                  <option key={m.modalidade_id} value={m.modalidade_id}>
-                    {m.modalidade?.nome ?? m.modalidade_id}
-                  </option>
-                ))}
-              </select>
-            )}
-            {(["TODOS", "PENDENTE", "CONFIRMADO", "CANCELADO", "REALIZADO"] as StatusFiltro[]).map(
-              (s) => (
+              <div className="flex flex-wrap gap-1.5">
                 <button
-                  key={s}
-                  onClick={() => setStatusFiltro(s)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
-                    statusFiltro === s
-                      ? "bg-blue-600 text-white border-blue-600"
-                      : "border-gray-300 text-gray-600 hover:bg-gray-50"
+                  onClick={() => setModalidadeFiltroId("")}
+                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
+                    modalidadeFiltroId === ""
+                      ? "bg-slate-700 text-white border-slate-700"
+                      : "bg-white text-slate-600 border-slate-200 hover:border-slate-400"
                   }`}
                 >
-                  {s === "TODOS" ? "Todos" : s.charAt(0) + s.slice(1).toLowerCase()}
+                  <Dumbbell size={11} />
+                  Todas
                 </button>
-              )
+                {modalidades.map((m) => (
+                  <button
+                    key={m.modalidade_id}
+                    onClick={() => setModalidadeFiltroId(m.modalidade_id)}
+                    className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
+                      modalidadeFiltroId === m.modalidade_id
+                        ? "bg-indigo-600 text-white border-indigo-600"
+                        : "bg-white text-slate-600 border-slate-200 hover:border-indigo-400"
+                    }`}
+                  >
+                    {getEsporteIcon(m.modalidade?.nome)}
+                    {m.modalidade?.nome ?? m.modalidade_id}
+                  </button>
+                ))}
+              </div>
             )}
+            <div className="flex flex-wrap gap-1.5">
+              {(["TODOS", "PENDENTE", "CONFIRMADO", "CANCELADO", "REALIZADO"] as StatusFiltro[]).map(
+                (s) => (
+                  <button
+                    key={s}
+                    onClick={() => setStatusFiltro(s)}
+                    className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
+                      statusFiltro === s
+                        ? "bg-blue-600 text-white border-blue-600"
+                        : "border-slate-200 text-slate-600 hover:bg-slate-50"
+                    }`}
+                  >
+                    {s === "TODOS" ? "Todos" : s.charAt(0) + s.slice(1).toLowerCase()}
+                  </button>
+                )
+              )}
+            </div>
           </div>
 
           {/* Tabela */}
           {loadingAgs ? (
-            <div className="flex items-center justify-center py-16 text-gray-400">
+            <div className="bg-white/70 backdrop-blur-sm border border-white/80 rounded-2xl shadow-sm flex items-center justify-center py-16 text-slate-400">
               <RefreshCw size={20} className="animate-spin mr-2" />
               Carregando...
             </div>
           ) : agsFiltradas.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 text-gray-400">
-              <Calendar size={40} className="mb-3 opacity-40" />
-              <p className="text-sm">Nenhum agendamento encontrado</p>
+            <div className="bg-white/70 backdrop-blur-sm border border-white/80 rounded-2xl shadow-sm flex flex-col items-center justify-center py-16 text-gray-400">
+              <div className="w-14 h-14 rounded-2xl bg-blue-50 flex items-center justify-center mb-4">
+                <Calendar size={28} className="text-blue-300" />
+              </div>
+              <p className="text-sm font-medium text-slate-500">Nenhum agendamento encontrado</p>
+              <p className="text-xs text-slate-400 mt-1">Tente ajustar os filtros</p>
             </div>
           ) : (
-            <div className="border rounded-lg overflow-hidden">
+            <div className="bg-white/80 backdrop-blur-sm border border-white/90 rounded-2xl overflow-hidden shadow-sm">
               <table className="w-full text-sm">
-                <thead className="bg-gray-50 border-b">
+                <thead className="bg-slate-50/80 border-b border-slate-100">
                   <tr>
-                    <th className="text-left px-4 py-3 font-medium text-gray-600">Nome</th>
-                    <th className="text-left px-4 py-3 font-medium text-gray-600">Modalidade</th>
-                    <th className="text-left px-4 py-3 font-medium text-gray-600">Contato</th>
-                    <th className="text-left px-4 py-3 font-medium text-gray-600">Data/Horário</th>
-                    <th className="text-left px-4 py-3 font-medium text-gray-600">Status</th>
-                    <th className="text-left px-4 py-3 font-medium text-gray-600">Obs.</th>
-                    <th className="px-4 py-3 font-medium text-gray-600">Ações</th>
+                    <th className="text-left px-4 py-3 font-medium text-slate-600">Nome</th>
+                    <th className="text-left px-4 py-3 font-medium text-slate-600">Modalidade</th>
+                    <th className="text-left px-4 py-3 font-medium text-slate-600">Contato</th>
+                    <th className="text-left px-4 py-3 font-medium text-slate-600">Data/Horário</th>
+                    <th className="text-left px-4 py-3 font-medium text-slate-600">Status</th>
+                    <th className="text-left px-4 py-3 font-medium text-slate-600">Obs.</th>
+                    <th className="px-4 py-3 font-medium text-slate-600">Ações</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y">
                   {agsFiltradas.map((ag) => (
-                    <tr key={ag.id} className="hover:bg-gray-50">
+                    <tr key={ag.id} className="hover:bg-indigo-50/30 transition-colors">
                       <td className="px-4 py-3">
                         <div className="font-medium">{ag.nome}</div>
                         {ag.cpf && <div className="text-xs text-gray-500">{ag.cpf}</div>}
                       </td>
                       <td className="px-4 py-3">
-                        <span className="text-xs bg-indigo-50 text-indigo-700 border border-indigo-200 px-2 py-0.5 rounded-full">
+                        <span className="inline-flex items-center gap-1.5 text-xs bg-indigo-50 text-indigo-700 border border-indigo-200 px-2.5 py-1 rounded-full font-medium">
+                          {getEsporteIcon(nomeModalidade(ag.modalidade_id))}
                           {nomeModalidade(ag.modalidade_id)}
                         </span>
                       </td>
@@ -496,23 +569,26 @@ export default function ConvitesPage() {
       {tab === "convites" && (
         <div className="space-y-4">
           {loadingConvites ? (
-            <div className="flex items-center justify-center py-16 text-gray-400">
+            <div className="bg-white/70 backdrop-blur-sm border border-white/80 rounded-2xl shadow-sm flex items-center justify-center py-16 text-slate-400">
               <RefreshCw size={20} className="animate-spin mr-2" />
               Carregando...
             </div>
           ) : convites.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 text-gray-400">
-              <Users size={40} className="mb-3 opacity-40" />
-              <p className="text-sm">Nenhum convite encontrado</p>
+            <div className="bg-white/70 backdrop-blur-sm border border-white/80 rounded-2xl shadow-sm flex flex-col items-center justify-center py-16 text-gray-400">
+              <div className="w-14 h-14 rounded-2xl bg-indigo-50 flex items-center justify-center mb-4">
+                <Users size={28} className="text-indigo-300" />
+              </div>
+              <p className="text-sm font-medium text-slate-500">Nenhum convite encontrado</p>
+              <p className="text-xs text-slate-400 mt-1">Envie o primeiro convite clicando em Novo Convite</p>
             </div>
           ) : (
-            <div className="border rounded-lg overflow-hidden">
+            <div className="bg-white/80 backdrop-blur-sm border border-white/90 rounded-2xl overflow-hidden shadow-sm">
               <table className="w-full text-sm">
-                <thead className="bg-gray-50 border-b">
+                <thead className="bg-slate-50/80 border-b border-slate-100">
                   <tr>
-                    <th className="text-left px-4 py-3 font-medium text-gray-600">Nome</th>
-                    <th className="text-left px-4 py-3 font-medium text-gray-600">Contato</th>
-                    <th className="text-left px-4 py-3 font-medium text-gray-600">Tipo</th>
+                    <th className="text-left px-4 py-3 font-medium text-slate-600">Nome</th>
+                    <th className="text-left px-4 py-3 font-medium text-slate-600">Contato</th>
+                    <th className="text-left px-4 py-3 font-medium text-slate-600">Tipo</th>
                     <th className="text-left px-4 py-3 font-medium text-gray-600">Status</th>
                     <th className="text-left px-4 py-3 font-medium text-gray-600">Criado em</th>
                     <th className="text-left px-4 py-3 font-medium text-gray-600">Expiração</th>
@@ -520,7 +596,7 @@ export default function ConvitesPage() {
                 </thead>
                 <tbody className="divide-y">
                   {convites.map((c) => (
-                    <tr key={c.id} className="hover:bg-gray-50">
+                    <tr key={c.id} className="hover:bg-indigo-50/30 transition-colors">
                       <td className="px-4 py-3">
                         <div className="font-medium">
                           {c.nome_pre_cadastro || "—"}
@@ -735,6 +811,13 @@ export default function ConvitesPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ConviteModal
+        isOpen={conviteModalOpen}
+        onClose={() => setConviteModalOpen(false)}
+        unidadeId={unidadeId || undefined}
+      />
+      </div>
     </div>
   );
 }
