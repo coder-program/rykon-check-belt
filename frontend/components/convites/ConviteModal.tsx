@@ -82,7 +82,6 @@ export default function ConviteModal({
   const [modalidades, setModalidades] = useState<UnidadeModalidade[]>([]);
   const [modalidadeAulaId, setModalidadeAulaId] = useState("");
   const [config, setConfig] = useState<ConfigAulaExperimental | null>(null);
-  const [agendamentoAtivado, setAgendamentoAtivado] = useState(false);
   const [dataAula, setDataAula] = useState("");
   const [horarioAula, setHorarioAula] = useState("");
 
@@ -119,26 +118,29 @@ export default function ConviteModal({
       return;
     }
 
-    if (agendamentoAtivado && (!modalidadeAulaId || !dataAula || !horarioAula)) {
-      toast.error("Preencha modalidade, data e horário da aula experimental");
+    // Valida agendamento: se preencheu algum campo, exige todos
+    const agendamentoParcial = (modalidadeAulaId || dataAula || horarioAula) && !(modalidadeAulaId && dataAula && horarioAula);
+    if (agendamentoParcial) {
+      toast.error("Para agendar aula experimental, preencha modalidade, data e horário");
       return;
     }
 
     setLoading(true);
 
     try {
+      const temAgendamento = !!(modalidadeAulaId && dataAula && horarioAula);
       const payload: CriarConviteDto = {
         ...formData,
-        // Inclui agendamento embutido se o toggle está ativo
-        agendamento:
-          agendamentoAtivado && modalidadeAulaId && dataAula && horarioAula
-            ? { modalidade_id: modalidadeAulaId, data_aula: dataAula, horario: horarioAula }
-            : undefined,
+        agendamento: temAgendamento
+          ? { modalidade_id: modalidadeAulaId, data_aula: dataAula, horario: horarioAula }
+          : undefined,
       };
+
+      console.log('[ConviteModal] temAgendamento:', temAgendamento, '| payload.agendamento:', JSON.stringify(payload.agendamento));
 
       const response = await conviteApi.criarConvite(payload);
 
-      if (agendamentoAtivado) {
+      if (temAgendamento) {
         toast.success("Convite e agendamento criados com sucesso!");
       }
 
@@ -172,7 +174,6 @@ export default function ConviteModal({
       unidade_id: unidadeId,
     });
     setResult(null);
-    setAgendamentoAtivado(false);
     setModalidadeAulaId("");
     setDataAula("");
     setHorarioAula("");
@@ -367,96 +368,76 @@ export default function ConviteModal({
               />
             </div>
 
-            {/* Agendar Aula Experimental */}
+            {/* Agendar Aula Experimental — sempre visível quando há modalidades */}
             {formData.tipo_cadastro === "ALUNO" && modalidades.length > 0 && (
               <div className="border rounded-xl p-4 space-y-3 bg-linear-to-br from-blue-50 to-indigo-50 border-blue-200">
-                <div className="flex items-center justify-between">
-                  <label className="flex items-center gap-2 text-sm font-semibold text-slate-700 cursor-pointer">
-                    <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center shrink-0">
-                      <Calendar size={14} className="text-white" />
-                    </div>
-                    Agendar Aula Experimental
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setAgendamentoAtivado(!agendamentoAtivado);
-                      if (agendamentoAtivado) {
-                        setModalidadeAulaId("");
-                        setDataAula("");
-                        setHorarioAula("");
-                      }
-                    }}
-                    className={`relative w-10 h-6 rounded-full transition-colors ${agendamentoAtivado ? "bg-blue-600" : "bg-gray-300"}`}
-                  >
-                    <span
-                      className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${agendamentoAtivado ? "translate-x-5" : "translate-x-1"}`}
-                    />
-                  </button>
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center shrink-0">
+                    <Calendar size={14} className="text-white" />
+                  </div>
+                  <span className="text-sm font-semibold text-slate-700">Aula Experimental <span className="text-slate-400 font-normal">(opcional)</span></span>
                 </div>
 
-                {agendamentoAtivado && (
-                  <div className="space-y-3">
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wide mb-2">
-                        Modalidade *
-                      </label>
-                      <div className="flex flex-wrap gap-2">
-                        {modalidades.map((m) => (
-                          <button
-                            key={m.modalidade_id}
-                            type="button"
-                            onClick={() => setModalidadeAulaId(m.modalidade_id)}
-                            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
-                              modalidadeAulaId === m.modalidade_id
-                                ? "bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-400/30"
-                                : "bg-white text-slate-700 border-slate-200 hover:border-indigo-400 hover:text-indigo-600"
-                            }`}
-                          >
-                            {getEsporteIcon(m.modalidade?.nome)}
-                            {m.modalidade?.nome ?? m.modalidade_id}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wide mb-1">
-                          Data da Aula *
-                        </label>
-                        <input
-                          type="date"
-                          value={dataAula}
-                          onChange={(e) => setDataAula(e.target.value)}
-                          min={new Date().toISOString().split("T")[0]}
-                          className="w-full border border-slate-200 rounded-xl px-2.5 py-1.5 text-sm bg-white focus:ring-2 focus:ring-blue-400 focus:outline-none"
-                          required={agendamentoAtivado}
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wide mb-1">
-                          Horário *
-                        </label>
-                        <input
-                          type="time"
-                          value={horarioAula}
-                          onChange={(e) => setHorarioAula(e.target.value)}
-                          className="w-full border border-slate-200 rounded-xl px-2.5 py-1.5 text-sm bg-white focus:ring-2 focus:ring-blue-400 focus:outline-none"
-                          required={agendamentoAtivado}
-                        />
-                      </div>
-                    </div>
-
-                    {config && (
-                      <p className="text-xs text-blue-600">
-                        {config.max_aulas > 1
-                          ? `Até ${config.max_aulas} aulas experimentais permitidas`
-                          : "1 aula experimental permitida"}{" "}
-                        · {config.duracao_minutos} min
-                      </p>
-                    )}
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wide mb-2">
+                    Modalidade
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {modalidades.map((m) => (
+                      <button
+                        key={m.modalidade_id}
+                        type="button"
+                        onClick={() => setModalidadeAulaId(modalidadeAulaId === m.modalidade_id ? "" : m.modalidade_id)}
+                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
+                          modalidadeAulaId === m.modalidade_id
+                            ? "bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-400/30"
+                            : "bg-white text-slate-700 border-slate-200 hover:border-indigo-400 hover:text-indigo-600"
+                        }`}
+                      >
+                        {getEsporteIcon(m.modalidade?.nome)}
+                        {m.modalidade?.nome ?? m.modalidade_id}
+                      </button>
+                    ))}
                   </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wide mb-1">
+                      Data da Aula
+                    </label>
+                    <input
+                      type="date"
+                      value={dataAula}
+                      onChange={(e) => setDataAula(e.target.value)}
+                      min={new Date().toISOString().split("T")[0]}
+                      className="w-full border border-slate-200 rounded-xl px-2.5 py-1.5 text-sm bg-white focus:ring-2 focus:ring-blue-400 focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-600 uppercase tracking-wide mb-1">
+                      Horário
+                    </label>
+                    <input
+                      type="time"
+                      value={horarioAula}
+                      onChange={(e) => setHorarioAula(e.target.value)}
+                      className="w-full border border-slate-200 rounded-xl px-2.5 py-1.5 text-sm bg-white focus:ring-2 focus:ring-blue-400 focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                {config && (
+                  <p className="text-xs text-blue-600">
+                    {config.max_aulas > 1
+                      ? `Até ${config.max_aulas} aulas experimentais permitidas`
+                      : "1 aula experimental permitida"}{" "}
+                    · {config.duracao_minutos} min
+                  </p>
+                )}
+
+                {modalidadeAulaId && dataAula && horarioAula && (
+                  <p className="text-xs text-emerald-600 font-medium">✔ Agendamento será criado junto com o convite</p>
                 )}
               </div>
             )}

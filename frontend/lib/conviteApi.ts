@@ -96,6 +96,7 @@ export interface AgendamentoAulaExperimental {
   id: string;
   unidade_id: string;
   modalidade_id: string;
+  modalidade?: { id: string; nome: string };
   convite_id?: string;
   nome: string;
   email?: string;

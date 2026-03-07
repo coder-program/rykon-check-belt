@@ -62,6 +62,7 @@ export class AulaExperimentalService {
     const qb = this.agendamentoRepo
       .createQueryBuilder('a')
       .leftJoinAndSelect('a.unidade', 'unidade')
+      .leftJoinAndSelect('a.modalidade', 'modalidade')
       .leftJoinAndSelect('a.criador', 'criador')
       .orderBy('a.data_aula', 'DESC')
       .addOrderBy('a.horario', 'ASC');

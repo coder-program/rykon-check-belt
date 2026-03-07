@@ -288,10 +288,11 @@ export default function ConvitesPage() {
     return matchStatus && matchBusca;
   });
 
-  // Nome da modalidade por id
-  const nomeModalidade = (id: string) => {
-    const m = modalidades.find((m) => m.modalidade_id === id);
-    return m?.modalidade?.nome ?? id.slice(0, 8) + "...";
+  // Nome da modalidade por id — usa relação se disponível, depois lookup local
+  const nomeModalidade = (ag: { modalidade_id: string; modalidade?: { nome: string } }) => {
+    if (ag.modalidade?.nome) return ag.modalidade.nome;
+    const m = modalidades.find((m) => m.modalidade_id === ag.modalidade_id);
+    return m?.modalidade?.nome ?? ag.modalidade_id.slice(0, 8) + "...";
   };
 
   return (
@@ -489,8 +490,8 @@ export default function ConvitesPage() {
                       </td>
                       <td className="px-4 py-3">
                         <span className="inline-flex items-center gap-1.5 text-xs bg-indigo-50 text-indigo-700 border border-indigo-200 px-2.5 py-1 rounded-full font-medium">
-                          {getEsporteIcon(nomeModalidade(ag.modalidade_id))}
-                          {nomeModalidade(ag.modalidade_id)}
+                          {getEsporteIcon(nomeModalidade(ag))}
+                          {nomeModalidade(ag)}
                         </span>
                       </td>
                       <td className="px-4 py-3">
@@ -814,7 +815,14 @@ export default function ConvitesPage() {
 
       <ConviteModal
         isOpen={conviteModalOpen}
-        onClose={() => setConviteModalOpen(false)}
+        onClose={() => {
+          setConviteModalOpen(false);
+          // Recarregar listas após criar convite (pode ter agendamento embutido)
+          setTimeout(() => {
+            carregarAgendamentos();
+            carregarConvites();
+          }, 300);
+        }}
         unidadeId={unidadeId || undefined}
         unidades={unidades}
       />

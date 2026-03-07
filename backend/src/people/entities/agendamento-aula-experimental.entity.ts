@@ -10,6 +10,7 @@ import {
 import { Unidade } from './unidade.entity';
 import { ConviteCadastro } from './convite-cadastro.entity';
 import { Usuario } from '../../usuarios/entities/usuario.entity';
+import { Modalidade } from '../../modalidades/entities/modalidade.entity';
 
 export type StatusAgendamento =
   | 'PENDENTE'
@@ -75,6 +76,10 @@ export class AgendamentoAulaExperimental {
   @ManyToOne(() => ConviteCadastro, { nullable: true })
   @JoinColumn({ name: 'convite_id' })
   convite: ConviteCadastro;
+
+  @ManyToOne(() => Modalidade, { nullable: true, eager: false })
+  @JoinColumn({ name: 'modalidade_id' })
+  modalidade: Modalidade;
 
   @ManyToOne(() => Usuario, { nullable: true })
   @JoinColumn({ name: 'criado_por' })
