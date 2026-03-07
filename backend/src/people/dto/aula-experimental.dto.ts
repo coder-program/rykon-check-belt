@@ -61,26 +61,3 @@ export class UpsertConfigAulaExperimentalDto {
   @Min(15)
   duracao_minutos: number;
 }
-
-export class AtualizarStatusAgendamentoDto {
-  @IsIn(['PENDENTE', 'CONFIRMADO', 'CANCELADO', 'REALIZADO'])
-  status: string;
-
-  @IsOptional()
-  @IsString()
-  observacoes?: string;
-}
-
-export class UpsertConfigAulaExperimentalDto {
-  @IsBoolean()
-  ativo: boolean;
-
-  @IsInt()
-  @Min(1)
-  @Max(99)
-  max_aulas: number;
-
-  @IsInt()
-  @Min(15)
-  duracao_minutos: number;
-}
