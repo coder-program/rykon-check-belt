@@ -46,9 +46,13 @@ import {
   QrCode,
   Landmark,
   Wallet,
+  Loader2,
+  Zap,
+  Trash2,
 } from "lucide-react";
 import FiltroUnidade from "@/components/financeiro/FiltroUnidade";
 import { useFiltroUnidade } from "@/hooks/useFiltroUnidade";
+import ProcessarPagamentoModal from "@/components/financeiro/ProcessarPagamentoModal";
 import { toast } from "react-hot-toast";
 
 interface Fatura {
@@ -57,14 +61,20 @@ interface Fatura {
   assinatura_id: string;
   aluno_id: string;
   aluno_nome?: string;
+  descricao?: string;
   valor_original: number;
+  valor_total?: number;
   valor_pago: number;
-  status: "PENDENTE" | "PAGA" | "ATRASADA" | "CANCELADA";
+  status: "PENDENTE" | "PAGA" | "ATRASADA" | "CANCELADA" | "VENCIDA";
   data_vencimento: string;
   data_pagamento?: string;
   metodo_pagamento?: string;
   observacoes?: string;
   created_at: string;
+  token_salvo?: boolean;
+  card_info?: { brand?: string | null; last4?: string | null } | null;
+  card_info_assinatura?: { brand?: string | null; last4?: string | null } | null;
+  assinatura?: { plano?: { nome: string; tipo?: string }; metodo_pagamento?: string } | null;
 }
 
 export default function ContasAReceber() {
@@ -82,9 +92,14 @@ export default function ContasAReceber() {
   const [gerandoFaturas, setGerandoFaturas] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [dataInicio, setDataInicio] = useState("");
+  const [dataFim, setDataFim] = useState("");
   const [selectedFatura, setSelectedFatura] = useState<Fatura | null>(null);
   const [showPagarDialog, setShowPagarDialog] = useState(false);
   const [showCancelarDialog, setShowCancelarDialog] = useState(false);
+  const [showExcluirDialog, setShowExcluirDialog] = useState(false);
+  const [faturaParaExcluir, setFaturaParaExcluir] = useState<Fatura | null>(null);
+  const [isExcluindo, setIsExcluindo] = useState(false);
   const [metodoPagamento, setMetodoPagamento] = useState("");
   const [valorPago, setValorPago] = useState("");
   const [observacoes, setObservacoes] = useState("");
@@ -101,13 +116,22 @@ export default function ContasAReceber() {
     tipo: "sucesso",
   });
 
+  // ── Online payment state ──────────────────────────────────────────
+  const [faturaParaPagar, setFaturaParaPagar] = useState<Fatura | null>(null);
+  const [modalPagamentoOpen, setModalPagamentoOpen] = useState(false);
+  const [modalInitialTab, setModalInitialTab] = useState<string | undefined>(undefined);
+  const [faturasComPagamentoPendente, setFaturasComPagamentoPendente] = useState<Map<string, { metodo: string; temBarcode: boolean }>>(new Map());
+  const [confirmTokenPagar, setConfirmTokenPagar] = useState<Fatura | null>(null);
+  const [loadingTokenPay, setLoadingTokenPay] = useState(false);
+  const [tokenPayError, setTokenPayError] = useState<string | null>(null);
+
   useEffect(() => {
     carregarFaturas();
   }, [unidadeSelecionada]);
 
   useEffect(() => {
     filtrarFaturas();
-  }, [faturas, searchTerm, statusFilter]);
+  }, [faturas, searchTerm, statusFilter, dataInicio, dataFim]);
 
   const carregarFaturas = async () => {
     try {
@@ -130,11 +154,95 @@ export default function ContasAReceber() {
       if (response.ok) {
         const data = await response.json();
         setFaturas(data);
+        await verificarTransacoesPendentes(data, token || "");
       }
       setLoading(false);
     } catch (error) {
       console.error("Erro ao carregar faturas:", error);
       setLoading(false);
+    }
+  };
+
+  const verificarTransacoesPendentes = async (faturasData: Fatura[], token: string) => {
+    try {
+      const faturaIds = faturasData
+        .filter((f) => f.status === "PENDENTE" || f.status === "ATRASADA")
+        .map((f) => f.id);
+      if (faturaIds.length === 0) {
+        setFaturasComPagamentoPendente(new Map());
+        return;
+      }
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/transacoes?status=PENDENTE`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (response.ok) {
+        const transacoes = await response.json();
+        const transacoesDasFaturas = (transacoes as Array<{ fatura_id?: string; metodo_pagamento?: string; paytime_metadata?: { barcode?: string; digitable_line?: string } }>).filter(
+          (t) => t.fatura_id && faturaIds.includes(t.fatura_id)
+        );
+        const mapa = new Map<string, { metodo: string; temBarcode: boolean }>();
+        for (const t of transacoesDasFaturas) {
+          if (!t.fatura_id) continue;
+          mapa.set(t.fatura_id, {
+            metodo: t.metodo_pagamento || "",
+            temBarcode: !!(t.paytime_metadata?.barcode || t.paytime_metadata?.digitable_line),
+          });
+        }
+        setFaturasComPagamentoPendente(mapa);
+      }
+    } catch {
+      // silencioso
+    }
+  };
+
+  // ── Online payment helpers ────────────────────────────────────────
+  const abrirModalPagamento = (fatura: Fatura, initialTab?: string) => {
+    const faturaParaModal = {
+      ...fatura,
+      valor_total: parseFloat(fatura.valor_original?.toString() || "0"),
+      metodo_pagamento: fatura.metodo_pagamento ?? fatura.assinatura?.metodo_pagamento,
+    };
+    setFaturaParaPagar(faturaParaModal as any);
+    setModalInitialTab(initialTab);
+    setModalPagamentoOpen(true);
+  };
+
+  const handlePagarOnline = (fatura: Fatura) => {
+    if (fatura.token_salvo) {
+      setTokenPayError(null);
+      setConfirmTokenPagar(fatura);
+      return;
+    }
+    abrirModalPagamento(fatura);
+  };
+
+  const alterarCartao = (fatura: Fatura) => {
+    setConfirmTokenPagar(null);
+    abrirModalPagamento(fatura, "cartao");
+  };
+
+  const pagarFaturaComToken = async () => {
+    if (!confirmTokenPagar) return;
+    setLoadingTokenPay(true);
+    setTokenPayError(null);
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/faturas/${confirmTokenPagar.id}/pagar-com-token`,
+        { method: "POST", headers: { Authorization: `Bearer ${token}` } }
+      );
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.message || data.error || "Erro ao processar pagamento");
+      if (data.success === false && data.status !== "PENDING")
+        throw new Error(data.error || "Pagamento não processado. Tente novamente.");
+      setConfirmTokenPagar(null);
+      await carregarFaturas();
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Erro ao processar pagamento. Tente novamente.";
+      setTokenPayError(msg);
+    } finally {
+      setLoadingTokenPay(false);
     }
   };
 
@@ -150,6 +258,18 @@ export default function ContasAReceber() {
         (f) =>
           f.numero_fatura.toLowerCase().includes(searchTerm.toLowerCase()) ||
           f.aluno_nome?.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+    if (dataInicio) {
+      filtered = filtered.filter(
+        (f) => f.data_vencimento && new Date(f.data_vencimento) >= new Date(dataInicio)
+      );
+    }
+
+    if (dataFim) {
+      filtered = filtered.filter(
+        (f) => f.data_vencimento && new Date(f.data_vencimento) <= new Date(dataFim)
       );
     }
 
@@ -280,6 +400,36 @@ export default function ContasAReceber() {
     } catch (error) {
       console.error("Erro ao cancelar fatura:", error);
       mostrarMensagem("Erro", "Erro ao cancelar fatura", "erro");
+    }
+  };
+
+  const handleExcluirFatura = async () => {
+    if (!faturaParaExcluir) return;
+    setIsExcluindo(true);
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/faturas/${faturaParaExcluir.id}`,
+        {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      if (response.ok) {
+        setShowExcluirDialog(false);
+        setFaturaParaExcluir(null);
+        carregarFaturas();
+        mostrarMensagem("Sucesso!", "Fatura excluída com sucesso!", "sucesso");
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        mostrarMensagem("Erro", errorData.message || "Erro ao excluir fatura", "erro");
+      }
+    } catch (error) {
+      console.error("Erro ao excluir fatura:", error);
+      mostrarMensagem("Erro", "Erro ao excluir fatura", "erro");
+    } finally {
+      setIsExcluindo(false);
     }
   };
 
@@ -468,29 +618,65 @@ export default function ContasAReceber() {
       {/* Filtros */}
       <Card>
         <CardContent className="pt-6">
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <Input
-                placeholder="Buscar por número da fatura ou nome do aluno..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col md:flex-row gap-4">
+              <div className="flex-1 relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input
+                  placeholder="Buscar por número da fatura ou nome do aluno..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-full md:w-48">
+                  <Filter className="mr-2 h-4 w-4" />
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  <SelectItem value="PENDENTE">Pendente</SelectItem>
+                  <SelectItem value="ATRASADA">Atrasada</SelectItem>
+                  <SelectItem value="PAGA">Paga</SelectItem>
+                  <SelectItem value="CANCELADA">Cancelada</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-full md:w-48">
-                <Filter className="mr-2 h-4 w-4" />
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos</SelectItem>
-                <SelectItem value="PENDENTE">Pendente</SelectItem>
-                <SelectItem value="ATRASADA">Atrasada</SelectItem>
-                <SelectItem value="PAGA">Paga</SelectItem>
-                <SelectItem value="CANCELADA">Cancelada</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="flex flex-col md:flex-row gap-4 items-end">
+              <div className="flex flex-col gap-1">
+                <label className="text-xs text-gray-500">Vencimento (de)</label>
+                <input
+                  type="date"
+                  value={dataInicio}
+                  onChange={(e) => setDataInicio(e.target.value)}
+                  className="border rounded-md px-3 py-2 text-sm h-10 focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs text-gray-500">Vencimento (até)</label>
+                <input
+                  type="date"
+                  value={dataFim}
+                  onChange={(e) => setDataFim(e.target.value)}
+                  className="border rounded-md px-3 py-2 text-sm h-10 focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+              </div>
+              {(dataInicio || dataFim || searchTerm || statusFilter !== "all") && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setDataInicio("");
+                    setDataFim("");
+                    setSearchTerm("");
+                    setStatusFilter("all");
+                  }}
+                >
+                  Limpar filtros
+                </Button>
+              )}
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -549,7 +735,20 @@ export default function ContasAReceber() {
                         {formatarMoeda(Number(fatura.valor_original) || 0)}
                       </td>
                       <td className="px-4 py-3">
-                        <div className="flex items-center justify-center gap-1">
+                        <div className="flex flex-col items-center gap-1">
+                          {fatura.status === "CANCELADA" && (
+                            <Button
+                              onClick={() => {
+                                setFaturaParaExcluir(fatura);
+                                setShowExcluirDialog(true);
+                              }}
+                              size="sm"
+                              variant="destructive"
+                              title="Excluir fatura"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
                           {fatura.status === "PAGA" && fatura.data_pagamento && (
                             <Button
                               onClick={async () => {
@@ -582,31 +781,59 @@ export default function ContasAReceber() {
                               <Receipt className="h-4 w-4" />
                             </Button>
                           )}
-                          {(fatura.status === "PENDENTE" || fatura.status === "ATRASADA") && (
-                            <>
+                          {(["PENDENTE", "ATRASADA"] as string[]).includes(fatura.status) && (
+                            <div className="flex flex-col items-center gap-1 w-full">
+                              {/* Botão Pagar Online (PIX / Boleto / Cartão) */}
                               <Button
-                                onClick={() => {
-                                  setSelectedFatura(fatura);
-                                  setValorPago(fatura.valor_original.toString());
-                                  setShowPagarDialog(true);
-                                }}
                                 size="sm"
-                                title="Registrar Pagamento"
+                                className="w-full text-xs"
+                                onClick={() => handlePagarOnline(fatura)}
+                                title="Pagar Online (PIX / Boleto / Cartão)"
                               >
-                                <DollarSign className="h-4 w-4" />
+                                {fatura.token_salvo ? (
+                                  <><Zap className="h-3.5 w-3.5 mr-1" />Cobrança Rápida</>
+                                ) : (
+                                  <><CreditCard className="h-3.5 w-3.5 mr-1" />Pagar Online</>
+                                )}
                               </Button>
-                              <Button
-                                onClick={() => {
-                                  setSelectedFatura(fatura);
-                                  setShowCancelarDialog(true);
-                                }}
-                                size="sm"
-                                variant="destructive"
-                                title="Cancelar Fatura"
-                              >
-                                <X className="h-4 w-4" />
-                              </Button>
-                            </>
+                              {/* Badge de pagamento em processamento */}
+                              {faturasComPagamentoPendente.has(fatura.id) && (() => {
+                                const info = faturasComPagamentoPendente.get(fatura.id)!;
+                                if (info.metodo === "BOLETO" && info.temBarcode)
+                                  return <Badge className="bg-orange-100 text-orange-800 gap-1 text-[10px] w-full justify-center"><Landmark className="h-2.5 w-2.5" />Boleto gerado</Badge>;
+                                if (info.metodo === "BOLETO")
+                                  return <Badge className="bg-blue-100 text-blue-800 gap-1 text-[10px] w-full justify-center"><Loader2 className="h-2.5 w-2.5 animate-spin" />Gerando boleto...</Badge>;
+                                return <Badge className="bg-blue-100 text-blue-800 gap-1 text-[10px] w-full justify-center"><Loader2 className="h-2.5 w-2.5 animate-spin" />Processando...</Badge>;
+                              })()}
+                              <div className="flex gap-1 w-full">
+                                {/* Registrar Pagamento manual */}
+                                <Button
+                                  onClick={() => {
+                                    setSelectedFatura(fatura);
+                                    setValorPago(fatura.valor_original.toString());
+                                    setShowPagarDialog(true);
+                                  }}
+                                  size="sm"
+                                  variant="outline"
+                                  className="flex-1 text-xs"
+                                  title="Registrar Pagamento Manual"
+                                >
+                                  <DollarSign className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button
+                                  onClick={() => {
+                                    setSelectedFatura(fatura);
+                                    setShowCancelarDialog(true);
+                                  }}
+                                  size="sm"
+                                  variant="destructive"
+                                  className="flex-1 text-xs"
+                                  title="Cancelar Fatura"
+                                >
+                                  <X className="h-3.5 w-3.5" />
+                                </Button>
+                              </div>
+                            </div>
                           )}
                         </div>
                       </td>
@@ -751,6 +978,33 @@ export default function ContasAReceber() {
         </DialogContent>
       </Dialog>
 
+      {/* Modal de Excluir Fatura */}
+      <AlertDialog
+        open={showExcluirDialog}
+        onOpenChange={(open) => { if (!open && !isExcluindo) { setShowExcluirDialog(false); setFaturaParaExcluir(null); } }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir Fatura</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir permanentemente a fatura{" "}
+              <strong>{faturaParaExcluir?.numero_fatura}</strong> de{" "}
+              <strong>{faturaParaExcluir?.aluno_nome}</strong>? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isExcluindo}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleExcluirFatura}
+              disabled={isExcluindo}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isExcluindo ? "Excluindo..." : "Excluir"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Modal de Mensagem */}
       <AlertDialog
         open={mensagemModal.aberto}
@@ -776,6 +1030,66 @@ export default function ContasAReceber() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Confirmação: Pagar com cartão salvo (token) */}
+      <AlertDialog
+        open={!!confirmTokenPagar}
+        onOpenChange={(open) => { if (!open && !loadingTokenPay) setConfirmTokenPagar(null); }}
+      >
+        <AlertDialogContent className="max-w-sm">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Zap className="h-5 w-5 text-blue-600" />
+              Confirmar pagamento
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-left">
+              Cobrar{" "}
+              <span className="font-semibold text-gray-900">
+                {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(
+                  parseFloat(confirmTokenPagar?.valor_original?.toString() || "0")
+                )}
+              </span>{" "}
+              no cartão salvo do aluno{" "}
+              <span className="font-medium text-gray-800">{confirmTokenPagar?.aluno_nome}</span>:
+              <span className="inline-flex items-center gap-1.5 bg-gray-100 rounded px-2 py-0.5 text-sm font-medium text-gray-800 mt-1">
+                <CreditCard className="h-3.5 w-3.5 text-gray-500" />
+                {confirmTokenPagar?.card_info_assinatura?.brand || "Cartão"} ••••{" "}
+                {confirmTokenPagar?.card_info_assinatura?.last4 || "----"}
+              </span>
+              {tokenPayError && (
+                <span className="block text-sm text-red-600 bg-red-50 rounded px-3 py-2 mt-2">
+                  {tokenPayError}
+                </span>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col gap-2 sm:flex-col">
+            <Button className="w-full" onClick={pagarFaturaComToken} disabled={loadingTokenPay}>
+              {loadingTokenPay ? (
+                <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Processando...</>
+              ) : (
+                <><Zap className="h-4 w-4 mr-2" />Confirmar cobrança</>
+              )}
+            </Button>
+            <AlertDialogCancel
+              disabled={loadingTokenPay}
+              onClick={() => { setConfirmTokenPagar(null); if (confirmTokenPagar) alterarCartao(confirmTokenPagar); }}
+              className="w-full"
+            >
+              Alterar cartão
+            </AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Modal de Pagamento Online (PIX / Boleto / Cartão) */}
+      <ProcessarPagamentoModal
+        fatura={faturaParaPagar as any}
+        open={modalPagamentoOpen}
+        onClose={() => setModalPagamentoOpen(false)}
+        onSuccess={() => carregarFaturas()}
+        initialTab={modalInitialTab}
+      />
     </div>
   );
 }

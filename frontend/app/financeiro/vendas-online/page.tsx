@@ -121,6 +121,9 @@ export default function VendasOnline() {
   const [loading, setLoading] = useState(true);
   const [filtroStatus, setFiltroStatus] = useState<string>("all");
   const [filtroMetodo, setFiltroMetodo] = useState<string>("all");
+  const [filtroDataInicio, setFiltroDataInicio] = useState("");
+  const [filtroDataFim, setFiltroDataFim] = useState("");
+  const [filteredVendas, setFilteredVendas] = useState<Venda[]>([]);
   const [vendaSelecionada, setVendaSelecionada] = useState<Venda | null>(null);
 
   // Estados para criação de venda
@@ -163,6 +166,10 @@ export default function VendasOnline() {
   useEffect(() => {
     carregarDados(unidadeIdAtual);
   }, [unidadeSelecionada, filtroStatus, filtroMetodo]);
+
+  useEffect(() => {
+    filtrarVendas();
+  }, [vendas, filtroDataInicio, filtroDataFim]);
 
   useEffect(() => {
     if (modalAberto) {
@@ -282,6 +289,26 @@ export default function VendasOnline() {
       console.error("Erro ao criar venda:", error);
       mostrarMensagem("Erro", "Erro ao criar venda", "error");
     }
+  };
+
+  const filtrarVendas = () => {
+    let filtered = vendas;
+
+    if (filtroDataInicio) {
+      filtered = filtered.filter(
+        (v) => v.created_at && new Date(v.created_at) >= new Date(filtroDataInicio)
+      );
+    }
+
+    if (filtroDataFim) {
+      const fim = new Date(filtroDataFim);
+      fim.setHours(23, 59, 59, 999);
+      filtered = filtered.filter(
+        (v) => v.created_at && new Date(v.created_at) <= fim
+      );
+    }
+
+    setFilteredVendas(filtered);
   };
 
   const carregarDados = async (unidadeId: string) => {
@@ -689,35 +716,71 @@ export default function VendasOnline() {
       {/* Filtros */}
       <Card>
         <CardContent className="pt-6">
-          <div className="flex gap-4">
-            <div className="flex-1">
-              <Select value={filtroStatus} onValueChange={setFiltroStatus}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos os Status</SelectItem>
-                  <SelectItem value="PAGO">Pago</SelectItem>
-                  <SelectItem value="PENDENTE">Pendente</SelectItem>
-                  <SelectItem value="AGUARDANDO">Aguardando</SelectItem>
-                  <SelectItem value="FALHOU">Falhou</SelectItem>
-                  <SelectItem value="CANCELADO">Cancelado</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col md:flex-row gap-4">
+              <div className="flex-1">
+                <Select value={filtroStatus} onValueChange={setFiltroStatus}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos os Status</SelectItem>
+                    <SelectItem value="PAGO">Pago</SelectItem>
+                    <SelectItem value="PENDENTE">Pendente</SelectItem>
+                    <SelectItem value="AGUARDANDO">Aguardando</SelectItem>
+                    <SelectItem value="FALHOU">Falhou</SelectItem>
+                    <SelectItem value="CANCELADO">Cancelado</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
-            <div className="flex-1">
-              <Select value={filtroMetodo} onValueChange={setFiltroMetodo}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Método" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos os Métodos</SelectItem>
-                  <SelectItem value="PIX">Pix</SelectItem>
-                  <SelectItem value="CARTAO">Cartão</SelectItem>
-                  <SelectItem value="BOLETO">Boleto</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="flex-1">
+                <Select value={filtroMetodo} onValueChange={setFiltroMetodo}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Método" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos os Métodos</SelectItem>
+                    <SelectItem value="PIX">Pix</SelectItem>
+                    <SelectItem value="CARTAO">Cartão</SelectItem>
+                    <SelectItem value="BOLETO">Boleto</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="flex flex-col md:flex-row gap-4 items-end">
+              <div className="flex flex-col gap-1">
+                <label className="text-xs text-gray-500">Data (de)</label>
+                <input
+                  type="date"
+                  value={filtroDataInicio}
+                  onChange={(e) => setFiltroDataInicio(e.target.value)}
+                  className="border rounded-md px-3 py-2 text-sm h-10 focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs text-gray-500">Data (até)</label>
+                <input
+                  type="date"
+                  value={filtroDataFim}
+                  onChange={(e) => setFiltroDataFim(e.target.value)}
+                  className="border rounded-md px-3 py-2 text-sm h-10 focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+              </div>
+              {(filtroDataInicio || filtroDataFim || filtroStatus !== "all" || filtroMetodo !== "all") && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setFiltroDataInicio("");
+                    setFiltroDataFim("");
+                    setFiltroStatus("all");
+                    setFiltroMetodo("all");
+                  }}
+                >
+                  Limpar filtros
+                </Button>
+              )}
             </div>
           </div>
         </CardContent>
@@ -742,14 +805,14 @@ export default function VendasOnline() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-              {vendas.length === 0 ? (
+              {filteredVendas.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center py-8">
                     Nenhuma venda encontrada
                   </TableCell>
                 </TableRow>
               ) : (
-                vendas.map((venda) => (
+                filteredVendas.map((venda) => (
                   <TableRow key={venda.id}>
                     <TableCell>
                       {(venda as any).aluno_nome ||

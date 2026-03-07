@@ -361,6 +361,18 @@ export class FaturasService {
     return await this.faturaRepository.save(fatura);
   }
 
+  async remove(id: string): Promise<void> {
+    const fatura = await this.findOne(id);
+
+    if (fatura.status === StatusFatura.PAGA) {
+      throw new BadRequestException(
+        'N\u00e3o \u00e9 poss\u00edvel excluir uma fatura j\u00e1 paga.',
+      );
+    }
+
+    await this.faturaRepository.remove(fatura);
+  }
+
   async verificarVencimentos(): Promise<void> {
     // Job para marcar faturas vencidas
     const hoje = dayjs().tz('America/Sao_Paulo').startOf('day').toDate();

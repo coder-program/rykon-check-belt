@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import dayjs from "dayjs";
 import ProtegerRotaFinanceira from "@/components/financeiro/ProtegerRotaFinanceira";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -101,6 +102,8 @@ export default function ContasAPagar() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [categoriaFilter, setCategoriaFilter] = useState<string>("all");
+  const [dataInicio, setDataInicio] = useState("");
+  const [dataFim, setDataFim] = useState("");
   const [showDialog, setShowDialog] = useState(false);
   const [editingDespesa, setEditingDespesa] = useState<Despesa | null>(null);
   const [showBaixaDialog, setShowBaixaDialog] = useState(false);
@@ -140,7 +143,7 @@ export default function ContasAPagar() {
 
   useEffect(() => {
     filtrarDespesas();
-  }, [despesas, searchTerm, statusFilter, categoriaFilter]);
+  }, [despesas, searchTerm, statusFilter, categoriaFilter, dataInicio, dataFim]);
 
   const carregarDespesas = async () => {
     try {
@@ -190,6 +193,18 @@ export default function ContasAPagar() {
         (d) =>
           d.descricao.toLowerCase().includes(searchTerm.toLowerCase()) ||
           d.categoria.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+    if (dataInicio) {
+      filtered = filtered.filter(
+        (d) => d.data_vencimento && !dayjs(d.data_vencimento).isBefore(dayjs(dataInicio), 'day')
+      );
+    }
+
+    if (dataFim) {
+      filtered = filtered.filter(
+        (d) => d.data_vencimento && !dayjs(d.data_vencimento).isAfter(dayjs(dataFim), 'day')
       );
     }
 
@@ -243,9 +258,9 @@ export default function ContasAPagar() {
 
     // Validar data de vencimento no ano vigente
     if (formData.data_vencimento) {
-      const dataVencimento = new Date(formData.data_vencimento);
-      const anoAtual = new Date().getFullYear();
-      const anoVencimento = dataVencimento.getFullYear();
+      const dataVencimento = dayjs(formData.data_vencimento);
+      const anoAtual = dayjs().year();
+      const anoVencimento = dataVencimento.year();
 
       if (anoVencimento !== anoAtual) {
         mostrarMensagem(
@@ -316,11 +331,7 @@ export default function ContasAPagar() {
 
     // Se for recorrente, extrair o dia do vencimento
     if (despesa.recorrencia && despesa.recorrencia !== "UNICA") {
-      // Adiciona T00:00:00 para evitar problemas de timezone
-      const dataComHora = despesa.data_vencimento.includes("T")
-        ? despesa.data_vencimento
-        : despesa.data_vencimento + "T00:00:00";
-      const dia = new Date(dataComHora).getDate();
+      const dia = dayjs(despesa.data_vencimento).date();
       setDiaVencimento(dia.toString());
     } else {
       setDiaVencimento("");
@@ -387,25 +398,21 @@ export default function ContasAPagar() {
     }
 
     // Validar data de pagamento
-    const dataSelecionada = new Date(dataPagamento);
-    const hoje = new Date();
-    const anoAtual = hoje.getFullYear();
-    const mesAtual = hoje.getMonth();
-    const anoSelecionado = dataSelecionada.getFullYear();
-    const mesSelecionado = dataSelecionada.getMonth();
+    const dataSelecionada = dayjs(dataPagamento);
+    const hoje = dayjs();
 
     // Verificar se a data está no ano atual
-    if (anoSelecionado !== anoAtual) {
+    if (dataSelecionada.year() !== hoje.year()) {
       mostrarMensagem(
         "Data Inválida",
-        "A data de pagamento deve ser do ano vigente (" + anoAtual + ").",
+        "A data de pagamento deve ser do ano vigente (" + hoje.year() + ").",
         "erro"
       );
       return;
     }
 
     // Verificar se a data não está no futuro
-    if (dataSelecionada > hoje) {
+    if (dataSelecionada.isAfter(hoje, 'day')) {
       mostrarMensagem(
         "Data Inválida",
         "A data de pagamento não pode ser no futuro.",
@@ -427,7 +434,7 @@ export default function ContasAPagar() {
           },
           body: JSON.stringify({
             data_pagamento:
-              dataPagamento || new Date().toISOString().split("T")[0],
+              dataPagamento || dayjs().format('YYYY-MM-DD'),
             observacoes: observacoesBaixa,
           }),
         }
@@ -464,7 +471,7 @@ export default function ContasAPagar() {
 
   const openBaixaDialog = (despesa: Despesa) => {
     setDespesaBaixa(despesa);
-    setDataPagamento(new Date().toISOString().split("T")[0]);
+    setDataPagamento(dayjs().format('YYYY-MM-DD'));
     setObservacoesBaixa("");
     setShowBaixaDialog(true);
   };
@@ -504,9 +511,7 @@ export default function ContasAPagar() {
   };
 
   const formatDate = (date: string) => {
-    // Adiciona T00:00:00 para evitar problemas de timezone
-    const dateWithTime = date.includes("T") ? date : date + "T00:00:00";
-    return new Date(dateWithTime).toLocaleDateString("pt-BR");
+    return dayjs(date).format('DD/MM/YYYY');
   };
 
   const totais = {
@@ -607,42 +612,79 @@ export default function ContasAPagar() {
       {/* Filtros */}
       <Card>
         <CardContent className="pt-6">
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <Input
-                placeholder="Buscar despesas..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col md:flex-row gap-4">
+              <div className="flex-1 relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input
+                  placeholder="Buscar despesas..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+              <Select value={categoriaFilter} onValueChange={setCategoriaFilter}>
+                <SelectTrigger className="w-full md:w-48">
+                  <SelectValue placeholder="Categoria" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas</SelectItem>
+                  {CATEGORIAS_DESPESA.map((cat) => (
+                    <SelectItem key={cat} value={cat}>
+                      {cat}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-full md:w-48">
+                  <Filter className="mr-2 h-4 w-4" />
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  <SelectItem value="A_PAGAR">A Pagar</SelectItem>
+                  <SelectItem value="ATRASADA">Atrasada</SelectItem>
+                  <SelectItem value="PAGA">Paga</SelectItem>
+                  <SelectItem value="CANCELADA">Cancelada</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-            <Select value={categoriaFilter} onValueChange={setCategoriaFilter}>
-              <SelectTrigger className="w-full md:w-48">
-                <SelectValue placeholder="Categoria" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todas</SelectItem>
-                {CATEGORIAS_DESPESA.map((cat) => (
-                  <SelectItem key={cat} value={cat}>
-                    {cat}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-full md:w-48">
-                <Filter className="mr-2 h-4 w-4" />
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos</SelectItem>
-                <SelectItem value="A_PAGAR">A Pagar</SelectItem>
-                <SelectItem value="ATRASADA">Atrasada</SelectItem>
-                <SelectItem value="PAGA">Paga</SelectItem>
-                <SelectItem value="CANCELADA">Cancelada</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="flex flex-col md:flex-row gap-4 items-end">
+              <div className="flex flex-col gap-1">
+                <label className="text-xs text-gray-500">Vencimento (de)</label>
+                <input
+                  type="date"
+                  value={dataInicio}
+                  onChange={(e) => setDataInicio(e.target.value)}
+                  className="border rounded-md px-3 py-2 text-sm h-10 focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs text-gray-500">Vencimento (até)</label>
+                <input
+                  type="date"
+                  value={dataFim}
+                  onChange={(e) => setDataFim(e.target.value)}
+                  className="border rounded-md px-3 py-2 text-sm h-10 focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+              </div>
+              {(dataInicio || dataFim || searchTerm || statusFilter !== "all" || categoriaFilter !== "all") && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setDataInicio("");
+                    setDataFim("");
+                    setSearchTerm("");
+                    setStatusFilter("all");
+                    setCategoriaFilter("all");
+                  }}
+                >
+                  Limpar filtros
+                </Button>
+              )}
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -866,11 +908,11 @@ export default function ContasAPagar() {
                         data_vencimento: e.target.value,
                       })
                     }
-                    min={`${new Date().getFullYear()}-01-01`}
+                    min={`${dayjs().year()}-01-01`}
                     required
                   />
                   <p className="text-xs text-gray-500 mt-1">
-                    Data deve ser do ano vigente ({new Date().getFullYear()})
+                    Data deve ser do ano vigente ({dayjs().year()})
                   </p>
                 </div>
               ) : (
@@ -892,28 +934,20 @@ export default function ContasAPagar() {
                       const dia = parseInt(valor);
                       if (valor && dia >= 1 && dia <= 31) {
                         // Se estiver editando e já tiver uma data, preserva mês/ano
-                        let novaData;
+                        let novaDataDayjs;
                         if (formData.data_vencimento) {
-                          const dataAtual = new Date(
-                            formData.data_vencimento + "T00:00:00"
-                          );
-                          novaData = new Date(
-                            dataAtual.getFullYear(),
-                            dataAtual.getMonth(),
-                            dia
-                          );
+                          novaDataDayjs = dayjs(formData.data_vencimento).date(dia);
                         } else {
-                          // Se for nova despesa, usa próximo mês
-                          const hoje = new Date();
-                          novaData = new Date(
-                            hoje.getFullYear(),
-                            hoje.getMonth() + 1,
-                            dia
-                          );
+                          // Se for nova despesa, tenta o mês atual; só avança para o próximo se o dia já passou
+                          const hoje = dayjs();
+                          const tentativa = hoje.date(dia);
+                          novaDataDayjs = !tentativa.isBefore(hoje, 'day')
+                            ? tentativa
+                            : hoje.add(1, 'month').date(dia);
                         }
                         setFormData({
                           ...formData,
-                          data_vencimento: novaData.toISOString().split("T")[0],
+                          data_vencimento: novaDataDayjs.format('YYYY-MM-DD'),
                         });
                       } else if (!valor) {
                         // Limpa a data se o campo ficar vazio
@@ -994,12 +1028,12 @@ export default function ContasAPagar() {
                 type="date"
                 value={dataPagamento}
                 onChange={(e) => setDataPagamento(e.target.value)}
-                min={`${new Date().getFullYear()}-01-01`}
-                max={new Date().toISOString().split("T")[0]}
+                min={`${dayjs().year()}-01-01`}
+                max={dayjs().format('YYYY-MM-DD')}
                 required
               />
               <p className="text-xs text-gray-500 mt-1">
-                Apenas datas do ano vigente ({new Date().getFullYear()})
+                Apenas datas do ano vigente ({dayjs().year()})
               </p>
             </div>
             <div>

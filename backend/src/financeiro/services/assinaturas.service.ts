@@ -400,17 +400,18 @@ export class AssinaturasService {
     // Ativar a assinatura
     assinatura.status = StatusAssinatura.ATIVA;
 
-    // Estender a data de fim se houver
+    // Estender a data de fim: usar max(data_fim, hoje) como base,
+    // para evitar criar nova data_fim ainda no passado quando a assinatura já expirou há muito tempo
+    const hoje = dayjs().tz('America/Sao_Paulo').startOf('day');
     if (assinatura.data_fim) {
-      const novaDataFim = dayjs(assinatura.data_fim).tz('America/Sao_Paulo').add(1, 'month');
-      // Verificar se o plano é mensal, trimestral, semestral ou anual
-      // Para simplificar, vamos adicionar 1 mês (30 dias)
-      assinatura.data_fim = novaDataFim.toDate();
+      const dataFimAtual = dayjs(assinatura.data_fim).tz('America/Sao_Paulo').startOf('day');
+      const base = dataFimAtual.isBefore(hoje) ? hoje : dataFimAtual;
+      assinatura.data_fim = base.add(1, 'month').toDate();
     }
 
-    // Recalcular próxima cobrança
-    let proximaCobranca = dayjs().tz('America/Sao_Paulo').date(assinatura.dia_vencimento);
-    if (proximaCobranca.isBefore(dayjs().tz('America/Sao_Paulo'))) {
+    // Recalcular próxima cobrança: pegar o próximo dia de vencimento futuro
+    let proximaCobranca = hoje.date(assinatura.dia_vencimento);
+    if (!proximaCobranca.isAfter(hoje)) {
       proximaCobranca = proximaCobranca.add(1, 'month');
     }
     assinatura.proxima_cobranca = proximaCobranca.toDate();

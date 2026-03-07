@@ -604,20 +604,21 @@ export default function AprovacaoCheckinPage() {
               {acao === "aprovar" ? "Aprovar Check-in" : "Rejeitar Check-in"}
             </DialogTitle>
             <DialogDescription className="text-xs sm:text-sm">
-              {presencaSelecionada && (
-                <div className="mt-3 sm:mt-4 p-3 sm:p-4 bg-gray-50 rounded-lg">
-                  <p className="font-medium text-gray-800 text-sm sm:text-base">
-                    {presencaSelecionada.aluno.nome}
-                  </p>
-                  <p className="text-xs sm:text-sm text-gray-600 mt-1">
-                    {presencaSelecionada.aula.nome} -{" "}
-                    {new Date(presencaSelecionada.dataCheckin).toLocaleString(
-                      "pt-BR"
-                    )}
-                  </p>
-                </div>
-              )}
+              {acao === "aprovar" ? "Confirmar aprovação do check-in?" : "Confirmar rejeição do check-in?"}
             </DialogDescription>
+            {presencaSelecionada && (
+              <div className="mt-3 sm:mt-4 p-3 sm:p-4 bg-gray-50 rounded-lg">
+                <p className="font-medium text-gray-800 text-sm sm:text-base">
+                  {presencaSelecionada.aluno.nome}
+                </p>
+                <p className="text-xs sm:text-sm text-gray-600 mt-1">
+                  {presencaSelecionada.aula.nome} -{" "}
+                  {new Date(presencaSelecionada.dataCheckin).toLocaleString(
+                    "pt-BR"
+                  )}
+                </p>
+              </div>
+            )}
           </DialogHeader>
 
           <div className="py-3 sm:py-4">

@@ -110,6 +110,8 @@ export default function Assinaturas() {
   const [alunoSearchTerm, setAlunoSearchTerm] = useState("");
   const [alunoSelecionado, setAlunoSelecionado] = useState<Aluno | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>("ATIVA");
+  const [dataInicio, setDataInicio] = useState("");
+  const [dataFim, setDataFim] = useState("");
   const [showDialog, setShowDialog] = useState(false);
   const [showDetalhesDialog, setShowDetalhesDialog] = useState(false);
   const [selectedAssinatura, setSelectedAssinatura] =
@@ -147,7 +149,7 @@ export default function Assinaturas() {
 
   useEffect(() => {
     filtrarAssinaturas();
-  }, [assinaturas, searchTerm, statusFilter]);
+  }, [assinaturas, searchTerm, statusFilter, dataInicio, dataFim]);
 
   const carregarDados = async () => {
     try {
@@ -301,6 +303,18 @@ export default function Assinaturas() {
     if (searchTerm) {
       filtered = filtered.filter((a) =>
         a.aluno_nome?.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+    if (dataInicio) {
+      filtered = filtered.filter(
+        (a) => a.data_inicio && new Date(a.data_inicio) >= new Date(dataInicio)
+      );
+    }
+
+    if (dataFim) {
+      filtered = filtered.filter(
+        (a) => a.data_inicio && new Date(a.data_inicio) <= new Date(dataFim)
       );
     }
 
@@ -781,28 +795,64 @@ export default function Assinaturas() {
       {/* Filtros */}
       <Card>
         <CardContent className="pt-6">
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <Input
-                placeholder="Buscar por nome do aluno..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col md:flex-row gap-4">
+              <div className="flex-1 relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input
+                  placeholder="Buscar por nome do aluno..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-full md:w-48">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  <SelectItem value="ATIVA">Ativa</SelectItem>
+                  <SelectItem value="PAUSADA">Pausada</SelectItem>
+                  <SelectItem value="CANCELADA">Cancelada</SelectItem>
+                  <SelectItem value="EXPIRADA">Expirada</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-full md:w-48">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos</SelectItem>
-                <SelectItem value="ATIVA">Ativa</SelectItem>
-                <SelectItem value="PAUSADA">Pausada</SelectItem>
-                <SelectItem value="CANCELADA">Cancelada</SelectItem>
-                <SelectItem value="EXPIRADA">Expirada</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="flex flex-col md:flex-row gap-4 items-end">
+              <div className="flex flex-col gap-1">
+                <label className="text-xs text-gray-500">Data início (de)</label>
+                <input
+                  type="date"
+                  value={dataInicio}
+                  onChange={(e) => setDataInicio(e.target.value)}
+                  className="border rounded-md px-3 py-2 text-sm h-10 focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs text-gray-500">Data início (até)</label>
+                <input
+                  type="date"
+                  value={dataFim}
+                  onChange={(e) => setDataFim(e.target.value)}
+                  className="border rounded-md px-3 py-2 text-sm h-10 focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+              </div>
+              {(dataInicio || dataFim || searchTerm || statusFilter !== "ATIVA") && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setDataInicio("");
+                    setDataFim("");
+                    setSearchTerm("");
+                    setStatusFilter("ATIVA");
+                  }}
+                >
+                  Limpar filtros
+                </Button>
+              )}
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -926,6 +976,18 @@ export default function Assinaturas() {
                               title="Reativar"
                             >
                               <RefreshCw className="h-4 w-4 text-green-600" />
+                            </Button>
+                          )}
+                          {assinatura.status === "EXPIRADA" && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleRenovar(assinatura.id)}
+                              disabled={processando}
+                              title="Renovar assinatura"
+                              className="border-blue-300 text-blue-700 hover:bg-blue-50"
+                            >
+                              <RefreshCw className={`h-4 w-4 ${processando ? "animate-spin" : ""}`} />
                             </Button>
                           )}
                         </div>

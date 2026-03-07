@@ -353,6 +353,13 @@ export default function FranqueadoDashboard() {
       color: "bg-blue-500",
     },
     {
+      title: "Agendamentos",
+      description: "Aulas experimentais e convites",
+      icon: Calendar,
+      action: () => router.push("/convites"),
+      color: "bg-indigo-500",
+    },
+    {
       title: "TeamCruz Dashboard",
       description: "Ver estatísticas e visão geral",
       icon: BarChart3,

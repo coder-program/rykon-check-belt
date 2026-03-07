@@ -196,33 +196,46 @@ export class GraduacaoService {
     userId?: string;
   }): Promise<ListaProximosGraduarDto> {
 
-    const page = params.page || 1;
-    const pageSize = params.pageSize || 50;
+    const page = Number(params.page) || 1;
+    const pageSize = Number(params.pageSize) || 50;
     const skip = (page - 1) * pageSize;
 
-    // Se não passou unidadeId mas passou userId, buscar unidades do franqueado
+    // Se não passou unidadeId mas passou userId, buscar unidades do franqueado via raw SQL
     let unidadesDoFranqueado: string[] = [];
     if (!params.unidadeId && params.userId) {
-      const usuario = await this.usuarioRepository.findOne({
-        where: { id: params.userId },
-        relations: ['perfis'],
-      });
+      try {
+        // Verificar perfis do usuário via raw SQL
+        const perfisResult = await this.dataSource.query(
+          `SELECT p.nome FROM teamcruz.perfis p
+           INNER JOIN teamcruz.usuario_perfis up ON up.perfil_id = p.id
+           WHERE up.usuario_id = $1`,
+          [params.userId],
+        );
 
-      const isFranqueado = usuario?.perfis?.some(
-        (p) => p.nome?.toUpperCase() === 'FRANQUEADO',
-      );
+        const isFranqueado = perfisResult?.some(
+          (p: any) => p.nome?.toUpperCase() === 'FRANQUEADO',
+        );
 
-      if (isFranqueado) {
-        const franqueado = await this.franqueadoRepository.findOne({
-          where: { usuario_id: params.userId },
-        });
+        if (isFranqueado) {
+          // Buscar franqueado via raw SQL (mesma abordagem do dashboard.service)
+          const franqueadoResult = await this.dataSource.query(
+            `SELECT id FROM teamcruz.franqueados WHERE usuario_id = $1 AND ativo = true LIMIT 1`,
+            [params.userId],
+          );
 
-        if (franqueado) {
-          const unidades = await this.unidadeRepository.find({
-            where: { franqueado_id: franqueado.id },
-          });
-          unidadesDoFranqueado = unidades.map((u) => u.id);
+          if (franqueadoResult && franqueadoResult.length > 0) {
+            const franqueadoId = franqueadoResult[0].id;
+            const unidadesResult = await this.dataSource.query(
+              `SELECT id FROM teamcruz.unidades WHERE franqueado_id = $1 AND ativo = true`,
+              [franqueadoId],
+            );
+            unidadesDoFranqueado = unidadesResult.map((u: any) => u.id);
+          } else {
+            console.warn(`⚠️ [PROXIMOS GRADUAR] Franqueado não encontrado para usuário ${params.userId}`);
+          }
         }
+      } catch (err) {
+        console.error('⚠️ [PROXIMOS GRADUAR] Erro ao buscar unidades do franqueado:', err);
       }
     }
 

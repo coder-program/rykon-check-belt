@@ -3,6 +3,7 @@ import {
   NotFoundException,
   Inject,
   BadRequestException,
+  forwardRef,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between, DataSource } from 'typeorm';
@@ -19,6 +20,9 @@ import {
   UpdateVendaDto,
   FiltroVendasDto,
 } from '../dto/venda.dto';
+import { CreateFaturaDto } from '../dto/fatura.dto';
+import { MetodoPagamento } from '../entities/assinatura.entity';
+import { FaturasService } from './faturas.service';
 import * as dayjs from 'dayjs';
 import * as utc from 'dayjs/plugin/utc';
 import * as timezone from 'dayjs/plugin/timezone';
@@ -34,6 +38,8 @@ export class VendasService {
     @InjectRepository(Transacao)
     private transacaoRepository: Repository<Transacao>,
     @Inject(DataSource) private dataSource: DataSource,
+    @Inject(forwardRef(() => FaturasService))
+    private faturasService: FaturasService,
   ) {}
 
   async create(createVendaDto: CreateVendaDto, user: any): Promise<Venda> {
@@ -54,6 +60,24 @@ export class VendasService {
     });
 
     const vendaSalva = await this.vendasRepository.save(venda);
+
+    // Gerar fatura automaticamente para o aluno pagar
+    const metodoPagamentoFatura = createVendaDto.metodo_pagamento as unknown as MetodoPagamento;
+    const dataVencimento = dayjs().tz('America/Sao_Paulo').add(3, 'day').format('YYYY-MM-DD');
+
+    const createFaturaDto: CreateFaturaDto = {
+      aluno_id: createVendaDto.aluno_id,
+      descricao: createVendaDto.descricao,
+      valor_original: createVendaDto.valor,
+      data_vencimento: dataVencimento,
+      metodo_pagamento: metodoPagamentoFatura,
+      observacoes: createVendaDto.observacoes,
+    };
+
+    const fatura = await this.faturasService.create(createFaturaDto, user);
+
+    // Vincular fatura à venda
+    await this.vendasRepository.update(vendaSalva.id, { fatura_id: fatura.id });
 
     // Aqui você pode chamar o gateway de pagamento para gerar link
     // await this.gerarLinkPagamento(vendaSalva);

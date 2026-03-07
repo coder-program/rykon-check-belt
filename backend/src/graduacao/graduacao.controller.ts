@@ -221,50 +221,55 @@ export class GraduacaoController {
     @Query('faixa') faixa?: string,
     @Request() req?: any,
   ): Promise<ListaProximosGraduarDto> {
-    // VALIDAÇÃO DE SEGURANÇA
-    const user = req?.user;
+    try {
+      // VALIDAÇÃO DE SEGURANÇA
+      const user = req?.user;
 
-    // Verificar se é franqueado
-    const isFranqueado =
-      user?.tipo_usuario === 'FRANQUEADO' ||
-      user?.perfis?.some(
-        (p: any) =>
-          (typeof p === 'string' ? p : p.nome)?.toUpperCase() === 'FRANQUEADO',
-      );
+      // Verificar se é franqueado
+      const isFranqueado =
+        user?.tipo_usuario === 'FRANQUEADO' ||
+        user?.perfis?.some(
+          (p: any) =>
+            (typeof p === 'string' ? p : p.nome)?.toUpperCase() === 'FRANQUEADO',
+        );
 
-    const userUnidadeId = await this.getUnidadeIdFromUser(user);
+      const userUnidadeId = await this.getUnidadeIdFromUser(user);
 
-    // Se não passou unidade_id, aplicar regras de permissão
-    if (!unidadeId) {
-      if (isFranqueado) {
-        // Não passa unidadeId, o service vai buscar de todas as unidades
-        // que o franqueado tem acesso
-      } else if (userUnidadeId) {
-        unidadeId = userUnidadeId;
-      }
-    } else {
-      // Se passou unidade_id, validar se o usuário tem acesso
-      if (!isFranqueado && user?.tipo_usuario !== 'MASTER') {
-        if (userUnidadeId && unidadeId !== userUnidadeId) {
-          return {
-            items: [],
-            total: 0,
-            page: 1,
-            pageSize: 20,
-            hasNextPage: false,
-          };
+      // Se não passou unidade_id, aplicar regras de permissão
+      if (!unidadeId) {
+        if (isFranqueado) {
+          // Não passa unidadeId, o service vai buscar de todas as unidades
+          // que o franqueado tem acesso
+        } else if (userUnidadeId) {
+          unidadeId = userUnidadeId;
+        }
+      } else {
+        // Se passou unidade_id, validar se o usuário tem acesso
+        if (!isFranqueado && user?.tipo_usuario !== 'MASTER') {
+          if (userUnidadeId && unidadeId !== userUnidadeId) {
+            return {
+              items: [],
+              total: 0,
+              page: 1,
+              pageSize: 20,
+              hasNextPage: false,
+            };
+          }
         }
       }
-    }
 
-    return await this.graduacaoService.getProximosGraduar({
-      page,
-      pageSize,
-      unidadeId,
-      categoria,
-      faixa,
-      userId: user?.id,
-    });
+      return await this.graduacaoService.getProximosGraduar({
+        page: page ? Number(page) : undefined,
+        pageSize: pageSize ? Number(pageSize) : undefined,
+        unidadeId,
+        categoria,
+        faixa,
+        userId: user?.id,
+      });
+    } catch (error) {
+      console.error('❌ [CONTROLLER] Erro em getProximosGraduar:', error);
+      throw error;
+    }
   }
 
   @Post('alunos/:alunoId/graus')

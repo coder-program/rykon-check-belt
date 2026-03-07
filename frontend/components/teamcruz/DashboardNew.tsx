@@ -850,6 +850,14 @@ export default function DashboardNew() {
     staleTime: 10 * 60 * 1000, // Considerar fresh por 10 minutos
   });
 
+  // useEffect para auto-selecionar unidade quando franqueado tem apenas uma
+  React.useEffect(() => {
+    const isFranqueado = perfis.includes("FRANQUEADO");
+    if (isFranqueado && unidadesQuery.data && unidadesQuery.data.length === 1) {
+      setSelectedUnidade(unidadesQuery.data[0].id);
+    }
+  }, [perfis, unidadesQuery.data]);
+
   // Query para buscar estatísticas reais do dashboard
   const statsQuery = useQuery({
     queryKey: ["dashboard-stats", selectedUnidade],

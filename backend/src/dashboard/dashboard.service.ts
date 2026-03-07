@@ -50,18 +50,43 @@ export class DashboardService {
 
       // Se for FRANQUEADO, buscar suas unidades
       if (isFranqueado && !isMaster) {
-        const franqueado = await this.franqueadoRepository.findOne({
-          where: { usuario_id: userId },
-        });
+        // Usar raw SQL igual ao /franqueados/me para garantir consistência
+        const franqueadoRows = await this.dataSource.query(
+          `SELECT id FROM teamcruz.franqueados WHERE usuario_id = $1 AND ativo = true LIMIT 1`,
+          [userId],
+        );
+        const franqueadoId = franqueadoRows[0]?.id ?? null;
 
-        if (franqueado) {
-          // Buscar unidades pelo franqueado_id
-          const unidades = await this.unidadeRepository.find({
-            where: { franqueado_id: franqueado.id },
-          });
-
+        if (franqueadoId) {
+          const unidades = await this.dataSource.query(
+            `SELECT id FROM teamcruz.unidades WHERE franqueado_id = $1`,
+            [franqueadoId],
+          );
           if (unidades && unidades.length > 0) {
-            unidadesDoFranqueado = unidades.map((u) => u.id);
+            unidadesDoFranqueado = unidades.map((u: { id: string }) => u.id);
+          }
+        } else {
+          // Fallback: procurar por email caso usuario_id não esteja vinculado
+          const emailRows = await this.dataSource.query(
+            `SELECT f.id FROM teamcruz.franqueados f
+             INNER JOIN teamcruz.usuarios u ON u.email = f.email
+             WHERE u.id = $1 AND f.ativo = true LIMIT 1`,
+            [userId],
+          );
+          const franqueadoIdEmail = emailRows[0]?.id ?? null;
+          if (franqueadoIdEmail) {
+            // Vincular usuario_id para corrigir dado (auto-healing)
+            await this.dataSource.query(
+              `UPDATE teamcruz.franqueados SET usuario_id = $1 WHERE id = $2`,
+              [userId, franqueadoIdEmail],
+            );
+            const unidades = await this.dataSource.query(
+              `SELECT id FROM teamcruz.unidades WHERE franqueado_id = $1`,
+              [franqueadoIdEmail],
+            );
+            if (unidades && unidades.length > 0) {
+              unidadesDoFranqueado = unidades.map((u: { id: string }) => u.id);
+            }
           }
         }
       }

@@ -150,6 +150,11 @@ export class FaturasController {
     return this.faturasService.cancelar(id, motivo);
   }
 
+  @Delete(':id')
+  remove(@Param('id') id: string) {
+    return this.faturasService.remove(id);
+  }
+
   @Get('resumo/pendentes')
   async resumoPendentes(@Query('unidade_id') unidade_id?: string) {
     const total = await this.faturasService.somarPendentes(unidade_id);

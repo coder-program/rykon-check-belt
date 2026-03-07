@@ -8,6 +8,12 @@ export interface CriarConviteDto {
   nome_pre_cadastro?: string;
   cpf?: string;
   observacoes?: string;
+  /** Se preenchido, cria um agendamento de aula experimental junto com o convite */
+  agendamento?: {
+    data_aula: string;  // YYYY-MM-DD
+    horario: string;    // HH:mm
+    observacoes?: string;
+  };
 }
 
 export interface CompletarCadastroDto {
@@ -84,6 +90,88 @@ export interface CompletarCadastroResponse {
   pessoa_id: string;
   usuario_id?: string;
 }
+
+export interface AgendamentoAulaExperimental {
+  id: string;
+  unidade_id: string;
+  modalidade_id: string;
+  convite_id?: string;
+  nome: string;
+  email?: string;
+  telefone?: string;
+  cpf?: string;
+  data_aula: string;
+  horario: string;
+  status: "PENDENTE" | "CONFIRMADO" | "CANCELADO" | "REALIZADO";
+  observacoes?: string;
+  criado_em: string;
+  unidade?: { id: string; nome: string };
+  criador?: { id: string; nome_completo?: string; nome?: string };
+}
+
+export interface ConfigAulaExperimental {
+  id?: string;
+  unidade_id: string;
+  modalidade_id: string;
+  ativo: boolean;
+  max_aulas: number;
+  duracao_minutos: number;
+}
+
+export interface CriarAgendamentoDto {
+  unidade_id: string;
+  modalidade_id: string;
+  convite_id?: string;
+  nome: string;
+  email?: string;
+  telefone?: string;
+  cpf?: string;
+  data_aula: string;
+  horario: string;
+  observacoes?: string;
+}
+
+export const aulaExperimentalApi = {
+  async getConfig(unidadeId: string, modalidadeId: string): Promise<ConfigAulaExperimental> {
+    return http(`/aula-experimental/config/${unidadeId}/${modalidadeId}`) as Promise<ConfigAulaExperimental>;
+  },
+
+  async upsertConfig(unidadeId: string, modalidadeId: string, data: Omit<ConfigAulaExperimental, 'id' | 'unidade_id' | 'modalidade_id'>): Promise<ConfigAulaExperimental> {
+    return http(`/aula-experimental/config/${unidadeId}/${modalidadeId}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    }) as Promise<ConfigAulaExperimental>;
+  },
+
+  async listar(unidadeId?: string, modalidadeId?: string): Promise<AgendamentoAulaExperimental[]> {
+    const params = new URLSearchParams();
+    if (unidadeId) params.set('unidadeId', unidadeId);
+    if (modalidadeId) params.set('modalidadeId', modalidadeId);
+    const qs = params.toString() ? `?${params.toString()}` : '';
+    return http(`/aula-experimental${qs}`) as Promise<AgendamentoAulaExperimental[]>;
+  },
+
+  async criar(data: CriarAgendamentoDto): Promise<AgendamentoAulaExperimental> {
+    return http("/aula-experimental", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    }) as Promise<AgendamentoAulaExperimental>;
+  },
+
+  async atualizarStatus(id: string, status: string, observacoes?: string): Promise<AgendamentoAulaExperimental> {
+    return http(`/aula-experimental/${id}/status`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status, observacoes }),
+    }) as Promise<AgendamentoAulaExperimental>;
+  },
+
+  async remover(id: string): Promise<void> {
+    return http(`/aula-experimental/${id}`, { method: "DELETE" }) as Promise<void>;
+  },
+};
 
 export const conviteApi = {
   async criarConvite(data: CriarConviteDto): Promise<CriarConviteResponse> {
