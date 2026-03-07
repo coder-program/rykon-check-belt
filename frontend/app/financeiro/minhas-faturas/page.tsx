@@ -286,9 +286,12 @@ export default function MinhasFaturas() {
           headers: { Authorization: `Bearer ${token}` },
         }
       );
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.message || "Erro ao processar pagamento");
+        throw new Error(data.message || data.error || "Erro ao processar pagamento");
+      }
+      if (data.success === false && data.status !== 'PENDING') {
+        throw new Error(data.error || "Pagamento não processado. Tente novamente.");
       }
       setConfirmTokenPagar(null);
       await carregarMinhasFaturas();

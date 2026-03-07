@@ -1742,43 +1742,58 @@ export class PaytimeIntegrationService {
     assinatura: Assinatura,
     fatura: Fatura,
   ): Promise<any> {
-    this.logger.log(
-      `💳 RECORRÊNCIA: Cobrando fatura ${fatura.numero_fatura} com token da assinatura ${assinatura.id}`,
-    );
+    const TAG = `[cobrarComToken][${fatura.numero_fatura}]`;
+    this.logger.log(`💳 ${TAG} ══════ INÍCIO ══════`);
+    this.logger.log(`💳 ${TAG} fatura_id=${fatura.id} | aluno_id=${fatura.aluno_id} | valor=R$${fatura.valor_total}`);
+    this.logger.log(`💳 ${TAG} assinatura_id=${assinatura.id} | unidade_id=${assinatura.unidade_id}`);
+    this.logger.log(`💳 ${TAG} token_cartao=${assinatura.token_cartao ? assinatura.token_cartao.substring(0, 20) + '...' : 'NULL ❌'}`);
+    this.logger.log(`💳 ${TAG} dados_pagamento=${JSON.stringify(assinatura.dados_pagamento || null)}`);
 
     // 1. Validar que tem token
     if (!assinatura.token_cartao) {
+      this.logger.error(`❌ ${TAG} Sem token_cartao — abortando`);
       throw new BadRequestException(
         'Assinatura não possui token de cartão salvo. Atualize o cartão.',
       );
     }
 
     // 2. Buscar establishment
+    this.logger.log(`💳 ${TAG} Buscando establishment_id para unidade ${assinatura.unidade_id}...`);
     const establishment = await this.obterEstablishmentDaUnidade(
       assinatura.unidade_id,
     );
+    this.logger.log(`💳 ${TAG} establishment_id=${establishment}`);
 
     // 3. Buscar dados do aluno (com endereço, se disponível)
+    this.logger.log(`💳 ${TAG} aluno presente: ${!!fatura.aluno} | aluno.endereco presente: ${!!(fatura.aluno?.endereco)}`);
     if (!fatura.aluno && fatura.aluno_id) {
+      this.logger.log(`💳 ${TAG} Carregando aluno com endereco (caso 1)...`);
       const aluno = await this.alunoRepository.findOne({
         where: { id: fatura.aluno_id },
         relations: ['endereco'],
       });
       if (aluno) {
         fatura.aluno = aluno;
+        this.logger.log(`💳 ${TAG} Aluno carregado: ${aluno.nome_completo} | cpf=${aluno.cpf} | endereco=${aluno.endereco?.cep || 'SEM ENDEREÇO'}`);
+      } else {
+        this.logger.warn(`⚠️ ${TAG} Aluno ${fatura.aluno_id} não encontrado no banco!`);
       }
     } else if (fatura.aluno && !fatura.aluno.endereco && fatura.aluno.endereco_id) {
-      // Carregar endereço se não veio nas relations
+      this.logger.log(`💳 ${TAG} Carregando endereço do aluno separadamente (caso 2)...`);
       const aluno = await this.alunoRepository.findOne({
         where: { id: fatura.aluno.id },
         relations: ['endereco'],
       });
       if (aluno?.endereco) {
         fatura.aluno.endereco = aluno.endereco;
+        this.logger.log(`💳 ${TAG} Endereço carregado: cep=${aluno.endereco.cep}`);
       }
+    } else if (fatura.aluno) {
+      this.logger.log(`💳 ${TAG} Aluno já presente: ${fatura.aluno.nome_completo} | endereco_cep=${fatura.aluno.endereco?.cep || 'sem endereço'}`);
     }
 
     // 4. Criar transação PENDENTE
+    this.logger.log(`💳 ${TAG} Criando transação PENDENTE no banco...`);
     const transacao = this.transacaoRepository.create({
       tipo: TipoTransacao.ENTRADA,
       origem: OrigemTransacao.FATURA,
@@ -1795,6 +1810,7 @@ export class PaytimeIntegrationService {
     });
 
     const transacaoSalva = await this.transacaoRepository.save(transacao);
+    this.logger.log(`💳 ${TAG} Transação criada: id=${transacaoSalva.id}`);
 
     try {
       const client: Record<string, unknown> = {
@@ -1816,6 +1832,9 @@ export class PaytimeIntegrationService {
           state: end.estado || 'XX',
           zip_code: end.cep.replace(/\D/g, ''),
         };
+        this.logger.log(`💳 ${TAG} Endereço incluído no payload: cep=${end.cep}`);
+      } else {
+        this.logger.warn(`⚠️ ${TAG} Endereço NÃO incluído no payload (CEP ausente)`);
       }
 
       // 5. Criar payload SOMENTE COM TOKEN
@@ -1826,7 +1845,7 @@ export class PaytimeIntegrationService {
         interest: 'ESTABLISHMENT',
         client,
         card: {
-          token: assinatura.token_cartao, // ← SÓ O TOKEN, SEM DADOS DO CARTÃO
+          token: assinatura.token_cartao,
         },
         info_additional: [
           { key: 'aluno_id', value: fatura.aluno_id },
@@ -1835,17 +1854,27 @@ export class PaytimeIntegrationService {
           { key: 'fatura_numero', value: fatura.numero_fatura },
         ],
       };
-      // ❌ SEM antifraude na recorrência
-      // ❌ SEM dados completos do cartão
-      // ❌ SEM create_token (já temos)
 
-      this.logger.log(`📤 Enviando para Paytime com token (sem dados do cartão)`);
+      this.logger.log(`💳 ${TAG} Payload para rykon-pay:`);
+      this.logger.log(`💳 ${TAG}   payment_type=${paymentData.payment_type}`);
+      this.logger.log(`💳 ${TAG}   amount=${paymentData.amount} centavos (R$${fatura.valor_total})`);
+      this.logger.log(`💳 ${TAG}   establishment_id=${establishment}`);
+      this.logger.log(`💳 ${TAG}   card.token=${assinatura.token_cartao.substring(0, 20)}... (${assinatura.token_cartao.length} chars)`);
+      this.logger.log(`💳 ${TAG}   client.document=${(fatura.aluno.cpf?.replace(/\D/g, '') || '').substring(0, 3)}***`);
+      this.logger.log(`💳 ${TAG}   client.address presente: ${!!(client.address)}`);
+      this.logger.log(`💳 ${TAG} ── Chamando rykon-pay POST /api/transactions/card...`);
 
       // 6. Enviar para Paytime
       const paytimeResponse = await this.paytimeService.createCardTransaction(
         parseInt(establishment, 10),
         paymentData,
       );
+
+      this.logger.log(`💳 ${TAG} ── Resposta rykon-pay recebida:`);
+      this.logger.log(`💳 ${TAG}   status=${paytimeResponse.status}`);
+      this.logger.log(`💳 ${TAG}   _id=${paytimeResponse._id || paytimeResponse.id}`);
+      this.logger.log(`💳 ${TAG}   antifraud=${JSON.stringify(paytimeResponse.antifraud || null)}`);
+      this.logger.log(`💳 ${TAG}   card=${JSON.stringify({ brand: paytimeResponse.card?.brand_name, last4: paytimeResponse.card?.last4_digits })}`);
 
       // 7. Salvar metadata
       transacaoSalva.paytime_transaction_id = paytimeResponse._id || paytimeResponse.id;
@@ -1858,22 +1887,22 @@ export class PaytimeIntegrationService {
 
       // 8. Atualizar status
       if (paytimeResponse.status === 'PAID' || paytimeResponse.status === 'APPROVED') {
+        this.logger.log(`✅ ${TAG} APROVADO — baixando fatura e salvando transação...`);
         transacaoSalva.status = StatusTransacao.CONFIRMADA;
         await this.transacaoRepository.save(transacaoSalva);
         
-        // Baixar fatura
         fatura.status = StatusFatura.PAGA;
         fatura.data_pagamento = dayjs().tz('America/Sao_Paulo').toDate();
         fatura.valor_pago = fatura.valor_total;
         await this.faturaRepository.save(fatura);
+        this.logger.log(`✅ ${TAG} Fatura ${fatura.numero_fatura} baixada como PAGA`);
 
-        // Renovar assinatura automaticamente
         if (fatura.assinatura_id) {
           await this.renovarAssinatura(fatura.assinatura_id);
+          this.logger.log(`✅ ${TAG} Assinatura ${fatura.assinatura_id} renovada`);
         }
         
-        this.logger.log(`✅ Cobrança recorrente APROVADA - Fatura ${fatura.numero_fatura} paga`);
-
+        this.logger.log(`✅ ${TAG} ══════ FIM — SUCESSO ══════`);
         return {
           success: true,
           transacao_id: transacaoSalva.id,
@@ -1882,12 +1911,12 @@ export class PaytimeIntegrationService {
         };
 
       } else if (paytimeResponse.status === 'FAILED' || paytimeResponse.status === 'CANCELED') {
+        this.logger.warn(`⚠️ ${TAG} FALHOU — status=${paytimeResponse.status}`);
         transacaoSalva.status = StatusTransacao.CANCELADA;
         transacaoSalva.observacoes = `Cobrança recorrente ${paytimeResponse.status}`;
         await this.transacaoRepository.save(transacaoSalva);
-        
-        this.logger.warn(`⚠️ Cobrança recorrente ${paytimeResponse.status}`);
 
+        this.logger.log(`⚠️ ${TAG} ══════ FIM — FALHOU ══════`);
         return {
           success: false,
           transacao_id: transacaoSalva.id,
@@ -1897,29 +1926,28 @@ export class PaytimeIntegrationService {
         };
 
       } else {
-        // PENDING ou outros
+        // PENDING ou outros — aguardar webhook
+        this.logger.log(`⏳ ${TAG} Status intermediário: ${paytimeResponse.status} — aguardando webhook`);
         transacaoSalva.status = StatusTransacao.PENDENTE;
         await this.transacaoRepository.save(transacaoSalva);
-        
-        this.logger.log(`⏳ Cobrança recorrente em processamento: ${paytimeResponse.status}`);
 
+        this.logger.log(`⏳ ${TAG} ══════ FIM — PENDENTE ══════`);
         return {
-          success: false,
+          success: true,
           transacao_id: transacaoSalva.id,
           paytime_transaction_id: paytimeResponse._id || paytimeResponse.id,
           status: paytimeResponse.status,
-          error: 'Pagamento em processamento',
+          message: 'Pagamento enviado — aguardando confirmação',
         };
       }
 
     } catch (error) {
+      this.logger.error(`❌ ${TAG} EXCEÇÃO: ${error.message}`);
+      this.logger.error(`❌ ${TAG} Stack: ${error.stack?.split('\n')[1]?.trim()}`);
       transacaoSalva.status = StatusTransacao.CANCELADA;
       transacaoSalva.observacoes = `Erro: ${error.message}`;
       await this.transacaoRepository.save(transacaoSalva);
-
-      this.logger.error(
-        `❌ Erro ao cobrar com token (assinatura ${assinatura.id}): ${error.message}`,
-      );
+      this.logger.log(`❌ ${TAG} ══════ FIM — ERRO ══════`);
 
       return {
         success: false,

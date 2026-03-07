@@ -165,6 +165,7 @@ export class FaturasController {
 
   @Post(':id/pagar-com-token')
   async pagarComToken(@Param('id') id: string) {
+    this.logger.log(`💳 [pagar-com-token] Iniciando - fatura: ${id}`);
     const fatura = await this.faturasService.findOne(id);
 
     if (fatura.status !== StatusFatura.PENDENTE) {
@@ -173,6 +174,7 @@ export class FaturasController {
 
     // Usar token da assinatura da fatura, ou fallback: qualquer assinatura do aluno com token
     let assinaturaComToken = fatura.assinatura?.token_cartao ? fatura.assinatura : null;
+    this.logger.log(`💳 [pagar-com-token] token na assinatura da fatura: ${fatura.assinatura?.token_cartao ? 'SIM' : 'NÃO'}`);
 
     if (!assinaturaComToken && fatura.aluno_id) {
       const assinaturas = await this.dataSource.query(
@@ -184,6 +186,9 @@ export class FaturasController {
       );
       if (assinaturas.length > 0) {
         assinaturaComToken = assinaturas[0];
+        this.logger.log(`💳 [pagar-com-token] token encontrado em assinatura cross: ${assinaturas[0].id}`);
+      } else {
+        this.logger.warn(`💳 [pagar-com-token] nenhum token encontrado para aluno ${fatura.aluno_id}`);
       }
     }
 
@@ -193,7 +198,19 @@ export class FaturasController {
       );
     }
 
-    return this.paytimeIntegrationService.cobrarComToken(assinaturaComToken as any, fatura);
+    this.logger.log(`💳 [pagar-com-token] chamando cobrarComToken com assinatura ${(assinaturaComToken as any).id}`);
+    const resultado = await this.paytimeIntegrationService.cobrarComToken(assinaturaComToken as any, fatura);
+    this.logger.log(`💳 [pagar-com-token] resultado: success=${resultado.success} status=${resultado.status}`);
+
+    if (!resultado.success) {
+      // PENDING não é erro — o pagamento está sendo processado (ex: webhook atualizará depois)
+      if (resultado.status === 'PENDING') {
+        return resultado;
+      }
+      throw new BadRequestException(resultado.error || 'Falha ao processar cobrança com cartão salvo');
+    }
+
+    return resultado;
   }
 
   @Post(':id/enviar-cobranca-whatsapp')
