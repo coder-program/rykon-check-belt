@@ -709,8 +709,8 @@ export default function Assinaturas() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Assinaturas</h1>
-          <p className="text-gray-600 mt-1">
+          <h1 className="text-3xl font-bold text-emerald-700">Assinaturas</h1>
+          <p className="text-emerald-500 mt-1">
             Gerencie as assinaturas dos alunos
           </p>
         </div>
@@ -860,13 +860,13 @@ export default function Assinaturas() {
       {/* Lista de Assinaturas */}
       <Card>
         <CardHeader>
-          <CardTitle>Assinaturas ({filteredAssinaturas.length})</CardTitle>
+          <CardTitle className="text-emerald-700">Assinaturas ({filteredAssinaturas.length})</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b bg-gray-50 text-gray-600 text-xs uppercase tracking-wide">
+                <tr className="border-b bg-emerald-600 text-white text-xs uppercase tracking-wide">
                   <th className="px-4 py-3 text-left">Aluno</th>
                   <th className="px-4 py-3 text-left">Plano</th>
                   <th className="px-4 py-3 text-left">Status</th>
@@ -878,8 +878,8 @@ export default function Assinaturas() {
                   <th className="px-4 py-3 text-center">Ações</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
-                {filteredAssinaturas.map((assinatura) => {
+              <tbody className="divide-y divide-emerald-100">
+                {filteredAssinaturas.map((assinatura, index) => {
                   const metodoPgto = (() => {
                     const map: Record<string, { label: string; icon: React.ReactNode; color: string }> = {
                       PIX: { label: "Pix", icon: <QrCode className="h-3 w-3" />, color: "bg-green-100 text-green-700" },
@@ -892,7 +892,7 @@ export default function Assinaturas() {
                     return map[(assinatura.metodo_pagamento || "").toUpperCase()] ?? { label: assinatura.metodo_pagamento || "—", icon: <DollarSign className="h-3 w-3" />, color: "bg-gray-100 text-gray-700" };
                   })();
                   return (
-                    <tr key={assinatura.id} className="hover:bg-gray-50 transition-colors">
+                    <tr key={assinatura.id} className={index % 3 === 0 ? "bg-blue-50" : index % 3 === 1 ? "bg-emerald-50" : "bg-white"}>
                       <td className="px-4 py-3 font-medium text-gray-900">
                         {assinatura.aluno_nome || "N/A"}
                       </td>

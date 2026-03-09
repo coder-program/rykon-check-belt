@@ -542,8 +542,8 @@ export default function ContasAPagar() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Contas a Pagar</h1>
-          <p className="text-gray-600 mt-1">Gerencie as despesas da unidade</p>
+          <h1 className="text-3xl font-bold text-orange-700">Contas a Pagar</h1>
+          <p className="text-orange-500 mt-1">Gerencie as despesas da unidade</p>
         </div>
         <Button
           onClick={() => {
@@ -692,13 +692,13 @@ export default function ContasAPagar() {
       {/* Tabela de Despesas */}
       <Card>
         <CardHeader>
-          <CardTitle>Despesas ({filteredDespesas.length})</CardTitle>
+          <CardTitle className="text-orange-700">Despesas ({filteredDespesas.length})</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b bg-gray-50 text-gray-600 text-xs uppercase tracking-wide">
+                <tr className="border-b bg-orange-600 text-white text-xs uppercase tracking-wide">
                   <th className="px-4 py-3 text-left">Descrição</th>
                   <th className="px-4 py-3 text-left">Categoria</th>
                   <th className="px-4 py-3 text-left">Status</th>
@@ -709,9 +709,9 @@ export default function ContasAPagar() {
                   <th className="px-4 py-3 text-center">Ações</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
-                {filteredDespesas.map((despesa) => (
-                  <tr key={despesa.id} className="hover:bg-gray-50 transition-colors">
+              <tbody className="divide-y divide-orange-100">
+                {filteredDespesas.map((despesa, index) => (
+                  <tr key={despesa.id} className={index % 3 === 0 ? "bg-blue-50" : index % 3 === 1 ? "bg-emerald-50" : "bg-white"}>
                     <td className="px-4 py-3 font-medium text-gray-900">
                       {despesa.descricao}
                     </td>

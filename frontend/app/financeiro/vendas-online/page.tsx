@@ -511,7 +511,7 @@ export default function VendasOnline() {
     <div className="w-full h-full overflow-hidden">
     <div className="p-4 md:p-6 space-y-6 max-w-full">
       <div className="flex justify-between items-center flex-wrap gap-4">
-        <h1 className="text-3xl font-bold">💳 Vendas Online</h1>
+        <h1 className="text-3xl font-bold text-violet-700">💳 Vendas Online</h1>
         <Dialog open={modalAberto} onOpenChange={setModalAberto}>
           <DialogTrigger asChild>
             <Button>
@@ -789,12 +789,12 @@ export default function VendasOnline() {
       {/* Tabela de Vendas */}
       <Card className="w-full max-w-full overflow-hidden">
         <CardHeader>
-          <CardTitle>Lista de Vendas</CardTitle>
+          <CardTitle className="text-violet-700">Lista de Vendas</CardTitle>
         </CardHeader>
         <CardContent className="p-0 overflow-x-auto">
             <Table className="w-full">
               <TableHeader>
-                <TableRow>
+                <TableRow className="bg-violet-600 hover:bg-violet-600 [&>th]:text-white [&>th]:text-xs [&>th]:uppercase [&>th]:tracking-wide">
                   <TableHead className="whitespace-nowrap px-4">Aluno</TableHead>
                   <TableHead className="whitespace-nowrap px-4">Descrição</TableHead>
                   <TableHead className="whitespace-nowrap px-4">Método</TableHead>
@@ -812,8 +812,8 @@ export default function VendasOnline() {
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredVendas.map((venda) => (
-                  <TableRow key={venda.id}>
+                filteredVendas.map((venda, index) => (
+                  <TableRow key={venda.id} className={index % 3 === 0 ? "bg-blue-50" : index % 3 === 1 ? "bg-emerald-50" : "bg-white"}>
                     <TableCell>
                       {(venda as any).aluno_nome ||
                         venda.aluno?.nome_completo ||

@@ -468,8 +468,8 @@ export default function Planos() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Planos</h1>
-          <p className="text-gray-600 mt-1">Gerencie os planos de assinatura</p>
+          <h1 className="text-3xl font-bold text-indigo-700">Planos</h1>
+          <p className="text-indigo-500 mt-1">Gerencie os planos de assinatura</p>
         </div>
         <Button
           onClick={() => {
@@ -511,13 +511,13 @@ export default function Planos() {
       {/* Tabela de Planos */}
       <Card>
         <CardHeader>
-          <CardTitle>Planos ({filteredPlanos.length})</CardTitle>
+          <CardTitle className="text-indigo-700">Planos ({filteredPlanos.length})</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b bg-gray-50 text-gray-600 text-xs uppercase tracking-wide">
+                <tr className="border-b bg-indigo-600 text-white text-xs uppercase tracking-wide">
                   <th className="px-4 py-3 text-left">Nome</th>
                   <th className="px-4 py-3 text-left">Tipo</th>
                   <th className="px-4 py-3 text-left">Unidade</th>
@@ -530,8 +530,8 @@ export default function Planos() {
                   <th className="px-4 py-3 text-center">Ações</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
-                {filteredPlanos.map((plano) => {
+              <tbody className="divide-y divide-indigo-100">
+                {filteredPlanos.map((plano, index) => {
                   const alunosAtivos = contarAlunosAtivos(plano.id);
                   const ocupacaoPercent = plano.max_alunos
                     ? (alunosAtivos / plano.max_alunos) * 100
@@ -539,7 +539,7 @@ export default function Planos() {
                   return (
                     <tr
                       key={plano.id}
-                      className={`hover:bg-gray-50 transition-colors ${!plano.ativo ? "opacity-60" : ""}`}
+                      className={`${index % 3 === 0 ? "bg-blue-50" : index % 3 === 1 ? "bg-emerald-50" : "bg-white"} transition-colors ${!plano.ativo ? "opacity-60" : ""}`}
                     >
                       <td className="px-4 py-3 font-semibold text-gray-900">
                         {plano.nome}

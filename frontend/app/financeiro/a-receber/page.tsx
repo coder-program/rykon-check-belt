@@ -561,8 +561,8 @@ export default function ContasAReceber() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Contas a Receber</h1>
-          <p className="text-gray-600 mt-1">
+          <h1 className="text-3xl font-bold text-blue-700">Contas a Receber</h1>
+          <p className="text-blue-500 mt-1">
             Gerencie as faturas e recebimentos
           </p>
         </div>
@@ -757,13 +757,13 @@ export default function ContasAReceber() {
       {/* Lista de Faturas */}
       <Card>
         <CardHeader>
-          <CardTitle>Faturas ({filteredFaturas.length})</CardTitle>
+          <CardTitle className="text-blue-700">Faturas ({filteredFaturas.length})</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b bg-gray-50 text-gray-600 text-xs uppercase tracking-wide">
+                <tr className="border-b bg-blue-600 text-white text-xs uppercase tracking-wide">
                   <th className="px-4 py-3 text-left">Nº Fatura</th>
                   <th className="px-4 py-3 text-left">Aluno</th>
                   <th className="px-4 py-3 text-left">Status</th>
@@ -774,11 +774,11 @@ export default function ContasAReceber() {
                   <th className="px-4 py-3 text-center">Ações</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
-                {filteredFaturas.map((fatura) => {
+              <tbody className="divide-y divide-blue-100">
+                {filteredFaturas.map((fatura, index) => {
                   const info = getMetodoPagamentoInfo(fatura.metodo_pagamento);
                   return (
-                    <tr key={fatura.id} className="hover:bg-gray-50 transition-colors">
+                    <tr key={fatura.id} className={index % 3 === 0 ? "bg-blue-50" : index % 3 === 1 ? "bg-emerald-50" : "bg-white"}>
                       <td className="px-4 py-3 font-semibold text-gray-900">
                         {fatura.numero_fatura}
                       </td>
