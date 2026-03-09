@@ -49,6 +49,8 @@ import {
   Loader2,
   Zap,
   Trash2,
+  RotateCcw,
+  Pencil,
 } from "lucide-react";
 import FiltroUnidade from "@/components/financeiro/FiltroUnidade";
 import { useFiltroUnidade } from "@/hooks/useFiltroUnidade";
@@ -69,6 +71,7 @@ interface Fatura {
   data_vencimento: string;
   data_pagamento?: string;
   metodo_pagamento?: string;
+  gateway_payment_id?: string | null;
   observacoes?: string;
   created_at: string;
   token_salvo?: boolean;
@@ -100,6 +103,13 @@ export default function ContasAReceber() {
   const [showExcluirDialog, setShowExcluirDialog] = useState(false);
   const [faturaParaExcluir, setFaturaParaExcluir] = useState<Fatura | null>(null);
   const [isExcluindo, setIsExcluindo] = useState(false);
+  const [showReverterDialog, setShowReverterDialog] = useState(false);
+  const [faturaParaReverter, setFaturaParaReverter] = useState<Fatura | null>(null);
+  const [isRevertendo, setIsRevertendo] = useState(false);
+  const [showAlterarMetodoDialog, setShowAlterarMetodoDialog] = useState(false);
+  const [faturaParaAlterar, setFaturaParaAlterar] = useState<Fatura | null>(null);
+  const [novoMetodo, setNovoMetodo] = useState("");
+  const [isAlterandoMetodo, setIsAlterandoMetodo] = useState(false);
   const [metodoPagamento, setMetodoPagamento] = useState("");
   const [valorPago, setValorPago] = useState("");
   const [observacoes, setObservacoes] = useState("");
@@ -400,6 +410,69 @@ export default function ContasAReceber() {
     } catch (error) {
       console.error("Erro ao cancelar fatura:", error);
       mostrarMensagem("Erro", "Erro ao cancelar fatura", "erro");
+    }
+  };
+
+  const handleAlterarMetodoPagamento = async () => {
+    if (!faturaParaAlterar || !novoMetodo) return;
+    setIsAlterandoMetodo(true);
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/faturas/${faturaParaAlterar.id}/alterar-metodo-pagamento`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ metodo_pagamento: novoMetodo }),
+        }
+      );
+      if (response.ok) {
+        setShowAlterarMetodoDialog(false);
+        setFaturaParaAlterar(null);
+        setNovoMetodo("");
+        carregarFaturas();
+        queryClient.invalidateQueries({ queryKey: ["transacoes"] });
+        toast.success("Método de pagamento alterado com sucesso!");
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        toast.error(errorData.message || "Erro ao alterar método de pagamento");
+      }
+    } catch {
+      toast.error("Erro ao alterar método de pagamento");
+    } finally {
+      setIsAlterandoMetodo(false);
+    }
+  };
+
+  const handleReverterParaPendente = async () => {
+    if (!faturaParaReverter) return;
+    setIsRevertendo(true);
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/faturas/${faturaParaReverter.id}/reverter-pendente`,
+        {
+          method: "PATCH",
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      if (response.ok) {
+        setShowReverterDialog(false);
+        setFaturaParaReverter(null);
+        carregarFaturas();
+        queryClient.invalidateQueries({ queryKey: ["transacoes"] });
+        mostrarMensagem("Sucesso!", "Fatura revertida para Pendente com sucesso!", "sucesso");
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        mostrarMensagem("Erro", errorData.message || "Erro ao reverter fatura", "erro");
+      }
+    } catch {
+      mostrarMensagem("Erro", "Erro ao reverter fatura", "erro");
+    } finally {
+      setIsRevertendo(false);
     }
   };
 
@@ -750,36 +823,52 @@ export default function ContasAReceber() {
                             </Button>
                           )}
                           {fatura.status === "PAGA" && fatura.data_pagamento && (
-                            <Button
-                              onClick={async () => {
-                                try {
-                                  const token = localStorage.getItem("token");
-                                  const response = await fetch(
-                                    `${process.env.NEXT_PUBLIC_API_URL}/faturas/${fatura.id}/recibo`,
-                                    { headers: { Authorization: `Bearer ${token}` } }
-                                  );
-                                  if (!response.ok) throw new Error("Erro ao gerar recibo");
-                                  const blob = await response.blob();
-                                  const url = window.URL.createObjectURL(blob);
-                                  const a = document.createElement("a");
-                                  a.href = url;
-                                  a.download = `recibo-${fatura.numero_fatura}.pdf`;
-                                  document.body.appendChild(a);
-                                  a.click();
-                                  window.URL.revokeObjectURL(url);
-                                  document.body.removeChild(a);
-                                  toast.success("Recibo gerado com sucesso!");
-                                } catch (error) {
-                                  console.error("Erro ao gerar recibo:", error);
-                                  toast.error("Erro ao gerar recibo");
-                                }
-                              }}
-                              size="sm"
-                              variant="outline"
-                              title="Gerar Comprovante"
-                            >
-                              <Receipt className="h-4 w-4" />
-                            </Button>
+                            <div className="flex gap-1">
+                              <Button
+                                onClick={async () => {
+                                  try {
+                                    const token = localStorage.getItem("token");
+                                    const response = await fetch(
+                                      `${process.env.NEXT_PUBLIC_API_URL}/faturas/${fatura.id}/recibo`,
+                                      { headers: { Authorization: `Bearer ${token}` } }
+                                    );
+                                    if (!response.ok) throw new Error("Erro ao gerar recibo");
+                                    const blob = await response.blob();
+                                    const url = window.URL.createObjectURL(blob);
+                                    const a = document.createElement("a");
+                                    a.href = url;
+                                    a.download = `recibo-${fatura.numero_fatura}.pdf`;
+                                    document.body.appendChild(a);
+                                    a.click();
+                                    window.URL.revokeObjectURL(url);
+                                    document.body.removeChild(a);
+                                    toast.success("Recibo gerado com sucesso!");
+                                  } catch (error) {
+                                    console.error("Erro ao gerar recibo:", error);
+                                    toast.error("Erro ao gerar recibo");
+                                  }
+                                }}
+                                size="sm"
+                                variant="outline"
+                                title="Gerar Comprovante"
+                              >
+                                <Receipt className="h-4 w-4" />
+                              </Button>
+                              {!fatura.gateway_payment_id && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  title="Voltar para Pendente"
+                                  className="text-yellow-700 border-yellow-300 hover:bg-yellow-50"
+                                  onClick={() => {
+                                    setFaturaParaReverter(fatura);
+                                    setShowReverterDialog(true);
+                                  }}
+                                >
+                                  <RotateCcw className="h-4 w-4" />
+                                </Button>
+                              )}
+                            </div>
                           )}
                           {(["PENDENTE", "ATRASADA"] as string[]).includes(fatura.status) && (
                             <div className="flex flex-col items-center gap-1 w-full">
@@ -806,6 +895,20 @@ export default function ContasAReceber() {
                                 return <Badge className="bg-blue-100 text-blue-800 gap-1 text-[10px] w-full justify-center"><Loader2 className="h-2.5 w-2.5 animate-spin" />Processando...</Badge>;
                               })()}
                               <div className="flex gap-1 w-full">
+                                {/* Alterar Método de Pagamento */}
+                                <Button
+                                  onClick={() => {
+                                    setFaturaParaAlterar(fatura);
+                                    setNovoMetodo(fatura.metodo_pagamento || "");
+                                    setShowAlterarMetodoDialog(true);
+                                  }}
+                                  size="sm"
+                                  variant="outline"
+                                  className="flex-1 text-xs text-blue-700 border-blue-300 hover:bg-blue-50"
+                                  title="Alterar Método de Pagamento"
+                                >
+                                  <Pencil className="h-3.5 w-3.5" />
+                                </Button>
                                 {/* Registrar Pagamento manual */}
                                 <Button
                                   onClick={() => {
@@ -1000,6 +1103,101 @@ export default function ContasAReceber() {
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {isExcluindo ? "Excluindo..." : "Excluir"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Modal: Alterar Método de Pagamento */}
+      <Dialog
+        open={showAlterarMetodoDialog}
+        onOpenChange={(open) => {
+          if (!open && !isAlterandoMetodo) {
+            setShowAlterarMetodoDialog(false);
+            setFaturaParaAlterar(null);
+            setNovoMetodo("");
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Pencil className="h-5 w-5 text-blue-600" />
+              Alterar Método de Pagamento
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium text-gray-700">Fatura</label>
+              <Input value={faturaParaAlterar?.numero_fatura || ""} disabled />
+            </div>
+            <div>
+              <label className="text-sm font-medium text-gray-700">Aluno</label>
+              <Input value={faturaParaAlterar?.aluno_nome || ""} disabled />
+            </div>
+            <div>
+              <label className="text-sm font-medium text-gray-700">Novo Método de Pagamento *</label>
+              <Select value={novoMetodo} onValueChange={setNovoMetodo}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o método" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="PIX">PIX</SelectItem>
+                  <SelectItem value="CARTAO">Cartão de Crédito/Débito</SelectItem>
+                  <SelectItem value="BOLETO">Boleto</SelectItem>
+                  <SelectItem value="DINHEIRO">Dinheiro</SelectItem>
+                  <SelectItem value="TRANSFERENCIA">Transferência</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <p className="text-sm text-blue-800">
+                <strong>Atenção:</strong> A alteração será aplicada nesta fatura e na assinatura vinculada, refletindo no portal do aluno e em futuras cobranças.
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => { setShowAlterarMetodoDialog(false); setFaturaParaAlterar(null); setNovoMetodo(""); }}
+              disabled={isAlterandoMetodo}
+            >
+              Cancelar
+            </Button>
+            <Button onClick={handleAlterarMetodoPagamento} disabled={!novoMetodo || isAlterandoMetodo}>
+              {isAlterandoMetodo ? "Salvando..." : "Confirmar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal: Reverter Fatura para Pendente */}
+      <AlertDialog
+        open={showReverterDialog}
+        onOpenChange={(open) => { if (!open && !isRevertendo) { setShowReverterDialog(false); setFaturaParaReverter(null); } }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <RotateCcw className="h-5 w-5 text-yellow-600" />
+              Reverter para Pendente
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Deseja reverter a fatura{" "}
+              <strong>{faturaParaReverter?.numero_fatura}</strong> de{" "}
+              <strong>{faturaParaReverter?.aluno_nome}</strong> de volta para{" "}
+              <strong>Pendente</strong>?{" "}
+              O pagamento registrado manualmente ({faturaParaReverter?.metodo_pagamento}) será desfeito.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isRevertendo}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleReverterParaPendente}
+              disabled={isRevertendo}
+              className="bg-yellow-600 text-white hover:bg-yellow-700"
+            >
+              {isRevertendo ? "Revertendo..." : "Confirmar"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

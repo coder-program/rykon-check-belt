@@ -378,26 +378,30 @@ export default function MinhasFaturas() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center min-h-screen bg-slate-50">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Carregando suas faturas...</p>
+          <Loader2 className="h-10 w-10 animate-spin text-blue-600 mx-auto" />
+          <p className="mt-4 text-gray-500 text-sm">Carregando suas faturas...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="min-h-screen bg-slate-50">
+    <div className="max-w-5xl mx-auto px-3 sm:px-6 py-4 sm:py-6 space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-4">
-        <Button variant="outline" onClick={() => router.push("/dashboard")}>
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Voltar
-        </Button>
+      <div className="flex items-center gap-3">
+        <button
+          onClick={() => router.push("/dashboard")}
+          className="flex items-center gap-1.5 text-slate-500 hover:text-slate-800 text-sm transition-colors p-2 -ml-2 rounded-lg hover:bg-slate-200"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          <span className="hidden sm:inline">Voltar</span>
+        </button>
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Minhas Faturas</h1>
-          <p className="text-gray-600 mt-1">Acompanhe seus pagamentos</p>
+          <h1 className="text-xl sm:text-3xl font-bold text-gray-900">Minhas Faturas</h1>
+          <p className="text-gray-500 text-xs sm:text-sm mt-0.5">Acompanhe seus pagamentos</p>
         </div>
       </div>
 
@@ -459,49 +463,49 @@ export default function MinhasFaturas() {
       )}
 
       {/* Cards de Resumo */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card>
-          <CardContent className="pt-6">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-6">
+        <Card className="border-yellow-200 bg-yellow-50">
+          <CardContent className="p-3 sm:pt-6 sm:p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Pendentes</p>
-                <p className="text-2xl font-bold text-yellow-600">
+                <p className="text-xs sm:text-sm text-gray-600">Pendentes</p>
+                <p className="text-lg sm:text-2xl font-bold text-yellow-600">
                   {formatarMoeda(totais.pendente)}
                 </p>
               </div>
-              <Clock className="h-8 w-8 text-yellow-600" />
+              <Clock className="h-6 w-6 sm:h-8 sm:w-8 text-yellow-500" />
             </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardContent className="pt-6">
+        <Card className="border-red-200 bg-red-50">
+          <CardContent className="p-3 sm:pt-6 sm:p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Em Atraso</p>
-                <p className="text-2xl font-bold text-red-600">
+                <p className="text-xs sm:text-sm text-gray-600">Em Atraso</p>
+                <p className="text-lg sm:text-2xl font-bold text-red-600">
                   {formatarMoeda(totais.atrasada)}
                 </p>
               </div>
-              <AlertCircle className="h-8 w-8 text-red-600" />
+              <AlertCircle className="h-6 w-6 sm:h-8 sm:w-8 text-red-500" />
             </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardContent className="pt-6">
+        <Card className="col-span-2 sm:col-span-1 border-blue-200 bg-blue-50">
+          <CardContent className="p-3 sm:pt-6 sm:p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Próximo Vencimento</p>
+                <p className="text-xs sm:text-sm text-gray-600">Próximo Vencimento</p>
                 {totais.proximoVencimento ? (
-                  <p className="text-lg font-bold text-blue-600">
+                  <p className="text-base sm:text-lg font-bold text-blue-600">
                     {formatarData(totais.proximoVencimento.data_vencimento)}
                   </p>
                 ) : (
-                  <p className="text-sm text-gray-500">Nenhuma pendente</p>
+                  <p className="text-xs text-gray-500">Nenhuma pendente</p>
                 )}
               </div>
-              <Calendar className="h-8 w-8 text-blue-600" />
+              <Calendar className="h-6 w-6 sm:h-8 sm:w-8 text-blue-500" />
             </div>
           </CardContent>
         </Card>
@@ -509,11 +513,101 @@ export default function MinhasFaturas() {
 
       {/* Lista de Faturas */}
       <Card>
-        <CardHeader>
-          <CardTitle>Histórico de Faturas</CardTitle>
+        <CardHeader className="pb-2 sm:pb-6">
+          <CardTitle className="text-base sm:text-xl">Histórico de Faturas</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
-          <div className="overflow-x-auto">
+
+          {/* ── MOBILE: cards ── */}
+          <div className="sm:hidden divide-y divide-slate-100">
+            {faturas.length === 0 && (
+              <div className="text-center py-12 text-gray-500 px-4">
+                <DollarSign className="h-14 w-14 mx-auto mb-3 text-gray-300" />
+                <p className="font-medium">Nenhuma fatura encontrada</p>
+                <p className="text-sm mt-1 text-gray-400">Você não possui faturas cadastradas</p>
+              </div>
+            )}
+            {faturas.map((fatura) => {
+              const metodo = (fatura.metodo_pagamento || fatura.assinatura?.metodo_pagamento || "").toUpperCase();
+              const isCartao = ["CARTAO", "CARTAO_CREDITO"].includes(metodo);
+              const last4Disp = fatura.card_info?.last4 || fatura.card_info_assinatura?.last4;
+              const isPendente = (["PENDENTE", "ATRASADA", "VENCIDA"] as string[]).includes(fatura.status);
+              return (
+                <div key={`mob-${fatura.id}`} className="px-4 py-4">
+                  {/* Row 1: numero + status + valor */}
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <p className="font-mono text-xs text-slate-400">{fatura.numero_fatura}</p>
+                      <div className="mt-1">{getStatusBadge(fatura.status)}</div>
+                      {fatura.status === "ATRASADA" && (
+                        <p className="text-[10px] text-red-500 mt-0.5">em atraso</p>
+                      )}
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="font-bold text-slate-900 text-base">
+                        {formatarMoeda(parseFloat(fatura.valor_original?.toString()) || 0)}
+                      </p>
+                      {fatura.status === "PAGA" && fatura.data_pagamento ? (
+                        <p className="text-[10px] text-green-600 mt-0.5">Pago em {formatarData(fatura.data_pagamento)}</p>
+                      ) : (
+                        <p className="text-[10px] text-slate-400 mt-0.5">Vence {formatarData(fatura.data_vencimento)}</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Row 2: plano + metodo */}
+                  <div className="flex items-center justify-between mt-2 gap-2">
+                    <div className="min-w-0">
+                      {fatura.assinatura?.plano?.nome ? (
+                        <p className="text-sm text-slate-700 truncate font-medium">{fatura.assinatura.plano.nome}</p>
+                      ) : (
+                        <p className="text-sm text-slate-500 truncate">{fatura.descricao || "—"}</p>
+                      )}
+                    </div>
+                    <div className="shrink-0">
+                      {metodo === "PIX" && <Badge className="bg-green-100 text-green-800 gap-1 font-normal text-[10px]"><QrCode className="h-2.5 w-2.5" />Pix</Badge>}
+                      {metodo === "BOLETO" && <Badge className="bg-orange-100 text-orange-800 gap-1 font-normal text-[10px]"><Landmark className="h-2.5 w-2.5" />Boleto</Badge>}
+                      {(metodo === "CARTAO" || metodo === "CARTAO_CREDITO") && (
+                        <Badge className="bg-blue-100 text-blue-800 gap-1 font-normal text-[10px]">
+                          <CreditCard className="h-2.5 w-2.5" />{last4Disp ? `•••• ${last4Disp}` : "Cartão"}
+                        </Badge>
+                      )}
+                      {metodo === "DINHEIRO" && <Badge className="bg-emerald-100 text-emerald-800 gap-1 font-normal text-[10px]"><Banknote className="h-2.5 w-2.5" />Dinheiro</Badge>}
+                    </div>
+                  </div>
+
+                  {/* Boleto/PIX pending badge */}
+                  {faturasComPagamentoPendente.has(fatura.id) && (() => {
+                    const info = faturasComPagamentoPendente.get(fatura.id)!;
+                    if (info.metodo === "BOLETO" && info.temBarcode)
+                      return <Badge className="mt-2 bg-orange-100 text-orange-800 gap-1 text-[10px]"><Landmark className="h-2.5 w-2.5" />Boleto gerado</Badge>;
+                    if (info.metodo === "BOLETO")
+                      return <Badge className="mt-2 bg-blue-100 text-blue-800 gap-1 text-[10px]"><Loader2 className="h-2.5 w-2.5 animate-spin" />Gerando boleto...</Badge>;
+                    return <Badge className="mt-2 bg-blue-100 text-blue-800 gap-1 text-[10px]"><Loader2 className="h-2.5 w-2.5 animate-spin" />Processando</Badge>;
+                  })()}
+
+                  {/* Action */}
+                  {isPendente && (
+                    <div className="mt-3">
+                      <button
+                        onClick={() => handlePagarOnline(fatura)}
+                        className="w-full bg-blue-600 hover:bg-blue-700 active:scale-95 text-white py-2.5 rounded-xl text-sm font-semibold transition-all flex items-center justify-center gap-2 shadow-sm"
+                      >
+                        {fatura.token_salvo ? (
+                          <><Zap className="w-4 h-4" />Pagar agora</>
+                        ) : (
+                          <><CreditCard className="w-4 h-4" />Pagar agora</>
+                        )}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* ── DESKTOP: table ── */}
+          <div className="hidden sm:block overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
@@ -586,14 +680,7 @@ export default function MinhasFaturas() {
                               {last4 ? `•••• ${last4}` : "Cartão"}
                             </span>
                           </div>
-                          {fatura.token_salvo && (["PENDENTE", "ATRASADA", "VENCIDA"] as string[]).includes(fatura.status) && (
-                            <button
-                              className="text-[10px] text-blue-500 hover:text-blue-700 underline underline-offset-2 text-left w-fit"
-                              onClick={() => alterarCartao(fatura)}
-                            >
-                              Alterar cartão
-                            </button>
-                          )}
+
                         </div>
                       );
                     }
@@ -719,37 +806,16 @@ export default function MinhasFaturas() {
                           const last4Disp = fatura.card_info?.last4 || fatura.card_info_assinatura?.last4;
 
                           return (
-                            <div className="flex flex-col items-center gap-1">
-                              <Button
-                                size="sm"
-                                onClick={() => handlePagarOnline(fatura)}
-                              >
-                                {fatura.token_salvo ? (
-                                  <>
-                                    <Zap className="w-3.5 h-3.5 mr-1.5" />
-                                    Pagar •••• {last4Disp || "cartão"}
-                                  </>
-                                ) : isCartao && last4Disp ? (
-                                  <>
-                                    <CreditCard className="w-3.5 h-3.5 mr-1.5" />
-                                    Pagar •••• {last4Disp}
-                                  </>
-                                ) : (
-                                  <>
-                                    <CreditCard className="w-3.5 h-3.5 mr-1.5" />
-                                    Pagar
-                                  </>
-                                )}
-                              </Button>
-                              {(fatura.token_salvo || (isCartao && last4Disp)) && (
-                                <button
-                                  className="text-[11px] text-blue-600 underline underline-offset-2 hover:text-blue-800"
-                                  onClick={() => alterarCartao(fatura)}
-                                >
-                                  Alterar cartão
-                                </button>
+                            <Button
+                              size="sm"
+                              onClick={() => handlePagarOnline(fatura)}
+                            >
+                              {fatura.token_salvo ? (
+                                <><Zap className="w-3.5 h-3.5 mr-1.5" />Pagar agora</>
+                              ) : (
+                                <><CreditCard className="w-3.5 h-3.5 mr-1.5" />Pagar agora</>
                               )}
-                            </div>
+                            </Button>
                           );
                         })() : (
                           <span className="text-gray-400">—</span>
@@ -758,39 +824,36 @@ export default function MinhasFaturas() {
                     </tr>
                   );
                 })}
+              {faturas.length === 0 && (
+                <tr><td colSpan={8}>
+                  <div className="text-center py-12 text-gray-500">
+                    <DollarSign className="h-16 w-16 mx-auto mb-4 text-gray-300" />
+                    <p className="text-lg font-medium">Nenhuma fatura encontrada</p>
+                    <p className="text-sm mt-2">Você não possui faturas cadastradas no momento</p>
+                  </div>
+                </td></tr>
+              )}
               </tbody>
             </table>
+          </div>{/* end desktop table */}
 
-            {faturas.length === 0 && (
-              <div className="text-center py-12 text-gray-500">
-                <DollarSign className="h-16 w-16 mx-auto mb-4 text-gray-300" />
-                <p className="text-lg font-medium">Nenhuma fatura encontrada</p>
-                <p className="text-sm mt-2">
-                  Você não possui faturas cadastradas no momento
-                </p>
-              </div>
-            )}
-          </div>
         </CardContent>
       </Card>
 
       {/* Informação de Pagamento */}
       {(totais.pendente > 0 || totais.atrasada > 0) && (
         <Card className="bg-blue-50 border-blue-200">
-          <CardContent className="pt-6">
-            <div className="flex items-start gap-4">
-              <AlertCircle className="h-6 w-6 text-blue-600 mt-1" />
+          <CardContent className="p-4 sm:pt-6">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="h-5 w-5 text-blue-600 mt-0.5 shrink-0" />
               <div>
-                <h3 className="font-semibold text-blue-900">Como Pagar</h3>
-                <p className="text-sm text-blue-700 mt-1">
-                  Entre em contato com a recepção da sua unidade para efetuar o
-                  pagamento. Você pode pagar via PIX, cartão, dinheiro ou
-                  boleto.
+                <h3 className="font-semibold text-blue-900 text-sm sm:text-base">Como Pagar</h3>
+                <p className="text-xs sm:text-sm text-blue-700 mt-1">
+                  Você pode pagar via PIX, cartão ou boleto clicando no botão <strong>Pagar agora</strong> em cada fatura.
                 </p>
                 {totais.atrasada > 0 && (
-                  <p className="text-sm text-red-600 font-semibold mt-2">
-                    ⚠️ Você possui faturas em atraso. Regularize sua situação
-                    para continuar treinando.
+                  <p className="text-xs sm:text-sm text-red-600 font-semibold mt-2">
+                    ⚠️ Você possui faturas em atraso. Regularize sua situação para continuar treinando.
                   </p>
                 )}
               </div>
@@ -832,13 +895,6 @@ export default function MinhasFaturas() {
                 <><Zap className="h-4 w-4 mr-2" />Confirmar cobrança</>
               )}
             </Button>
-            <AlertDialogCancel
-              disabled={loadingTokenPay}
-              onClick={() => { setConfirmTokenPagar(null); if (confirmTokenPagar) alterarCartao(confirmTokenPagar); }}
-              className="w-full"
-            >
-              Alterar cartão
-            </AlertDialogCancel>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -851,6 +907,7 @@ export default function MinhasFaturas() {
         onSuccess={handlePagamentoSuccess}
         initialTab={modalInitialTab}
       />
+    </div>
     </div>
   );
 }

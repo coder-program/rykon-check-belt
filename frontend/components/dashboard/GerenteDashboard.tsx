@@ -32,6 +32,7 @@ import {
   CheckCircle,
   Dumbbell,
   MonitorPlay,
+  LayoutGrid,
 } from "lucide-react";
 export default function GerenteDashboard() {
   const { user } = useAuth();
@@ -290,6 +291,13 @@ export default function GerenteDashboard() {
       icon: Dumbbell,
       action: () => router.push("/modalidades"),
       color: "bg-purple-500",
+    },
+    {
+      title: "Hub da Unidade",
+      description: "Vídeos, recados e lojinha da sua academia",
+      icon: LayoutGrid,
+      action: () => router.push(`/admin/hub-unidade/${unidade?.id}`),
+      color: "bg-indigo-600",
     },
     {
       title: "Tutoriais do Sistema",

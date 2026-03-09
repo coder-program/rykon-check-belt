@@ -33,6 +33,7 @@ import {
   ArrowLeft,
   ChevronLeft,
   ChevronRight,
+  LayoutGrid,
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -761,6 +762,18 @@ export default function GestaoUnidadesPage() {
                               </div>
                             </div>
                           )}
+
+                          {/* Botão Hub da Unidade */}
+                          <button
+                            onClick={() =>
+                              router.push(`/admin/hub-unidade/${unidade.id}`)
+                            }
+                            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-lg text-sm transition-colors"
+                            title="Hub da Unidade"
+                          >
+                            <LayoutGrid className="h-4 w-4" />
+                            Hub
+                          </button>
 
                           {/* Botão Gerenciar Professores - COMENTADO TEMPORARIAMENTE */}
                           {/* <button

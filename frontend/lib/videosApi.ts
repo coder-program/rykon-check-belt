@@ -34,7 +34,7 @@ export function getThumbnailUrl(youtubeUrl: string): string {
   const id = getYouTubeId(youtubeUrl);
   return id
     ? `https://img.youtube.com/vi/${id}/hqdefault.jpg`
-    : "/placeholder-video.png";
+    : "/placeholder-video.svg";
 }
 
 export const videosApi = {

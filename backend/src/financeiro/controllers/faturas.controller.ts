@@ -150,6 +150,19 @@ export class FaturasController {
     return this.faturasService.cancelar(id, motivo);
   }
 
+  @Patch(':id/reverter-pendente')
+  reverterParaPendente(@Param('id') id: string) {
+    return this.faturasService.reverterParaPendente(id);
+  }
+
+  @Patch(':id/alterar-metodo-pagamento')
+  alterarMetodoPagamento(
+    @Param('id') id: string,
+    @Body('metodo_pagamento') metodo_pagamento: string,
+  ) {
+    return this.faturasService.alterarMetodoPagamento(id, metodo_pagamento);
+  }
+
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.faturasService.remove(id);

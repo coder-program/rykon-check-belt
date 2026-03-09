@@ -10,6 +10,8 @@ import { ConviteCadastroController } from './convite-cadastro.controller';
 import { ContratosController } from './controllers/contratos.controller';
 import { AulaExperimentalController } from './aula-experimental.controller';
 import { VideoTreinamentoController } from './video-treinamento.controller';
+import { FranqueadoContratosController } from './controllers/franqueado-contratos.controller';
+import { FranqueadoCobrancasController } from './controllers/franqueado-cobrancas.controller';
 import { AlunosService } from './services/alunos.service';
 import { ProfessoresService } from './services/professores.service';
 import { FranqueadosService } from './services/franqueados.service';
@@ -43,8 +45,19 @@ import { ContratoAssinaturaHistorico } from './entities/contrato-assinatura-hist
 import { AgendamentoAulaExperimental } from './entities/agendamento-aula-experimental.entity';
 import { ConfigAulaExperimental } from './entities/config-aula-experimental.entity';
 import { VideoTreinamento } from './entities/video-treinamento.entity';
+import { FranqueadoContrato } from './entities/franqueado-contrato.entity';
+import { FranqueadoModuloContratado } from './entities/franqueado-modulo-contratado.entity';
+import { FranqueadoCobranca } from './entities/franqueado-cobranca.entity';
+import { FranqueadoCobrancaItem } from './entities/franqueado-cobranca-item.entity';
+import { FranqueadoSetupParcela } from './entities/franqueado-setup-parcela.entity';
+import { UnidadeAlunosSnapshot } from './entities/unidade-alunos-snapshot.entity';
+import { FranqueadoHistoricoEvento } from './entities/franqueado-historico-evento.entity';
 import { AlunoUnidadeService } from './services/aluno-unidade.service';
 import { AlunoModalidadeService } from './services/aluno-modalidade.service';
+import { FranqueadoContratosService } from './services/franqueado-contratos.service';
+import { FranqueadoCobrancasService } from './services/franqueado-cobrancas.service';
+import { FranqueadoFase3Service } from './services/franqueado-fase3.service';
+import { FranqueadoFase3Controller } from './controllers/franqueado-fase3.controller';
 import { Modalidade } from '../modalidades/entities/modalidade.entity';
 import { Endereco } from '../enderecos/endereco.entity';
 import { Usuario } from '../usuarios/entities/usuario.entity';
@@ -77,6 +90,13 @@ import { Presenca } from '../presenca/entities/presenca.entity';
       AgendamentoAulaExperimental,
       ConfigAulaExperimental,
       VideoTreinamento,
+      FranqueadoContrato,
+      FranqueadoModuloContratado,
+      FranqueadoCobranca,
+      FranqueadoCobrancaItem,
+      FranqueadoSetupParcela,
+      UnidadeAlunosSnapshot,
+      FranqueadoHistoricoEvento,
       Endereco,
       Usuario,
       AlunoConvenio,
@@ -96,6 +116,9 @@ import { Presenca } from '../presenca/entities/presenca.entity';
     ContratosController,
     AulaExperimentalController,
     VideoTreinamentoController,
+    FranqueadoContratosController,
+    FranqueadoCobrancasController,
+    FranqueadoFase3Controller,
   ],
   providers: [
     AlunosService,
@@ -111,6 +134,9 @@ import { Presenca } from '../presenca/entities/presenca.entity';
     ContratosService,
     AulaExperimentalService,
     VideoTreinamentoService,
+    FranqueadoContratosService,
+    FranqueadoCobrancasService,
+    FranqueadoFase3Service,
   ],
   exports: [
     AlunosService,
@@ -123,6 +149,9 @@ import { Presenca } from '../presenca/entities/presenca.entity';
     AlunoModalidadeService,
     ConviteCadastroService,
     ContratosService,
+    FranqueadoContratosService,
+    FranqueadoCobrancasService,
+    FranqueadoFase3Service,
   ],
 })
 export class PeopleModule {}

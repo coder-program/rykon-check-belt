@@ -41,6 +41,7 @@ import {
   Dumbbell,
   ArrowRight,
   MonitorPlay,
+  LayoutGrid,
 } from "lucide-react";
 
 export default function FranqueadoDashboard() {
@@ -453,6 +454,13 @@ export default function FranqueadoDashboard() {
       icon: DollarSign,
       action: () => router.push("/financeiro/dashboard"),
       color: "bg-emerald-500",
+    },
+    {
+      title: "Hub da Unidade",
+      description: "Vídeos, recados e lojinha da sua academia",
+      icon: LayoutGrid,
+      action: () => router.push(`/admin/hub-unidade/${unidadeAtiva}`),
+      color: "bg-indigo-600",
     },
     {
       title: "Tutoriais do Sistema",

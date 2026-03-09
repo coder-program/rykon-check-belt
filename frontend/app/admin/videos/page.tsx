@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import {
   videosApi,
@@ -18,6 +19,7 @@ import {
   EyeOff,
   MonitorPlay,
   Search,
+  ArrowLeft,
 } from "lucide-react";
 import {
   Dialog,
@@ -47,6 +49,7 @@ const CAMPOS_VAZIOS: CriarVideoDto = {
 };
 
 export default function AdminVideosPage() {
+  const router = useRouter();
   const [videos, setVideos] = useState<VideoTreinamento[]>([]);
   const [loading, setLoading] = useState(true);
   const [busca, setBusca] = useState("");
@@ -174,6 +177,13 @@ export default function AdminVideosPage() {
         <div className="max-w-7xl mx-auto px-6 py-8">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
+              <button
+                onClick={() => router.push("/admin/sistema")}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 border border-white/20 text-white/80 hover:text-white rounded-lg text-sm transition-all"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                Voltar
+              </button>
               <div className="w-11 h-11 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center">
                 <MonitorPlay className="w-5 h-5 text-white" />
               </div>

@@ -185,6 +185,10 @@ export async function getMyFranqueado() {
   return http("/franqueados/me", { auth: true });
 }
 
+export async function getFranqueadoById(id: string) {
+  return http(`/franqueados/${id}`, { auth: true });
+}
+
 export async function createFranqueado(data: any) {
   return http("/franqueados", { method: "POST", body: data, auth: true });
 }
@@ -199,6 +203,88 @@ export async function updateFranqueado(id: string, data: any) {
 
 export async function deleteFranqueado(id: string) {
   return http(`/franqueados/${id}`, { method: "DELETE", auth: true });
+}
+
+// ── Franqueado Contratos ──────────────────────────────────────
+
+export interface ModuloContratadoPayload {
+  codigo: string;
+  nome_comercial: string;
+  tipo?: string;
+  valor_mensal_contratado?: number;
+  valor_setup_contratado?: number;
+  data_inicio?: string;
+  observacoes?: string;
+}
+
+export interface CreateFranqueadoContratoPayload {
+  franqueado_id: string;
+  // 6.1
+  codigo?: string;
+  nome_fantasia?: string;
+  cnpj_cpf?: string;
+  razao_social?: string;
+  segmento?: string;
+  status_comercial?: string;
+  // 6.2
+  contato_nome?: string;
+  contato_cargo?: string;
+  contato_email?: string;
+  contato_telefone?: string;
+  financeiro_nome?: string;
+  financeiro_email?: string;
+  financeiro_whatsapp?: string;
+  // 6.3
+  data_implantacao?: string;
+  data_go_live?: string;
+  data_inicio_cobranca?: string;
+  carencia_meses?: number;
+  responsavel_comercial?: string;
+  responsavel_implantacao?: string;
+  mensalidade_base?: number;
+  desconto_mensal?: number;
+  desconto_motivo?: string;
+  setup_valor_total?: number;
+  setup_parcelas?: number;
+  setup_cobrar_durante_carencia?: boolean;
+  tipo_cobranca?: string;
+  dia_vencimento?: number;
+  forma_reajuste?: string;
+  // 6.5
+  usuarios_ativos_esperados?: number;
+  unidades_esperadas?: number;
+  familiaridade_tecnologia?: string;
+  status_implantacao?: string;
+  integracao_externa?: boolean;
+  integracoes_previstas?: string;
+  observacoes?: string;
+  // módulos
+  modulos?: ModuloContratadoPayload[];
+}
+
+export async function createFranqueadoContrato(data: CreateFranqueadoContratoPayload) {
+  return http("/franqueado-contratos", { method: "POST", body: data, auth: true });
+}
+
+export async function listFranqueadoContratos(
+  params: { franqueado_id?: string; status_contrato?: string; status_implantacao?: string } = {}
+) {
+  const qs = new URLSearchParams(
+    Object.fromEntries(Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== "")) as Record<string, string>
+  ).toString();
+  return http(`/franqueado-contratos${qs ? `?${qs}` : ""}`, { auth: true });
+}
+
+export async function getFranqueadoContratoById(id: string) {
+  return http(`/franqueado-contratos/${id}`, { auth: true });
+}
+
+export async function getContratosByFranqueado(franqueadoId: string) {
+  return http(`/franqueado-contratos/franqueado/${franqueadoId}`, { auth: true });
+}
+
+export async function updateFranqueadoContrato(id: string, data: Partial<CreateFranqueadoContratoPayload>) {
+  return http(`/franqueado-contratos/${id}`, { method: "PUT", body: data, auth: true });
 }
 
 // Instrutores
@@ -414,4 +500,257 @@ export async function cancelarAlunoModalidade(
     method: "DELETE",
     auth: true,
   });
+}
+
+// ===== FRANQUEADO COBRANÇAS (Fase 2) =====
+
+export interface CobrancaItemPayload {
+  tipo_item?: "MENSALIDADE_BASE" | "MODULO_EXTRA" | "SETUP" | "DESCONTO" | "AJUSTE";
+  descricao?: string;
+  referencia_id?: string;
+  quantidade?: number;
+  valor_unitario: number;
+  valor_total: number;
+}
+
+export interface CreateCobrancaPayload {
+  contrato_id: string;
+  competencia?: string;
+  data_emissao?: string;
+  data_vencimento?: string;
+  valor_total: number;
+  status?: string;
+  origem?: string;
+  carencia_aplicada?: boolean;
+  observacao?: string;
+  itens?: CobrancaItemPayload[];
+}
+
+export interface RegistrarPagamentoPayload {
+  status: string;
+  data_pagamento?: string;
+  forma_pagamento?: string;
+  observacao?: string;
+}
+
+export interface FranqueadoCobranca {
+  id: string;
+  contrato_id: string;
+  competencia: string | null;
+  data_emissao: string | null;
+  data_vencimento: string | null;
+  valor_total: number;
+  status: "PENDENTE" | "PAGA" | "ATRASADA" | "NEGOCIADA" | "ISENTA" | "CANCELADA" | null;
+  origem: "AUTOMATICA" | "MANUAL" | null;
+  carencia_aplicada: boolean;
+  data_pagamento: string | null;
+  forma_pagamento: string | null;
+  observacao: string | null;
+  created_at: string;
+  updated_at: string;
+  itens?: {
+    id: string;
+    tipo_item: string | null;
+    descricao: string | null;
+    quantidade: number;
+    valor_unitario: number;
+    valor_total: number;
+  }[];
+}
+
+export interface SetupParcela {
+  id: string;
+  contrato_id: string;
+  numero_parcela: number;
+  total_parcelas: number | null;
+  data_vencimento: string | null;
+  valor_parcela: number;
+  status: "PENDENTE" | "PAGA" | "ATRASADA" | "NEGOCIADA" | "ISENTA" | "CANCELADA" | null;
+  data_pagamento: string | null;
+  observacao: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CobrancaKpis {
+  mrr: number;
+  setupPendente: number;
+  cobrancasAtrasadas: number;
+  cobrancasVencendo7dias: number;
+  totalCobrancasMes: number;
+}
+
+// Cobranças
+export async function createCobranca(data: CreateCobrancaPayload): Promise<FranqueadoCobranca> {
+  return http("/franqueado-cobrancas", { method: "POST", body: data, auth: true });
+}
+
+export async function gerarCobrancas(competencia: string, contratoIds?: string[]) {
+  return http("/franqueado-cobrancas/gerar", {
+    method: "POST",
+    body: { competencia, contrato_ids: contratoIds },
+    auth: true,
+  });
+}
+
+export async function listCobrancas(
+  params: { contrato_id?: string; status?: string; competencia?: string; page?: number; pageSize?: number } = {}
+): Promise<{ items: FranqueadoCobranca[]; total: number; page: number; pageSize: number }> {
+  const qs = new URLSearchParams(
+    Object.fromEntries(
+      Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== "")
+    ) as Record<string, string>
+  ).toString();
+  return http(`/franqueado-cobrancas${qs ? `?${qs}` : ""}`, { auth: true });
+}
+
+export async function getCobrancasByContrato(contratoId: string): Promise<FranqueadoCobranca[]> {
+  return http(`/franqueado-cobrancas/contrato/${contratoId}`, { auth: true });
+}
+
+export async function getCobrancaById(id: string): Promise<FranqueadoCobranca> {
+  return http(`/franqueado-cobrancas/${id}`, { auth: true });
+}
+
+export async function registrarPagamentoCobranca(
+  id: string,
+  data: RegistrarPagamentoPayload
+): Promise<FranqueadoCobranca> {
+  return http(`/franqueado-cobrancas/${id}/pagamento`, { method: "PATCH", body: data, auth: true });
+}
+
+export async function updateCobranca(
+  id: string,
+  data: Partial<CreateCobrancaPayload>
+): Promise<FranqueadoCobranca> {
+  return http(`/franqueado-cobrancas/${id}`, { method: "PUT", body: data, auth: true });
+}
+
+export async function deleteCobranca(id: string): Promise<void> {
+  return http(`/franqueado-cobrancas/${id}`, { method: "DELETE", auth: true });
+}
+
+export async function getCobrancaKpis(): Promise<CobrancaKpis> {
+  return http("/franqueado-cobrancas/kpis", { auth: true });
+}
+
+// Setup Parcelas
+export async function gerarSetupParcelas(contratoId: string): Promise<SetupParcela[]> {
+  return http(`/franqueado-cobrancas/setup-parcelas/gerar/${contratoId}`, { method: "POST", auth: true });
+}
+
+export async function getSetupParcelasByContrato(contratoId: string): Promise<SetupParcela[]> {
+  return http(`/franqueado-cobrancas/setup-parcelas/contrato/${contratoId}`, { auth: true });
+}
+
+export async function registrarPagamentoParcela(
+  id: string,
+  data: { status: string; data_pagamento?: string; observacao?: string }
+): Promise<SetupParcela> {
+  return http(`/franqueado-cobrancas/setup-parcelas/${id}/pagamento`, {
+    method: "PATCH",
+    body: data,
+    auth: true,
+  });
+}
+
+// ─────────────────────────────────────────────────────────────
+// FASE 3 — Histórico de Eventos & Snapshots de Alunos
+// ─────────────────────────────────────────────────────────────
+
+export interface FranqueadoEvento {
+  id: string;
+  franqueado_id: string;
+  contrato_id: string | null;
+  tipo_evento: string;
+  descricao: string;
+  usuario_responsavel: string | null;
+  metadata: Record<string, unknown> | null;
+  created_at: string;
+}
+
+export interface UnidadeSnapshot {
+  id: string;
+  unidade_id: string;
+  franqueado_id: string | null;
+  contrato_id: string | null;
+  data_referencia: string;
+  competencia: string | null;
+  total_alunos: number;
+  total_alunos_ativos: number;
+  total_alunos_inativos: number;
+  total_professores: number;
+  total_checkins_mes: number;
+  usuarios_esperados: number | null;
+  percentual_ocupacao: number | null;
+  receita_estimativa: number | null;
+  origem: string | null;
+  observacao: string | null;
+  created_at: string;
+}
+
+export interface EvolucaoAlunos {
+  competencia: string;
+  ativos: number;
+  inativos: number;
+  total: number;
+}
+
+// ── Eventos ──────────────────────────────────────────────────
+
+export async function registrarEvento(data: {
+  franqueado_id: string;
+  contrato_id?: string;
+  tipo_evento: string;
+  descricao: string;
+  usuario_responsavel?: string;
+  metadata?: Record<string, unknown>;
+}): Promise<FranqueadoEvento> {
+  return http("/franqueado-historico/eventos", { method: "POST", body: data, auth: true });
+}
+
+export async function getEventosByFranqueado(
+  franqueadoId: string,
+  limit = 50
+): Promise<FranqueadoEvento[]> {
+  return http(`/franqueado-historico/franqueado/${franqueadoId}?limit=${limit}`, { auth: true });
+}
+
+export async function getEventosByContrato(contratoId: string): Promise<FranqueadoEvento[]> {
+  return http(`/franqueado-historico/contrato/${contratoId}`, { auth: true });
+}
+
+// ── Snapshots ────────────────────────────────────────────────
+
+export async function gerarSnapshotUnidade(
+  unidadeId: string,
+  body: { franqueado_id?: string; contrato_id?: string }
+): Promise<UnidadeSnapshot> {
+  return http(`/unidade-snapshots/gerar/${unidadeId}`, { method: "POST", body, auth: true });
+}
+
+export async function gerarSnapshotsPorContrato(
+  contratoId: string
+): Promise<{ gerados: number; erros: string[] }> {
+  return http(`/unidade-snapshots/gerar-contrato/${contratoId}`, { method: "POST", auth: true });
+}
+
+export async function getSnapshotsByUnidade(
+  unidadeId: string,
+  limit = 12
+): Promise<UnidadeSnapshot[]> {
+  return http(`/unidade-snapshots/unidade/${unidadeId}?limit=${limit}`, { auth: true });
+}
+
+export async function getEvolucaoAlunos(
+  unidadeId: string,
+  meses = 12
+): Promise<EvolucaoAlunos[]> {
+  return http(`/unidade-snapshots/evolucao/${unidadeId}?meses=${meses}`, { auth: true });
+}
+
+export async function getSnapshotsByFranqueado(
+  franqueadoId: string
+): Promise<UnidadeSnapshot[]> {
+  return http(`/unidade-snapshots/franqueado/${franqueadoId}`, { auth: true });
 }

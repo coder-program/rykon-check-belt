@@ -26,6 +26,7 @@ import { SupportModule } from './support/support.module';
 import { ModalidadesModule } from './modalidades/modalidades.module';
 import { FinanceiroModule } from './financeiro/financeiro.module';
 import { PaytimeModule } from './paytime/paytime.module';
+import { HubUnidadeModule } from './hub-unidade/hub-unidade.module';
 
 @Module({
   imports: [
@@ -106,6 +107,7 @@ import { PaytimeModule } from './paytime/paytime.module';
     ModalidadesModule,
     FinanceiroModule,
     PaytimeModule,
+    HubUnidadeModule,
   ],
 })
 export class AppModule {

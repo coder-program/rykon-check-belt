@@ -30,6 +30,7 @@ import {
   TriangleAlert,
   ShieldAlert,
   X,
+  LayoutGrid,
 } from "lucide-react";
 import { getStatusGraduacao, StatusGraduacao } from "@/lib/graduacaoApi";
 import dayjs from "dayjs";
@@ -39,6 +40,7 @@ import DependenteForm from "@/components/alunos/DependenteForm";
 import CompleteProfileWizardModal from "@/components/aluno/CompleteProfileWizardModal";
 import ModalidadeSelectorModal, { ModalidadeChip } from "@/components/dashboard/ModalidadeSelectorModal";
 import { useModalidadeSelector } from "@/hooks/useModalidadeSelector";
+import { hubRecadosApi } from "@/lib/hubApi";
 
 type Genero = "MASCULINO" | "FEMININO" | "OUTRO";
 
@@ -349,6 +351,31 @@ export default function AlunoDashboard({
       .then((data) => setFaturasDash(Array.isArray(data) ? data : []))
       .catch(() => {});
   }, [resolvedAlunoId]);
+
+  // Notificar sobre recados não lidos no mural da academia
+  useEffect(() => {
+    if (!resolvedAlunoId) return;
+    hubRecadosApi.verificarNaoLidos().then(({ tem, quantidade }) => {
+      if (tem) {
+        toast(
+          (t) => (
+            <span
+              className="flex items-center gap-2 cursor-pointer"
+              onClick={() => {
+                router.push("/hub?tab=mural");
+                toast.dismiss(t.id);
+              }}
+            >
+              📬 Você tem{" "}
+              <strong>{quantidade} recado{quantidade > 1 ? "s" : ""} novo{quantidade > 1 ? "s" : ""}</strong>{" "}
+              no Mural da sua academia!
+            </span>
+          ),
+          { duration: 8000, id: "hub-recados-nao-lidos" }
+        );
+      }
+    }).catch(() => {});
+  }, [resolvedAlunoId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Re-buscar ranking quando modalidade selecionada mudar
   useEffect(() => {
@@ -1078,6 +1105,13 @@ export default function AlunoDashboard({
       icon: Award,
       action: () => router.push("/competicoes"),
       color: "bg-orange-500",
+    },
+    {
+      title: "Hub da Academia",
+      description: "Vídeos, mural e lojinha",
+      icon: LayoutGrid,
+      action: () => router.push("/hub"),
+      color: "bg-indigo-600",
     },
   ];
 

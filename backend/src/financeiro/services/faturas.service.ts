@@ -7,7 +7,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between } from 'typeorm';
 import { Fatura, StatusFatura } from '../entities/fatura.entity';
-import { Assinatura } from '../entities/assinatura.entity';
+import { Assinatura, MetodoPagamento } from '../entities/assinatura.entity';
 import { Aluno } from '../../people/entities/aluno.entity';
 import {
   Transacao,
@@ -358,6 +358,42 @@ export class FaturasService {
     const fatura = await this.findOne(id);
     fatura.status = StatusFatura.CANCELADA;
     fatura.observacoes = `${fatura.observacoes || ''}\nCancelada: ${motivo}`;
+    return await this.faturaRepository.save(fatura);
+  }
+
+  async alterarMetodoPagamento(id: string, novoMetodo: string): Promise<Fatura> {
+    const fatura = await this.findOne(id);
+    if (fatura.status !== StatusFatura.PENDENTE && fatura.status !== StatusFatura.VENCIDA) {
+      throw new BadRequestException('Apenas faturas Pendentes podem ter o método de pagamento alterado.');
+    }
+    const metodoValido = Object.values(MetodoPagamento).includes(novoMetodo as MetodoPagamento);
+    if (!metodoValido) {
+      throw new BadRequestException(`Método de pagamento inválido: ${novoMetodo}`);
+    }
+    fatura.metodo_pagamento = novoMetodo;
+    await this.faturaRepository.save(fatura);
+    // Atualizar também a assinatura vinculada (reflete no hub do aluno e em futuras faturas)
+    if (fatura.assinatura_id) {
+      const assinatura = await this.assinaturaRepository.findOne({ where: { id: fatura.assinatura_id } });
+      if (assinatura) {
+        assinatura.metodo_pagamento = novoMetodo as MetodoPagamento;
+        await this.assinaturaRepository.save(assinatura);
+      }
+    }
+    return fatura;
+  }
+
+  async reverterParaPendente(id: string): Promise<Fatura> {
+    const fatura = await this.findOne(id);
+    if (fatura.status !== StatusFatura.PAGA) {
+      throw new BadRequestException('Apenas faturas com status PAGA podem ser revertidas para Pendente.');
+    }
+    fatura.status = StatusFatura.PENDENTE;
+    fatura.data_pagamento = null;
+    fatura.valor_pago = 0;
+    fatura.metodo_pagamento = null as unknown as string;
+    fatura.gateway_payment_id = null as unknown as string;
+    fatura.observacoes = `${fatura.observacoes || ''}\nRevertida para Pendente manualmente.`;
     return await this.faturaRepository.save(fatura);
   }
 
