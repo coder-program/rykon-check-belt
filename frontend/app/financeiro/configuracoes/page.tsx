@@ -84,6 +84,12 @@ export default function ConfiguracoesFinanceiro() {
   const [salvando, setSalvando] = useState(false);
   const [salvo, setSalvo] = useState(false);
 
+  // WhatsApp / rykon-notify state
+  const [waStatus, setWaStatus] = useState<"disconnected" | "connecting" | "connected">("disconnected");
+  const [waQr, setWaQr] = useState<string | null>(null);
+  const [waLoading, setWaLoading] = useState(false);
+  const [waPollingActive, setWaPollingActive] = useState(false);
+
   useEffect(() => {
     const userData = localStorage.getItem("user");
     if (userData) {
@@ -118,6 +124,107 @@ export default function ConfiguracoesFinanceiro() {
       carregarConfiguracoes(unidadeIdAtual);
     }
   }, [unidadeSelecionada]);
+
+  // -- WhatsApp helpers ---------------------------------------------------------
+  const rykonNotifyUrl = process.env.NEXT_PUBLIC_RYKON_NOTIFY_URL;
+  const rykonNotifyToken = process.env.NEXT_PUBLIC_RYKON_NOTIFY_TOKEN;
+
+  const waHeaders = () => ({
+    "Content-Type": "application/json",
+    ...(rykonNotifyToken ? { Authorization: `Bearer ${rykonNotifyToken}` } : {}),
+  });
+
+  const fetchWaStatus = async (unidadeId: string) => {
+    if (!rykonNotifyUrl || !unidadeId) return;
+    try {
+      const res = await fetch(`${rykonNotifyUrl}/sessions/${unidadeId}`, {
+        headers: waHeaders(),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setWaStatus(data.status === "connected" ? "connected" : data.status === "connecting" ? "connecting" : "disconnected");
+      } else {
+        setWaStatus("disconnected");
+      }
+    } catch {
+      setWaStatus("disconnected");
+    }
+  };
+
+  const fetchWaQr = async (unidadeId: string) => {
+    if (!rykonNotifyUrl || !unidadeId) return;
+    try {
+      const res = await fetch(`${rykonNotifyUrl}/sessions/${unidadeId}/qr`, {
+        headers: waHeaders(),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setWaQr(data.qr || null);
+        if (data.status === "connected") {
+          setWaStatus("connected");
+          setWaPollingActive(false);
+        }
+      } else {
+        setWaQr(null);
+      }
+    } catch {
+      setWaQr(null);
+    }
+  };
+
+  // Poll for session status / QR while connecting
+  useEffect(() => {
+    if (!waPollingActive || !unidadeIdAtual) return;
+    fetchWaQr(unidadeIdAtual);
+    const interval = setInterval(() => fetchWaQr(unidadeIdAtual), 5000);
+    return () => clearInterval(interval);
+  }, [waPollingActive, unidadeIdAtual]);
+
+  // Fetch initial status when unidade changes
+  useEffect(() => {
+    if (unidadeIdAtual) fetchWaStatus(unidadeIdAtual);
+  }, [unidadeIdAtual]);
+
+  const handleWaConnect = async () => {
+    if (!rykonNotifyUrl || !unidadeIdAtual) {
+      alert("Configure NEXT_PUBLIC_RYKON_NOTIFY_URL nas variáveis de ambiente.");
+      return;
+    }
+    setWaLoading(true);
+    setWaQr(null);
+    try {
+      await fetch(`${rykonNotifyUrl}/sessions/${unidadeIdAtual}/connect`, {
+        method: "POST",
+        headers: waHeaders(),
+      });
+      setWaStatus("connecting");
+      setWaPollingActive(true);
+    } catch (e) {
+      alert("Erro ao iniciar conexão WhatsApp.");
+    } finally {
+      setWaLoading(false);
+    }
+  };
+
+  const handleWaDisconnect = async () => {
+    if (!rykonNotifyUrl || !unidadeIdAtual) return;
+    if (!confirm("Desconectar WhatsApp desta unidade?")) return;
+    setWaLoading(true);
+    try {
+      await fetch(`${rykonNotifyUrl}/sessions/${unidadeIdAtual}`, {
+        method: "DELETE",
+        headers: waHeaders(),
+      });
+      setWaStatus("disconnected");
+      setWaQr(null);
+      setWaPollingActive(false);
+    } catch {
+      alert("Erro ao desconectar WhatsApp.");
+    } finally {
+      setWaLoading(false);
+    }
+  };
+  // ---------------------------------------------------------------------------
 
   const carregarConfiguracoes = async (unidadeId: string) => {
     try {
@@ -273,11 +380,15 @@ export default function ConfiguracoesFinanceiro() {
       />
 
       <Tabs defaultValue="metodos" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="metodos">Métodos de Pagamento</TabsTrigger>
           <TabsTrigger value="regras">Regras Financeiras</TabsTrigger>
           <TabsTrigger value="gateway">Gateway</TabsTrigger>
           <TabsTrigger value="integracoes">Integrações</TabsTrigger>
+          <TabsTrigger value="whatsapp" className="flex items-center gap-1">
+            <MessageSquare className="h-4 w-4" />
+            WhatsApp
+          </TabsTrigger>
         </TabsList>
 
         {/* Métodos de Pagamento */}
@@ -797,6 +908,111 @@ export default function ConfiguracoesFinanceiro() {
                 ⚠️ <strong>Atenção:</strong> Mantenha suas chaves em
                 segurança. Nunca compartilhe suas credenciais.
               </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* WhatsApp */}
+        <TabsContent value="whatsapp">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <MessageSquare className="h-5 w-5 text-green-600" />
+                WhatsApp — rykon-notify
+              </CardTitle>
+              <CardDescription>
+                Conecte um número WhatsApp a esta unidade para envio de cobranças e lembretes automáticos.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {!rykonNotifyUrl && (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3 text-sm text-yellow-800">
+                  ⚠️ <strong>Serviço não configurado.</strong> Defina{" "}
+                  <code className="font-mono bg-yellow-100 px-1 rounded">NEXT_PUBLIC_RYKON_NOTIFY_URL</code>{" "}
+                  no arquivo <code className="font-mono bg-yellow-100 px-1 rounded">.env.local</code>.
+                </div>
+              )}
+
+              {/* Status da sessão */}
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium text-gray-800">Status da conexão</p>
+                  {!unidadeIdAtual && (
+                    <p className="text-sm text-gray-500 mt-0.5">Selecione uma unidade acima para gerenciar o WhatsApp.</p>
+                  )}
+                </div>
+                <Badge
+                  variant={waStatus === "connected" ? "default" : waStatus === "connecting" ? "secondary" : "outline"}
+                  className={
+                    waStatus === "connected"
+                      ? "bg-green-100 text-green-800 border-green-200"
+                      : waStatus === "connecting"
+                      ? "bg-yellow-100 text-yellow-800 border-yellow-200"
+                      : "bg-gray-100 text-gray-600 border-gray-200"
+                  }
+                >
+                  {waStatus === "connected" ? "✅ Conectado" : waStatus === "connecting" ? "⏳ Aguardando QR" : "⚪ Desconectado"}
+                </Badge>
+              </div>
+
+              <Separator />
+
+              {/* Ações */}
+              <div className="flex flex-wrap gap-3">
+                {waStatus !== "connected" && (
+                  <Button
+                    onClick={handleWaConnect}
+                    disabled={waLoading || !unidadeIdAtual || !rykonNotifyUrl}
+                    className="bg-green-600 hover:bg-green-700 text-white"
+                  >
+                    <MessageSquare className="h-4 w-4 mr-2" />
+                    {waLoading ? "Iniciando..." : "Conectar WhatsApp"}
+                  </Button>
+                )}
+                {waStatus === "connected" && (
+                  <Button
+                    variant="destructive"
+                    onClick={handleWaDisconnect}
+                    disabled={waLoading}
+                  >
+                    Desconectar
+                  </Button>
+                )}
+                {waStatus === "connecting" && !waPollingActive && (
+                  <Button
+                    variant="outline"
+                    onClick={() => unidadeIdAtual && setWaPollingActive(true)}
+                  >
+                    Verificar QR
+                  </Button>
+                )}
+              </div>
+
+              {/* QR Code */}
+              {waQr && waStatus !== "connected" && (
+                <div className="space-y-2">
+                  <p className="text-sm text-gray-600 font-medium">
+                    Escaneie o QR Code com o WhatsApp do número que deseja usar para cobranças:
+                  </p>
+                  <div className="inline-block border-2 border-gray-200 rounded-lg p-3 bg-white">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={waQr.startsWith("data:") ? waQr : `data:image/png;base64,${waQr}`}
+                      alt="QR Code WhatsApp"
+                      className="w-56 h-56"
+                    />
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    O QR Code é atualizado automaticamente a cada 5 segundos. Se expirar, clique em "Conectar WhatsApp" novamente.
+                  </p>
+                </div>
+              )}
+
+              {waStatus === "connected" && (
+                <div className="bg-green-50 border border-green-200 rounded-md p-3 text-sm text-green-800">
+                  ✅ WhatsApp conectado! Os envios de cobranças e lembretes para esta unidade estão ativos.
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

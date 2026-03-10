@@ -1553,6 +1553,51 @@ export default function MeuPerfilPage() {
                   </div>
                 </div>
 
+                {/* Graduação Jiu-Jitsu (somente para alunos com faixa ativa) */}
+                {formData.faixa_atual && (
+                  <div className="mt-6 bg-green-50 p-4 rounded-lg border border-green-200">
+                    <h4 className="text-md font-medium text-gray-900 mb-3">
+                      🥋 Graduação Jiu-Jitsu
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-500 mb-1">
+                          Faixa Atual
+                        </label>
+                        <p className="text-sm text-gray-900 bg-white px-3 py-2 rounded-md font-medium uppercase tracking-wide">
+                          {formData.faixa_atual}
+                        </p>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Grau da Faixa
+                        </label>
+                        <div className="flex items-center gap-2">
+                          {[0, 1, 2, 3, 4].map((g) => (
+                            <button
+                              key={g}
+                              type="button"
+                              onClick={() =>
+                                setFormData({ ...formData, graus: g })
+                              }
+                              className={`w-10 h-10 rounded-full border-2 font-semibold text-sm transition-all ${
+                                formData.graus === g
+                                  ? "border-green-600 bg-green-600 text-white shadow-md"
+                                  : "border-gray-300 bg-white text-gray-600 hover:border-green-400 hover:text-green-600"
+                              }`}
+                            >
+                              {g}
+                            </button>
+                          ))}
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">
+                          Selecione o número de graus na faixa atual (0 a 4)
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {/* Dados do Responsável (se existir) */}
                 {(formData.responsavel_nome ||
                   formData.responsavel_cpf ||

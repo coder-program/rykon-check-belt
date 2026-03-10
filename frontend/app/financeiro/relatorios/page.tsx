@@ -118,55 +118,99 @@ export default function RelatoriosFinanceirosPage() {
 
   // Mutation para enviar cobranças
   const enviarCobrancasMutation = useMutation({
-    mutationFn: async (faturasIds: string[]) => {
-      const token = localStorage.getItem("token");
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/relatorios-financeiros/enviar-cobrancas-whatsapp`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ faturas_ids: faturasIds }),
+    mutationFn: async (faturas: FaturaRelatorio[]) => {
+      const rykonNotifyUrl = process.env.NEXT_PUBLIC_RYKON_NOTIFY_URL;
+      const rykonNotifyToken = process.env.NEXT_PUBLIC_RYKON_NOTIFY_TOKEN;
+      if (!rykonNotifyUrl) throw new Error("NEXT_PUBLIC_RYKON_NOTIFY_URL não configurado");
+
+      const semTelefone = faturas.filter((f) => !f.aluno_telefone);
+      if (semTelefone.length > 0) {
+        const nomes = semTelefone.slice(0, 3).map((f) => f.aluno_nome).join(", ");
+        const extra = semTelefone.length > 3 ? ` e mais ${semTelefone.length - 3}` : "";
+        if (!confirm(`⚠️ ${semTelefone.length} aluno(s) sem telefone serão ignorados:\n${nomes}${extra}\n\nContinuar?`)) {
+          throw new Error("Cancelado pelo usuário");
         }
-      );
+      }
+
+      const comTelefone = faturas.filter((f) => f.aluno_telefone);
+      if (comTelefone.length === 0) throw new Error("Nenhuma fatura com telefone cadastrado");
+
+      const res = await fetch(`${rykonNotifyUrl}/messages/batch`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(rykonNotifyToken ? { Authorization: `Bearer ${rykonNotifyToken}` } : {}),
+        },
+        body: JSON.stringify({
+          unidade_id: selectedUnidade || "default",
+          mensagem:
+            "Olá {{nome}}, sua fatura de R$ {{valor}} venceu em {{vencimento}}. Regularize seu pagamento para evitar restrições de acesso.",
+          destinatarios: comTelefone.map((f) => ({
+            telefone: f.aluno_telefone,
+            aluno_id: f.aluno_id,
+            variaveis: {
+              nome: f.aluno_nome,
+              valor: f.valor_total.toFixed(2),
+              vencimento: format(new Date(f.data_vencimento), "dd/MM/yyyy"),
+            },
+          })),
+        }),
+      });
       if (!res.ok) throw new Error("Erro ao enviar cobranças");
       return res.json();
     },
     onSuccess: (data) => {
       alert(
-        `✅ Cobranças enviadas!\n\nEnviados: ${data.enviados}\nFalhas: ${data.falhas}\nTotal: ${data.total}`
+        `✅ Cobranças enviadas!\n\nMensagens enfileiradas: ${data.total || data.enfileiradas || "—"}\n\nAs mensagens serão enviadas em breve.`
       );
       setSelectedFaturas(new Set());
       refetch();
     },
     onError: (error: Error) => {
-      alert(`❌ Erro ao enviar cobranças: ${error.message}`);
+      if (error.message !== "Cancelado pelo usuário") {
+        alert(`❌ Erro ao enviar cobranças: ${error.message}`);
+      }
     },
   });
 
   // Mutation para enviar lembretes
   const enviarLembretesMutation = useMutation({
-    mutationFn: async (dias?: number) => {
-      const token = localStorage.getItem("token");
-      const params = new URLSearchParams();
-      if (dias !== undefined) params.append("dias", String(dias));
-      if (selectedUnidade) params.append("unidade_id", selectedUnidade);
+    mutationFn: async (faturas: FaturaRelatorio[]) => {
+      const rykonNotifyUrl = process.env.NEXT_PUBLIC_RYKON_NOTIFY_URL;
+      const rykonNotifyToken = process.env.NEXT_PUBLIC_RYKON_NOTIFY_TOKEN;
+      if (!rykonNotifyUrl) throw new Error("NEXT_PUBLIC_RYKON_NOTIFY_URL não configurado");
 
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/relatorios-financeiros/enviar-lembretes-vencimento?${params}`,
-        {
-          method: "POST",
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
+      const comTelefone = faturas.filter((f) => f.aluno_telefone);
+      if (comTelefone.length === 0) throw new Error("Nenhuma fatura com telefone cadastrado");
+
+      const res = await fetch(`${rykonNotifyUrl}/messages/batch`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(rykonNotifyToken ? { Authorization: `Bearer ${rykonNotifyToken}` } : {}),
+        },
+        body: JSON.stringify({
+          unidade_id: selectedUnidade || "default",
+          mensagem:
+            "Olá {{nome}}, sua fatura de R$ {{valor}} vence em {{vencimento}}. Pague em dia e evite juros!",
+          destinatarios: comTelefone.map((f) => ({
+            telefone: f.aluno_telefone,
+            aluno_id: f.aluno_id,
+            variaveis: {
+              nome: f.aluno_nome,
+              valor: f.valor_total.toFixed(2),
+              vencimento: format(new Date(f.data_vencimento), "dd/MM/yyyy"),
+              dias: String(f.dias_ate_vencimento ?? ""),
+            },
+          })),
+        }),
+      });
       if (!res.ok) throw new Error("Erro ao enviar lembretes");
       return res.json();
     },
     onSuccess: (data) => {
       alert(
-        `✅ Lembretes enviados!\n\nEnviados: ${data.enviados}\nFalhas: ${data.falhas}\nTotal: ${data.total}`
+        `✅ Lembretes enviados!\n\nMensagens enfileiradas: ${data.total || data.enfileiradas || "—"}\n\nAs mensagens serão enviadas em breve.`
       );
       refetch();
     },
@@ -206,22 +250,49 @@ export default function RelatoriosFinanceirosPage() {
       return;
     }
 
+    const todasFaturas = [
+      ...(relatorio?.faturas_vencidas || []),
+      ...(relatorio?.faturas_pendentes || []),
+      ...(relatorio?.faturas_proximas_vencer || []),
+      ...(relatorio?.faturas_pagas || []),
+    ];
+    const faturasSelecionadas = todasFaturas.filter((f) =>
+      selectedFaturas.has(f.id)
+    );
+
     if (
       confirm(
-        `Enviar cobrança via WhatsApp para ${selectedFaturas.size} aluno(s)?`
+        `Enviar cobrança via WhatsApp para ${faturasSelecionadas.length} aluno(s)?`
       )
     ) {
-      enviarCobrancasMutation.mutate(Array.from(selectedFaturas));
+      enviarCobrancasMutation.mutate(faturasSelecionadas);
     }
   };
 
   const handleEnviarLembretes = (dias?: number) => {
-    const mensagem = dias !== undefined 
-      ? `Enviar lembretes para faturas que vencem em ${dias} dias?\n\nIsto enviará mensagens para todos os alunos com faturas próximas do vencimento.`
-      : `Enviar lembretes usando a configuração da unidade?\n\nSerá usado o número de dias de antecedência configurado na unidade.`;
+    let faturasParaLembrete = relatorio?.faturas_proximas_vencer || [];
+    if (dias !== undefined) {
+      faturasParaLembrete = faturasParaLembrete.filter(
+        (f) => f.dias_ate_vencimento !== undefined && f.dias_ate_vencimento <= dias
+      );
+    }
+
+    if (faturasParaLembrete.length === 0) {
+      alert(
+        dias !== undefined
+          ? `Nenhuma fatura vencendo em até ${dias} dias encontrada.`
+          : "Nenhuma fatura próxima do vencimento encontrada."
+      );
+      return;
+    }
+
+    const mensagem =
+      dias !== undefined
+        ? `Enviar lembretes para ${faturasParaLembrete.length} fatura(s) que vencem em até ${dias} dias?`
+        : `Enviar lembretes para ${faturasParaLembrete.length} fatura(s) próximas a vencer?`;
 
     if (confirm(mensagem)) {
-      enviarLembretesMutation.mutate(dias);
+      enviarLembretesMutation.mutate(faturasParaLembrete);
     }
   };
 

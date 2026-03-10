@@ -72,6 +72,7 @@ interface Venda {
     email: string;
     telefone: string;
   };
+  descricao?: string;
   valor: number;
   metodo_pagamento: string;
   status: string;
@@ -123,6 +124,7 @@ export default function VendasOnline() {
   const [filtroMetodo, setFiltroMetodo] = useState<string>("all");
   const [filtroDataInicio, setFiltroDataInicio] = useState("");
   const [filtroDataFim, setFiltroDataFim] = useState("");
+  const [filtroDescricao, setFiltroDescricao] = useState("");
   const [filteredVendas, setFilteredVendas] = useState<Venda[]>([]);
   const [vendaSelecionada, setVendaSelecionada] = useState<Venda | null>(null);
 
@@ -169,7 +171,7 @@ export default function VendasOnline() {
 
   useEffect(() => {
     filtrarVendas();
-  }, [vendas, filtroDataInicio, filtroDataFim]);
+  }, [vendas, filtroDataInicio, filtroDataFim, filtroDescricao]);
 
   useEffect(() => {
     if (modalAberto) {
@@ -305,6 +307,13 @@ export default function VendasOnline() {
       fim.setHours(23, 59, 59, 999);
       filtered = filtered.filter(
         (v) => v.created_at && new Date(v.created_at) <= fim
+      );
+    }
+
+    if (filtroDescricao.trim()) {
+      const termo = filtroDescricao.trim().toLowerCase();
+      filtered = filtered.filter((v) =>
+        v.descricao?.toLowerCase().includes(termo)
       );
     }
 
@@ -749,6 +758,15 @@ export default function VendasOnline() {
               </div>
             </div>
             <div className="flex flex-col md:flex-row gap-4 items-end">
+              <div className="flex flex-col gap-1 flex-1 md:flex-none md:min-w-[260px]">
+                <label className="text-xs text-gray-500">Descrição</label>
+                <Input
+                  placeholder="Buscar por descrição..."
+                  value={filtroDescricao}
+                  onChange={(e) => setFiltroDescricao(e.target.value)}
+                  className="h-10"
+                />
+              </div>
               <div className="flex flex-col gap-1">
                 <label className="text-xs text-gray-500">Data (de)</label>
                 <input
@@ -767,7 +785,7 @@ export default function VendasOnline() {
                   className="border rounded-md px-3 py-2 text-sm h-10 focus:outline-none focus:ring-2 focus:ring-ring"
                 />
               </div>
-              {(filtroDataInicio || filtroDataFim || filtroStatus !== "all" || filtroMetodo !== "all") && (
+              {(filtroDataInicio || filtroDataFim || filtroStatus !== "all" || filtroMetodo !== "all" || filtroDescricao) && (
                 <Button
                   variant="outline"
                   size="sm"
@@ -776,6 +794,7 @@ export default function VendasOnline() {
                     setFiltroDataFim("");
                     setFiltroStatus("all");
                     setFiltroMetodo("all");
+                    setFiltroDescricao("");
                   }}
                 >
                   Limpar filtros
