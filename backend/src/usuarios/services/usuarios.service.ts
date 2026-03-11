@@ -883,6 +883,31 @@ export class UsuariosService {
     updateData: Partial<CreateUsuarioDto>,
   ): Promise<Usuario> {
     const usuario = await this.findOne(id);
+
+    // Verificar unicidade de email antes de salvar
+    if (updateData.email && updateData.email !== usuario.email) {
+      const emailExistente = await this.usuarioRepository.findOne({
+        where: { email: updateData.email },
+      });
+      if (emailExistente && emailExistente.id !== id) {
+        throw new ConflictException(
+          'Este email já está em uso por outro usuário',
+        );
+      }
+    }
+
+    // Verificar unicidade de CPF antes de salvar
+    if (updateData.cpf && updateData.cpf !== usuario.cpf) {
+      const cpfExistente = await this.usuarioRepository.findOne({
+        where: { cpf: updateData.cpf },
+      });
+      if (cpfExistente && cpfExistente.id !== id) {
+        throw new ConflictException(
+          'Este CPF já está em uso por outro usuário',
+        );
+      }
+    }
+
     if (updateData.password) {
       const saltRounds = 10;
       updateData.password = await bcrypt.hash(updateData.password, saltRounds);
