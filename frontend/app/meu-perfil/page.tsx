@@ -741,6 +741,9 @@ export default function MeuPerfilPage() {
           nome: data.nome_franquia,
           email: data.email_franquia,
           telefone: data.telefone_franquia,
+          cpf: data.cpf_franquia
+            ? data.cpf_franquia.replace(/\D/g, "")
+            : undefined,
           endereco_id: enderecoId,
         };
 
@@ -902,6 +905,7 @@ export default function MeuPerfilPage() {
         formattedValue = formatPhone(value);
         break;
       case "cpf":
+      case "cpf_franquia":
         formattedValue = formatCPF(value);
         break;
       case "cep":
@@ -2227,6 +2231,26 @@ export default function MeuPerfilPage() {
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                       placeholder="(11) 99999-9999"
                       maxLength={15}
+                    />
+                  </div>
+
+                  {/* CPF do responsável pela franquia */}
+                  <div>
+                    <label
+                      htmlFor="cpf_franquia"
+                      className="block text-sm font-medium text-gray-700 mb-2"
+                    >
+                      CPF do Responsável *
+                    </label>
+                    <input
+                      type="text"
+                      id="cpf_franquia"
+                      name="cpf_franquia"
+                      value={formData.cpf_franquia || ""}
+                      onChange={handleChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="000.000.000-00"
+                      maxLength={14}
                     />
                   </div>
                 </div>

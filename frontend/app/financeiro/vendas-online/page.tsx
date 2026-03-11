@@ -662,65 +662,67 @@ export default function VendasOnline() {
       />
 
       {/* KPIs */}
-      {estatisticas && (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                Total de Vendas
-              </CardTitle>
-              <DollarSign className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {estatisticas.totalVendas}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                R$ {Number(estatisticas.valorTotal).toFixed(2)}
-              </p>
-            </CardContent>
-          </Card>
+      {(() => {
+        const kpis = {
+          total: filteredVendas.length,
+          valorTotal: filteredVendas.reduce((s, v) => s + Number(v.valor || 0), 0),
+          pagas: filteredVendas.filter((v) => v.status === "PAGO").length,
+          valorPago: filteredVendas.filter((v) => v.status === "PAGO").reduce((s, v) => s + Number(v.valor || 0), 0),
+          pendentes: filteredVendas.filter((v) => v.status === "PENDENTE").length,
+          falhas: filteredVendas.filter((v) => v.status !== "PAGO" && v.status !== "PENDENTE").length,
+        };
+        return (
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  Total de Vendas
+                </CardTitle>
+                <DollarSign className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{kpis.total}</div>
+                <p className="text-xs text-muted-foreground">
+                  R$ {kpis.valorTotal.toFixed(2)}
+                </p>
+              </CardContent>
+            </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Pagas</CardTitle>
-              <TrendingUp className="h-4 w-4 text-green-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600">
-                {estatisticas.vendasPagas}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                R$ {Number(estatisticas.valorPago).toFixed(2)}
-              </p>
-            </CardContent>
-          </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Pagas</CardTitle>
+                <TrendingUp className="h-4 w-4 text-green-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-green-600">{kpis.pagas}</div>
+                <p className="text-xs text-muted-foreground">
+                  R$ {kpis.valorPago.toFixed(2)}
+                </p>
+              </CardContent>
+            </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Pendentes</CardTitle>
-              <CreditCard className="h-4 w-4 text-yellow-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-yellow-600">
-                {estatisticas.vendasPendentes}
-              </div>
-            </CardContent>
-          </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Pendentes</CardTitle>
+                <CreditCard className="h-4 w-4 text-yellow-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-yellow-600">{kpis.pendentes}</div>
+              </CardContent>
+            </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Falhas</CardTitle>
-              <TrendingDown className="h-4 w-4 text-red-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-red-600">
-                {estatisticas.vendasFalhas}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Falhas</CardTitle>
+                <TrendingDown className="h-4 w-4 text-red-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-red-600">{kpis.falhas}</div>
+              </CardContent>
+            </Card>
+          </div>
+        );
+      })()}
 
       {/* Filtros */}
       <Card>

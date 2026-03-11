@@ -515,13 +515,13 @@ export default function ContasAPagar() {
   };
 
   const totais = {
-    pendente: despesas
+    pendente: filteredDespesas
       .filter((d) => d.status === "A_PAGAR")
       .reduce((sum, d) => sum + Number(d.valor || 0), 0),
-    atrasada: despesas
+    atrasada: filteredDespesas
       .filter((d) => d.status === "ATRASADA")
       .reduce((sum, d) => sum + Number(d.valor || 0), 0),
-    paga: despesas
+    paga: filteredDespesas
       .filter((d) => d.status === "PAGA")
       .reduce((sum, d) => sum + Number(d.valor || 0), 0),
   };

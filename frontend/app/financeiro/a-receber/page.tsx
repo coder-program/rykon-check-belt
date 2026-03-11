@@ -534,13 +534,13 @@ export default function ContasAReceber() {
   // Removidas - usando formatarData e formatarMoeda do dateUtils
 
   const totais = {
-    pendente: faturas
+    pendente: filteredFaturas
       .filter((f) => f.status === "PENDENTE")
       .reduce((sum, f) => sum + Number(f.valor_original || 0), 0),
-    atrasada: faturas
+    atrasada: filteredFaturas
       .filter((f) => f.status === "ATRASADA")
       .reduce((sum, f) => sum + Number(f.valor_original || 0), 0),
-    paga: faturas
+    paga: filteredFaturas
       .filter((f) => f.status === "PAGA")
       .reduce((sum, f) => sum + Number(f.valor_pago || 0), 0),
   };
