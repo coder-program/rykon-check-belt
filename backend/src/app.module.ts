@@ -4,9 +4,11 @@ if (!globalThis.crypto) {
   globalThis.crypto = webcrypto as any;
 }
 
-import { Module, MiddlewareConsumer } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
+import { Module, MiddlewareConsumer, OnModuleInit, Logger } from '@nestjs/common';
+import { TypeOrmModule, InjectDataSource } from '@nestjs/typeorm';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { DataSource } from 'typeorm';
+import { tenantAsyncStorage } from './common/tenant-context';
 import { UsuariosModule } from './usuarios/usuarios.module';
 
 // Módulos de Segurança
@@ -27,6 +29,9 @@ import { ModalidadesModule } from './modalidades/modalidades.module';
 import { FinanceiroModule } from './financeiro/financeiro.module';
 import { PaytimeModule } from './paytime/paytime.module';
 import { HubUnidadeModule } from './hub-unidade/hub-unidade.module';
+// Multi-tenant
+import { TenantModule } from './tenants/tenant.module';
+import { TenantMiddleware } from './common/middleware/tenant.middleware';
 
 @Module({
   imports: [
@@ -54,26 +59,24 @@ import { HubUnidadeModule } from './hub-unidade/hub-unidade.module';
           migrations: ['dist/src/migrations/*.js'],
           migrationsTableName: 'migrations',
           
-          // ========== POOL DE CONEXÕES (OTIMIZADO) ==========
-          poolSize: 30,                        // Máximo de conexões
-          connectionTimeoutMillis: 5000,       // 5s para adquirir conexão (era 10s)
-          idleTimeoutMillis: 30000,            // 30s antes de fechar conexão idle
-          
-          // ========== TIMEOUTS ==========
-          connectTimeoutMS: 10000,             // 10s timeout para conectar (era 20s)
-          
           // ========== RETRY E RESILIÊNCIA ==========
           maxQueryExecutionTime: 30000,        // 30s para queries
           
-          // ========== KEEP-ALIVE ==========
+          // ========== POOL + TIMEOUTS via extra (pg-pool aplica corretamente aqui) ==========
           extra: isLocalhost
             ? {
-                searchPath: 'teamcruz,public',
+                max: 20,                              // 100 max_connections - 10 admin = 90 disponíveis; 20 é seguro e suporta pico
+                min: 5,                               // manter 5 prontas para horário de pico das academias
+                idleTimeoutMillis: 30000,             // fechar idle após 30s (balanceia pico/off-peak)
+                connectionTimeoutMillis: 10000,       // 10s para obter conexão do pool
                 keepAlive: true,
                 keepAliveInitialDelayMillis: 10000,
               }
             : {
-                searchPath: 'teamcruz,public',
+                max: 20,                              // 100 max_connections - 10 admin = 90 disponíveis; 20 é seguro e suporta pico
+                min: 5,                               // manter 5 prontas para horário de pico das academias
+                idleTimeoutMillis: 30000,             // fechar idle após 30s (balanceia pico/off-peak)
+                connectionTimeoutMillis: 10000,       // 10s para obter conexão do pool
                 keepAlive: true,
                 keepAliveInitialDelayMillis: 10000,
                 ssl: {
@@ -108,10 +111,63 @@ import { HubUnidadeModule } from './hub-unidade/hub-unidade.module';
     FinanceiroModule,
     PaytimeModule,
     HubUnidadeModule,
+    TenantModule, // ← Multi-tenant
   ],
 })
-export class AppModule {
+export class AppModule implements OnModuleInit {
+  private readonly logger = new Logger(AppModule.name);
+
+  constructor(@InjectDataSource() private readonly dataSource: DataSource) {}
+
+  onModuleInit() {
+    // Patch do pg.Pool para injetar SET search_path por request via AsyncLocalStorage.
+    // TypeORM chama pool.connect(callback) — precisamos lidar com AMBAS as formas:
+    // 1) pool.connect()          → retorna Promise<PoolClient>
+    // 2) pool.connect(callback)  → chama callback(err, client, release) ← usado pelo TypeORM
+    const driver = (this.dataSource.driver as any);
+    const pool = driver.master; // pg.Pool do TypeORM PostgresDriver
+
+    if (!pool || pool.__tenantPatched) {
+      return; // Evita double-patch em hot reload
+    }
+    pool.__tenantPatched = true;
+
+    const originalConnect = pool.connect.bind(pool);
+
+    const applySearchPath = async (client: any) => {
+      const store = tenantAsyncStorage.getStore();
+      const schema = store?.schema;
+      if (schema && schema !== 'public') {
+        try {
+          await client.query(`SET search_path TO "${schema}", public`);
+        } catch (_err) { /* não bloquear */ }
+      }
+    };
+
+    pool.connect = function (callbackOrUndefined?: any) {
+      if (typeof callbackOrUndefined === 'function') {
+        // Forma callback: pool.connect((err, client, release) => ...) — usada pelo TypeORM
+        originalConnect((err: any, client: any, release: any) => {
+          if (err) return callbackOrUndefined(err, client, release);
+          applySearchPath(client)
+            .then(() => callbackOrUndefined(null, client, release))
+            .catch(() => callbackOrUndefined(null, client, release));
+        });
+      } else {
+        // Forma Promise: await pool.connect()
+        return originalConnect().then(async (client: any) => {
+          await applySearchPath(client);
+          return client;
+        });
+      }
+    };
+
+    this.logger.log('pg.Pool patched: SET search_path injeção ativa via AsyncLocalStorage');
+  }
+
   configure(consumer: MiddlewareConsumer) {
+    // TenantMiddleware PRIMEIRO — resolve o tenant antes de tudo
+    consumer.apply(TenantMiddleware).forRoutes('*');
     consumer.apply(AuditMiddleware).forRoutes('*');
   }
 }
