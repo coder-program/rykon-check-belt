@@ -1,6 +1,6 @@
 import { Injectable, Logger, BadRequestException, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, DataSource } from 'typeorm';
 import * as dayjs from 'dayjs';
 import * as utc from 'dayjs/plugin/utc';
 import * as timezone from 'dayjs/plugin/timezone';
@@ -11,6 +11,7 @@ import { Unidade, CatracaConfig } from '../people/entities/unidade.entity';
 import { Person } from '../people/entities/person.entity';
 import { Aluno } from '../people/entities/aluno.entity';
 import { Presenca, PresencaMetodo, PresencaStatus } from './entities/presenca.entity';
+import { Aula } from './entities/aula.entity';
 
 export interface CatracaCheckInDto {
   matricula?: string; // Matrícula ou CPF do aluno
@@ -45,6 +46,9 @@ export class CatracaService {
     private alunoRepository: Repository<Aluno>,
     @InjectRepository(Presenca)
     private presencaRepository: Repository<Presenca>,
+    @InjectRepository(Aula)
+    private aulaRepository: Repository<Aula>,
+    private dataSource: DataSource,
   ) {}
 
   /**
@@ -99,24 +103,37 @@ export class CatracaService {
       const jaFezCheckin = await this.verificarCheckinHoje(aluno.id, data.unidade_id);
 
       if (jaFezCheckin) {
-        this.logger.log(`✅ Aluno já fez check-in hoje - Liberando catraca novamente`);
         return {
           success: true,
           message: 'Check-in já realizado hoje',
           liberar_catraca: true,
-          mensagem_display: 'BEM-VINDO NOVAMENTE',
+          mensagem_display: `BEM-VINDO ${aluno.nome_completo?.split(' ')[0]?.toUpperCase()}`,
           nome_aluno: aluno.nome_completo,
           foto_aluno: undefined,
           tempo_liberacao_segundos: unidade.catraca_config?.tempo_liberacao_segundos || 6,
         };
       }
 
-      // 6. Registrar presença
-      const presenca = await this.registrarPresenca(aluno, data, unidade);
+      // 6. Buscar aula ativa agora na unidade
+      const aula = await this.buscarAulaAtiva(data.unidade_id);
 
-      this.logger.log(`✅ Check-in registrado - Aluno: ${aluno.nome_completo}, Presença ID: ${presenca.id}`);
+      if (!aula) {
+        this.logger.warn(`⚠️ Nenhuma aula em andamento agora na unidade ${data.unidade_id}`);
+        return {
+          success: false,
+          message: 'Nenhuma aula em andamento agora',
+          liberar_catraca: false,
+          mensagem_display: 'SEM AULA AGORA',
+          nome_aluno: aluno.nome_completo,
+        };
+      }
 
-      // 7. Retornar resposta para liberar catraca
+      // 7. Registrar presença
+      const presenca = await this.registrarPresenca(aluno, data, unidade, aula);
+
+      this.logger.log(`✅ Check-in registrado - Aluno: ${aluno.nome_completo}, Aula: ${aula.nome}, Presença ID: ${presenca.id}`);
+
+      // 8. Retornar resposta para liberar catraca
       return {
         success: true,
         message: 'Check-in realizado com sucesso',
@@ -167,7 +184,21 @@ export class CatracaService {
   }
 
   /**
-   * Busca aluno pela matrícula ou CPF
+   * Normaliza CPF: aceita "123.456.789-00" ou "12345678900", retorna ambos os formatos
+   */
+  private normalizarCpf(cpf: string): { raw: string; formatted: string } {
+    const raw = cpf.replace(/\D/g, '');
+    const formatted =
+      raw.length === 11
+        ? `${raw.slice(0, 3)}.${raw.slice(3, 6)}.${raw.slice(6, 9)}-${raw.slice(9)}`
+        : cpf;
+    return { raw, formatted };
+  }
+
+  /**
+   * Busca aluno pela matrícula ou CPF.
+   * Suporta IDFACE (envia CPF como ID) e Henry (matrícula numérica).
+   * Aceita CPF formatado ("123.456.789-00") ou apenas dígitos ("12345678900").
    */
   private async buscarAluno(matricula?: string, cpf?: string, unidade_id?: string): Promise<Aluno | null> {
     if (!matricula && !cpf) {
@@ -184,19 +215,64 @@ export class CatracaService {
           unidade_id,
         },
       });
+
+      // IDFACE envia CPF como "matrícula" — se não achou por numero_matricula e parece CPF (11 dígitos), tenta como CPF
+      if (!aluno && /^\d{11}$/.test(matricula)) {
+        const { raw, formatted } = this.normalizarCpf(matricula);
+        aluno = await this.alunoRepository
+          .createQueryBuilder('aluno')
+          .where('aluno.unidade_id = :unidade_id', { unidade_id })
+          .andWhere('(aluno.cpf = :raw OR aluno.cpf = :formatted)', { raw, formatted })
+          .getOne();
+      }
     }
 
-    // Se não encontrou por matrícula, buscar por CPF
+    // Se não encontrou por matrícula, buscar por CPF (normalizado)
     if (!aluno && cpf) {
-      aluno = await this.alunoRepository.findOne({
-        where: { 
-          cpf,
-          unidade_id,
-        },
-      });
+      const { raw, formatted } = this.normalizarCpf(cpf);
+      aluno = await this.alunoRepository
+        .createQueryBuilder('aluno')
+        .where('aluno.unidade_id = :unidade_id', { unidade_id })
+        .andWhere('(aluno.cpf = :raw OR aluno.cpf = :formatted)', { raw, formatted })
+        .getOne();
     }
 
     return aluno;
+  }
+
+  /**
+   * Busca a aula que está acontecendo agora (ou em janela de 15min antes/30min depois)
+   */
+  private async buscarAulaAtiva(unidade_id: string): Promise<Aula | null> {
+    const agora = dayjs().tz('America/Sao_Paulo');
+    const diaHoje = agora.day(); // 0=dom,...,6=sab
+    const minutosAgora = agora.hour() * 60 + agora.minute();
+
+    const aulas = await this.aulaRepository.find({
+      where: { unidade_id, ativo: true },
+    });
+
+    // Procura aula cujo dia_semana bate e horário está na janela de check-in
+    for (const aula of aulas) {
+      if (aula.dia_semana !== diaHoje) continue;
+
+      const margem_antes = aula.configuracoes?.permite_checkin_antecipado_minutos ?? 15;
+      const margem_depois = aula.configuracoes?.permite_checkin_atrasado_minutos ?? 30;
+
+      const getMinutos = (d: Date) => {
+        const sp = dayjs(d).tz('America/Sao_Paulo');
+        return sp.hour() * 60 + sp.minute();
+      };
+
+      const inicio = aula.data_hora_inicio ? getMinutos(aula.data_hora_inicio) : 0;
+      const fim = aula.data_hora_fim ? getMinutos(aula.data_hora_fim) : 1440;
+
+      if (minutosAgora >= inicio - margem_antes && minutosAgora <= fim + margem_depois) {
+        return aula;
+      }
+    }
+
+    return null;
   }
 
   /**
@@ -238,14 +314,28 @@ export class CatracaService {
   /**
    * Registra a presença do aluno
    */
+  private async resolverModalidadeId(alunoId: string, aulaModalidadeId: string | null | undefined): Promise<string | undefined> {
+    if (aulaModalidadeId) return aulaModalidadeId;
+    // Fallback: pegar a primeira modalidade ativa do aluno
+    const rows = await this.dataSource.query(
+      `SELECT modalidade_id FROM teamcruz.aluno_modalidades WHERE aluno_id = $1 LIMIT 1`,
+      [alunoId],
+    );
+    return rows?.[0]?.modalidade_id ?? undefined;
+  }
+
   private async registrarPresenca(
     aluno: Aluno,
     data: CatracaCheckInDto,
     unidade: Unidade,
+    aula: Aula,
   ): Promise<Presenca> {
+    const modalidade_id = await this.resolverModalidadeId(aluno.id, aula.modalidade_id);
+
     const presenca = this.presencaRepository.create({
       aluno_id: aluno.id,
-      aula_id: null as any, // Não está vinculado a uma aula específica
+      aula_id: aula.id,
+      modalidade_id,
       status: PresencaStatus.PRESENTE,
       modo_registro: PresencaMetodo.FACIAL,
       metodo: 'CATRACA_BIOMETRICA',

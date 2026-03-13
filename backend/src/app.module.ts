@@ -71,6 +71,7 @@ import { HubUnidadeModule } from './hub-unidade/hub-unidade.module';
                 connectionTimeoutMillis: 10000,       // 10s para obter conexão do pool
                 keepAlive: true,
                 keepAliveInitialDelayMillis: 10000,
+                options: '-c search_path=teamcruz,public',
               }
             : {
                 max: 20,                              // 100 max_connections - 10 admin = 90 disponíveis; 20 é seguro e suporta pico
@@ -79,6 +80,7 @@ import { HubUnidadeModule } from './hub-unidade/hub-unidade.module';
                 connectionTimeoutMillis: 10000,       // 10s para obter conexão do pool
                 keepAlive: true,
                 keepAliveInitialDelayMillis: 10000,
+                options: '-c search_path=teamcruz,public',
                 ssl: {
                   rejectUnauthorized: false,
                 },
