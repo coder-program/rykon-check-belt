@@ -4,11 +4,11 @@ if (!globalThis.crypto) {
   globalThis.crypto = webcrypto as any;
 }
 
-import { Module, MiddlewareConsumer, OnModuleInit, Logger } from '@nestjs/common';
-import { TypeOrmModule, InjectDataSource } from '@nestjs/typeorm';
+import { Module, MiddlewareConsumer, Logger } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { DataSource } from 'typeorm';
-import { tenantAsyncStorage } from './common/tenant-context';
+// TODO: reativar multi-tenant
+// import { tenantAsyncStorage } from './common/tenant-context';
 import { UsuariosModule } from './usuarios/usuarios.module';
 
 // Módulos de Segurança
@@ -29,9 +29,9 @@ import { ModalidadesModule } from './modalidades/modalidades.module';
 import { FinanceiroModule } from './financeiro/financeiro.module';
 import { PaytimeModule } from './paytime/paytime.module';
 import { HubUnidadeModule } from './hub-unidade/hub-unidade.module';
-// Multi-tenant
-import { TenantModule } from './tenants/tenant.module';
-import { TenantMiddleware } from './common/middleware/tenant.middleware';
+// TODO: reativar multi-tenant
+// import { TenantModule } from './tenants/tenant.module';
+// import { TenantMiddleware } from './common/middleware/tenant.middleware';
 
 @Module({
   imports: [
@@ -111,63 +111,14 @@ import { TenantMiddleware } from './common/middleware/tenant.middleware';
     FinanceiroModule,
     PaytimeModule,
     HubUnidadeModule,
-    TenantModule, // ← Multi-tenant
+    // TenantModule, // TODO: reativar multi-tenant
   ],
 })
-export class AppModule implements OnModuleInit {
+export class AppModule {
   private readonly logger = new Logger(AppModule.name);
 
-  constructor(@InjectDataSource() private readonly dataSource: DataSource) {}
-
-  onModuleInit() {
-    // Patch do pg.Pool para injetar SET search_path por request via AsyncLocalStorage.
-    // TypeORM chama pool.connect(callback) — precisamos lidar com AMBAS as formas:
-    // 1) pool.connect()          → retorna Promise<PoolClient>
-    // 2) pool.connect(callback)  → chama callback(err, client, release) ← usado pelo TypeORM
-    const driver = (this.dataSource.driver as any);
-    const pool = driver.master; // pg.Pool do TypeORM PostgresDriver
-
-    if (!pool || pool.__tenantPatched) {
-      return; // Evita double-patch em hot reload
-    }
-    pool.__tenantPatched = true;
-
-    const originalConnect = pool.connect.bind(pool);
-
-    const applySearchPath = async (client: any) => {
-      const store = tenantAsyncStorage.getStore();
-      const schema = store?.schema;
-      if (schema && schema !== 'public') {
-        try {
-          await client.query(`SET search_path TO "${schema}", public`);
-        } catch (_err) { /* não bloquear */ }
-      }
-    };
-
-    pool.connect = function (callbackOrUndefined?: any) {
-      if (typeof callbackOrUndefined === 'function') {
-        // Forma callback: pool.connect((err, client, release) => ...) — usada pelo TypeORM
-        originalConnect((err: any, client: any, release: any) => {
-          if (err) return callbackOrUndefined(err, client, release);
-          applySearchPath(client)
-            .then(() => callbackOrUndefined(null, client, release))
-            .catch(() => callbackOrUndefined(null, client, release));
-        });
-      } else {
-        // Forma Promise: await pool.connect()
-        return originalConnect().then(async (client: any) => {
-          await applySearchPath(client);
-          return client;
-        });
-      }
-    };
-
-    this.logger.log('pg.Pool patched: SET search_path injeção ativa via AsyncLocalStorage');
-  }
-
   configure(consumer: MiddlewareConsumer) {
-    // TenantMiddleware PRIMEIRO — resolve o tenant antes de tudo
-    consumer.apply(TenantMiddleware).forRoutes('*');
+    // consumer.apply(TenantMiddleware).forRoutes('*'); // TODO: reativar multi-tenant
     consumer.apply(AuditMiddleware).forRoutes('*');
   }
 }
