@@ -1,4 +1,4 @@
-import {
+﻿import {
   Entity,
   PrimaryGeneratedColumn,
   Column,
@@ -18,7 +18,7 @@ export type StatusAgendamento =
   | 'CANCELADO'
   | 'REALIZADO';
 
-@Entity({ name: 'agendamentos_aula_experimental', schema: 'teamcruz' })
+@Entity({ name: 'agendamentos_aula_experimental' })
 export class AgendamentoAulaExperimental {
   @PrimaryGeneratedColumn('uuid')
   id: string;

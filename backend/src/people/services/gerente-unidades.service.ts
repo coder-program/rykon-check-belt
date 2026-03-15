@@ -25,7 +25,7 @@ export class GerenteUnidadesService {
   ): Promise<GerenteUnidade> {
     // ✅ Verificar se a unidade existe e está ativa
     const unidadeData = await this.dataSource.query(
-      `SELECT id, nome, status FROM teamcruz.unidades WHERE id = $1`,
+      `SELECT id, nome, status FROM unidades WHERE id = $1`,
       [unidadeId],
     );
 
@@ -127,3 +127,4 @@ export class GerenteUnidadesService {
     });
   }
 }
+

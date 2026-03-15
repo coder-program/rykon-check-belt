@@ -1,4 +1,4 @@
-import {
+﻿import {
   Entity,
   PrimaryGeneratedColumn,
   Column,
@@ -16,7 +16,7 @@ export enum CategoriaFaixa {
   MESTRE = 'MESTRE',
 }
 
-@Entity({ name: 'faixa_def', schema: 'teamcruz' })
+@Entity({ name: 'faixa_def' })
 @Index(['codigo'], { unique: true })
 @Index(['ordem'])
 export class FaixaDef {

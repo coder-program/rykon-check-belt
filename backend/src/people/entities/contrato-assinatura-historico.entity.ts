@@ -1,4 +1,4 @@
-import {
+﻿import {
   Entity,
   PrimaryGeneratedColumn,
   Column,
@@ -14,7 +14,7 @@ export enum TipoUsuarioAssinatura {
   RESPONSAVEL = 'RESPONSAVEL',
 }
 
-@Entity('contratos_assinaturas_historico', { schema: 'teamcruz' })
+@Entity('contratos_assinaturas_historico')
 export class ContratoAssinaturaHistorico {
   @PrimaryGeneratedColumn('uuid')
   id: string;

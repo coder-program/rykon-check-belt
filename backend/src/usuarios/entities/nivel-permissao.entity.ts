@@ -1,4 +1,4 @@
-import {
+﻿import {
   Entity,
   PrimaryGeneratedColumn,
   Column,
@@ -8,7 +8,7 @@ import {
 } from 'typeorm';
 import { Permissao } from './permissao.entity';
 
-@Entity({ name: 'niveis_permissao', schema: 'teamcruz' })
+@Entity({ name: 'niveis_permissao' })
 export class NivelPermissao {
   @PrimaryGeneratedColumn('uuid')
   id: string;

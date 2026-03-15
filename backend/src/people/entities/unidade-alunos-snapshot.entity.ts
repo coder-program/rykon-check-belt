@@ -1,4 +1,4 @@
-import {
+﻿import {
   Entity,
   Column,
   PrimaryGeneratedColumn,
@@ -12,7 +12,7 @@ import {
  * Snapshot periódico consolidado de alunos/uso por unidade.
  * Alimenta dashboards históricos e análise de expansão da Fase 3.
  */
-@Entity({ name: 'unidade_alunos_snapshot', schema: 'teamcruz' })
+@Entity({ name: 'unidade_alunos_snapshot' })
 @Index('idx_uas_unidade_data', ['unidade_id', 'data_referencia'])
 @Index('idx_uas_franqueado', ['franqueado_id'])
 export class UnidadeAlunosSnapshot {

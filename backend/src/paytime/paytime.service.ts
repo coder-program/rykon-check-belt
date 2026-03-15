@@ -2311,14 +2311,14 @@ export class PaytimeService {
                   };
                   if (cardToken) {
                     await this.faturaRepository.manager.query(
-                      `UPDATE teamcruz.assinaturas SET token_cartao = $1, dados_pagamento = $2 WHERE id = $3`,
+                      `UPDATE assinaturas SET token_cartao = $1, dados_pagamento = $2 WHERE id = $3`,
                       [cardToken, JSON.stringify(dadosPagamento), fatura.assinatura_id]
                     );
                     this.logger.log(`🔑 [IDPAY] token_cartao + dados_pagamento salvos na assinatura ${fatura.assinatura_id}`);
                   } else {
                     // Salva apenas dados_pagamento (last4/brand) mesmo sem token
                     await this.faturaRepository.manager.query(
-                      `UPDATE teamcruz.assinaturas SET dados_pagamento = $1 WHERE id = $2 AND (dados_pagamento IS NULL OR dados_pagamento->>'last4' IS NULL)`,
+                      `UPDATE assinaturas SET dados_pagamento = $1 WHERE id = $2 AND (dados_pagamento IS NULL OR dados_pagamento->>'last4' IS NULL)`,
                       [JSON.stringify(dadosPagamento), fatura.assinatura_id]
                     );
                     this.logger.log(`💳 [IDPAY] dados_pagamento (sem token) salvos na assinatura ${fatura.assinatura_id}: last4=${dadosPagamento.last4}`);

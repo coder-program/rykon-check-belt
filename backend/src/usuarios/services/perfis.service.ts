@@ -3,8 +3,8 @@ import {
   ConflictException,
   NotFoundException,
 } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { InjectRepository, InjectDataSource } from '@nestjs/typeorm';
+import { Repository, DataSource } from 'typeorm';
 import { Perfil } from '../entities/perfil.entity';
 import { Permissao } from '../entities/permissao.entity';
 import { CreatePerfilDto } from '../dto/create-perfil.dto';
@@ -16,6 +16,8 @@ export class PerfisService {
     private perfilRepository: Repository<Perfil>,
     @InjectRepository(Permissao)
     private permissaoRepository: Repository<Permissao>,
+    @InjectDataSource()
+    private dataSource: DataSource,
   ) {}
 
   async create(createPerfilDto: CreatePerfilDto): Promise<Perfil> {
@@ -61,23 +63,16 @@ export class PerfisService {
     });
   }
 
-  async findPublicos(): Promise<Perfil[]> {
-    // Query otimizada: busca apenas 2 perfis SEM relations
-    return await this.perfilRepository
-      .createQueryBuilder('perfil')
-      .where('LOWER(perfil.nome) IN (:...nomes)', {
-        nomes: ['aluno', 'responsavel'],
-      })
-      .andWhere('perfil.ativo = :ativo', { ativo: true })
-      .select([
-        'perfil.id',
-        'perfil.nome',
-        'perfil.descricao',
-        'perfil.ativo',
-        'perfil.created_at',
-        'perfil.updated_at',
-      ])
-      .getMany();
+  async findPublicos(schema = 'teamcruz'): Promise<Perfil[]> {
+    // Usa raw query com schema explícito para suporte multi-tenant
+    const rows = await this.dataSource.query(
+      `SELECT id, nome, descricao, ativo, created_at, updated_at
+       FROM "${schema}".perfis
+       WHERE LOWER(nome) IN ('aluno', 'responsavel')
+         AND ativo = true
+       ORDER BY nome ASC`,
+    );
+    return rows as Perfil[];
   }
 
   async findOne(id: string): Promise<Perfil> {

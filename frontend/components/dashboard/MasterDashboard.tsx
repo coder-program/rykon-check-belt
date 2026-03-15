@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { useAuth } from "@/app/auth/AuthContext";
+import { useTenant } from "@/hooks/useTenant";
 import { useRouter } from "next/navigation";
 import {
   Card,
@@ -39,6 +40,7 @@ interface DashboardStats {
 
 export default function MasterDashboard() {
   const { user } = useAuth();
+  const { tenant } = useTenant();
   const router = useRouter();
   const [stats, setStats] = useState<DashboardStats>({
     totalUsuarios: 0,
@@ -64,12 +66,14 @@ export default function MasterDashboard() {
     const loadStats = async () => {
       try {
         const token = localStorage.getItem("token");
+        const tenantSlug = document.cookie.split(';').find(c => c.trim().startsWith('tenant-slug='))?.split('=')[1]?.trim() || 'teamcruz';
         const response = await fetch(
           `${process.env.NEXT_PUBLIC_API_URL}/dashboard/stats`,
           {
             headers: {
               "Content-Type": "application/json",
               Authorization: `Bearer ${token}`,
+              "X-Tenant-ID": tenantSlug,
             },
           }
         );
@@ -109,7 +113,7 @@ export default function MasterDashboard() {
     {
       title: "Gestão de Alunos",
       description:
-        "Gestão completa de alunos da TeamCruz com controle de graduações",
+        "Gestão completa de alunos com controle de graduações",
       icon: Users,
       action: () => router.push("/alunos"),
       color: "bg-blue-500",
@@ -141,7 +145,7 @@ export default function MasterDashboard() {
       color: "bg-cyan-500",
       badge: "Personalizado",
     } */ {
-      title: "TeamCruz Jiu-Jitsu",
+      title: "Sistema",
       description: "Sistema completo de controle de presença e graduação",
       icon: Trophy,
       action: () => router.push("/teamcruz"),
@@ -253,7 +257,7 @@ export default function MasterDashboard() {
             </h1>
           </div>
           <p className="text-gray-600">
-            Bem-vindo, {user?.nome}! Visão geral completa do sistema TeamCruz.
+            Bem-vindo, {user?.nome}! Visão geral completa do sistema {tenant.nome}.
           </p>
         </div>
 

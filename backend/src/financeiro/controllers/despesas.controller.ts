@@ -43,14 +43,14 @@ export class DespesasController {
       ) || [];
     if (perfis.includes('GERENTE_UNIDADE')) {
       const result = await this.dataSource.query(
-        `SELECT unidade_id FROM teamcruz.gerente_unidades WHERE usuario_id = $1 AND ativo = true LIMIT 1`,
+        `SELECT unidade_id FROM gerente_unidades WHERE usuario_id = $1 AND ativo = true LIMIT 1`,
         [user.id],
       );
       if (result && result.length > 0) return result[0].unidade_id;
     }
     if (perfis.includes('RECEPCIONISTA')) {
       const result = await this.dataSource.query(
-        `SELECT unidade_id FROM teamcruz.recepcionista_unidades WHERE usuario_id = $1 AND ativo = true LIMIT 1`,
+        `SELECT unidade_id FROM recepcionista_unidades WHERE usuario_id = $1 AND ativo = true LIMIT 1`,
         [user.id],
       );
       if (result && result.length > 0) return result[0].unidade_id;
@@ -82,7 +82,7 @@ export class DespesasController {
     let franqueadoId: string | null = null;
     if (isFranqueado && user?.id) {
       const franqueadoResult = await this.dataSource.query(
-        `SELECT id FROM teamcruz.franqueados WHERE usuario_id = $1 LIMIT 1`,
+        `SELECT id FROM franqueados WHERE usuario_id = $1 LIMIT 1`,
         [user.id],
       );
       franqueadoId = franqueadoResult[0]?.id || null;
@@ -146,3 +146,4 @@ export class DespesasController {
     return this.anexosService.removerAnexoDespesa(id);
   }
 }
+

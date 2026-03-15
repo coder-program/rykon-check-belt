@@ -86,8 +86,8 @@ async function bootstrap() {
         return callback(null, true);
       }
 
-      // Verifica se a origin está na lista permitida ou é do Vercel
-      if (allowedOrigins.includes(origin) || origin.endsWith('.vercel.app')) {
+      // Verifica se a origin está na lista permitida, é do Vercel ou subdomínio rykon.com.br
+      if (allowedOrigins.includes(origin) || origin.endsWith('.vercel.app') || origin.endsWith('.rykonfit.com.br') || origin === 'https://rykonfit.com.br' || origin === 'https://www.rykonfit.com.br') {
         callback(null, true);
       } else {
         console.error('CORS bloqueado:', origin);
@@ -103,7 +103,7 @@ async function bootstrap() {
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'establishment_id'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'establishment_id', 'X-Tenant-ID'],
     exposedHeaders: ['Authorization'],
     preflightContinue: false,
     optionsSuccessStatus: 204,

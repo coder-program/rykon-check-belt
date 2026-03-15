@@ -46,7 +46,7 @@ export class EnderecosService {
   constructor(private readonly dataSource: DataSource) {}
 
   async criarEndereco(dto: CreateEnderecoDto) {
-    const q = `INSERT INTO teamcruz.enderecos
+    const q = `INSERT INTO enderecos
       (id, cep, logradouro, numero, complemento, bairro, cidade, estado, pais, latitude, longitude, created_at, updated_at)
       VALUES (uuid_generate_v4(), $1,$2,$3,$4,$5,$6,$7,COALESCE($8,'Brasil'),$9,$10, now(), now())
       RETURNING *`;
@@ -68,7 +68,7 @@ export class EnderecosService {
 
   async obterEndereco(id: string) {
     const res = await this.dataSource.query(
-      `SELECT * FROM teamcruz.enderecos WHERE id = $1`,
+      `SELECT * FROM enderecos WHERE id = $1`,
       [id],
     );
     return res[0] || null;
@@ -84,21 +84,21 @@ export class EnderecosService {
     }
     if (!fields.length) return this.obterEndereco(id);
     values.push(id);
-    const q = `UPDATE teamcruz.enderecos SET ${fields.join(', ')}, updated_at = now() WHERE id = $${idx} RETURNING *`;
+    const q = `UPDATE enderecos SET ${fields.join(', ')}, updated_at = now() WHERE id = $${idx} RETURNING *`;
     const res = await this.dataSource.query(q, values);
     return res[0] || null;
   }
 
   async removerEndereco(id: string) {
     await this.dataSource.query(
-      `DELETE FROM teamcruz.enderecos WHERE id = $1`,
+      `DELETE FROM enderecos WHERE id = $1`,
       [id],
     );
     return true;
   }
 
   async vincularEndereco(dto: VincularEnderecoDTO) {
-    const q = `INSERT INTO teamcruz.vinculos_endereco
+    const q = `INSERT INTO vinculos_endereco
       (id, tipo_dono, dono_id, endereco_id, finalidade, principal, valido_de, valido_ate, created_at, updated_at)
       VALUES (uuid_generate_v4(), $1,$2,$3, COALESCE($4,'RESIDENCIAL'), COALESCE($5,false), $6, $7, now(), now())
       RETURNING *`;
@@ -116,8 +116,8 @@ export class EnderecosService {
 
   async listarPorDono(tipo_dono: TipoDonoEndereco, dono_id: string) {
     const q = `SELECT ve.*, e.*
-      FROM teamcruz.vinculos_endereco ve
-      JOIN teamcruz.enderecos e ON e.id = ve.endereco_id
+      FROM vinculos_endereco ve
+      JOIN enderecos e ON e.id = ve.endereco_id
       WHERE ve.tipo_dono = $1 AND ve.dono_id = $2
       ORDER BY ve.principal DESC, ve.created_at DESC`;
     return this.dataSource.query(q, [tipo_dono, dono_id]);
@@ -130,12 +130,12 @@ export class EnderecosService {
     endereco_id: string,
   ) {
     await this.dataSource.query(
-      `UPDATE teamcruz.vinculos_endereco SET principal = false, updated_at = now()
+      `UPDATE vinculos_endereco SET principal = false, updated_at = now()
        WHERE tipo_dono = $1 AND dono_id = $2 AND finalidade = $3 AND principal = true`,
       [tipo_dono, dono_id, finalidade],
     );
     const res = await this.dataSource.query(
-      `UPDATE teamcruz.vinculos_endereco SET principal = true, updated_at = now()
+      `UPDATE vinculos_endereco SET principal = true, updated_at = now()
        WHERE tipo_dono = $1 AND dono_id = $2 AND finalidade = $3 AND endereco_id = $4
        RETURNING *`,
       [tipo_dono, dono_id, finalidade, endereco_id],
@@ -161,3 +161,4 @@ export class EnderecosService {
     return null;
   }
 }
+

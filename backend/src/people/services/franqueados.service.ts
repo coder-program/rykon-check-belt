@@ -5,9 +5,13 @@ import {
   CreateFranqueadoSimplifiedDto,
   UpdateFranqueadoSimplifiedDto,
 } from '../dto/franqueado-simplified.dto';
+import { tenantAsyncStorage } from '../../common/tenant-context';
 
 @Injectable()
 export class FranqueadosService {
+  private get schema(): string {
+    return tenantAsyncStorage.getStore()?.schema || 'teamcruz';
+  }
   constructor(private readonly dataSource: DataSource) {}
 
   async list(params: {
@@ -49,8 +53,8 @@ export class FranqueadosService {
         f.*,
         u.nome as usuario_nome,
         u.email as usuario_email
-      FROM teamcruz.franqueados f
-      LEFT JOIN teamcruz.usuarios u ON f.usuario_id = u.id
+      FROM ${this.schema}.franqueados f
+      LEFT JOIN ${this.schema}.usuarios u ON f.usuario_id = u.id
       ${whereClause}
       ORDER BY f.created_at DESC
       LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
@@ -59,7 +63,7 @@ export class FranqueadosService {
     // Query para contar total
     const countQuery = `
       SELECT COUNT(*) as total
-      FROM teamcruz.franqueados f
+      FROM ${this.schema}.franqueados f
       ${whereClause}
     `;
 
@@ -90,8 +94,8 @@ export class FranqueadosService {
         f.*,
         u.nome as usuario_nome,
         u.email as usuario_email
-      FROM teamcruz.franqueados f
-      LEFT JOIN teamcruz.usuarios u ON f.usuario_id = u.id
+      FROM ${this.schema}.franqueados f
+      LEFT JOIN ${this.schema}.usuarios u ON f.usuario_id = u.id
       WHERE f.id = $1 AND f.ativo = true
     `;
 
@@ -105,8 +109,8 @@ export class FranqueadosService {
         f.*,
         u.nome as usuario_nome,
         u.email as usuario_email
-      FROM teamcruz.franqueados f
-      LEFT JOIN teamcruz.usuarios u ON f.usuario_id = u.id
+      FROM ${this.schema}.franqueados f
+      LEFT JOIN ${this.schema}.usuarios u ON f.usuario_id = u.id
       WHERE f.usuario_id = $1 AND f.ativo = true
     `;
 
@@ -119,7 +123,7 @@ export class FranqueadosService {
     if (body.cpf) {
       const cpfLimpo = body.cpf.replace(/\D/g, '');
       const existingCpf = await this.dataSource.query(
-        `SELECT id, nome, ativo FROM teamcruz.franqueados WHERE cpf = $1 LIMIT 1`,
+        `SELECT id, nome, ativo FROM ${this.schema}.franqueados WHERE cpf = $1 LIMIT 1`,
         [cpfLimpo],
       );
       if (existingCpf && existingCpf.length > 0) {
@@ -133,7 +137,7 @@ export class FranqueadosService {
     // Validar email duplicado (verificar TODOS os registros, não só os ativos)
     if (body.email) {
       const existingEmail = await this.dataSource.query(
-        `SELECT id, nome, ativo FROM teamcruz.franqueados WHERE email = $1 LIMIT 1`,
+        `SELECT id, nome, ativo FROM ${this.schema}.franqueados WHERE email = $1 LIMIT 1`,
         [body.email],
       );
       if (existingEmail && existingEmail.length > 0) {
@@ -145,7 +149,7 @@ export class FranqueadosService {
     }
 
     const query = `
-      INSERT INTO teamcruz.franqueados (
+      INSERT INTO ${this.schema}.franqueados (
         nome, cpf, email, telefone, usuario_id,
         endereco_id, situacao, ativo,
         contrato_aceito, contrato_aceito_em, contrato_versao, contrato_ip,
@@ -179,7 +183,7 @@ export class FranqueadosService {
       // Se tem usuario_id, atualizar o campo cadastro_completo do usuário
       if (body.usuario_id) {
         await this.dataSource.query(
-          `UPDATE teamcruz.usuarios SET cadastro_completo = true WHERE id = $1`,
+          `UPDATE ${this.schema}.usuarios SET cadastro_completo = true WHERE id = $1`,
           [body.usuario_id],
         );
       }
@@ -216,7 +220,7 @@ export class FranqueadosService {
     if (body.cpf) {
       const cpfLimpo = body.cpf.replace(/\D/g, '');
       const existingCpf = await this.dataSource.query(
-        `SELECT id, nome FROM teamcruz.franqueados WHERE cpf = $1 AND id != $2 AND ativo = true LIMIT 1`,
+        `SELECT id, nome FROM ${this.schema}.franqueados WHERE cpf = $1 AND id != $2 AND ativo = true LIMIT 1`,
         [cpfLimpo, id],
       );
       if (existingCpf && existingCpf.length > 0) {
@@ -229,7 +233,7 @@ export class FranqueadosService {
     // Validar email duplicado (exceto o próprio registro)
     if (body.email) {
       const existingEmail = await this.dataSource.query(
-        `SELECT id, nome FROM teamcruz.franqueados WHERE email = $1 AND id != $2 AND ativo = true LIMIT 1`,
+        `SELECT id, nome FROM ${this.schema}.franqueados WHERE email = $1 AND id != $2 AND ativo = true LIMIT 1`,
         [body.email, id],
       );
       if (existingEmail && existingEmail.length > 0) {
@@ -296,7 +300,7 @@ export class FranqueadosService {
     params.push(id);
 
     const query = `
-      UPDATE teamcruz.franqueados
+      UPDATE ${this.schema}.franqueados
       SET ${fields.join(', ')}
       WHERE id = $${paramIndex}
       RETURNING *
@@ -307,7 +311,7 @@ export class FranqueadosService {
     // Se tem usuario_id, garantir que cadastro_completo seja true
     if (result[0]?.usuario_id) {
       await this.dataSource.query(
-        `UPDATE teamcruz.usuarios SET cadastro_completo = true WHERE id = $1`,
+        `UPDATE ${this.schema}.usuarios SET cadastro_completo = true WHERE id = $1`,
         [result[0].usuario_id],
       );
     }
@@ -318,7 +322,7 @@ export class FranqueadosService {
   async remove(id: string): Promise<void> {
     // Soft delete para evitar problemas de constraint com unidades/professores
     const query = `
-      UPDATE teamcruz.franqueados
+      UPDATE ${this.schema}.franqueados
       SET ativo = false, updated_at = NOW()
       WHERE id = $1
       RETURNING id, nome, ativo
@@ -340,10 +344,10 @@ export class FranqueadosService {
         f.*,
         u.nome as usuario_nome,
         u.email as usuario_email
-      FROM teamcruz.franqueados f
-      LEFT JOIN teamcruz.usuarios u ON f.usuario_id = u.id
+      FROM ${this.schema}.franqueados f
+      LEFT JOIN ${this.schema}.usuarios u ON f.usuario_id = u.id
       WHERE EXISTS (
-        SELECT 1 FROM teamcruz.unidades un
+        SELECT 1 FROM ${this.schema}.unidades un
         WHERE un.id = $1 AND un.franqueado_id = f.id
       )
       AND f.ativo = true
@@ -352,3 +356,4 @@ export class FranqueadosService {
     return this.dataSource.query(query, [unidadeId]);
   }
 }
+

@@ -7,7 +7,9 @@ import {
   Param,
   Delete,
   UseGuards,
+  Req,
 } from '@nestjs/common';
+import { Request } from 'express';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { Public } from '../../auth/decorators/public.decorator';
 import { PerfisService } from '../services/perfis.service';
@@ -37,10 +39,10 @@ export class PerfisController {
 
   @Get('publicos/registro')
   @Public() // Endpoint público para cadastro
-  async findPublicos() {
+  async findPublicos(@Req() req: Request & { tenantSchema?: string }) {
     // Retorna apenas perfis públicos para cadastro (aluno e responsavel)
-    // Query otimizada no service - apenas 2 registros sem relations
-    return this.perfisService.findPublicos();
+    const schema = req.tenantSchema || 'teamcruz';
+    return this.perfisService.findPublicos(schema);
   }
 
   @Get(':id')

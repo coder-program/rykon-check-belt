@@ -1,4 +1,4 @@
-import {
+﻿import {
   Entity, PrimaryGeneratedColumn, Column,
   CreateDateColumn, UpdateDateColumn,
   ManyToOne, JoinColumn,
@@ -7,7 +7,7 @@ import { Unidade } from '../../people/entities/unidade.entity';
 import { Modalidade } from '../../modalidades/entities/modalidade.entity';
 import { Usuario } from '../../usuarios/entities/usuario.entity';
 
-@Entity({ name: 'unidade_videos', schema: 'teamcruz' })
+@Entity({ name: 'unidade_videos' })
 export class UnidadeVideo {
   @PrimaryGeneratedColumn('uuid')
   id!: string;

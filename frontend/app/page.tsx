@@ -11,12 +11,16 @@ export default function Home() {
 
   useEffect(() => {
     if (!loading) {
+      // Preservar ?tenant= no redirect para que o middleware leia o param
+      const tenantParam = typeof window !== 'undefined'
+        ? new URLSearchParams(window.location.search).get('tenant')
+        : null;
+      const suffix = tenantParam ? `?tenant=${tenantParam}` : '';
+
       if (isAuthenticated) {
-        // Se já está autenticado, vai para o dashboard
         router.push("/dashboard");
       } else {
-        // Se não está autenticado, vai para o login
-        router.push("/login");
+        router.push(`/login${suffix}`);
       }
     }
   }, [isAuthenticated, loading, router]);
@@ -27,7 +31,7 @@ export default function Home() {
       <div className="text-center">
         <Loader2 className="mx-auto h-12 w-12 text-blue-500 animate-spin mb-4" />
         <h2 className="text-xl font-semibold text-gray-900 mb-2">
-          TeamCruz Jiu-Jitsu
+          Carregando...
         </h2>
         <p className="text-gray-600">Carregando sistema...</p>
       </div>

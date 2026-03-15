@@ -47,7 +47,7 @@ export class AuthController {
     examples: {
       admin: {
         summary: 'Admin Master',
-        value: { email: 'admin@teamcruz.com', password: '123456' },
+        value: { email: 'admin@com', password: '123456' },
       },
       franqueado: {
         summary: 'Franqueado Teste',
@@ -96,7 +96,13 @@ export class AuthController {
     const ipAddress = req.ip || req.connection?.remoteAddress || 'unknown';
     const userAgent = req.get('User-Agent') || 'unknown';
 
-    const resp = await this.authService.login(req.user, ipAddress, userAgent);
+    const resp = await this.authService.login(
+      req.user,
+      ipAddress,
+      userAgent,
+      req.tenantSlug,
+      req.tenantSchema,
+    );
     const rt = this.authService.issueRefreshToken(req.user.id);
     this.setRefreshCookie(res, rt);
     return resp;

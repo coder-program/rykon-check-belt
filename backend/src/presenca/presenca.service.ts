@@ -190,8 +190,8 @@ export class PresencaService {
     if (isResponsavel) {
       const dependentesData = await this.presencaRepository.manager.query(
         `SELECT DISTINCT a.unidade_id
-         FROM teamcruz.alunos a
-         INNER JOIN teamcruz.responsaveis r ON r.id = a.responsavel_id
+         FROM alunos a
+         INNER JOIN responsaveis r ON r.id = a.responsavel_id
          WHERE r.usuario_id = $1 AND a.status = 'ATIVO' AND a.unidade_id IS NOT NULL`,
         [user.id],
       );
@@ -217,7 +217,7 @@ export class PresencaService {
     // Se for gerente, buscar unidade que gerencia
     else if (isGerente) {
       const unidadeResult = await this.presencaRepository.manager.query(
-        `SELECT unidade_id FROM teamcruz.gerente_unidades WHERE usuario_id = $1 AND ativo = true LIMIT 1`,
+        `SELECT unidade_id FROM gerente_unidades WHERE usuario_id = $1 AND ativo = true LIMIT 1`,
         [user.id],
       );
       if (unidadeResult.length > 0) {
@@ -227,7 +227,7 @@ export class PresencaService {
     // Se for recepcionista, buscar unidade vinculada
     else if (isRecepcionista) {
       const unidadeResult = await this.presencaRepository.manager.query(
-        `SELECT unidade_id FROM teamcruz.recepcionista_unidades WHERE usuario_id = $1 AND ativo = true LIMIT 1`,
+        `SELECT unidade_id FROM recepcionista_unidades WHERE usuario_id = $1 AND ativo = true LIMIT 1`,
         [user.id],
       );
       if (unidadeResult.length > 0) {
@@ -237,7 +237,7 @@ export class PresencaService {
     // Se for tablet, buscar unidade vinculada na tabela tablet_unidades
     else if (isTablet) {
       const unidadeResult = await this.presencaRepository.manager.query(
-        `SELECT unidade_id FROM teamcruz.tablet_unidades WHERE tablet_id = $1 AND ativo = true LIMIT 1`,
+        `SELECT unidade_id FROM tablet_unidades WHERE tablet_id = $1 AND ativo = true LIMIT 1`,
         [user.id],
       );
       if (unidadeResult.length > 0) {
@@ -361,8 +361,8 @@ export class PresencaService {
     // Buscar modalidades do aluno
     const mods = await this.presencaRepository.manager.query(
       `SELECT am.modalidade_id, m.nome, m.cor
-       FROM teamcruz.aluno_modalidades am
-       INNER JOIN teamcruz.modalidades m ON m.id = am.modalidade_id
+       FROM aluno_modalidades am
+       INNER JOIN modalidades m ON m.id = am.modalidade_id
        WHERE am.aluno_id = $1 AND am.ativo = true`,
       [aluno.id],
     );
@@ -390,7 +390,7 @@ export class PresencaService {
     // Verificar quais modalidades o aluno já fez check-in hoje (1 por modalidade por dia)
     const hoje = dayjs().tz('America/Sao_Paulo').format('YYYY-MM-DD');
     const checkins = await this.presencaRepository.manager.query(
-      `SELECT p.modalidade_id FROM teamcruz.presencas p
+      `SELECT p.modalidade_id FROM presencas p
        WHERE p.aluno_id = $1
          AND DATE(p.hora_checkin AT TIME ZONE 'America/Sao_Paulo') = $2
          AND p.status_aprovacao IN ('APROVADO', 'PENDENTE')`,
@@ -1378,8 +1378,8 @@ export class PresencaService {
       SELECT
         DATE(p.hora_checkin) as data,
         COUNT(DISTINCT p.aluno_id) as total_presencas
-      FROM teamcruz.presencas p
-      INNER JOIN teamcruz.aulas a ON a.id = p.aula_id
+      FROM presencas p
+      INNER JOIN aulas a ON a.id = p.aula_id
       WHERE p.hora_checkin >= $1 AND p.hora_checkin <= $2
     `;
 
@@ -1472,8 +1472,8 @@ export class PresencaService {
         if (isFranqueado) {
           // Franqueado: buscar unidades do franqueado
           const unidadesResult = await this.presencaRepository.manager.query(
-            `SELECT id FROM teamcruz.unidades WHERE franqueado_id =
-             (SELECT id FROM teamcruz.franqueados WHERE usuario_id = $1)`,
+            `SELECT id FROM unidades WHERE franqueado_id =
+             (SELECT id FROM franqueados WHERE usuario_id = $1)`,
             [user.id],
           );
 
@@ -1489,7 +1489,7 @@ export class PresencaService {
         } else if (isGerente) {
           // Gerente: buscar unidade que ele gerencia
           const unidadeResult = await this.presencaRepository.manager.query(
-            `SELECT unidade_id FROM teamcruz.gerente_unidades WHERE usuario_id = $1 AND ativo = true LIMIT 1`,
+            `SELECT unidade_id FROM gerente_unidades WHERE usuario_id = $1 AND ativo = true LIMIT 1`,
             [user.id],
           );
           if (unidadeResult.length > 0) {
@@ -1520,9 +1520,9 @@ export class PresencaService {
             $1 - COUNT(DISTINCT DATE(pr.hora_checkin))
         END as ausencias,
         DATE_PART('day', NOW() - u.created_at)::int as dias_desde_matricula
-      FROM teamcruz.alunos a
-      INNER JOIN teamcruz.usuarios u ON u.id = a.usuario_id
-      LEFT JOIN teamcruz.presencas pr ON pr.aluno_id = a.id
+      FROM alunos a
+      INNER JOIN usuarios u ON u.id = a.usuario_id
+      LEFT JOIN presencas pr ON pr.aluno_id = a.id
         AND pr.hora_checkin >= $2
         AND pr.hora_checkin >= u.created_at  -- Só contar presenças após matrícula
       WHERE a.status = 'ATIVO'
@@ -1606,8 +1606,8 @@ export class PresencaService {
         if (isFranqueado) {
           // Franqueado: buscar unidades do franqueado
           const unidadesResult = await this.presencaRepository.manager.query(
-            `SELECT id FROM teamcruz.unidades WHERE franqueado_id =
-             (SELECT id FROM teamcruz.franqueados WHERE usuario_id = $1)`,
+            `SELECT id FROM unidades WHERE franqueado_id =
+             (SELECT id FROM franqueados WHERE usuario_id = $1)`,
             [user.id],
           );
 
@@ -1621,7 +1621,7 @@ export class PresencaService {
         } else if (isGerente) {
           // Gerente: buscar unidade que ele gerencia
           const unidadeResult = await this.presencaRepository.manager.query(
-            `SELECT unidade_id FROM teamcruz.gerente_unidades WHERE usuario_id = $1 AND ativo = true LIMIT 1`,
+            `SELECT unidade_id FROM gerente_unidades WHERE usuario_id = $1 AND ativo = true LIMIT 1`,
             [user.id],
           );
           if (unidadeResult.length > 0) {
@@ -1642,10 +1642,10 @@ export class PresencaService {
         COUNT(DISTINCT DATE(aula.data_hora_inicio)) as dias_trabalho,
         COUNT(DISTINCT aula.id) as aulas_presente,
         100.0 as taxa_presenca
-      FROM teamcruz.professores prof
-      INNER JOIN teamcruz.usuarios u ON u.id = prof.usuario_id
-      INNER JOIN teamcruz.professor_unidades pu ON pu.professor_id = prof.id AND pu.ativo = true
-      LEFT JOIN teamcruz.aulas aula ON aula.professor_id = prof.id
+      FROM professores prof
+      INNER JOIN usuarios u ON u.id = prof.usuario_id
+      INNER JOIN professor_unidades pu ON pu.professor_id = prof.id AND pu.ativo = true
+      LEFT JOIN aulas aula ON aula.professor_id = prof.id
         AND aula.data_hora_inicio >= $1
       WHERE prof.status = 'ATIVO'
     `;
@@ -1710,8 +1710,8 @@ export class PresencaService {
         if (isFranqueado) {
           // Franqueado: buscar primeira unidade do franqueado
           const unidadesResult = await this.presencaRepository.manager.query(
-            `SELECT id FROM teamcruz.unidades WHERE franqueado_id =
-             (SELECT id FROM teamcruz.franqueados WHERE usuario_id = $1) LIMIT 1`,
+            `SELECT id FROM unidades WHERE franqueado_id =
+             (SELECT id FROM franqueados WHERE usuario_id = $1) LIMIT 1`,
             [user.id],
           );
           if (unidadesResult.length > 0) {
@@ -1720,7 +1720,7 @@ export class PresencaService {
         } else if (isGerente) {
           // Gerente: buscar unidade que ele gerencia
           const unidadeResult = await this.presencaRepository.manager.query(
-            `SELECT unidade_id FROM teamcruz.gerente_unidades WHERE usuario_id = $1 AND ativo = true LIMIT 1`,
+            `SELECT unidade_id FROM gerente_unidades WHERE usuario_id = $1 AND ativo = true LIMIT 1`,
             [user.id],
           );
           if (unidadeResult.length > 0) {
@@ -1743,9 +1743,9 @@ export class PresencaService {
           (COUNT(DISTINCT DATE(pr.hora_checkin))::numeric / 30.0 * 100), 1
         ) as taxa_frequencia,
         MAX(pr.hora_checkin) as ultima_presenca
-      FROM teamcruz.alunos a
-      INNER JOIN teamcruz.usuarios u ON u.id = a.usuario_id
-      INNER JOIN teamcruz.presencas pr ON pr.aluno_id = a.id
+      FROM alunos a
+      INNER JOIN usuarios u ON u.id = a.usuario_id
+      INNER JOIN presencas pr ON pr.aluno_id = a.id
         AND pr.hora_checkin >= $1
         AND pr.status = 'presente'
       WHERE a.status = 'ATIVO'
@@ -1840,8 +1840,8 @@ export class PresencaService {
       } else {
         // Se não é aluno, tentar buscar como franqueado
         const franqueado = await this.dataSource.query(
-          `SELECT u.id FROM teamcruz.unidades u 
-           INNER JOIN teamcruz.franqueados f ON f.id = u.franqueado_id
+          `SELECT u.id FROM unidades u 
+           INNER JOIN franqueados f ON f.id = u.franqueado_id
            WHERE f.usuario_id = $1 LIMIT 1`,
           [user.id],
         );
@@ -2166,8 +2166,8 @@ export class PresencaService {
               a.nome_completo,
               am.graduacao_atual AS graduacao_modalidade,
               EXTRACT(YEAR FROM AGE(CAST($4 AS DATE), a.data_nascimento)) AS idade
-            FROM teamcruz.alunos a
-            INNER JOIN teamcruz.aluno_modalidades am
+            FROM alunos a
+            INNER JOIN aluno_modalidades am
               ON am.aluno_id = a.id
               AND am.modalidade_id = $6::uuid
               AND am.ativo = true
@@ -2182,7 +2182,7 @@ export class PresencaService {
             SELECT
               p.aluno_id,
               COUNT(*) AS total_presencas
-            FROM teamcruz.presencas p
+            FROM presencas p
             WHERE p.aluno_id IN (SELECT id FROM alunos_filtrados)
               AND p.created_at >= $2
               AND p.created_at <= $3
@@ -2207,8 +2207,8 @@ export class PresencaService {
             ROW_NUMBER() OVER (ORDER BY COALESCE(pm.total_presencas, 0) DESC) AS posicao
           FROM alunos_filtrados af
           LEFT JOIN presencas_mes pm ON pm.aluno_id = af.id
-          LEFT JOIN teamcruz.aluno_faixa f ON f.aluno_id = af.id AND f.ativa = true
-          LEFT JOIN teamcruz.faixa_def fd ON fd.id = f.faixa_def_id
+          LEFT JOIN aluno_faixa f ON f.aluno_id = af.id AND f.ativa = true
+          LEFT JOIN faixa_def fd ON fd.id = f.faixa_def_id
           ORDER BY COALESCE(pm.total_presencas, 0) DESC
           LIMIT 100
         `;
@@ -2223,7 +2223,7 @@ export class PresencaService {
               a.id,
               a.nome_completo,
               EXTRACT(YEAR FROM AGE(CAST($4 AS DATE), a.data_nascimento)) as idade
-            FROM teamcruz.alunos a
+            FROM alunos a
             WHERE a.unidade_id = $1
               AND a.status = 'ATIVO'
               AND CASE
@@ -2235,7 +2235,7 @@ export class PresencaService {
             SELECT
               p.aluno_id,
               COUNT(*) as total_presencas
-            FROM teamcruz.presencas p
+            FROM presencas p
             WHERE p.aluno_id IN (SELECT id FROM alunos_filtrados)
               AND p.created_at >= $2
               AND p.created_at <= $3
@@ -2258,8 +2258,8 @@ export class PresencaService {
             ROW_NUMBER() OVER (ORDER BY COALESCE(pm.total_presencas, 0) DESC) as posicao
           FROM alunos_filtrados af
           LEFT JOIN presencas_mes pm ON pm.aluno_id = af.id
-          LEFT JOIN teamcruz.aluno_faixa f ON f.aluno_id = af.id AND f.ativa = true
-          LEFT JOIN teamcruz.faixa_def fd ON fd.id = f.faixa_def_id
+          LEFT JOIN aluno_faixa f ON f.aluno_id = af.id AND f.ativa = true
+          LEFT JOIN faixa_def fd ON fd.id = f.faixa_def_id
           ORDER BY COALESCE(pm.total_presencas, 0) DESC
           LIMIT 100
         `;
@@ -2312,7 +2312,7 @@ export class PresencaService {
     const query = `
       WITH dias_unicos AS (
         SELECT DISTINCT DATE(created_at) as data
-        FROM teamcruz.presencas
+        FROM presencas
         WHERE aluno_id = $1
           AND created_at >= CURRENT_DATE - INTERVAL '30 days'
         ORDER BY DATE(created_at) DESC
@@ -2813,7 +2813,7 @@ export class PresencaService {
 
     if (perfisNomes.includes('GERENTE_UNIDADE')) {
       const result = await this.personRepository.query(
-        `SELECT unidade_id FROM teamcruz.gerente_unidades WHERE usuario_id = $1 AND ativo = true`,
+        `SELECT unidade_id FROM gerente_unidades WHERE usuario_id = $1 AND ativo = true`,
         [user.id],
       );
       return result.map((r: any) => r.unidade_id).filter(Boolean);
@@ -2821,7 +2821,7 @@ export class PresencaService {
 
     if (perfisNomes.includes('RECEPCIONISTA')) {
       const result = await this.personRepository.query(
-        `SELECT unidade_id FROM teamcruz.recepcionista_unidades WHERE usuario_id = $1 AND ativo = true`,
+        `SELECT unidade_id FROM recepcionista_unidades WHERE usuario_id = $1 AND ativo = true`,
         [user.id],
       );
       return result.map((r: any) => r.unidade_id).filter(Boolean);
@@ -2833,8 +2833,8 @@ export class PresencaService {
     ) {
       const result = await this.personRepository.query(
         `SELECT pu.unidade_id
-         FROM teamcruz.professor_unidades pu
-         LEFT JOIN teamcruz.professores p ON p.id = pu.professor_id
+         FROM professor_unidades pu
+         LEFT JOIN professores p ON p.id = pu.professor_id
          WHERE (p.usuario_id = $1 OR pu.usuario_id = $1) AND pu.ativo = true`,
         [user.id],
       );
@@ -2844,8 +2844,8 @@ export class PresencaService {
     if (perfisNomes.includes('FRANQUEADO')) {
       const result = await this.personRepository.query(
         `SELECT u.id as unidade_id
-         FROM teamcruz.franqueados f
-         INNER JOIN teamcruz.unidades u ON u.franqueado_id = f.id
+         FROM franqueados f
+         INNER JOIN unidades u ON u.franqueado_id = f.id
          WHERE f.usuario_id = $1 AND u.status = 'ATIVA'`,
         [user.id],
       );
@@ -2861,7 +2861,7 @@ export class PresencaService {
     const result = await this.personRepository.query(
       `
       SELECT tu.unidade_id
-      FROM teamcruz.tablet_unidades tu
+      FROM tablet_unidades tu
       WHERE tu.tablet_id = $1 AND tu.ativo = true
       LIMIT 1
     `,
@@ -2875,7 +2875,7 @@ export class PresencaService {
       return null;
     }
     const result = await this.personRepository.query(
-      `SELECT id FROM teamcruz.franqueados WHERE usuario_id = $1 LIMIT 1`,
+      `SELECT id FROM franqueados WHERE usuario_id = $1 LIMIT 1`,
       [userId],
     );
     return result[0]?.id || null;
@@ -3030,3 +3030,4 @@ export class PresencaService {
     return resultado;
   }
 }
+

@@ -1,11 +1,11 @@
-import {
+﻿import {
   Entity, PrimaryGeneratedColumn, Column,
   ManyToOne, JoinColumn,
 } from 'typeorm';
 import { ProdutoPedido } from './produto-pedido.entity';
 import { UnidadeProduto } from './unidade-produto.entity';
 
-@Entity({ name: 'produto_pedidos_itens', schema: 'teamcruz' })
+@Entity({ name: 'produto_pedidos_itens' })
 export class ProdutoPedidoItem {
   @PrimaryGeneratedColumn('uuid')
   id!: string;

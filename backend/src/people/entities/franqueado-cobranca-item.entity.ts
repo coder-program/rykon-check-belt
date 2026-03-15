@@ -1,4 +1,4 @@
-import {
+﻿import {
   Entity,
   Column,
   PrimaryGeneratedColumn,
@@ -14,7 +14,7 @@ export type TipoItemCobranca =
   | 'DESCONTO'
   | 'AJUSTE';
 
-@Entity({ name: 'franqueado_cobranca_itens', schema: 'teamcruz' })
+@Entity({ name: 'franqueado_cobranca_itens' })
 export class FranqueadoCobrancaItem {
   @PrimaryGeneratedColumn('uuid')
   id!: string;

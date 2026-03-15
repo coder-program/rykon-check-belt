@@ -1,14 +1,9 @@
 ﻿import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource, In } from 'typeorm';
-import { Usuario } from '../usuarios/entities/usuario.entity';
-import { Person, TipoCadastro } from '../people/entities/person.entity';
-import { Aluno, StatusAluno } from '../people/entities/aluno.entity';
-import { Unidade } from '../people/entities/unidade.entity';
-import { Franqueado } from '../people/entities/franqueado.entity';
+import { DataSource } from 'typeorm';
 import * as dayjs from 'dayjs';
 import * as utc from 'dayjs/plugin/utc';
 import * as timezone from 'dayjs/plugin/timezone';
+import { tenantAsyncStorage } from '../common/tenant-context';
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -16,72 +11,70 @@ dayjs.extend(timezone);
 @Injectable()
 export class DashboardService {
   constructor(
-    @InjectRepository(Usuario)
-    private readonly usuarioRepository: Repository<Usuario>,
-    @InjectRepository(Person)
-    private readonly personRepository: Repository<Person>,
-    @InjectRepository(Aluno)
-    private readonly alunoRepository: Repository<Aluno>,
-    @InjectRepository(Unidade)
-    private readonly unidadeRepository: Repository<Unidade>,
-    @InjectRepository(Franqueado)
-    private readonly franqueadoRepository: Repository<Franqueado>,
     private readonly dataSource: DataSource,
   ) {}
 
-  async getStats(userId: string, unidadeId?: string) {
-    try {
-      // Buscar o usuário logado e seus perfis
-      const usuario = await this.usuarioRepository.findOne({
-        where: { id: userId },
-        relations: ['perfis'],
-      });
+  async getStats(userId: string, unidadeId?: string, schema?: string) {
+    schema = schema || tenantAsyncStorage.getStore()?.schema || 'teamcruz';
+    console.log(`[DashboardService.getStats] schema=${schema} userId=${userId}`);
 
-      if (!usuario) {
-        throw new Error('Usuário não encontrado');
+    try {
+      // Buscar perfis do usuário APENAS no schema do tenant — sem cruzamento entre tenants
+      const perfisRows = await this.dataSource.query(
+        `SELECT p.nome
+         FROM "${schema}".perfis p
+         INNER JOIN "${schema}".usuario_perfis up ON p.id = up.perfil_id
+         WHERE up.usuario_id = $1`,
+        [userId],
+      );
+
+      const usuarioRows = await this.dataSource.query(
+        `SELECT id FROM "${schema}".usuarios WHERE id = $1`,
+        [userId],
+      );
+
+      if (!usuarioRows || usuarioRows.length === 0) {
+        throw new Error('Usuário não encontrado no tenant');
       }
 
-      const perfis = usuario.perfis.map((p) => p.nome?.toUpperCase());
+      const perfis = perfisRows.map((p: any) => p.nome?.toUpperCase());
       const isFranqueado = perfis.includes('FRANQUEADO');
-      const isMaster = perfis.includes('MASTER');
-      const isGerenteUnidade = perfis.includes('GERENTE_UNIDADE');
+      const isMaster = perfis.includes('MASTER') || perfis.includes('SUPER_ADMIN');
+      const isGerenteUnidade = perfis.includes('GERENTE_UNIDADE') && !isMaster;
 
       let unidadesDoFranqueado: string[] = [];
 
       // Se for FRANQUEADO, buscar suas unidades
       if (isFranqueado && !isMaster) {
-        // Usar raw SQL igual ao /franqueados/me para garantir consistência
         const franqueadoRows = await this.dataSource.query(
-          `SELECT id FROM teamcruz.franqueados WHERE usuario_id = $1 AND ativo = true LIMIT 1`,
+          `SELECT id FROM "${schema}".franqueados WHERE usuario_id = $1 AND ativo = true LIMIT 1`,
           [userId],
         );
         const franqueadoId = franqueadoRows[0]?.id ?? null;
 
         if (franqueadoId) {
           const unidades = await this.dataSource.query(
-            `SELECT id FROM teamcruz.unidades WHERE franqueado_id = $1`,
+            `SELECT id FROM "${schema}".unidades WHERE franqueado_id = $1`,
             [franqueadoId],
           );
           if (unidades && unidades.length > 0) {
             unidadesDoFranqueado = unidades.map((u: { id: string }) => u.id);
           }
         } else {
-          // Fallback: procurar por email caso usuario_id não esteja vinculado
           const emailRows = await this.dataSource.query(
-            `SELECT f.id FROM teamcruz.franqueados f
-             INNER JOIN teamcruz.usuarios u ON u.email = f.email
+            `SELECT f.id FROM "${schema}".franqueados f
+             INNER JOIN "${schema}".usuarios u ON u.email = f.email
              WHERE u.id = $1 AND f.ativo = true LIMIT 1`,
             [userId],
           );
           const franqueadoIdEmail = emailRows[0]?.id ?? null;
           if (franqueadoIdEmail) {
-            // Vincular usuario_id para corrigir dado (auto-healing)
             await this.dataSource.query(
-              `UPDATE teamcruz.franqueados SET usuario_id = $1 WHERE id = $2`,
+              `UPDATE "${schema}".franqueados SET usuario_id = $1 WHERE id = $2`,
               [userId, franqueadoIdEmail],
             );
             const unidades = await this.dataSource.query(
-              `SELECT id FROM teamcruz.unidades WHERE franqueado_id = $1`,
+              `SELECT id FROM "${schema}".unidades WHERE franqueado_id = $1`,
               [franqueadoIdEmail],
             );
             if (unidades && unidades.length > 0) {
@@ -93,14 +86,12 @@ export class DashboardService {
 
       // Se for GERENTE_UNIDADE, buscar unidades que ele gerencia
       if (isGerenteUnidade && !isMaster && !isFranqueado) {
-        // Buscar unidades através da tabela gerente_unidades
         const unidadesGerente = await this.dataSource.query(
-          `SELECT unidade_id as id FROM teamcruz.gerente_unidades WHERE usuario_id = $1 AND ativo = true`,
+          `SELECT unidade_id as id FROM "${schema}".gerente_unidades WHERE usuario_id = $1 AND ativo = true`,
           [userId],
         );
-
         if (unidadesGerente && unidadesGerente.length > 0) {
-          unidadesDoFranqueado = unidadesGerente.map((u) => u.id);
+          unidadesDoFranqueado = unidadesGerente.map((u: any) => u.id);
         }
       }
 
@@ -123,189 +114,138 @@ export class DashboardService {
         };
       }
 
-      // Buscar usuários pendentes (inativos aguardando aprovação)
-      const usuariosPendentes = await this.usuarioRepository.count({
-        where: {
-          ativo: false,
-          cadastro_completo: true,
-        },
-      });
+      // Usuários pendentes
+      const pendentesResult = await this.dataSource.query(
+        `SELECT COUNT(*) as total FROM "${schema}".usuarios WHERE ativo = false AND cadastro_completo = true`,
+      );
+      const usuariosPendentes = parseInt(pendentesResult[0]?.total || '0');
 
       // Total de usuários
-      const totalUsuarios = await this.usuarioRepository.count();
+      const totalUsuariosResult = await this.dataSource.query(
+        `SELECT COUNT(*) as total FROM "${schema}".usuarios`,
+      );
+      const totalUsuarios = parseInt(totalUsuariosResult[0]?.total || '0');
 
-      // Total de alunos - FILTRADO POR FRANQUIA/UNIDADE
+      // Total de alunos - filtrado por franquia/unidade
       let totalAlunos = 0;
-
       if (unidadeId) {
-        // Se uma unidade específica foi selecionada
-        totalAlunos = await this.alunoRepository.count({
-          where: { status: StatusAluno.ATIVO, unidade_id: unidadeId },
-        });
-      } else if (isFranqueado && unidadesDoFranqueado.length > 0) {
-        // Se é franqueado, contar apenas alunos de suas unidades
-        const { In } = require('typeorm');
-        totalAlunos = await this.alunoRepository.count({
-          where: {
-            status: StatusAluno.ATIVO,
-            unidade_id: In(unidadesDoFranqueado),
-          },
-        });
-      } else if (isGerenteUnidade && unidadesDoFranqueado.length > 0) {
-        // Se é gerente, contar apenas alunos de sua unidade
-        const { In } = require('typeorm');
-        totalAlunos = await this.alunoRepository.count({
-          where: {
-            status: StatusAluno.ATIVO,
-            unidade_id: In(unidadesDoFranqueado),
-          },
-        });
+        const r = await this.dataSource.query(
+          `SELECT COUNT(*) as total FROM "${schema}".alunos WHERE status = 'ATIVO' AND unidade_id = $1`,
+          [unidadeId],
+        );
+        totalAlunos = parseInt(r[0]?.total || '0');
+      } else if ((isFranqueado || isGerenteUnidade) && unidadesDoFranqueado.length > 0) {
+        const r = await this.dataSource.query(
+          `SELECT COUNT(*) as total FROM "${schema}".alunos WHERE status = 'ATIVO' AND unidade_id = ANY($1::uuid[])`,
+          [unidadesDoFranqueado],
+        );
+        totalAlunos = parseInt(r[0]?.total || '0');
       } else if (isMaster) {
-        // Se é MASTER, contar todos
-        totalAlunos = await this.alunoRepository.count({
-          where: { status: StatusAluno.ATIVO },
-        });
+        const r = await this.dataSource.query(
+          `SELECT COUNT(*) as total FROM "${schema}".alunos WHERE status = 'ATIVO'`,
+        );
+        totalAlunos = parseInt(r[0]?.total || '0');
       }
 
-      // Total de professores (usando a tabela professor_unidades)
+      // Total de professores
       let totalProfessores = 0;
-
       if (unidadeId) {
-        // Contar professores vinculados a uma unidade específica
         const result = await this.dataSource.query(
-          `
-          SELECT COUNT(DISTINCT pu.professor_id) as total
-          FROM teamcruz.professor_unidades pu
-          WHERE pu.unidade_id = $1
-            AND pu.ativo = true
-        `,
+          `SELECT COUNT(DISTINCT pu.professor_id) as total
+           FROM "${schema}".professor_unidades pu
+           WHERE pu.unidade_id = $1 AND pu.ativo = true`,
           [unidadeId],
         );
         totalProfessores = parseInt(result[0]?.total || '0');
-      } else if (isFranqueado && unidadesDoFranqueado.length > 0) {
-        // Contar professores vinculados às unidades do franqueado
+      } else if ((isFranqueado || isGerenteUnidade) && unidadesDoFranqueado.length > 0) {
         const result = await this.dataSource.query(
-          `
-          SELECT COUNT(DISTINCT pu.professor_id) as total
-          FROM teamcruz.professor_unidades pu
-          WHERE pu.unidade_id = ANY($1::uuid[])
-            AND pu.ativo = true
-        `,
-          [unidadesDoFranqueado],
-        );
-        totalProfessores = parseInt(result[0]?.total || '0');
-      } else if (isGerenteUnidade && unidadesDoFranqueado.length > 0) {
-        // Contar professores vinculados às unidades do gerente
-        const result = await this.dataSource.query(
-          `
-          SELECT COUNT(DISTINCT pu.professor_id) as total
-          FROM teamcruz.professor_unidades pu
-          WHERE pu.unidade_id = ANY($1::uuid[])
-            AND pu.ativo = true
-        `,
+          `SELECT COUNT(DISTINCT pu.professor_id) as total
+           FROM "${schema}".professor_unidades pu
+           WHERE pu.unidade_id = ANY($1::uuid[]) AND pu.ativo = true`,
           [unidadesDoFranqueado],
         );
         totalProfessores = parseInt(result[0]?.total || '0');
       } else if (isMaster) {
-        // Master vê todos os professores cadastrados
-        totalProfessores = await this.personRepository.count({
-          where: { tipo_cadastro: TipoCadastro.PROFESSOR },
-        });
+        const result = await this.dataSource.query(
+          `SELECT COUNT(*) as total FROM "${schema}".professores`,
+        );
+        totalProfessores = parseInt(result[0]?.total || '0');
       }
 
-      // Total de unidades - filtrado por franquia
+      // Total de unidades
       let totalUnidades = 0;
-
       if (isFranqueado && unidadesDoFranqueado.length > 0) {
         totalUnidades = unidadesDoFranqueado.length;
       } else if (isGerenteUnidade && unidadesDoFranqueado.length > 0) {
         totalUnidades = unidadesDoFranqueado.length;
       } else if (isMaster) {
-        totalUnidades = await this.unidadeRepository.count();
-      }
-
-      // Total de franqueados (apenas MASTER vê todos)
-      const totalFranqueados = isMaster
-        ? await this.franqueadoRepository.count()
-        : 0;
-
-      // Estatísticas detalhadas de alunos
-      let alunosAtivos = 0;
-      let alunosInativos = 0;
-      let novosEsteMes = 0;
-      let taxaRetencao = 0;
-
-      // Buscar todos os alunos com base no filtro (unidade/franquia)
-      let todosAlunos: Aluno[] = [];
-
-      if (unidadeId) {
-        todosAlunos = await this.alunoRepository.find({
-          where: { unidade_id: unidadeId },
-        });
-      } else if (isFranqueado && unidadesDoFranqueado.length > 0) {
-        todosAlunos = await this.alunoRepository.find({
-          where: { unidade_id: In(unidadesDoFranqueado) },
-        });
-      } else if (isGerenteUnidade && unidadesDoFranqueado.length > 0) {
-        todosAlunos = await this.alunoRepository.find({
-          where: { unidade_id: In(unidadesDoFranqueado) },
-        });
-      } else if (isMaster) {
-        todosAlunos = await this.alunoRepository.find();
-      }
-
-      // Calcular estatísticas
-      alunosAtivos = todosAlunos.filter(
-        (a) => a.status === StatusAluno.ATIVO,
-      ).length;
-      alunosInativos = todosAlunos.filter(
-        (a) => a.status !== StatusAluno.ATIVO,
-      ).length;
-
-      // Novos este mês
-      const agora = dayjs().tz('America/Sao_Paulo');
-      const mesAtual = agora.month(); // dayjs retorna 0-11
-      const anoAtual = agora.year();
-      novosEsteMes = todosAlunos.filter((a) => {
-        if (!a.data_matricula) return false;
-        const dtMatricula = dayjs(a.data_matricula).tz('America/Sao_Paulo');
-        return (
-          dtMatricula.month() === mesAtual &&
-          dtMatricula.year() === anoAtual
+        const r = await this.dataSource.query(
+          `SELECT COUNT(*) as total FROM "${schema}".unidades`,
         );
+        totalUnidades = parseInt(r[0]?.total || '0');
+      }
+
+      // Total de franqueados
+      let totalFranqueados = 0;
+      if (isMaster) {
+        const r = await this.dataSource.query(
+          `SELECT COUNT(*) as total FROM "${schema}".franqueados`,
+        );
+        totalFranqueados = parseInt(r[0]?.total || '0');
+      }
+
+      // Buscar alunos para estatísticas detalhadas
+      let alunosRows: Array<{ status: string; data_matricula: string }> = [];
+      if (unidadeId) {
+        alunosRows = await this.dataSource.query(
+          `SELECT status, data_matricula FROM "${schema}".alunos WHERE unidade_id = $1`,
+          [unidadeId],
+        );
+      } else if ((isFranqueado || isGerenteUnidade) && unidadesDoFranqueado.length > 0) {
+        alunosRows = await this.dataSource.query(
+          `SELECT status, data_matricula FROM "${schema}".alunos WHERE unidade_id = ANY($1::uuid[])`,
+          [unidadesDoFranqueado],
+        );
+      } else if (isMaster) {
+        alunosRows = await this.dataSource.query(
+          `SELECT status, data_matricula FROM "${schema}".alunos`,
+        );
+      }
+
+      const alunosAtivos = alunosRows.filter((a) => a.status === 'ATIVO').length;
+      const alunosInativos = alunosRows.filter((a) => a.status !== 'ATIVO').length;
+
+      const agora = dayjs().tz('America/Sao_Paulo');
+      const mesAtual = agora.month();
+      const anoAtual = agora.year();
+      const novosEsteMes = alunosRows.filter((a) => {
+        if (!a.data_matricula) return false;
+        const dt = dayjs(a.data_matricula).tz('America/Sao_Paulo');
+        return dt.month() === mesAtual && dt.year() === anoAtual;
       }).length;
 
-      // Taxa de retenção (alunos com mais de 3 meses que ainda estão ativos)
       const tresMesesAtras = dayjs().tz('America/Sao_Paulo').subtract(3, 'month').toDate();
-
-      const alunosElegiveis = todosAlunos.filter((a) => {
+      const alunosElegiveis = alunosRows.filter((a) => {
         if (!a.data_matricula) return false;
-        const dtMatricula = dayjs(a.data_matricula).toDate();
-        return dtMatricula <= tresMesesAtras;
+        return new Date(a.data_matricula) <= tresMesesAtras;
+      }).length;
+      const alunosRetidos = alunosRows.filter((a) => {
+        if (!a.data_matricula) return false;
+        return new Date(a.data_matricula) <= tresMesesAtras && a.status === 'ATIVO';
       }).length;
 
-      const alunosRetidos = todosAlunos.filter((a) => {
-        if (!a.data_matricula) return false;
-        const dtMatricula = dayjs(a.data_matricula).toDate();
-        return dtMatricula <= tresMesesAtras && a.status === StatusAluno.ATIVO;
-      }).length;
-
+      let taxaRetencao = 0;
       if (alunosElegiveis > 0) {
         taxaRetencao = Math.round((alunosRetidos / alunosElegiveis) * 100);
-      } else {
-        // Se não há alunos com mais de 3 meses, calcular taxa com base nos ativos atuais
-        const totalTodos = todosAlunos.length;
-        if (totalTodos > 0) {
-          taxaRetencao = Math.round((alunosAtivos / totalTodos) * 100);
-        }
+      } else if (alunosRows.length > 0) {
+        taxaRetencao = Math.round((alunosAtivos / alunosRows.length) * 100);
       }
 
-      // Buscar estatísticas complementares
-      const aulasHoje = await this.getAulasHoje(unidadeId, unidadesDoFranqueado);
-      const proximosGraduaveis = await this.getProximosGraduaveis(unidadeId, unidadesDoFranqueado);
-      const presencasHoje = await this.getPresencasHoje(unidadeId, unidadesDoFranqueado);
+      const aulasHoje = await this.getAulasHoje(schema, unidadeId, unidadesDoFranqueado);
+      const proximosGraduaveis = await this.getProximosGraduaveis(schema, unidadeId, unidadesDoFranqueado);
+      const presencasHoje = await this.getPresencasHoje(schema, unidadeId, unidadesDoFranqueado);
 
-      const stats = {
+      return {
         totalUsuarios,
         usuariosPendentes,
         totalFranqueados,
@@ -320,7 +260,6 @@ export class DashboardService {
         proximosGraduaveis,
         presencasHoje,
       };
-      return stats;
     } catch (error) {
       console.error(' Erro ao carregar estatísticas:', error);
       return {
@@ -337,18 +276,11 @@ export class DashboardService {
     }
   }
 
-  private async getAulasHoje(unidadeId?: string, unidadesDoFranqueado?: string[]): Promise<number> {
+  private async getAulasHoje(schema: string, unidadeId?: string, unidadesDoFranqueado?: string[]): Promise<number> {
     try {
-      const hoje = dayjs().tz('America/Sao_Paulo');
-      const diaSemanaHoje = hoje.day();
+      const diaSemanaHoje = dayjs().tz('America/Sao_Paulo').day();
 
-      let query = `
-        SELECT COUNT(*) as total
-        FROM teamcruz.aulas
-        WHERE ativo = true
-          AND dia_semana = $1
-      `;
-
+      let query = `SELECT COUNT(*) as total FROM "${schema}".aulas WHERE ativo = true AND dia_semana = $1`;
       const params: any[] = [diaSemanaHoje];
 
       if (unidadeId) {
@@ -360,34 +292,27 @@ export class DashboardService {
       }
 
       const result = await this.dataSource.query(query, params);
-      const total = parseInt(result[0]?.total || '0');
-      
-      return total;
+      return parseInt(result[0]?.total || '0');
     } catch (error) {
       console.error('❌ [AULAS HOJE] Erro:', error);
       return 0;
     }
   }
 
-  private async getPresencasHoje(unidadeId?: string, unidadesDoFranqueado?: string[]): Promise<number> {
+  private async getPresencasHoje(schema: string, unidadeId?: string, unidadesDoFranqueado?: string[]): Promise<number> {
     try {
-      // 🔥 Usar dayjs para calcular "hoje" no Brasil (America/Sao_Paulo)
       const hojeBrasil = dayjs().tz('America/Sao_Paulo').startOf('day');
-      const amanhaBrasil = hojeBrasil.add(1, 'day');
-      
-      // Converter para UTC para a query
       const hoje = hojeBrasil.utc().toDate();
-      const amanha = amanhaBrasil.utc().toDate();
+      const amanha = hojeBrasil.add(1, 'day').utc().toDate();
 
       let query = `
         SELECT COUNT(*) as total
-        FROM teamcruz.presencas p
-        INNER JOIN teamcruz.aulas a ON p.aula_id = a.id
+        FROM "${schema}".presencas p
+        INNER JOIN "${schema}".aulas a ON p.aula_id = a.id
         WHERE p.status = 'presente'
           AND p.hora_checkin >= $1
           AND p.hora_checkin < $2
       `;
-
       const params: any[] = [hoje, amanha];
 
       if (unidadeId) {
@@ -399,26 +324,21 @@ export class DashboardService {
       }
 
       const result = await this.dataSource.query(query, params);
-      const total = parseInt(result[0]?.total || '0');
-      
-      return total;
+      return parseInt(result[0]?.total || '0');
     } catch (error) {
       console.error('❌ [PRESENÇAS HOJE] Erro:', error);
       return 0;
     }
   }
 
-  private async getProximosGraduaveis(unidadeId?: string, unidadesDoFranqueado?: string[]): Promise<number> {
+  private async getProximosGraduaveis(schema: string, unidadeId?: string, unidadesDoFranqueado?: string[]): Promise<number> {
     try {
-      // Buscar alunos próximos a completar requisitos de graduação
       let query = `
         SELECT COUNT(*) as total
-        FROM teamcruz.alunos a
-        INNER JOIN teamcruz.aluno_faixa fa ON a.id = fa.aluno_id
-        WHERE a.status = 'ATIVO'
-          AND fa.ativa = true
+        FROM "${schema}".alunos a
+        INNER JOIN "${schema}".aluno_faixa fa ON a.id = fa.aluno_id
+        WHERE a.status = 'ATIVO' AND fa.ativa = true
       `;
-
       const params: any[] = [];
 
       if (unidadeId) {
@@ -430,9 +350,7 @@ export class DashboardService {
       }
 
       const result = await this.dataSource.query(query, params);
-      const total = parseInt(result[0]?.total || '0');
-      
-      return total;
+      return parseInt(result[0]?.total || '0');
     } catch (error) {
       console.error('❌ [PRÓXIMOS GRADUÁVEIS] Erro:', error);
       return 0;

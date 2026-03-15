@@ -1,4 +1,4 @@
-import {
+﻿import {
   Entity, PrimaryGeneratedColumn, Column,
   CreateDateColumn, UpdateDateColumn,
   ManyToOne, OneToMany, JoinColumn,
@@ -22,7 +22,7 @@ export enum MetodoPagamento {
   CARTAO = 'CARTAO',
 }
 
-@Entity({ name: 'produto_pedidos', schema: 'teamcruz' })
+@Entity({ name: 'produto_pedidos' })
 export class ProdutoPedido {
   @PrimaryGeneratedColumn('uuid')
   id!: string;

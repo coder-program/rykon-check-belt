@@ -1,4 +1,4 @@
-import {
+﻿import {
   Entity,
   PrimaryGeneratedColumn,
   Column,
@@ -19,7 +19,7 @@ export interface ConfigFaixas {
   [faixaCodigo: string]: ConfigFaixa;
 }
 
-@Entity('configuracoes_graduacao', { schema: 'teamcruz' })
+@Entity('configuracoes_graduacao')
 export class ConfiguracaoGraduacao {
   @PrimaryGeneratedColumn('uuid')
   id: string;

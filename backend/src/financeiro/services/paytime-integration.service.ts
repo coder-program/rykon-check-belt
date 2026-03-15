@@ -171,7 +171,7 @@ export class PaytimeIntegrationService {
             'Cliente',
           document: fatura.aluno.cpf?.replace(/\D/g, ''),
           phone: fatura.aluno.telefone?.replace(/\D/g, '') || '00000000000',
-          email: fatura.aluno.email || `aluno${fatura.aluno_id}@teamcruz.com`,
+          email: fatura.aluno.email || `aluno${fatura.aluno_id}@com`,
         },
         info_additional: [
           {
@@ -188,7 +188,7 @@ export class PaytimeIntegrationService {
           },
           {
             key: 'aluno_email',
-            value: fatura.aluno.email || `aluno${fatura.aluno_id}@teamcruz.com`,
+            value: fatura.aluno.email || `aluno${fatura.aluno_id}@com`,
           },
           {
             key: 'aluno_telefone',
@@ -405,7 +405,7 @@ export class PaytimeIntegrationService {
             'Cliente',
           document: cpfParaUsar.replace(/\D/g, ''),
           phone: fatura.aluno.telefone?.replace(/\D/g, '') || '00000000000',
-          email: fatura.aluno.email || `aluno${fatura.aluno_id}@teamcruz.com`,
+          email: fatura.aluno.email || `aluno${fatura.aluno_id}@com`,
           address: {
             street: address.street,
             number: address.number,
@@ -1393,7 +1393,7 @@ export class PaytimeIntegrationService {
       return {
         nome: aluno.nome_completo,
         cpf: cpfAluno,
-        email: aluno.email || `aluno${aluno.id}@teamcruz.com`,
+        email: aluno.email || `aluno${aluno.id}@com`,
         cep: cepAluno,
         logradouro: aluno.endereco.logradouro || 'Rua não informada',
         numero: aluno.endereco.numero || 'S/N',
@@ -1422,7 +1422,7 @@ export class PaytimeIntegrationService {
         return {
           nome: aluno.responsavel.nome_completo,
           cpf: cpfResp,
-          email: aluno.responsavel.email || `responsavel${aluno.responsavel.id}@teamcruz.com`,
+          email: aluno.responsavel.email || `responsavel${aluno.responsavel.id}@com`,
           cep: cepResp,
           logradouro: aluno.responsavel.endereco.logradouro || 'Rua não informada',
           numero: aluno.responsavel.endereco.numero || 'S/N',
@@ -1627,7 +1627,7 @@ export class PaytimeIntegrationService {
           last_name: fatura.aluno.nome_completo.split(' ').slice(1).join(' ') || 'Cliente',
           document: fatura.aluno.cpf?.replace(/\D/g, ''),
           phone: fatura.aluno.telefone?.replace(/\D/g, '') || '00000000000',
-          email: fatura.aluno.email || `aluno${fatura.aluno_id}@teamcruz.com`,
+          email: fatura.aluno.email || `aluno${fatura.aluno_id}@com`,
           address: {
             street: address.street,
             number: address.number,
@@ -1818,7 +1818,7 @@ export class PaytimeIntegrationService {
         last_name: fatura.aluno.nome_completo.split(' ').slice(1).join(' ') || 'Cliente',
         document: fatura.aluno.cpf?.replace(/\D/g, ''),
         phone: fatura.aluno.telefone?.replace(/\D/g, '') || '00000000000',
-        email: fatura.aluno.email || `aluno${fatura.aluno_id}@teamcruz.com`,
+        email: fatura.aluno.email || `aluno${fatura.aluno_id}@com`,
       };
 
       // Incluir endereço se disponível (exigido pelo swagger para cobranças CREDIT)

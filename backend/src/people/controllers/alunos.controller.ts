@@ -183,7 +183,7 @@ export class AlunosController {
       try {
         // Primeiro tentar buscar responsável do usuário logado
         const responsavel = await this.dataSource.query(
-          `SELECT id FROM teamcruz.responsaveis WHERE usuario_id = $1 LIMIT 1`,
+          `SELECT id FROM responsaveis WHERE usuario_id = $1 LIMIT 1`,
           [req.user.id],
         );
 
@@ -193,7 +193,7 @@ export class AlunosController {
         } else {
           // Se não for responsável, verificar se é um aluno (qualquer aluno pode cadastrar dependentes)
           const aluno = await this.dataSource.query(
-            `SELECT id, responsavel_id FROM teamcruz.alunos WHERE usuario_id = $1 LIMIT 1`,
+            `SELECT id, responsavel_id FROM alunos WHERE usuario_id = $1 LIMIT 1`,
             [req.user.id],
           );
 
@@ -224,7 +224,7 @@ export class AlunosController {
               ).replace(/\D/g, '');
 
               const novoResponsavel = await this.dataSource.query(
-                `INSERT INTO teamcruz.responsaveis
+                `INSERT INTO responsaveis
                  (usuario_id, nome_completo, email, cpf, telefone)
                  VALUES ($1, $2, $3, $4, $5)
                  RETURNING id`,
@@ -237,7 +237,7 @@ export class AlunosController {
 
                 // Atualizar o aluno atual com o responsavel_id
                 await this.dataSource.query(
-                  `UPDATE teamcruz.alunos SET responsavel_id = $1 WHERE id = $2`,
+                  `UPDATE alunos SET responsavel_id = $1 WHERE id = $2`,
                   [dto.responsavel_id, aluno[0].id],
                 );
               }
@@ -417,7 +417,7 @@ export class AlunosController {
     let isFranqueadoDoAluno = false;
     if (perfis.includes('FRANQUEADO')) {
       const franqueadoResult = await this.dataSource.query(
-        `SELECT id FROM teamcruz.franqueados WHERE usuario_id = $1 LIMIT 1`,
+        `SELECT id FROM franqueados WHERE usuario_id = $1 LIMIT 1`,
         [req.user.id],
       );
 
@@ -426,8 +426,8 @@ export class AlunosController {
 
         // Verificar se a unidade do aluno pertence ao franqueado
         const unidadeResult = await this.dataSource.query(
-          `SELECT u.franqueado_id FROM teamcruz.unidades u
-           INNER JOIN teamcruz.alunos a ON a.unidade_id = u.id
+          `SELECT u.franqueado_id FROM unidades u
+           INNER JOIN alunos a ON a.unidade_id = u.id
            WHERE a.id = $1 AND u.franqueado_id = $2`,
           [id, franqueadoId],
         );
@@ -445,12 +445,12 @@ export class AlunosController {
       
       if (isGerenteUnidade) {
         usuarioUnidades = await this.dataSource.query(
-          `SELECT unidade_id FROM teamcruz.gerente_unidades WHERE usuario_id = $1 AND ativo = true LIMIT 1`,
+          `SELECT unidade_id FROM gerente_unidades WHERE usuario_id = $1 AND ativo = true LIMIT 1`,
           [req.user.id],
         );
       } else if (isRecepcionista) {
         usuarioUnidades = await this.dataSource.query(
-          `SELECT unidade_id FROM teamcruz.professor_unidades WHERE usuario_id = $1 AND ativo = true LIMIT 1`,
+          `SELECT unidade_id FROM professor_unidades WHERE usuario_id = $1 AND ativo = true LIMIT 1`,
           [req.user.id],
         );
       }
@@ -573,3 +573,4 @@ export class AlunosController {
     return { message: 'Matrícula cancelada com sucesso' };
   }
 }
+

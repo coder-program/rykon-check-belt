@@ -1,7 +1,7 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+﻿import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 import { Unidade } from '../../people/entities/unidade.entity';
 
-@Entity({ schema: 'teamcruz', name: 'bank_accounts' })
+@Entity({ name: 'bank_accounts' })
 export class BankAccount {
   @PrimaryGeneratedColumn('uuid')
   id: string;

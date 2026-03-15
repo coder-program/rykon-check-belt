@@ -318,7 +318,7 @@ export class CatracaService {
     if (aulaModalidadeId) return aulaModalidadeId;
     // Fallback: pegar a primeira modalidade ativa do aluno
     const rows = await this.dataSource.query(
-      `SELECT modalidade_id FROM teamcruz.aluno_modalidades WHERE aluno_id = $1 LIMIT 1`,
+      `SELECT modalidade_id FROM aluno_modalidades WHERE aluno_id = $1 LIMIT 1`,
       [alunoId],
     );
     return rows?.[0]?.modalidade_id ?? undefined;
@@ -461,3 +461,4 @@ export class CatracaService {
     }
   }
 }
+

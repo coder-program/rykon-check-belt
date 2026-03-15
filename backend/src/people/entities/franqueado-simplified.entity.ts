@@ -1,4 +1,4 @@
-import {
+﻿import {
   Entity,
   Column,
   PrimaryGeneratedColumn,
@@ -12,7 +12,7 @@ import { Usuario } from '../../usuarios/entities/usuario.entity';
 
 export type SituacaoFranqueado = 'ATIVA' | 'INATIVA' | 'EM_HOMOLOGACAO';
 
-@Entity({ name: 'franqueados', schema: 'teamcruz' })
+@Entity({ name: 'franqueados' })
 export class Franqueado {
   @PrimaryGeneratedColumn('uuid')
   id: string;

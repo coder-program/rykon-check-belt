@@ -179,7 +179,7 @@ export class AulaService {
     // 🔍 QUERY RAW para verificar o que REALMENTE está no banco
     const queryRaw = await this.aulaRepository.manager.query(
       `SELECT id, nome, professor_id, dia_semana, updated_at 
-       FROM teamcruz.aulas 
+       FROM aulas 
        WHERE id = $1`,
       [id]
     );
@@ -346,8 +346,8 @@ export class AulaService {
         if (isFranqueado) {
           // Franqueado: buscar unidades do franqueado
           const unidadesResult = await this.aulaRepository.manager.query(
-            `SELECT id FROM teamcruz.unidades WHERE franqueado_id =
-             (SELECT id FROM teamcruz.franqueados WHERE usuario_id = $1)`,
+            `SELECT id FROM unidades WHERE franqueado_id =
+             (SELECT id FROM franqueados WHERE usuario_id = $1)`,
             [user.id],
           );
 
@@ -361,7 +361,7 @@ export class AulaService {
         } else if (isGerente) {
           // Gerente: buscar unidade que ele gerencia
           const unidadeResult = await this.aulaRepository.manager.query(
-            `SELECT unidade_id FROM teamcruz.gerente_unidades WHERE usuario_id = $1 AND ativo = true LIMIT 1`,
+            `SELECT unidade_id FROM gerente_unidades WHERE usuario_id = $1 AND ativo = true LIMIT 1`,
             [user.id],
           );
           if (unidadeResult.length > 0) {
@@ -382,10 +382,10 @@ export class AulaService {
         COUNT(DISTINCT DATE(aula.data_hora_inicio)) as dias_trabalho,
         ROUND(COUNT(DISTINCT aula.id)::numeric / 4.0, 1) as media_aulas_semana,
         ARRAY_AGG(DISTINCT aula.tipo) FILTER (WHERE aula.tipo IS NOT NULL) as modalidades
-      FROM teamcruz.professores prof
-      INNER JOIN teamcruz.usuarios u ON u.id = prof.usuario_id
-      INNER JOIN teamcruz.professor_unidades pu ON pu.professor_id = prof.id AND pu.ativo = true
-      LEFT JOIN teamcruz.aulas aula ON aula.professor_id = prof.id
+      FROM professores prof
+      INNER JOIN usuarios u ON u.id = prof.usuario_id
+      INNER JOIN professor_unidades pu ON pu.professor_id = prof.id AND pu.ativo = true
+      LEFT JOIN aulas aula ON aula.professor_id = prof.id
         AND aula.data_hora_inicio >= $1
         AND aula.ativo = true
       WHERE prof.status = 'ATIVO'
@@ -424,3 +424,4 @@ export class AulaService {
     }));
   }
 }
+

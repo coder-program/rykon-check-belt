@@ -1,11 +1,11 @@
-import {
+﻿import {
   Entity, PrimaryGeneratedColumn, Column,
   CreateDateColumn, ManyToOne, JoinColumn, Unique,
 } from 'typeorm';
 import { UnidadeRecado } from './unidade-recado.entity';
 import { Aluno } from '../../people/entities/aluno.entity';
 
-@Entity({ name: 'unidade_recados_lidos', schema: 'teamcruz' })
+@Entity({ name: 'unidade_recados_lidos' })
 @Unique(['recado_id', 'aluno_id'])
 export class UnidadeRecadoLido {
   @PrimaryGeneratedColumn('uuid')

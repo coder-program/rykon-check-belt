@@ -7,10 +7,12 @@ import { LogOut, UserX, Menu, User, Clock } from "lucide-react";
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import { useTenant } from "@/hooks/useTenant";
 
 export default function Header() {
   const { user, logout, isAuthenticated } = useAuth();
   const router = useRouter();
+  const { tenant } = useTenant();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
   const [logoutAllDialogOpen, setLogoutAllDialogOpen] = useState(false);
@@ -134,20 +136,28 @@ export default function Header() {
         <div className="flex items-center justify-between h-16">
           {/* Logos */}
           <div className="flex items-center gap-4">
-            {/* Logo TeamCruz */}
+            {/* Logo da Academia (dinâmico por tenant) */}
             <div
               className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
               onClick={() => router.push("/dashboard")}
-              title="TeamCruz Jiu-Jitsu"
+              title={tenant.nome}
             >
               <div className="relative w-10 h-10 sm:w-12 sm:h-12">
-                <Image
-                  src="/imgs/teamcruz.png"
-                  alt="TeamCruz Logo"
-                  fill
-                  className="object-contain"
-                  priority
-                />
+                {tenant.logoUrl ? (
+                  <Image
+                    src={tenant.logoUrl}
+                    alt={`${tenant.nome} Logo`}
+                    fill
+                    className="object-contain"
+                    priority
+                  />
+                ) : (
+                  <div className="w-full h-full rounded-full bg-gradient-to-br from-gray-700 to-gray-900 flex items-center justify-center">
+                    <span className="text-white font-bold text-lg">
+                      {tenant.nome?.charAt(0)?.toUpperCase() ?? 'A'}
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
 

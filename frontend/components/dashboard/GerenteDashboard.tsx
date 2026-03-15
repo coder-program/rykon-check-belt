@@ -99,6 +99,7 @@ export default function GerenteDashboard() {
         {
           headers: {
             Authorization: `Bearer ${token}`,
+            "X-Tenant-ID": document.cookie.split(';').find(c => c.trim().startsWith('tenant-slug='))?.split('=')[1]?.trim() || 'teamcruz',
           },
         }
       );

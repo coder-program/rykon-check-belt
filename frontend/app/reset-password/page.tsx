@@ -14,8 +14,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { TeamCruzLogo } from "@/components/ui/teamcruz-logo";
 import { JiuJitsuWatermark } from "@/components/ui/jiujitsu-watermark";
+import Image from "next/image";
+import { useTenant } from "@/hooks/useTenant";
 import { Lock, Eye, EyeOff, CheckCircle, AlertCircle } from "lucide-react";
 
 function ResetPasswordContent() {
@@ -32,6 +33,7 @@ function ResetPasswordContent() {
 
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { tenant } = useTenant();
 
   useEffect(() => {
     const tokenFromUrl = searchParams.get("token");
@@ -120,7 +122,16 @@ function ResetPasswordContent() {
         <JiuJitsuWatermark />
         <Card className="w-full max-w-md bg-gray-800/90 backdrop-blur-sm border-gray-700">
           <CardHeader className="text-center space-y-4">
-            <TeamCruzLogo />
+            {tenant.logoUrl ? (
+              <div className="relative mx-auto w-fit">
+                <Image src={tenant.logoUrl} alt={`${tenant.nome} Logo`} width={80} height={80} className="rounded-full shadow-2xl border-4 border-white/20 hover:border-white/30 transition-all duration-300" priority />
+                <div className="absolute inset-0 rounded-full bg-gradient-to-br from-white/10 to-transparent pointer-events-none"></div>
+              </div>
+            ) : (
+              <div className="w-16 h-16 rounded-full flex items-center justify-center text-white text-2xl font-bold mx-auto" style={{ backgroundColor: tenant.corPrimaria ?? '#1a1a2e' }}>
+                {tenant.nome?.charAt(0)?.toUpperCase() ?? 'A'}
+              </div>
+            )}
             <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
               <CheckCircle className="w-8 h-8 text-green-600" />
             </div>
@@ -156,7 +167,16 @@ function ResetPasswordContent() {
       <JiuJitsuWatermark />
       <Card className="w-full max-w-md bg-gray-800/90 backdrop-blur-sm border-gray-700">
         <CardHeader className="text-center space-y-4">
-          <TeamCruzLogo />
+          {tenant.logoUrl ? (
+            <div className="relative mx-auto w-fit">
+              <Image src={tenant.logoUrl} alt={`${tenant.nome} Logo`} width={80} height={80} className="rounded-full shadow-2xl border-4 border-white/20 hover:border-white/30 transition-all duration-300" priority />
+              <div className="absolute inset-0 rounded-full bg-gradient-to-br from-white/10 to-transparent pointer-events-none"></div>
+            </div>
+          ) : (
+            <div className="w-16 h-16 rounded-full flex items-center justify-center text-white text-2xl font-bold mx-auto" style={{ backgroundColor: tenant.corPrimaria ?? '#1a1a2e' }}>
+              {tenant.nome?.charAt(0)?.toUpperCase() ?? 'A'}
+            </div>
+          )}
           <CardTitle className="text-2xl font-bold text-white">
             Nova Senha
           </CardTitle>

@@ -1,4 +1,4 @@
-import {
+﻿import {
   Entity,
   PrimaryGeneratedColumn,
   Column,
@@ -35,7 +35,7 @@ export enum StatusAprovacao {
   REJEITADO = 'REJEITADO',
 }
 
-@Entity({ name: 'presencas', schema: 'teamcruz' })
+@Entity({ name: 'presencas' })
 @Index(['aluno_id', 'aula_id'], { unique: true })
 @Index(['aula_id'])
 @Index(['aluno_id'])

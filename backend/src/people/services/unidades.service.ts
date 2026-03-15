@@ -8,20 +8,24 @@ import { DataSource } from 'typeorm';
 import { Unidade, StatusUnidade } from '../entities/unidade.entity';
 import { CreateUnidadeDto, UpdateUnidadeDto } from '../dto/unidades.dto';
 import { EnderecosService } from '../../enderecos/enderecos.service';
+import { tenantAsyncStorage } from '../../common/tenant-context';
 
 @Injectable()
 export class UnidadesService {
+  private get schema(): string {
+    return tenantAsyncStorage.getStore()?.schema || 'teamcruz';
+  }
   constructor(
     private readonly dataSource: DataSource,
     private readonly enderecosService: EnderecosService,
   ) {}
 
   async criar(dto: CreateUnidadeDto, user?: any): Promise<Unidade> {
-    const q = `INSERT INTO teamcruz.unidades
+    const q = `INSERT INTO unidades
       (franqueado_id, nome, cnpj, razao_social, nome_fantasia, inscricao_estadual, inscricao_municipal,
        telefone_fixo, telefone_celular, email, website, redes_sociais,
        status, horarios_funcionamento, endereco_id, requer_aprovacao_checkin, created_at, updated_at)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,COALESCE($13,'HOMOLOGACAO')::teamcruz.status_unidade_enum,
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,COALESCE($13,'HOMOLOGACAO')::status_unidade_enum,
               $14,$15,COALESCE($16,FALSE),NOW(),NOW())
       RETURNING *`;
 
@@ -66,7 +70,7 @@ export class UnidadesService {
       // Validar CNPJ duplicado apenas quando CNPJ for informado
       if (dto.cnpj && dto.cnpj.trim() !== '') {
         const cnpjExistente = await this.dataSource.query(
-          'SELECT id FROM teamcruz.unidades WHERE cnpj = $1',
+          'SELECT id FROM unidades WHERE cnpj = $1',
           [dto.cnpj],
         );
         if (cnpjExistente && cnpjExistente.length > 0) {
@@ -207,14 +211,14 @@ export class UnidadesService {
         : '';
 
     // Query para contar total
-    const countQ = `SELECT COUNT(*) as total FROM teamcruz.unidades u ${whereClause}`;
+    const countQ = `SELECT COUNT(*) as total FROM unidades u ${whereClause}`;
     const countRes = await this.dataSource.query(countQ, queryParams);
     const total = parseInt(countRes[0].total);
 
     // Query com dados
     const q = `SELECT u.*, f.nome as franqueado_nome
-      FROM teamcruz.unidades u
-      LEFT JOIN teamcruz.franqueados f ON f.id = u.franqueado_id
+      FROM unidades u
+      LEFT JOIN franqueados f ON f.id = u.franqueado_id
       ${whereClause}
       ORDER BY u.nome ASC
       LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
@@ -234,12 +238,12 @@ export class UnidadesService {
   }
 
   // Método PÚBLICO para listagem de unidades ativas (cadastro público)
-  async listarPublicasAtivas(): Promise<any[]> {
+  async listarPublicasAtivas(schema = this.schema): Promise<any[]> {
     const q = `
       SELECT u.id, u.nome, u.status, u.endereco_id,
              e.cidade, e.estado, e.bairro
-      FROM teamcruz.unidades u
-      LEFT JOIN teamcruz.enderecos e ON e.id = u.endereco_id
+      FROM "${schema}".unidades u
+      LEFT JOIN "${schema}".enderecos e ON e.id = u.endereco_id
       WHERE u.status = 'ATIVA'
       ORDER BY u.nome ASC
     `;
@@ -249,8 +253,8 @@ export class UnidadesService {
 
   async obter(id: string, user?: any): Promise<any> {
     const q = `SELECT u.*, f.nome as franqueado_nome
-      FROM teamcruz.unidades u
-      LEFT JOIN teamcruz.franqueados f ON f.id = u.franqueado_id
+      FROM unidades u
+      LEFT JOIN franqueados f ON f.id = u.franqueado_id
       WHERE u.id = $1`;
     const res = await this.dataSource.query(q, [id]);
     if (!res[0]) return null;
@@ -272,7 +276,7 @@ export class UnidadesService {
     // Validar CNPJ duplicado apenas quando CNPJ for informado e diferente de vazio
     if (dto.cnpj !== undefined && dto.cnpj && dto.cnpj.trim() !== '') {
       const cnpjExistente = await this.dataSource.query(
-        'SELECT id FROM teamcruz.unidades WHERE cnpj = $1 AND id != $2',
+        'SELECT id FROM unidades WHERE cnpj = $1 AND id != $2',
         [dto.cnpj, id],
       );
       if (cnpjExistente && cnpjExistente.length > 0) {
@@ -304,7 +308,7 @@ export class UnidadesService {
     // valida escopo quando for franqueado (não master)
     if (user && this.isFranqueado(user) && !this.isMaster(user)) {
       const current = await this.dataSource.query(
-        `SELECT franqueado_id FROM teamcruz.unidades WHERE id = $1`,
+        `SELECT franqueado_id FROM unidades WHERE id = $1`,
         [id],
       );
       const franqueadoId = await this.getFranqueadoIdByUser(user);
@@ -333,7 +337,7 @@ export class UnidadesService {
     if (!fields.length) return this.obter(id, user);
 
     values.push(id);
-    const q = `UPDATE teamcruz.unidades SET ${fields.join(', ')}, updated_at = NOW() WHERE id = $${idx} RETURNING *`;
+    const q = `UPDATE unidades SET ${fields.join(', ')}, updated_at = NOW() WHERE id = $${idx} RETURNING *`;
 
     const res = await this.dataSource.query(q, values);
     // Após atualizar, retornar também o endereço populado (quando houver)
@@ -345,7 +349,7 @@ export class UnidadesService {
     if (user && this.isFranqueado(user) && !this.isMaster(user)) {
       const franqueadoId = await this.getFranqueadoIdByUser(user);
       const current = await this.dataSource.query(
-        `SELECT franqueado_id FROM teamcruz.unidades WHERE id = $1`,
+        `SELECT franqueado_id FROM unidades WHERE id = $1`,
         [id],
       );
       if (!current[0] || current[0].franqueado_id !== franqueadoId) {
@@ -355,7 +359,7 @@ export class UnidadesService {
 
     // Verificar se há professores vinculados à unidade
     const professoresVinculados = await this.dataSource.query(
-      `SELECT COUNT(*) as total FROM teamcruz.professor_unidades
+      `SELECT COUNT(*) as total FROM professor_unidades
        WHERE unidade_id = $1 AND ativo = TRUE`,
       [id],
     );
@@ -368,7 +372,7 @@ export class UnidadesService {
 
     // Verificar se há alunos vinculados à unidade
     const alunosVinculados = await this.dataSource.query(
-      `SELECT COUNT(*) as total FROM teamcruz.alunos
+      `SELECT COUNT(*) as total FROM alunos
        WHERE unidade_id = $1`,
       [id],
     );
@@ -381,7 +385,7 @@ export class UnidadesService {
 
     // Verificar se há recepcionistas vinculados à unidade
     const recepcionistasVinculados = await this.dataSource.query(
-      `SELECT COUNT(*) as total FROM teamcruz.recepcionista_unidades
+      `SELECT COUNT(*) as total FROM recepcionista_unidades
        WHERE unidade_id = $1 AND ativo = TRUE`,
       [id],
     );
@@ -394,7 +398,7 @@ export class UnidadesService {
 
     // Verificar se há gerentes vinculados à unidade
     const gerentesVinculados = await this.dataSource.query(
-      `SELECT COUNT(*) as total FROM teamcruz.gerente_unidades
+      `SELECT COUNT(*) as total FROM gerente_unidades
        WHERE unidade_id = $1 AND ativo = TRUE`,
       [id],
     );
@@ -407,7 +411,7 @@ export class UnidadesService {
 
     // Soft delete - marca como INATIVA em vez de deletar
     const res = await this.dataSource.query(
-      `UPDATE teamcruz.unidades SET status = 'INATIVA', updated_at = NOW() WHERE id = $1 RETURNING id, nome, status`,
+      `UPDATE unidades SET status = 'INATIVA', updated_at = NOW() WHERE id = $1 RETURNING id, nome, status`,
       [id],
     );
 
@@ -455,7 +459,7 @@ export class UnidadesService {
         COUNT(*) FILTER (WHERE status = 'ATIVA') as ativas,
         COUNT(*) FILTER (WHERE status = 'INATIVA') as inativas,
         COUNT(*) FILTER (WHERE status = 'HOMOLOGACAO') as homologacao
-      FROM teamcruz.unidades
+      FROM unidades
       ${whereClause}
     `;
 
@@ -515,7 +519,7 @@ export class UnidadesService {
   private async getFranqueadoIdByUser(user: any): Promise<string | null> {
     if (!user?.id) return null;
     const res = await this.dataSource.query(
-      `SELECT id FROM teamcruz.franqueados WHERE usuario_id = $1 LIMIT 1`,
+      `SELECT id FROM franqueados WHERE usuario_id = $1 LIMIT 1`,
       [user.id],
     );
     const franqueadoId = res[0]?.id || null;
@@ -527,7 +531,7 @@ export class UnidadesService {
     if (!franqueadoId) return [];
 
     const res = await this.dataSource.query(
-      `SELECT * FROM teamcruz.unidades WHERE franqueado_id = $1`,
+      `SELECT * FROM unidades WHERE franqueado_id = $1`,
       [franqueadoId],
     );
 
@@ -540,7 +544,7 @@ export class UnidadesService {
     // Buscar unidade vinculada ao gerente através da tabela gerente_unidades
     const result = await this.dataSource.query(
       `SELECT gu.unidade_id
-       FROM teamcruz.gerente_unidades gu
+       FROM gerente_unidades gu
        WHERE gu.usuario_id = $1
          AND gu.ativo = true
        LIMIT 1`,
@@ -563,7 +567,7 @@ export class UnidadesService {
     // NOVO MÉTODO - busca todas as unidades vinculadas na tabela recepcionista_unidades
     const result = await this.dataSource.query(
       `SELECT ru.unidade_id
-       FROM teamcruz.recepcionista_unidades ru
+       FROM recepcionista_unidades ru
        WHERE ru.usuario_id = $1
          AND ru.ativo = true
        ORDER BY ru.created_at`,
@@ -580,8 +584,8 @@ export class UnidadesService {
     // Buscar unidade vinculada ao professor através da tabela professor_unidades
     const result = await this.dataSource.query(
       `SELECT pu.unidade_id
-       FROM teamcruz.professor_unidades pu
-       LEFT JOIN teamcruz.professores p ON p.id = pu.professor_id
+       FROM professor_unidades pu
+       LEFT JOIN professores p ON p.id = pu.professor_id
        WHERE (p.usuario_id = $1 OR pu.usuario_id = $1)
          AND pu.ativo = true
        LIMIT 1`,
@@ -638,10 +642,10 @@ export class UnidadesService {
     // Verificar permissões
     if (user.role !== 'master' && user.role !== 'franqueado') {
       const checkQuery = `
-        SELECT u.id FROM teamcruz.unidades u
+        SELECT u.id FROM unidades u
         WHERE u.id = $1 
         AND (u.franqueado_id = $2 OR EXISTS(
-          SELECT 1 FROM teamcruz.funcionarios f 
+          SELECT 1 FROM funcionarios f 
           WHERE f.user_id = $2 AND f.unidade_id = u.id
         ))
       `;
@@ -655,7 +659,7 @@ export class UnidadesService {
       SELECT 
         nome,
         transaction_limits
-      FROM teamcruz.unidades 
+      FROM unidades 
       WHERE id = $1
     `;
     
@@ -696,7 +700,7 @@ export class UnidadesService {
     if (user.role === 'franqueado') {
       // Franqueado só pode alterar suas próprias unidades
       const checkQuery = `
-        SELECT id FROM teamcruz.unidades
+        SELECT id FROM unidades
         WHERE id = $1 AND franqueado_id = $2
       `;
       const check = await this.dataSource.query(checkQuery, [id, user.id]);
@@ -721,7 +725,7 @@ export class UnidadesService {
 
     // Atualizar apenas os campos fornecidos
     const updateQuery = `
-      UPDATE teamcruz.unidades
+      UPDATE unidades
       SET 
         transaction_limits = COALESCE(transaction_limits, '{}'::jsonb) || $1::jsonb,
         updated_at = NOW()
@@ -746,3 +750,4 @@ export class UnidadesService {
     };
   }
 }
+

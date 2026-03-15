@@ -206,8 +206,8 @@ export class GraduacaoService {
       try {
         // Verificar perfis do usuário via raw SQL
         const perfisResult = await this.dataSource.query(
-          `SELECT p.nome FROM teamcruz.perfis p
-           INNER JOIN teamcruz.usuario_perfis up ON up.perfil_id = p.id
+          `SELECT p.nome FROM perfis p
+           INNER JOIN usuario_perfis up ON up.perfil_id = p.id
            WHERE up.usuario_id = $1`,
           [params.userId],
         );
@@ -219,14 +219,14 @@ export class GraduacaoService {
         if (isFranqueado) {
           // Buscar franqueado via raw SQL (mesma abordagem do dashboard.service)
           const franqueadoResult = await this.dataSource.query(
-            `SELECT id FROM teamcruz.franqueados WHERE usuario_id = $1 AND ativo = true LIMIT 1`,
+            `SELECT id FROM franqueados WHERE usuario_id = $1 AND ativo = true LIMIT 1`,
             [params.userId],
           );
 
           if (franqueadoResult && franqueadoResult.length > 0) {
             const franqueadoId = franqueadoResult[0].id;
             const unidadesResult = await this.dataSource.query(
-              `SELECT id FROM teamcruz.unidades WHERE franqueado_id = $1 AND ativo = true`,
+              `SELECT id FROM unidades WHERE franqueado_id = $1 AND ativo = true`,
               [franqueadoId],
             );
             unidadesDoFranqueado = unidadesResult.map((u: any) => u.id);
@@ -1468,8 +1468,8 @@ export class GraduacaoService {
       if (isFranqueado && !isMaster) {
         // Franqueado: buscar todas as unidades dele
         const unidadesResult = await this.alunoGraduacaoRepository.manager.query(
-          `SELECT id FROM teamcruz.unidades WHERE franqueado_id =
-           (SELECT id FROM teamcruz.franqueados WHERE usuario_id = $1)`,
+          `SELECT id FROM unidades WHERE franqueado_id =
+           (SELECT id FROM franqueados WHERE usuario_id = $1)`,
           [user.id],
         );
 
@@ -1495,10 +1495,10 @@ export class GraduacaoService {
           (COUNT(DISTINCT ag.id) FILTER (WHERE ag.aprovado = true)::numeric /
           NULLIF(COUNT(DISTINCT ag.id), 0) * 100), 1
         ) as taxa_aprovacao
-      FROM teamcruz.professores prof
-      INNER JOIN teamcruz.usuarios u ON u.id = prof.usuario_id
-      INNER JOIN teamcruz.professor_unidades pu ON pu.professor_id = prof.id AND pu.ativo = true
-      LEFT JOIN teamcruz.aluno_graduacao ag ON ag.concedido_por::uuid = u.id
+      FROM professores prof
+      INNER JOIN usuarios u ON u.id = prof.usuario_id
+      INNER JOIN professor_unidades pu ON pu.professor_id = prof.id AND pu.ativo = true
+      LEFT JOIN aluno_graduacao ag ON ag.concedido_por::uuid = u.id
         AND ag.dt_graduacao >= $1
       WHERE prof.status = 'ATIVO'
     `;
@@ -1855,7 +1855,7 @@ export class GraduacaoService {
 
     // Criar registro de faixa usando SQL direto
     await this.dataSource.query(
-      `INSERT INTO teamcruz.aluno_faixa (aluno_id, faixa_def_id, dt_inicio, ativa)
+      `INSERT INTO aluno_faixa (aluno_id, faixa_def_id, dt_inicio, ativa)
        VALUES ($1, $2, $3, $4)`,
       [aluno.id, faixa.id, new Date(data_graduacao), true],
     );
@@ -1863,7 +1863,7 @@ export class GraduacaoService {
     // Criar registro de graus
     for (let i = 0; i < graus; i++) {
       await this.dataSource.query(
-        `INSERT INTO teamcruz.aluno_faixa_grau (aluno_id, faixa_def_id, dt_grau, grau_numero)
+        `INSERT INTO aluno_faixa_grau (aluno_id, faixa_def_id, dt_grau, grau_numero)
          VALUES ($1, $2, $3, $4)`,
         [aluno.id, faixa.id, new Date(data_graduacao), i + 1],
       );
@@ -2355,3 +2355,4 @@ export class GraduacaoService {
     return mesesParaDias(faixaConfig.tempo_minimo_meses);
   }
 }
+

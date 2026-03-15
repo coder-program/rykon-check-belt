@@ -29,7 +29,7 @@ export class RecepcionistaUnidadesService {
   ): Promise<RecepcionistaUnidade> {
     // ✅ Verificar se a unidade existe e está ativa
     const unidadeData = await this.dataSource.query(
-      `SELECT id, nome, status FROM teamcruz.unidades WHERE id = $1`,
+      `SELECT id, nome, status FROM unidades WHERE id = $1`,
       [dto.unidade_id],
     );
 
@@ -175,9 +175,9 @@ export class RecepcionistaUnidadesService {
         u.telefone_celular as unidade_telefone,
         u.email as unidade_email,
         COUNT(a.id) FILTER (WHERE a.status = 'ATIVO') as total_alunos_ativos
-      FROM teamcruz.recepcionista_unidades ru
-      INNER JOIN teamcruz.unidades u ON u.id = ru.unidade_id
-      LEFT JOIN teamcruz.alunos a ON a.unidade_id = u.id
+      FROM recepcionista_unidades ru
+      INNER JOIN unidades u ON u.id = ru.unidade_id
+      LEFT JOIN alunos a ON a.unidade_id = u.id
       WHERE ru.usuario_id = $1
         AND ru.ativo = true
       GROUP BY
@@ -210,8 +210,8 @@ export class RecepcionistaUnidadesService {
         u.email as recepcionista_email,
         u.cpf as recepcionista_cpf,
         u.telefone as recepcionista_telefone
-      FROM teamcruz.recepcionista_unidades ru
-      INNER JOIN teamcruz.usuarios u ON u.id = ru.usuario_id
+      FROM recepcionista_unidades ru
+      INNER JOIN usuarios u ON u.id = ru.usuario_id
       WHERE ru.unidade_id = $1
         AND ru.ativo = true
       ORDER BY ru.turno, u.nome`,
@@ -245,7 +245,7 @@ export class RecepcionistaUnidadesService {
   async getUnidadeIds(usuario_id: string): Promise<string[]> {
     const result = await this.dataSource.query(
       `SELECT unidade_id
-       FROM teamcruz.recepcionista_unidades
+       FROM recepcionista_unidades
        WHERE usuario_id = $1
          AND ativo = true`,
       [usuario_id],
@@ -254,3 +254,4 @@ export class RecepcionistaUnidadesService {
     return result.map((row: any) => row.unidade_id);
   }
 }
+

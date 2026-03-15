@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, Index } from 'typeorm';
+﻿import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, Index } from 'typeorm';
 import { Aluno } from '../../people/entities/aluno.entity';
 import { Convenio } from './convenio.entity';
 import { Unidade } from '../../people/entities/unidade.entity';
@@ -10,7 +10,7 @@ export enum AlunoConvenioStatus {
   EXPIRADO = 'expirado',
 }
 
-@Entity('aluno_convenios', { schema: 'teamcruz' })
+@Entity('aluno_convenios')
 @Index(['convenio_id', 'convenio_user_id'], { unique: true })
 @Index(['aluno_id'])
 @Index(['status'])

@@ -59,7 +59,7 @@ export class GraduacaoController {
     // GERENTE_UNIDADE: buscar na tabela gerente_unidades
     if (perfis.includes('GERENTE_UNIDADE')) {
       const result = await this.dataSource.query(
-        `SELECT unidade_id FROM teamcruz.gerente_unidades WHERE usuario_id = $1 AND ativo = true LIMIT 1`,
+        `SELECT unidade_id FROM gerente_unidades WHERE usuario_id = $1 AND ativo = true LIMIT 1`,
         [user.id],
       );
       if (result && result.length > 0) {
@@ -70,7 +70,7 @@ export class GraduacaoController {
     // RECEPCIONISTA: buscar na tabela recepcionista_unidades
     if (perfis.includes('RECEPCIONISTA')) {
       const result = await this.dataSource.query(
-        `SELECT unidade_id FROM teamcruz.recepcionista_unidades WHERE usuario_id = $1 AND ativo = true LIMIT 1`,
+        `SELECT unidade_id FROM recepcionista_unidades WHERE usuario_id = $1 AND ativo = true LIMIT 1`,
         [user.id],
       );
       if (result && result.length > 0) {
@@ -81,7 +81,7 @@ export class GraduacaoController {
     // PROFESSOR/INSTRUTOR: buscar na tabela professores
     if (perfis.includes('PROFESSOR') || perfis.includes('INSTRUTOR')) {
       const result = await this.dataSource.query(
-        `SELECT unidade_id FROM teamcruz.professores WHERE usuario_id = $1 AND status = 'ATIVO' LIMIT 1`,
+        `SELECT unidade_id FROM professores WHERE usuario_id = $1 AND status = 'ATIVO' LIMIT 1`,
         [user.id],
       );
       if (result && result.length > 0) {
@@ -604,3 +604,4 @@ export class GraduacaoController {
     return await this.graduacaoService.recalcularGrausUnidade(unidadeId, req.user);
   }
 }
+

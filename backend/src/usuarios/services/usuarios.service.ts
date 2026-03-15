@@ -72,8 +72,8 @@ export class UsuariosService {
             // Gerente: buscar via tabela gerente_unidades
             const unidadeData = await this.usuarioRepository.query(
               `SELECT u.id, u.nome, u.status
-               FROM teamcruz.gerente_unidades gu
-               INNER JOIN teamcruz.unidades u ON u.id = gu.unidade_id
+               FROM gerente_unidades gu
+               INNER JOIN unidades u ON u.id = gu.unidade_id
                WHERE gu.usuario_id = $1 AND gu.ativo = true
                LIMIT 1`,
               [usuario.id],
@@ -90,8 +90,8 @@ export class UsuariosService {
             // Recepcionista: buscar via tabela recepcionista_unidades
             const unidadeData = await this.usuarioRepository.query(
               `SELECT u.id, u.nome, u.status
-               FROM teamcruz.recepcionista_unidades ru
-               INNER JOIN teamcruz.unidades u ON u.id = ru.unidade_id
+               FROM recepcionista_unidades ru
+               INNER JOIN unidades u ON u.id = ru.unidade_id
                WHERE ru.usuario_id = $1 AND ru.ativo = true
                LIMIT 1`,
               [usuario.id],
@@ -109,9 +109,9 @@ export class UsuariosService {
             // Pode ser via professor_id (cadastro completo) ou usuario_id (pendente)
             const unidadeData = await this.usuarioRepository.query(
               `SELECT u.id, u.nome, u.status
-               FROM teamcruz.professor_unidades pu
-               INNER JOIN teamcruz.unidades u ON u.id = pu.unidade_id
-               LEFT JOIN teamcruz.professores p ON p.id = pu.professor_id
+               FROM professor_unidades pu
+               INNER JOIN unidades u ON u.id = pu.unidade_id
+               LEFT JOIN professores p ON p.id = pu.professor_id
                WHERE (p.usuario_id = $1 OR pu.usuario_id = $1)
                AND pu.ativo = true
                LIMIT 1`,
@@ -129,8 +129,8 @@ export class UsuariosService {
             // Aluno: buscar via tabela alunos
             const unidadeData = await this.usuarioRepository.query(
               `SELECT u.id, u.nome, u.status
-               FROM teamcruz.alunos a
-               INNER JOIN teamcruz.unidades u ON u.id = a.unidade_id
+               FROM alunos a
+               INNER JOIN unidades u ON u.id = a.unidade_id
                WHERE a.usuario_id = $1
                LIMIT 1`,
               [usuario.id],
@@ -147,8 +147,8 @@ export class UsuariosService {
             // Responsável: buscar via tabela responsaveis
             const unidadeData = await this.usuarioRepository.query(
               `SELECT u.id, u.nome, u.status
-               FROM teamcruz.responsaveis r
-               INNER JOIN teamcruz.unidades u ON u.id = r.unidade_id
+               FROM responsaveis r
+               INNER JOIN unidades u ON u.id = r.unidade_id
                WHERE r.usuario_id = $1
                LIMIT 1`,
               [usuario.id],
@@ -166,8 +166,8 @@ export class UsuariosService {
             // Tablet: buscar via tabela tablet_unidades
             const unidadeData = await this.usuarioRepository.query(
               `SELECT u.id, u.nome, u.status
-               FROM teamcruz.tablet_unidades tu
-               INNER JOIN teamcruz.unidades u ON u.id = tu.unidade_id
+               FROM tablet_unidades tu
+               INNER JOIN unidades u ON u.id = tu.unidade_id
                WHERE tu.tablet_id = $1 AND tu.ativo = true
                LIMIT 1`,
               [usuario.id],
@@ -219,7 +219,7 @@ export class UsuariosService {
     // ✅ VALIDAÇÃO: Verificar se unidade está ativa (quando unidade_id for informada)
     if (createUsuarioDto.unidade_id) {
       const unidadeData = await this.dataSource.query(
-        `SELECT id, nome, status FROM teamcruz.unidades WHERE id = $1`,
+        `SELECT id, nome, status FROM unidades WHERE id = $1`,
         [createUsuarioDto.unidade_id],
       );
 
@@ -373,7 +373,7 @@ export class UsuariosService {
           // 1. Criar registro na tabela professores
           const professorResult = await this.dataSource.query(
             `
-            INSERT INTO teamcruz.professores
+            INSERT INTO professores
             (usuario_id, tipo_cadastro, nome_completo, cpf, data_nascimento, genero,
              telefone_whatsapp, email, unidade_id, especialidades, faixa_ministrante,
              observacoes, created_at, updated_at)
@@ -401,7 +401,7 @@ export class UsuariosService {
           // 2. Criar registro na professor_unidades vinculando professor à unidade
           await this.dataSource.query(
             `
-            INSERT INTO teamcruz.professor_unidades
+            INSERT INTO professor_unidades
             (professor_id, unidade_id, usuario_id, ativo, created_at, updated_at)
             VALUES ($1, $2, $3, true, NOW(), NOW())
             `,
@@ -413,7 +413,7 @@ export class UsuariosService {
         if (perfilNome === 'RECEPCIONISTA' && createUsuarioDto.unidade_id) {
           await this.dataSource.query(
             `
-            INSERT INTO teamcruz.recepcionista_unidades
+            INSERT INTO recepcionista_unidades
             (usuario_id, unidade_id, turno, horario_entrada, horario_saida, ativo)
             VALUES ($1, $2, $3, $4, $5, $6)
             `,
@@ -432,7 +432,7 @@ export class UsuariosService {
         if (perfilNome === 'TABLET_CHECKIN' && createUsuarioDto.unidade_id) {
           await this.dataSource.query(
             `
-            INSERT INTO teamcruz.tablet_unidades
+            INSERT INTO tablet_unidades
             (tablet_id, unidade_id, ativo, created_at, updated_at)
             VALUES ($1, $2, $3, NOW(), NOW())
             `,
@@ -444,7 +444,7 @@ export class UsuariosService {
         if (perfilNome === 'RESPONSAVEL' && createUsuarioDto.unidade_id) {
           const responsavelResult = await this.dataSource.query(
             `
-            INSERT INTO teamcruz.responsaveis
+            INSERT INTO responsaveis
             (usuario_id, unidade_id, nome_completo, cpf, email, telefone,
              data_nascimento, genero, ativo, created_at, updated_at)
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW())
@@ -562,7 +562,7 @@ export class UsuariosService {
     // Franqueado vê apenas usuários das suas unidades
     if (isFranqueado) {
       const franqueadoData = await this.usuarioRepository.query(
-        `SELECT id FROM teamcruz.franqueados WHERE usuario_id = $1`,
+        `SELECT id FROM franqueados WHERE usuario_id = $1`,
         [user.id],
       );
       if (!franqueadoData || franqueadoData.length === 0) {
@@ -573,11 +573,11 @@ export class UsuariosService {
       // LOG: Verificar tablets antes da query principal
       const debugTablets = await this.usuarioRepository.query(
         `SELECT u.id, u.nome, u.email, tu.unidade_id, un.franqueado_id, tu.ativo as tablet_ativo
-         FROM teamcruz.usuarios u
-         INNER JOIN teamcruz.usuario_perfis up ON up.usuario_id = u.id
-         INNER JOIN teamcruz.perfis p ON p.id = up.perfil_id
-         LEFT JOIN teamcruz.tablet_unidades tu ON tu.tablet_id = u.id
-         LEFT JOIN teamcruz.unidades un ON un.id = tu.unidade_id
+         FROM usuarios u
+         INNER JOIN usuario_perfis up ON up.usuario_id = u.id
+         INNER JOIN perfis p ON p.id = up.perfil_id
+         LEFT JOIN tablet_unidades tu ON tu.tablet_id = u.id
+         LEFT JOIN unidades un ON un.id = tu.unidade_id
          WHERE p.nome = 'TABLET_CHECKIN'`,
       );
 
@@ -595,43 +595,43 @@ export class UsuariosService {
                  WHEN un_gerente.franqueado_id = $1 THEN 'gerente_da_unidade'
                  WHEN un_recep.franqueado_id = $1 THEN 'recepcionista_da_unidade'
                  WHEN un_tablet.franqueado_id = $1 THEN 'tablet_da_unidade'
-                 WHEN perfil.nome = 'RESPONSAVEL' AND resp.unidade_id IN (SELECT id FROM teamcruz.unidades WHERE franqueado_id = $1) THEN 'responsavel_da_unidade'
+                 WHEN perfil.nome = 'RESPONSAVEL' AND resp.unidade_id IN (SELECT id FROM unidades WHERE franqueado_id = $1) THEN 'responsavel_da_unidade'
                  WHEN perfil.nome = 'RESPONSAVEL' AND un_resp_aluno.franqueado_id = $1 THEN 'responsavel_com_aluno_na_unidade'
                  ELSE 'outro'
                END as motivo_inclusao
-        FROM teamcruz.usuarios u
-        LEFT JOIN teamcruz.alunos a ON a.usuario_id = u.id
-        LEFT JOIN teamcruz.professores p ON p.usuario_id = u.id
-        LEFT JOIN teamcruz.professor_unidades pu ON pu.professor_id = p.id
-        LEFT JOIN teamcruz.professor_unidades pu_pendente ON pu_pendente.usuario_id = u.id AND pu_pendente.professor_id IS NULL
-        LEFT JOIN teamcruz.unidades un_aluno ON un_aluno.id = a.unidade_id
-        LEFT JOIN teamcruz.unidades un_prof ON un_prof.id = pu.unidade_id
-        LEFT JOIN teamcruz.unidades un_prof_pendente ON un_prof_pendente.id = pu_pendente.unidade_id
-        LEFT JOIN teamcruz.gerente_unidades gu ON gu.usuario_id = u.id AND gu.ativo = TRUE
-        LEFT JOIN teamcruz.unidades un_gerente ON un_gerente.id = gu.unidade_id
-        LEFT JOIN teamcruz.recepcionista_unidades ru ON ru.usuario_id = u.id AND ru.ativo = TRUE
-        LEFT JOIN teamcruz.unidades un_recep ON un_recep.id = ru.unidade_id
-        LEFT JOIN teamcruz.tablet_unidades tu ON tu.tablet_id = u.id AND tu.ativo = TRUE
-        LEFT JOIN teamcruz.unidades un_tablet ON un_tablet.id = tu.unidade_id
-        LEFT JOIN teamcruz.franqueados f ON f.usuario_id = u.id
-        LEFT JOIN teamcruz.usuario_perfis up ON up.usuario_id = u.id
-        LEFT JOIN teamcruz.perfis perfil ON perfil.id = up.perfil_id
-        LEFT JOIN teamcruz.responsaveis resp ON resp.usuario_id = u.id
-        LEFT JOIN teamcruz.alunos aluno_resp ON aluno_resp.responsavel_id = resp.id
-        LEFT JOIN teamcruz.unidades un_resp_aluno ON un_resp_aluno.id = aluno_resp.unidade_id
+        FROM usuarios u
+        LEFT JOIN alunos a ON a.usuario_id = u.id
+        LEFT JOIN professores p ON p.usuario_id = u.id
+        LEFT JOIN professor_unidades pu ON pu.professor_id = p.id
+        LEFT JOIN professor_unidades pu_pendente ON pu_pendente.usuario_id = u.id AND pu_pendente.professor_id IS NULL
+        LEFT JOIN unidades un_aluno ON un_aluno.id = a.unidade_id
+        LEFT JOIN unidades un_prof ON un_prof.id = pu.unidade_id
+        LEFT JOIN unidades un_prof_pendente ON un_prof_pendente.id = pu_pendente.unidade_id
+        LEFT JOIN gerente_unidades gu ON gu.usuario_id = u.id AND gu.ativo = TRUE
+        LEFT JOIN unidades un_gerente ON un_gerente.id = gu.unidade_id
+        LEFT JOIN recepcionista_unidades ru ON ru.usuario_id = u.id AND ru.ativo = TRUE
+        LEFT JOIN unidades un_recep ON un_recep.id = ru.unidade_id
+        LEFT JOIN tablet_unidades tu ON tu.tablet_id = u.id AND tu.ativo = TRUE
+        LEFT JOIN unidades un_tablet ON un_tablet.id = tu.unidade_id
+        LEFT JOIN franqueados f ON f.usuario_id = u.id
+        LEFT JOIN usuario_perfis up ON up.usuario_id = u.id
+        LEFT JOIN perfis perfil ON perfil.id = up.perfil_id
+        LEFT JOIN responsaveis resp ON resp.usuario_id = u.id
+        LEFT JOIN alunos aluno_resp ON aluno_resp.responsavel_id = resp.id
+        LEFT JOIN unidades un_resp_aluno ON un_resp_aluno.id = aluno_resp.unidade_id
         WHERE (
           (un_aluno.franqueado_id = $1 OR un_prof.franqueado_id = $1 OR un_prof_pendente.franqueado_id = $1 OR un_gerente.franqueado_id = $1 OR un_recep.franqueado_id = $1 OR un_tablet.franqueado_id = $1)
           OR f.id = $1
           OR u.id = $2
-          OR (UPPER(perfil.nome) = 'RESPONSAVEL' AND resp.unidade_id IN (SELECT id FROM teamcruz.unidades WHERE franqueado_id = $1))
+          OR (UPPER(perfil.nome) = 'RESPONSAVEL' AND resp.unidade_id IN (SELECT id FROM unidades WHERE franqueado_id = $1))
           OR (UPPER(perfil.nome) = 'RESPONSAVEL' AND un_resp_aluno.franqueado_id = $1)
         )
         -- Excluir usuários que são FRANQUEADOS de outras franquias
         AND NOT EXISTS (
           SELECT 1
-          FROM teamcruz.usuario_perfis up2
-          INNER JOIN teamcruz.perfis p2 ON p2.id = up2.perfil_id
-          INNER JOIN teamcruz.franqueados f2 ON f2.usuario_id = u.id
+          FROM usuario_perfis up2
+          INNER JOIN perfis p2 ON p2.id = up2.perfil_id
+          INNER JOIN franqueados f2 ON f2.usuario_id = u.id
           WHERE up2.usuario_id = u.id
             AND UPPER(p2.nome) = 'FRANQUEADO'
             AND f2.id != $1
@@ -640,8 +640,8 @@ export class UsuariosService {
         -- 🔥 CORREÇÃO CRÍTICA: Excluir RESPONSÁVEIS que têm unidade_id de OUTRA franquia
         AND NOT EXISTS (
           SELECT 1
-          FROM teamcruz.responsaveis resp_check
-          INNER JOIN teamcruz.unidades un_check ON un_check.id = resp_check.unidade_id
+          FROM responsaveis resp_check
+          INNER JOIN unidades un_check ON un_check.id = resp_check.unidade_id
           WHERE resp_check.usuario_id = u.id
             AND un_check.franqueado_id != $1
             AND un_check.franqueado_id IS NOT NULL
@@ -694,7 +694,7 @@ export class UsuariosService {
     if (isGerente) {
       // Buscar unidade do gerente via tabela gerente_unidades
       const gerenteUnidade = await this.usuarioRepository.query(
-        `SELECT unidade_id FROM teamcruz.gerente_unidades
+        `SELECT unidade_id FROM gerente_unidades
          WHERE usuario_id = $1 AND ativo = true LIMIT 1`,
         [user.id],
       );
@@ -710,13 +710,13 @@ export class UsuariosService {
       const usuariosIds = await this.usuarioRepository.query(
         `
         SELECT DISTINCT u.id
-        FROM teamcruz.usuarios u
-        LEFT JOIN teamcruz.alunos a ON a.usuario_id = u.id
-        LEFT JOIN teamcruz.professores p ON p.usuario_id = u.id
-        LEFT JOIN teamcruz.professor_unidades pu ON (pu.professor_id = p.id OR pu.usuario_id = u.id)
-        LEFT JOIN teamcruz.recepcionista_unidades ru ON ru.usuario_id = u.id AND ru.ativo = true
-        LEFT JOIN teamcruz.gerente_unidades gu ON gu.usuario_id = u.id AND gu.ativo = true
-        LEFT JOIN teamcruz.responsaveis resp ON resp.usuario_id = u.id
+        FROM usuarios u
+        LEFT JOIN alunos a ON a.usuario_id = u.id
+        LEFT JOIN professores p ON p.usuario_id = u.id
+        LEFT JOIN professor_unidades pu ON (pu.professor_id = p.id OR pu.usuario_id = u.id)
+        LEFT JOIN recepcionista_unidades ru ON ru.usuario_id = u.id AND ru.ativo = true
+        LEFT JOIN gerente_unidades gu ON gu.usuario_id = u.id AND gu.ativo = true
+        LEFT JOIN responsaveis resp ON resp.usuario_id = u.id
         WHERE
           -- Alunos da unidade
           a.unidade_id = $1
@@ -762,7 +762,7 @@ export class UsuariosService {
     // Recepcionista vê apenas usuários da sua unidade
     if (isRecepcionista) {
       const recepcionistaData = await this.usuarioRepository.query(
-        `SELECT unidade_id FROM teamcruz.recepcionista_unidades WHERE usuario_id = $1 AND ativo = true`,
+        `SELECT unidade_id FROM recepcionista_unidades WHERE usuario_id = $1 AND ativo = true`,
         [user.id],
       );
 
@@ -776,11 +776,11 @@ export class UsuariosService {
       const usuariosIds = await this.usuarioRepository.query(
         `
         SELECT DISTINCT u.id, u.nome, u.email
-        FROM teamcruz.usuarios u
-        LEFT JOIN teamcruz.alunos a ON a.usuario_id = u.id
-        LEFT JOIN teamcruz.recepcionista_unidades ru ON ru.usuario_id = u.id
-        LEFT JOIN teamcruz.gerente_unidades gu ON gu.usuario_id = u.id
-        LEFT JOIN teamcruz.professor_unidades pu ON pu.usuario_id = u.id
+        FROM usuarios u
+        LEFT JOIN alunos a ON a.usuario_id = u.id
+        LEFT JOIN recepcionista_unidades ru ON ru.usuario_id = u.id
+        LEFT JOIN gerente_unidades gu ON gu.usuario_id = u.id
+        LEFT JOIN professor_unidades pu ON pu.usuario_id = u.id
         WHERE a.unidade_id = $1
            OR ru.unidade_id = $1
            OR gu.unidade_id = $1
@@ -929,14 +929,14 @@ export class UsuariosService {
         try {
           // Verificar se já existe registro
           const existing = await this.usuarioRepository.query(
-            `SELECT id FROM teamcruz.recepcionista_unidades WHERE usuario_id = $1`,
+            `SELECT id FROM recepcionista_unidades WHERE usuario_id = $1`,
             [id],
           );
 
           if (existing && existing.length > 0) {
             // Atualizar registro existente
             await this.usuarioRepository.query(
-              `UPDATE teamcruz.recepcionista_unidades
+              `UPDATE recepcionista_unidades
                SET unidade_id = $1, updated_at = NOW()
                WHERE usuario_id = $2`,
               [updateData.unidade_id, id],
@@ -944,7 +944,7 @@ export class UsuariosService {
           } else {
             // Criar novo registro
             await this.usuarioRepository.query(
-              `INSERT INTO teamcruz.recepcionista_unidades (usuario_id, unidade_id, ativo, created_at, updated_at)
+              `INSERT INTO recepcionista_unidades (usuario_id, unidade_id, ativo, created_at, updated_at)
                VALUES ($1, $2, true, NOW(), NOW())`,
               [id, updateData.unidade_id],
             );
@@ -958,14 +958,14 @@ export class UsuariosService {
         try {
           // Verificar se já existe registro
           const existing = await this.usuarioRepository.query(
-            `SELECT id FROM teamcruz.tablet_unidades WHERE tablet_id = $1`,
+            `SELECT id FROM tablet_unidades WHERE tablet_id = $1`,
             [id],
           );
 
           if (existing && existing.length > 0) {
             // Atualizar registro existente
             await this.usuarioRepository.query(
-              `UPDATE teamcruz.tablet_unidades
+              `UPDATE tablet_unidades
                SET unidade_id = $1, updated_at = NOW()
                WHERE tablet_id = $2`,
               [updateData.unidade_id, id],
@@ -973,7 +973,7 @@ export class UsuariosService {
           } else {
             // Criar novo registro
             await this.usuarioRepository.query(
-              `INSERT INTO teamcruz.tablet_unidades (tablet_id, unidade_id, ativo, created_at, updated_at)
+              `INSERT INTO tablet_unidades (tablet_id, unidade_id, ativo, created_at, updated_at)
                VALUES ($1, $2, true, NOW(), NOW())`,
               [id, updateData.unidade_id],
             );
@@ -990,7 +990,7 @@ export class UsuariosService {
         try {
           // Desvincular gerente da unidade anterior via tabela gerente_unidades
           await this.usuarioRepository.query(
-            `UPDATE teamcruz.gerente_unidades
+            `UPDATE gerente_unidades
              SET ativo = false, updated_at = NOW()
              WHERE usuario_id = $1`,
             [id],
@@ -999,7 +999,7 @@ export class UsuariosService {
           // Vincular gerente à nova unidade via tabela gerente_unidades
           if (updateData.unidade_id) {
             await this.usuarioRepository.query(
-              `INSERT INTO teamcruz.gerente_unidades (usuario_id, unidade_id, ativo, data_vinculo)
+              `INSERT INTO gerente_unidades (usuario_id, unidade_id, ativo, data_vinculo)
                VALUES ($1, $2, true, NOW())
                ON CONFLICT (usuario_id) DO UPDATE
                SET unidade_id = $2, ativo = true, updated_at = NOW()`,
@@ -1018,7 +1018,7 @@ export class UsuariosService {
         try {
           // Buscar professor_id
           const professor = await this.usuarioRepository.query(
-            `SELECT id FROM teamcruz.professores WHERE usuario_id = $1`,
+            `SELECT id FROM professores WHERE usuario_id = $1`,
             [id],
           );
 
@@ -1027,7 +1027,7 @@ export class UsuariosService {
 
             // Atualizar unidade do professor
             await this.usuarioRepository.query(
-              `UPDATE teamcruz.professores
+              `UPDATE professores
                SET unidade_id = $1, updated_at = NOW()
                WHERE id = $2`,
               [updateData.unidade_id, professorId],
@@ -1035,7 +1035,7 @@ export class UsuariosService {
 
             // Desativar vínculos anteriores
             await this.usuarioRepository.query(
-              `UPDATE teamcruz.professor_unidades
+              `UPDATE professor_unidades
                SET ativo = false, updated_at = NOW()
                WHERE professor_id = $1`,
               [professorId],
@@ -1043,7 +1043,7 @@ export class UsuariosService {
 
             // Verificar se já existe vínculo com a nova unidade
             const existing = await this.usuarioRepository.query(
-              `SELECT id FROM teamcruz.professor_unidades
+              `SELECT id FROM professor_unidades
                WHERE professor_id = $1 AND unidade_id = $2`,
               [professorId, updateData.unidade_id],
             );
@@ -1051,7 +1051,7 @@ export class UsuariosService {
             if (existing && existing.length > 0) {
               // Reativar vínculo existente
               await this.usuarioRepository.query(
-                `UPDATE teamcruz.professor_unidades
+                `UPDATE professor_unidades
                  SET ativo = true, updated_at = NOW()
                  WHERE professor_id = $1 AND unidade_id = $2`,
                 [professorId, updateData.unidade_id],
@@ -1059,7 +1059,7 @@ export class UsuariosService {
             } else {
               // Criar novo vínculo
               await this.usuarioRepository.query(
-                `INSERT INTO teamcruz.professor_unidades (professor_id, unidade_id, usuario_id, ativo, created_at, updated_at)
+                `INSERT INTO professor_unidades (professor_id, unidade_id, usuario_id, ativo, created_at, updated_at)
                  VALUES ($1, $2, $3, true, NOW(), NOW())`,
                 [professorId, updateData.unidade_id, id],
               );
@@ -1067,7 +1067,7 @@ export class UsuariosService {
           } else {
             // CRIAR PROFESSOR SE NÃO EXISTIR
             const professorResult = await this.usuarioRepository.query(
-              `INSERT INTO teamcruz.professores
+              `INSERT INTO professores
                (usuario_id, tipo_cadastro, nome_completo, cpf, telefone_whatsapp, email, unidade_id, 
                 status, cadastro_completo, created_at, updated_at)
                VALUES ($1, 'PROFESSOR', $2, $3, $4, $5, $6, 'ATIVO', true, NOW(), NOW())
@@ -1086,7 +1086,7 @@ export class UsuariosService {
 
             // Criar vínculo na professor_unidades
             await this.usuarioRepository.query(
-              `INSERT INTO teamcruz.professor_unidades
+              `INSERT INTO professor_unidades
                (professor_id, unidade_id, usuario_id, ativo, created_at, updated_at)
                VALUES ($1, $2, $3, true, NOW(), NOW())`,
               [professorId, updateData.unidade_id, id],
@@ -1316,7 +1316,7 @@ export class UsuariosService {
     } else if (isFranqueado) {
          
       const franqueadoData = await this.usuarioRepository.query(
-        `SELECT id FROM teamcruz.franqueados WHERE usuario_id = $1`,
+        `SELECT id FROM franqueados WHERE usuario_id = $1`,
         [user.id],
       );
 
@@ -1326,7 +1326,7 @@ export class UsuariosService {
         // DEBUG: Verificar usuários inativos no banco
         const usuariosInativos = await this.usuarioRepository.query(
           `SELECT u.id, u.nome, u.email, u.ativo, u.created_at
-           FROM teamcruz.usuarios u
+           FROM usuarios u
            WHERE u.ativo = false
            ORDER BY u.created_at DESC
            LIMIT 10`,
@@ -1337,9 +1337,9 @@ export class UsuariosService {
           `SELECT u.id as usuario_id, u.nome as usuario_nome, u.ativo as usuario_ativo,
                   a.id as aluno_id, a.nome_completo as aluno_nome, a.unidade_id,
                   un.nome as unidade_nome, un.franqueado_id
-           FROM teamcruz.usuarios u
-           INNER JOIN teamcruz.alunos a ON a.usuario_id = u.id
-           LEFT JOIN teamcruz.unidades un ON un.id = a.unidade_id
+           FROM usuarios u
+           INNER JOIN alunos a ON a.usuario_id = u.id
+           LEFT JOIN unidades un ON un.id = a.unidade_id
            WHERE u.ativo = false
            ORDER BY u.created_at DESC
            LIMIT 10`,
@@ -1348,9 +1348,9 @@ export class UsuariosService {
         // DEBUG: Verificar perfis dos usuários inativos
         const perfisInativos = await this.usuarioRepository.query(
           `SELECT u.id as usuario_id, u.nome as usuario_nome, p.nome as perfil_nome
-           FROM teamcruz.usuarios u
-           INNER JOIN teamcruz.usuario_perfis up ON up.usuario_id = u.id
-           INNER JOIN teamcruz.perfis p ON p.id = up.perfil_id
+           FROM usuarios u
+           INNER JOIN usuario_perfis up ON up.usuario_id = u.id
+           INNER JOIN perfis p ON p.id = up.perfil_id
            WHERE u.ativo = false
            ORDER BY u.created_at DESC
            LIMIT 20`,
@@ -1365,30 +1365,30 @@ export class UsuariosService {
                  COALESCE(gu_un.id, a_un.id, rec_un.id, prof_un.id, resp_un.id) as unidade_id,
                  COALESCE(gu_un.nome, a_un.nome, rec_un.nome, prof_un.nome, resp_un.nome) as unidade_nome,
                  COALESCE(gu_un.status, a_un.status, rec_un.status, prof_un.status, resp_un.status) as unidade_status
-          FROM teamcruz.usuarios u
-          INNER JOIN teamcruz.usuario_perfis up ON u.id = up.usuario_id
-          INNER JOIN teamcruz.perfis p ON up.perfil_id = p.id
+          FROM usuarios u
+          INNER JOIN usuario_perfis up ON u.id = up.usuario_id
+          INNER JOIN perfis p ON up.perfil_id = p.id
 
           -- Unidade do Gerente (via tabela gerente_unidades)
-          LEFT JOIN teamcruz.gerente_unidades gu ON gu.usuario_id = u.id AND gu.ativo = true
-          LEFT JOIN teamcruz.unidades gu_un ON gu_un.id = gu.unidade_id AND gu_un.franqueado_id = $1
+          LEFT JOIN gerente_unidades gu ON gu.usuario_id = u.id AND gu.ativo = true
+          LEFT JOIN unidades gu_un ON gu_un.id = gu.unidade_id AND gu_un.franqueado_id = $1
 
           -- Unidade do Aluno
-          LEFT JOIN teamcruz.alunos a ON a.usuario_id = u.id
-          LEFT JOIN teamcruz.unidades a_un ON a_un.id = a.unidade_id AND a_un.franqueado_id = $1
+          LEFT JOIN alunos a ON a.usuario_id = u.id
+          LEFT JOIN unidades a_un ON a_un.id = a.unidade_id AND a_un.franqueado_id = $1
 
           -- Unidade do Recepcionista
-          LEFT JOIN teamcruz.recepcionista_unidades ru ON ru.usuario_id = u.id AND ru.ativo = true
-          LEFT JOIN teamcruz.unidades rec_un ON rec_un.id = ru.unidade_id AND rec_un.franqueado_id = $1
+          LEFT JOIN recepcionista_unidades ru ON ru.usuario_id = u.id AND ru.ativo = true
+          LEFT JOIN unidades rec_un ON rec_un.id = ru.unidade_id AND rec_un.franqueado_id = $1
 
           -- Unidade do Professor
-          LEFT JOIN teamcruz.professores prof ON prof.usuario_id = u.id
-          LEFT JOIN teamcruz.professor_unidades pu ON pu.professor_id = prof.id
-          LEFT JOIN teamcruz.unidades prof_un ON prof_un.id = pu.unidade_id AND prof_un.franqueado_id = $1
+          LEFT JOIN professores prof ON prof.usuario_id = u.id
+          LEFT JOIN professor_unidades pu ON pu.professor_id = prof.id
+          LEFT JOIN unidades prof_un ON prof_un.id = pu.unidade_id AND prof_un.franqueado_id = $1
 
           -- Unidade do Responsavel
-          LEFT JOIN teamcruz.responsaveis resp ON resp.usuario_id = u.id
-          LEFT JOIN teamcruz.unidades resp_un ON resp_un.id = resp.unidade_id AND resp_un.franqueado_id = $1
+          LEFT JOIN responsaveis resp ON resp.usuario_id = u.id
+          LEFT JOIN unidades resp_un ON resp_un.id = resp.unidade_id AND resp_un.franqueado_id = $1
 
           WHERE u.ativo = false
             AND (
@@ -1408,8 +1408,8 @@ export class UsuariosService {
           const perfisData = await this.usuarioRepository.query(
             `
             SELECT p.*
-            FROM teamcruz.perfis p
-            INNER JOIN teamcruz.usuario_perfis up ON p.id = up.perfil_id
+            FROM perfis p
+            INNER JOIN usuario_perfis up ON p.id = up.perfil_id
             WHERE up.usuario_id = $1
             `,
             [usuario.id],
@@ -1452,7 +1452,7 @@ export class UsuariosService {
 
       if (isGerente) {
         const gerenteUnidade = await this.usuarioRepository.query(
-          `SELECT unidade_id FROM teamcruz.gerente_unidades
+          `SELECT unidade_id FROM gerente_unidades
            WHERE usuario_id = $1 AND ativo = true LIMIT 1`,
           [user.id],
         );
@@ -1463,7 +1463,7 @@ export class UsuariosService {
       } else if (isRecepcionista) {
         // Buscar unidade do recepcionista via tabela recepcionista_unidades
         const recepcionistaData = await this.usuarioRepository.query(
-          `SELECT unidade_id FROM teamcruz.recepcionista_unidades WHERE usuario_id = $1 AND ativo = true`,
+          `SELECT unidade_id FROM recepcionista_unidades WHERE usuario_id = $1 AND ativo = true`,
           [user.id],
         );
         
@@ -1479,22 +1479,22 @@ export class UsuariosService {
           SELECT DISTINCT u.id, u.username, u.email, u.nome, u.cpf, u.telefone,
                  u.ativo, u.cadastro_completo, u.created_at, u.updated_at,
                  $1 as unidade_id
-          FROM teamcruz.usuarios u
-          INNER JOIN teamcruz.usuario_perfis up ON u.id = up.usuario_id
-          INNER JOIN teamcruz.perfis p ON up.perfil_id = p.id
+          FROM usuarios u
+          INNER JOIN usuario_perfis up ON u.id = up.usuario_id
+          INNER JOIN perfis p ON up.perfil_id = p.id
 
           -- Alunos da unidade
-          LEFT JOIN teamcruz.alunos a ON a.usuario_id = u.id AND a.unidade_id = $1
+          LEFT JOIN alunos a ON a.usuario_id = u.id AND a.unidade_id = $1
 
           -- Recepcionistas da unidade
-          LEFT JOIN teamcruz.recepcionista_unidades ru ON ru.usuario_id = u.id AND ru.unidade_id = $1 AND ru.ativo = true
+          LEFT JOIN recepcionista_unidades ru ON ru.usuario_id = u.id AND ru.unidade_id = $1 AND ru.ativo = true
 
           -- Professores da unidade
-          LEFT JOIN teamcruz.professores prof ON prof.usuario_id = u.id
-          LEFT JOIN teamcruz.professor_unidades pu ON pu.professor_id = prof.id AND pu.unidade_id = $1
+          LEFT JOIN professores prof ON prof.usuario_id = u.id
+          LEFT JOIN professor_unidades pu ON pu.professor_id = prof.id AND pu.unidade_id = $1
 
           -- Responsaveis da unidade
-          LEFT JOIN teamcruz.responsaveis resp ON resp.usuario_id = u.id AND resp.unidade_id = $1
+          LEFT JOIN responsaveis resp ON resp.usuario_id = u.id AND resp.unidade_id = $1
 
           WHERE u.ativo = false
             AND (
@@ -1513,8 +1513,8 @@ export class UsuariosService {
           const perfisData = await this.usuarioRepository.query(
             `
             SELECT p.*
-            FROM teamcruz.perfis p
-            INNER JOIN teamcruz.usuario_perfis up ON p.id = up.perfil_id
+            FROM perfis p
+            INNER JOIN usuario_perfis up ON p.id = up.perfil_id
             WHERE up.usuario_id = $1
             `,
             [usuario.id],
@@ -1524,7 +1524,7 @@ export class UsuariosService {
           // Adicionar informação da unidade
           if (usuario.unidade_id) {
             const unidadeData = await this.usuarioRepository.query(
-              `SELECT id, nome, status FROM teamcruz.unidades WHERE id = $1`,
+              `SELECT id, nome, status FROM unidades WHERE id = $1`,
               [usuario.unidade_id],
             );
             if (unidadeData && unidadeData.length > 0) {
@@ -1603,35 +1603,35 @@ export class UsuariosService {
     try {
       // 1. Excluir da tabela alunos (se existir)
       await queryRunner.query(
-        `DELETE FROM teamcruz.alunos WHERE usuario_id = $1`,
+        `DELETE FROM alunos WHERE usuario_id = $1`,
         [userId]
       );
 
       // 2. Excluir da tabela usuario_perfis
       await queryRunner.query(
-        `DELETE FROM teamcruz.usuario_perfis WHERE usuario_id = $1`,
+        `DELETE FROM usuario_perfis WHERE usuario_id = $1`,
         [userId]
       );
 
       // 3. Excluir outras relações que possam existir
       await queryRunner.query(
-        `DELETE FROM teamcruz.responsaveis WHERE usuario_id = $1`,
+        `DELETE FROM responsaveis WHERE usuario_id = $1`,
         [userId]
       );
 
       await queryRunner.query(
-        `DELETE FROM teamcruz.professores WHERE usuario_id = $1`,
+        `DELETE FROM professores WHERE usuario_id = $1`,
         [userId]
       );
 
       await queryRunner.query(
-        `DELETE FROM teamcruz.gerente_unidades WHERE usuario_id = $1`,
+        `DELETE FROM gerente_unidades WHERE usuario_id = $1`,
         [userId]
       );
 
       // 4. Por último, excluir da tabela usuarios
       await queryRunner.query(
-        `DELETE FROM teamcruz.usuarios WHERE id = $1`,
+        `DELETE FROM usuarios WHERE id = $1`,
         [userId]
       );
 
@@ -1662,8 +1662,8 @@ export class UsuariosService {
           r.nome_completo,
           r.ativo,
           u.nome as unidade_nome
-        FROM teamcruz.responsaveis r
-        LEFT JOIN teamcruz.unidades u ON u.id = r.unidade_id
+        FROM responsaveis r
+        LEFT JOIN unidades u ON u.id = r.unidade_id
         WHERE r.usuario_id = $1
         LIMIT 1
         `,
@@ -1683,3 +1683,4 @@ export class UsuariosService {
     }
   }
 }
+

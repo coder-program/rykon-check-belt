@@ -8,6 +8,7 @@ import { Toaster } from "react-hot-toast";
 import { ProfileCompletionGuard } from "@/components/auth/ProfileCompletionGuard";
 import { TokenExpirationChecker } from "@/components/auth/TokenExpirationChecker";
 import LayoutContent from "@/components/layout/LayoutContent";
+import { FetchInterceptorSetup } from "@/components/FetchInterceptorSetup";
 
 // Usar fontes do sistema como fallback
 const fontVariables = "font-sans";
@@ -61,6 +62,7 @@ export default function RootLayout({
       >
         <QueryProvider>
           <AuthProvider>
+            <FetchInterceptorSetup />
             <TokenExpirationChecker />
             <ProfileCompletionGuard>
               <LayoutContent>{children}</LayoutContent>

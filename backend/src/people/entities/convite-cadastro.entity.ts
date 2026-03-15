@@ -1,4 +1,4 @@
-import {
+﻿import {
   Entity,
   PrimaryGeneratedColumn,
   Column,
@@ -9,7 +9,7 @@ import {
 import { Unidade } from '../../people/entities/unidade.entity';
 import { Usuario } from '../../usuarios/entities/usuario.entity';
 
-@Entity({ name: 'convites_cadastro', schema: 'teamcruz' })
+@Entity({ name: 'convites_cadastro' })
 export class ConviteCadastro {
   @PrimaryGeneratedColumn('uuid')
   id: string;

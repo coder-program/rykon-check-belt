@@ -1,4 +1,4 @@
-import {
+﻿import {
   Entity,
   PrimaryGeneratedColumn,
   Column,
@@ -11,7 +11,7 @@ import {
 import { Usuario } from '../../usuarios/entities/usuario.entity';
 import { Endereco } from '../../enderecos/endereco.entity';
 
-@Entity({ name: 'responsaveis', schema: 'teamcruz' })
+@Entity({ name: 'responsaveis' })
 export class Responsavel {
   @PrimaryGeneratedColumn('uuid')
   id: string;

@@ -7,8 +7,6 @@ if (!globalThis.crypto) {
 import { Module, MiddlewareConsumer, Logger } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-// TODO: reativar multi-tenant
-// import { tenantAsyncStorage } from './common/tenant-context';
 import { UsuariosModule } from './usuarios/usuarios.module';
 
 // Módulos de Segurança
@@ -29,9 +27,10 @@ import { ModalidadesModule } from './modalidades/modalidades.module';
 import { FinanceiroModule } from './financeiro/financeiro.module';
 import { PaytimeModule } from './paytime/paytime.module';
 import { HubUnidadeModule } from './hub-unidade/hub-unidade.module';
-// TODO: reativar multi-tenant
-// import { TenantModule } from './tenants/tenant.module';
-// import { TenantMiddleware } from './common/middleware/tenant.middleware';
+import { TenantModule } from './tenants/tenant.module';
+import { TenantMiddleware } from './common/middleware/tenant.middleware';
+import { TenantSchemaSubscriber } from './common/tenant-schema.subscriber';
+import { TenantQueryPatcherService } from './common/tenant-query-patcher.service';
 
 @Module({
   imports: [
@@ -65,19 +64,19 @@ import { HubUnidadeModule } from './hub-unidade/hub-unidade.module';
           // ========== POOL + TIMEOUTS via extra (pg-pool aplica corretamente aqui) ==========
           extra: isLocalhost
             ? {
-                max: 20,                              // 100 max_connections - 10 admin = 90 disponíveis; 20 é seguro e suporta pico
-                min: 5,                               // manter 5 prontas para horário de pico das academias
-                idleTimeoutMillis: 30000,             // fechar idle após 30s (balanceia pico/off-peak)
-                connectionTimeoutMillis: 10000,       // 10s para obter conexão do pool
+                max: 20,
+                min: 5,
+                idleTimeoutMillis: 30000,
+                connectionTimeoutMillis: 10000,
                 keepAlive: true,
                 keepAliveInitialDelayMillis: 10000,
                 options: '-c search_path=teamcruz,public',
               }
             : {
-                max: 20,                              // 100 max_connections - 10 admin = 90 disponíveis; 20 é seguro e suporta pico
-                min: 5,                               // manter 5 prontas para horário de pico das academias
-                idleTimeoutMillis: 30000,             // fechar idle após 30s (balanceia pico/off-peak)
-                connectionTimeoutMillis: 10000,       // 10s para obter conexão do pool
+                max: 20,
+                min: 5,
+                idleTimeoutMillis: 30000,
+                connectionTimeoutMillis: 10000,
                 keepAlive: true,
                 keepAliveInitialDelayMillis: 10000,
                 options: '-c search_path=teamcruz,public',
@@ -91,6 +90,9 @@ import { HubUnidadeModule } from './hub-unidade/hub-unidade.module';
           
           // ========== SSL ==========
           ssl: isLocalhost ? false : true,
+          
+          // ========== SUBSCRIBER DE TENANT (search_path dinâmico) ==========
+          // subscribers: removido - patch dinâmico feito pelo TenantQueryPatcherService
         };
 
         return config;
@@ -113,14 +115,15 @@ import { HubUnidadeModule } from './hub-unidade/hub-unidade.module';
     FinanceiroModule,
     PaytimeModule,
     HubUnidadeModule,
-    // TenantModule, // TODO: reativar multi-tenant
+    TenantModule,
   ],
+  providers: [TenantQueryPatcherService],
 })
 export class AppModule {
   private readonly logger = new Logger(AppModule.name);
 
   configure(consumer: MiddlewareConsumer) {
-    // consumer.apply(TenantMiddleware).forRoutes('*'); // TODO: reativar multi-tenant
+    consumer.apply(TenantMiddleware).forRoutes('*');
     consumer.apply(AuditMiddleware).forRoutes('*');
   }
 }

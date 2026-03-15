@@ -30,6 +30,8 @@ export interface JwtPayload {
   username: string;
   email: string;
   permissions: string[];
+  tenantSlug?: string;   // ← multi-tenant
+  tenantSchema?: string; // ← multi-tenant
 }
 
 export interface PermissionDetail {
@@ -148,6 +150,8 @@ export class AuthService {
     user: Usuario,
     ipAddress?: string,
     userAgent?: string,
+    tenantSlug?: string,
+    tenantSchema?: string,
   ): Promise<LoginResponse> {
     // Buscar dados completos do usuário UMA VEZ
     const userWithPermissions = await this.usuariosService.findOneWithPermissions(user.id);
@@ -171,6 +175,8 @@ export class AuthService {
       username: user.username,
       email: user.email,
       permissions,
+      tenantSlug: tenantSlug ?? 'teamcruz',
+      tenantSchema: tenantSchema ?? 'teamcruz',
     };
 
     let cadastroCompleto = user.cadastro_completo || false;
@@ -440,8 +446,8 @@ export class AuthService {
         // Query otimizada para unidade
         const query = `
           SELECT u.id, u.nome, u.cnpj, u.status
-          FROM teamcruz.gerente_unidades gu
-          INNER JOIN teamcruz.unidades u ON u.id = gu.unidade_id
+          FROM gerente_unidades gu
+          INNER JOIN unidades u ON u.id = gu.unidade_id
           WHERE gu.usuario_id = $1 AND gu.ativo = true
           LIMIT 1
         `;
@@ -631,7 +637,7 @@ export class AuthService {
       ) {
         // Verificar se gerente já está vinculado via tabela gerente_unidades
         const vinculoExistente = await this.dataSource.query(
-          `SELECT unidade_id FROM teamcruz.gerente_unidades
+          `SELECT unidade_id FROM gerente_unidades
            WHERE usuario_id = $1 AND ativo = true LIMIT 1`,
           [userId],
         );
@@ -642,7 +648,7 @@ export class AuthService {
           );
           // Vincular gerente à unidade via tabela gerente_unidades
           await this.dataSource.query(
-            `INSERT INTO teamcruz.gerente_unidades (usuario_id, unidade_id, ativo, data_vinculo)
+            `INSERT INTO gerente_unidades (usuario_id, unidade_id, ativo, data_vinculo)
              VALUES ($1, $2, true, NOW())
              ON CONFLICT (usuario_id) DO UPDATE SET unidade_id = $2, ativo = true`,
             [userId, profileData.unidade_id],
@@ -696,7 +702,7 @@ export class AuthService {
     }
     // Verificar se a unidade existe e está ativa
     const unidadeValida = await this.dataSource.query(
-      `SELECT id, nome, status FROM teamcruz.unidades WHERE id = $1`,
+      `SELECT id, nome, status FROM unidades WHERE id = $1`,
       [payload.unidade_id],
     );
     if (!unidadeValida || unidadeValida.length === 0) {
@@ -722,7 +728,7 @@ export class AuthService {
       try {
         // Query otimizada - busca APENAS id e nome (sem permissões, sem usuários)
         const perfilResult = await this.dataSource.query(
-          `SELECT id, nome FROM teamcruz.perfis WHERE id = $1 LIMIT 1`,
+          `SELECT id, nome FROM perfis WHERE id = $1 LIMIT 1`,
           [payload.perfil_id]
         );
         
@@ -759,7 +765,7 @@ export class AuthService {
     if (!perfilValido) {
       // Query otimizada - busca APENAS id e nome
       const perfilAlunoResult = await this.dataSource.query(
-        `SELECT id, nome FROM teamcruz.perfis WHERE LOWER(nome) = 'aluno' LIMIT 1`
+        `SELECT id, nome FROM perfis WHERE LOWER(nome) = 'aluno' LIMIT 1`
       );
       if (!perfilAlunoResult || perfilAlunoResult.length === 0) {
         throw new BadRequestException(
@@ -893,7 +899,7 @@ export class AuthService {
         try {
           // Desvincular gerente de qualquer unidade anterior
           await queryRunner.query(
-            `UPDATE teamcruz.gerente_unidades
+            `UPDATE gerente_unidades
              SET ativo = false, updated_at = NOW()
              WHERE usuario_id = $1`,
             [user.id],
@@ -901,7 +907,7 @@ export class AuthService {
 
           // Vincular gerente à nova unidade
           await queryRunner.query(
-            `INSERT INTO teamcruz.gerente_unidades (usuario_id, unidade_id, ativo, data_vinculo)
+            `INSERT INTO gerente_unidades (usuario_id, unidade_id, ativo, data_vinculo)
              VALUES ($1, $2, true, NOW())
              ON CONFLICT (usuario_id) DO UPDATE
              SET unidade_id = $2, ativo = true, updated_at = NOW()`,
@@ -955,7 +961,7 @@ export class AuthService {
           // Vincular professor à unidade
           if (payload.unidade_id) {
             await queryRunner.query(
-              `INSERT INTO teamcruz.professor_unidades (professor_id, unidade_id, created_at, updated_at)
+              `INSERT INTO professor_unidades (professor_id, unidade_id, created_at, updated_at)
                VALUES ($1, $2, NOW(), NOW())`,
               [professor.id, payload.unidade_id],
             );
@@ -973,7 +979,7 @@ export class AuthService {
         if (payload.unidade_id) {
           try {
             await queryRunner.query(
-              `INSERT INTO teamcruz.recepcionista_unidades (usuario_id, unidade_id, ativo, created_at, updated_at)
+              `INSERT INTO recepcionista_unidades (usuario_id, unidade_id, ativo, created_at, updated_at)
                VALUES ($1, $2, true, NOW(), NOW())`,
               [user.id, payload.unidade_id],
             );
@@ -1153,3 +1159,4 @@ export class AuthService {
     return { message: 'Senha resetada com sucesso' };
   }
 }
+

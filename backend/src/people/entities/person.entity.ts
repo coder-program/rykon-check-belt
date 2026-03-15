@@ -1,4 +1,4 @@
-import {
+﻿import {
   Entity,
   PrimaryGeneratedColumn,
   Column,
@@ -63,7 +63,7 @@ export enum FaixaProfessor {
   VERMELHA = 'VERMELHA',
 }
 
-@Entity({ name: 'professores', schema: 'teamcruz' })
+@Entity({ name: 'professores' })
 @Index(['cpf'], { unique: true })
 @Index(['tipo_cadastro'])
 @Index(['status'])

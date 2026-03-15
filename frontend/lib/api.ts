@@ -2,6 +2,15 @@ import { config } from "./config";
 
 export const API_BASE_URL = config.apiUrl;
 
+/** Lê o tenant slug do cookie (setado pelo middleware Next.js) */
+export function getTenantSlug(): string {
+  if (typeof window === "undefined") return "teamcruz";
+  const match = document.cookie
+    .split(";")
+    .find((c) => c.trim().startsWith("tenant-slug="));
+  return match?.split("=")[1]?.toLowerCase().trim() || "teamcruz";
+}
+
 type HttpOptions = {
   method?: string;
   headers?: Record<string, string>;
@@ -15,6 +24,7 @@ export async function http(path: string, opts: HttpOptions = {}) {
     : `${API_BASE_URL}${path.startsWith("/") ? path : "/" + path}`;
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
+    "X-Tenant-ID": getTenantSlug(), // ← multi-tenant: identifica o tenant em toda requisição
     ...(opts.headers || {}),
   };
 

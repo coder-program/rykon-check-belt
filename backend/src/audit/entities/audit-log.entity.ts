@@ -1,4 +1,4 @@
-import {
+﻿import {
   Entity,
   PrimaryGeneratedColumn,
   Column,
@@ -14,7 +14,7 @@ export enum AuditAction {
   ACCESS = 'ACCESS',
 }
 
-@Entity({ name: 'audit_logs', schema: 'teamcruz' })
+@Entity({ name: 'audit_logs' })
 export class AuditLog {
   @PrimaryGeneratedColumn('uuid')
   id: string;

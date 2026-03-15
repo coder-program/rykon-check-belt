@@ -1,11 +1,11 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+﻿import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
 import { AlunoConvenio } from './aluno-convenio.entity';
 import { Presenca } from '../../presenca/entities/presenca.entity';
 import { Convenio } from './convenio.entity';
 
 export type TipoEventoConvenio = 'check_in' | 'check_out' | 'cancelamento';
 
-@Entity({ schema: 'teamcruz', name: 'eventos_convenio' })
+@Entity({ name: 'eventos_convenio' })
 export class EventoConvenio {
   @PrimaryGeneratedColumn('uuid')
   id: string;

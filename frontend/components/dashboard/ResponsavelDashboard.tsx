@@ -106,6 +106,7 @@ export default function ResponsavelDashboard() {
       const response = await fetch(`${API_URL}/alunos/meus-dependentes`, {
         headers: {
           Authorization: `Bearer ${token}`,
+          "X-Tenant-ID": document.cookie.split(';').find(c => c.trim().startsWith('tenant-slug='))?.split('=')[1]?.trim() || 'teamcruz',
         },
       });
       if (!response.ok) {
@@ -287,6 +288,7 @@ export default function ResponsavelDashboard() {
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
+          "X-Tenant-ID": document.cookie.split(';').find(c => c.trim().startsWith('tenant-slug='))?.split('=')[1]?.trim() || 'teamcruz',
         },
       });
 
@@ -315,6 +317,7 @@ export default function ResponsavelDashboard() {
       const aulaResponse = await fetch(`${API_URL}/presenca/aula-ativa`, {
         headers: {
           Authorization: `Bearer ${token}`,
+          "X-Tenant-ID": document.cookie.split(';').find(c => c.trim().startsWith('tenant-slug='))?.split('=')[1]?.trim() || 'teamcruz',
         },
       });
 
@@ -355,6 +358,7 @@ export default function ResponsavelDashboard() {
           headers: {
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
+            "X-Tenant-ID": document.cookie.split(';').find(c => c.trim().startsWith('tenant-slug='))?.split('=')[1]?.trim() || 'teamcruz',
           },
           body: JSON.stringify({
             dependenteId: alunoId,

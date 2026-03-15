@@ -1,8 +1,8 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, Index } from 'typeorm';
+﻿import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, Index } from 'typeorm';
 import { Convenio } from './convenio.entity';
 import { Unidade } from '../../people/entities/unidade.entity';
 
-@Entity('unidade_convenios', { schema: 'teamcruz' })
+@Entity('unidade_convenios')
 @Index(['unidade_id', 'convenio_id'], { unique: true })
 @Index(['unidade_id'])
 export class UnidadeConvenio {

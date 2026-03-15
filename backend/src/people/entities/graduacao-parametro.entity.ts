@@ -1,4 +1,4 @@
-import {
+﻿import {
   Entity,
   PrimaryGeneratedColumn,
   Column,
@@ -15,7 +15,7 @@ export enum TipoPeriodoGraduacao {
   ESPECIAL = 'ESPECIAL',
 }
 
-@Entity({ schema: 'teamcruz', name: 'graduacao_parametros' })
+@Entity({ name: 'graduacao_parametros' })
 export class GraduacaoParametro {
   @PrimaryGeneratedColumn('uuid')
   id: string;

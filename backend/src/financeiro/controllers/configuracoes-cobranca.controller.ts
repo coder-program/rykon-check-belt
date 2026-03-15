@@ -37,7 +37,7 @@ export class ConfiguracoesCobrancaController {
     if (isFranqueado) {
       // Buscar franqueado_id
       const franqueadoResult = await this.dataSource.query(
-        'SELECT id FROM teamcruz.franqueados WHERE usuario_id = $1 LIMIT 1',
+        'SELECT id FROM franqueados WHERE usuario_id = $1 LIMIT 1',
         [user.id],
       );
 
@@ -53,7 +53,7 @@ export class ConfiguracoesCobrancaController {
 
       // Validar se a unidade pertence ao franqueado
       const unidadeResult = await this.dataSource.query(
-        'SELECT id FROM teamcruz.unidades WHERE id = $1 AND franqueado_id = $2 LIMIT 1',
+        'SELECT id FROM unidades WHERE id = $1 AND franqueado_id = $2 LIMIT 1',
         [unidade_id, franqueado_id],
       );
 
@@ -87,7 +87,7 @@ export class ConfiguracoesCobrancaController {
     if (isFranqueado) {
       // Buscar franqueado_id
       const franqueadoResult = await this.dataSource.query(
-        'SELECT id FROM teamcruz.franqueados WHERE usuario_id = $1 LIMIT 1',
+        'SELECT id FROM franqueados WHERE usuario_id = $1 LIMIT 1',
         [user.id],
       );
 
@@ -103,7 +103,7 @@ export class ConfiguracoesCobrancaController {
 
       // Validar se a unidade pertence ao franqueado
       const unidadeResult = await this.dataSource.query(
-        'SELECT id FROM teamcruz.unidades WHERE id = $1 AND franqueado_id = $2 LIMIT 1',
+        'SELECT id FROM unidades WHERE id = $1 AND franqueado_id = $2 LIMIT 1',
         [unidade_id, franqueado_id],
       );
 
@@ -119,3 +119,4 @@ export class ConfiguracoesCobrancaController {
     return this.configService.update(unidade_id, updateDto);
   }
 }
+

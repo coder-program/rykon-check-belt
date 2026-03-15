@@ -126,7 +126,7 @@ export class ConviteCadastroService {
 
     // Buscar perfil_id de 'aluno'
     const perfilAluno = await this.usuarioRepository.query(
-      `SELECT id FROM teamcruz.perfis WHERE UPPER(nome) = 'ALUNO' LIMIT 1`,
+      `SELECT id FROM perfis WHERE UPPER(nome) = 'ALUNO' LIMIT 1`,
     );
     const perfilId = perfilAluno[0]?.id;
 
@@ -450,3 +450,4 @@ export class ConviteCadastroService {
     };
   }
 }
+

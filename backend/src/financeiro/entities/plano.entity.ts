@@ -1,4 +1,4 @@
-import {
+﻿import {
   Entity,
   PrimaryGeneratedColumn,
   Column,
@@ -18,7 +18,7 @@ export enum TipoPlano {
   AVULSO = 'AVULSO',
 }
 
-@Entity({ name: 'planos', schema: 'teamcruz' })
+@Entity({ name: 'planos' })
 export class Plano {
   @PrimaryGeneratedColumn('uuid')
   id: string;

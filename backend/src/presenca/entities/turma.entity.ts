@@ -1,4 +1,4 @@
-import {
+﻿import {
   Entity,
   PrimaryGeneratedColumn,
   Column,
@@ -11,7 +11,7 @@ import {
 import { Unidade } from '../../people/entities/unidade.entity';
 import { Person } from '../../people/entities/person.entity';
 
-@Entity({ name: 'turmas', schema: 'teamcruz' })
+@Entity({ name: 'turmas' })
 @Index(['unidade_id'])
 @Index(['professor_id'])
 @Index(['ativo'])

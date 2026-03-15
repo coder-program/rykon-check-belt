@@ -1,4 +1,4 @@
-import {
+﻿import {
   Entity,
   PrimaryGeneratedColumn,
   Column,
@@ -10,7 +10,7 @@ import {
 import { Instrutor } from '../../instrutores/entities/instrutor.entity';
 // import { HistoricoGrau } from '../../graduacoes/entities/historico-grau.entity';
 
-@Entity('faixas', { schema: 'teamcruz' })
+@Entity('faixas')
 export class Faixa {
   @PrimaryGeneratedColumn('uuid')
   id: string;

@@ -217,7 +217,7 @@ export class AlunosService {
     // Filtro por modalidade
     if (params.modalidade_id) {
       query.innerJoin(
-        'teamcruz.aluno_modalidades',
+        'aluno_modalidades',
         'am_filtro',
         'am_filtro.aluno_id = aluno.id AND am_filtro.modalidade_id = :modalidadeId AND am_filtro.ativo = true',
         { modalidadeId: params.modalidade_id },
@@ -241,7 +241,7 @@ export class AlunosService {
     let usuariosStatus: { [key: string]: boolean } = {};
     if (usuarioIds.length > 0) {
       const usuarios = await this.dataSource.query(
-        `SELECT id, ativo FROM teamcruz.usuarios WHERE id = ANY($1)`,
+        `SELECT id, ativo FROM usuarios WHERE id = ANY($1)`,
         [usuarioIds],
       );
       usuariosStatus = usuarios.reduce((acc, u) => {
@@ -358,7 +358,7 @@ export class AlunosService {
       if (!usuario_id && !isDependenteCadastro) {
         // Buscar ID do perfil ALUNO
         const perfilAluno = await queryRunner.manager.query(
-          `SELECT id FROM teamcruz.perfis WHERE UPPER(nome) = 'ALUNO' LIMIT 1`,
+          `SELECT id FROM perfis WHERE UPPER(nome) = 'ALUNO' LIMIT 1`,
         );
 
         if (!perfilAluno || perfilAluno.length === 0) {
@@ -381,7 +381,7 @@ export class AlunosService {
 
         while (usernameExists) {
           const existing = await queryRunner.manager.query(
-            `SELECT id FROM teamcruz.usuarios WHERE username = $1`,
+            `SELECT id FROM usuarios WHERE username = $1`,
             [username],
           );
           if (existing.length === 0) {
@@ -407,7 +407,7 @@ export class AlunosService {
         };
 
         const usuario = await queryRunner.manager.query(
-          `INSERT INTO teamcruz.usuarios
+          `INSERT INTO usuarios
            (username, email, nome, cpf, telefone, password, ativo, cadastro_completo, created_at, updated_at)
            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
            RETURNING id`,
@@ -427,7 +427,7 @@ export class AlunosService {
 
         // Vincular perfil ALUNO ao usuário
         await queryRunner.manager.query(
-          `INSERT INTO teamcruz.usuario_perfis (usuario_id, perfil_id, created_at)
+          `INSERT INTO usuario_perfis (usuario_id, perfil_id, created_at)
            VALUES ($1, $2, NOW())`,
           [usuario_id, perfilAluno[0].id],
         );
@@ -1271,7 +1271,7 @@ export class AlunosService {
       const franqueadoId = await this.getFranqueadoIdByUser(user);
       if (franqueadoId) {
         baseQuery.andWhere(
-          'aluno.unidade_id IN (SELECT id FROM teamcruz.unidades WHERE franqueado_id = :franqueadoId)',
+          'aluno.unidade_id IN (SELECT id FROM unidades WHERE franqueado_id = :franqueadoId)',
           { franqueadoId },
         );
       }
@@ -1338,7 +1338,7 @@ export class AlunosService {
       const franqueadoId = await this.getFranqueadoIdByUser(user);
       if (franqueadoId) {
         faixaQuery.andWhere(
-          'aluno.unidade_id IN (SELECT id FROM teamcruz.unidades WHERE franqueado_id = :franqueadoId)',
+          'aluno.unidade_id IN (SELECT id FROM unidades WHERE franqueado_id = :franqueadoId)',
           { franqueadoId },
         );
       }
@@ -1393,9 +1393,9 @@ export class AlunosService {
     // MÉTODO ANTIGO - mantido para compatibilidade
     // Buscar unidade onde o usuário é o responsável com papel ADMINISTRATIVO (recepcionista)
     const result = await this.dataSource.query(
-      `SELECT id FROM teamcruz.unidades
+      `SELECT id FROM unidades
        WHERE responsavel_cpf = (
-         SELECT cpf FROM teamcruz.usuarios WHERE id = $1
+         SELECT cpf FROM usuarios WHERE id = $1
        )
        LIMIT 1`,
       [user.id],
@@ -1409,7 +1409,7 @@ export class AlunosService {
     // NOVO MÉTODO - busca todas as unidades vinculadas na tabela recepcionista_unidades
     const result = await this.dataSource.query(
       `SELECT ru.unidade_id
-       FROM teamcruz.recepcionista_unidades ru
+       FROM recepcionista_unidades ru
        WHERE ru.usuario_id = $1
          AND ru.ativo = true
        ORDER BY ru.created_at`,
@@ -1431,7 +1431,7 @@ export class AlunosService {
     if (!user?.id) return null;
     // Buscar unidade do gerente através da tabela gerente_unidades
     const result = await this.dataSource.query(
-      `SELECT unidade_id FROM teamcruz.gerente_unidades
+      `SELECT unidade_id FROM gerente_unidades
        WHERE usuario_id = $1
        LIMIT 1`,
       [user.id],
@@ -1449,7 +1449,7 @@ export class AlunosService {
   private async getProfessorIdByUser(user: any): Promise<string | null> {
     if (!user?.id) return null;
     const result = await this.dataSource.query(
-      `SELECT id FROM teamcruz.professores WHERE usuario_id = $1 LIMIT 1`,
+      `SELECT id FROM professores WHERE usuario_id = $1 LIMIT 1`,
       [user.id],
     );
     return result[0]?.id || null;
@@ -1457,7 +1457,7 @@ export class AlunosService {
 
   private async getUnidadesDoProfessor(professorId: string): Promise<string[]> {
     const result = await this.dataSource.query(
-      `SELECT unidade_id FROM teamcruz.professor_unidades WHERE professor_id = $1 AND ativo = true`,
+      `SELECT unidade_id FROM professor_unidades WHERE professor_id = $1 AND ativo = true`,
       [professorId],
     );
     return result.map((r: any) => r.unidade_id);
@@ -1468,7 +1468,7 @@ export class AlunosService {
       return null;
     }
     const result = await this.dataSource.query(
-      `SELECT id FROM teamcruz.franqueados WHERE usuario_id = $1 LIMIT 1`,
+      `SELECT id FROM franqueados WHERE usuario_id = $1 LIMIT 1`,
       [user.id],
     );
     return result[0]?.id || null;
@@ -1478,7 +1478,7 @@ export class AlunosService {
     franqueadoId: string,
   ): Promise<string[]> {
     const result = await this.dataSource.query(
-      `SELECT id FROM teamcruz.unidades WHERE franqueado_id = $1`,
+      `SELECT id FROM unidades WHERE franqueado_id = $1`,
       [franqueadoId],
     );
     return result.map((r: any) => r.id);
@@ -1497,7 +1497,7 @@ export class AlunosService {
     );
     if (perfisNomes.includes('TABLET_CHECKIN')) {
       const result = await this.dataSource.query(
-        `SELECT unidade_id FROM teamcruz.tablet_unidades WHERE tablet_id = $1 AND ativo = true LIMIT 1`,
+        `SELECT unidade_id FROM tablet_unidades WHERE tablet_id = $1 AND ativo = true LIMIT 1`,
         [user.id],
       );
       unidadeId = result[0]?.unidade_id || null;
@@ -1543,7 +1543,7 @@ export class AlunosService {
     // Verificar quantas presencas existem hoje
     const presencasHoje = await this.dataSource.query(
       `SELECT COUNT(*), MIN(hora_checkin), MAX(hora_checkin) 
-       FROM teamcruz.presencas 
+       FROM presencas 
        WHERE hora_checkin >= $1 AND hora_checkin < $2 
        AND status_aprovacao IN ('APROVADO', 'PENDENTE')`,
       [hoje, amanha]
@@ -1555,7 +1555,7 @@ export class AlunosService {
     // Usar subquery para excluir alunos que já fizeram check-in hoje
     query.andWhere(
       `NOT EXISTS (
-        SELECT 1 FROM teamcruz.presencas p 
+        SELECT 1 FROM presencas p 
         WHERE p.aluno_id = aluno.id 
         AND p.hora_checkin >= :hoje 
         AND p.hora_checkin < :amanha 
@@ -1618,7 +1618,7 @@ export class AlunosService {
 
     // Buscar responsável na tabela responsaveis
     let responsavelData = await this.dataSource.query(
-      `SELECT id FROM teamcruz.responsaveis WHERE usuario_id = $1 LIMIT 1`,
+      `SELECT id FROM responsaveis WHERE usuario_id = $1 LIMIT 1`,
       [user.id],
     );
 
@@ -1627,8 +1627,8 @@ export class AlunosService {
       // Buscar dados do usuário e unidade do aluno vinculado
       const usuarioData = await this.dataSource.query(
         `SELECT u.nome, u.email, u.cpf, u.telefone, a.unidade_id
-         FROM teamcruz.usuarios u
-         LEFT JOIN teamcruz.alunos a ON a.usuario_id = u.id
+         FROM usuarios u
+         LEFT JOIN alunos a ON a.usuario_id = u.id
          WHERE u.id = $1
          LIMIT 1`,
         [user.id],
@@ -1641,7 +1641,7 @@ export class AlunosService {
         let unidadeId = usuario.unidade_id;
         if (!unidadeId) {
           const unidadeData = await this.dataSource.query(
-            `SELECT id FROM teamcruz.unidades WHERE status = 'ATIVA' LIMIT 1`,
+            `SELECT id FROM unidades WHERE status = 'ATIVA' LIMIT 1`,
           );
           unidadeId = unidadeData && unidadeData.length > 0 ? unidadeData[0].id : null;
         }
@@ -1653,7 +1653,7 @@ export class AlunosService {
         
         // Criar responsável com dados do usuário
         responsavelData = await this.dataSource.query(
-          `INSERT INTO teamcruz.responsaveis
+          `INSERT INTO responsaveis
            (usuario_id, nome_completo, email, cpf, telefone, unidade_id)
            VALUES ($1, $2, $3, $4, $5, $6)
            RETURNING id`,
@@ -1737,19 +1737,19 @@ export class AlunosService {
     if (alunoExistente) {
       // Se já é aluno, apenas garantir que tem o perfil ALUNO
       const perfilAluno = await this.dataSource.query(
-        `SELECT id FROM teamcruz.perfis WHERE nome = 'ALUNO' LIMIT 1`,
+        `SELECT id FROM perfis WHERE nome = 'ALUNO' LIMIT 1`,
       );
 
       if (perfilAluno && perfilAluno.length > 0) {
         const perfilExistente = await this.dataSource.query(
-          `SELECT usuario_id FROM teamcruz.usuario_perfis
+          `SELECT usuario_id FROM usuario_perfis
            WHERE usuario_id = $1 AND perfil_id = $2`,
           [user.id, perfilAluno[0].id],
         );
 
         if (!perfilExistente || perfilExistente.length === 0) {
           await this.dataSource.query(
-            `INSERT INTO teamcruz.usuario_perfis (usuario_id, perfil_id, created_at)
+            `INSERT INTO usuario_perfis (usuario_id, perfil_id, created_at)
              VALUES ($1, $2, NOW())`,
             [user.id, perfilAluno[0].id],
           );
@@ -1771,8 +1771,8 @@ export class AlunosService {
     // Buscar dados do responsável
     const responsavelData = await this.dataSource.query(
       `SELECT r.*, u.nome, u.email, u.cpf, u.telefone
-       FROM teamcruz.responsaveis r
-       INNER JOIN teamcruz.usuarios u ON u.id = r.usuario_id
+       FROM responsaveis r
+       INNER JOIN usuarios u ON u.id = r.usuario_id
        WHERE r.usuario_id = $1 LIMIT 1`,
       [user.id],
     );
@@ -1802,20 +1802,20 @@ export class AlunosService {
 
     // Adicionar perfil ALUNO ao usuário (mantém o perfil RESPONSAVEL também)
     const perfilAluno = await this.dataSource.query(
-      `SELECT id FROM teamcruz.perfis WHERE nome = 'ALUNO' LIMIT 1`,
+      `SELECT id FROM perfis WHERE nome = 'ALUNO' LIMIT 1`,
     );
 
     if (perfilAluno && perfilAluno.length > 0) {
       // Verificar se já não tem o perfil
       const perfilExistente = await this.dataSource.query(
-        `SELECT usuario_id FROM teamcruz.usuario_perfis
+        `SELECT usuario_id FROM usuario_perfis
          WHERE usuario_id = $1 AND perfil_id = $2`,
         [user.id, perfilAluno[0].id],
       );
 
       if (!perfilExistente || perfilExistente.length === 0) {
         await this.dataSource.query(
-          `INSERT INTO teamcruz.usuario_perfis (usuario_id, perfil_id, created_at)
+          `INSERT INTO usuario_perfis (usuario_id, perfil_id, created_at)
            VALUES ($1, $2, NOW())`,
           [user.id, perfilAluno[0].id],
         );
@@ -1852,7 +1852,7 @@ export class AlunosService {
 
     // Buscar definição da faixa
     const faixaDef = await this.dataSource.query(
-      `SELECT id FROM teamcruz.faixa_def WHERE codigo = $1`,
+      `SELECT id FROM faixa_def WHERE codigo = $1`,
       [faixaCodigo],
     );
 
@@ -1865,13 +1865,13 @@ export class AlunosService {
 
     // Desativar faixa atual
     await this.dataSource.query(
-      `UPDATE teamcruz.aluno_faixa SET ativa = false WHERE aluno_id = $1 AND ativa = true`,
+      `UPDATE aluno_faixa SET ativa = false WHERE aluno_id = $1 AND ativa = true`,
       [alunoId],
     );
 
     // Criar nova faixa ativa
     const result = await this.dataSource.query(
-      `INSERT INTO teamcruz.aluno_faixa (aluno_id, faixa_def_id, dt_inicio, ativa, graus_atual, presencas_no_ciclo, presencas_total_fx)
+      `INSERT INTO aluno_faixa (aluno_id, faixa_def_id, dt_inicio, ativa, graus_atual, presencas_no_ciclo, presencas_total_fx)
        VALUES ($1, $2, $3, true, $4, 0, 0)
        RETURNING id`,
       [alunoId, faixaDefId, dataInicio, graus],
@@ -1883,7 +1883,7 @@ export class AlunosService {
     if (graus > 0) {
       for (let i = 1; i <= graus; i++) {
         await this.dataSource.query(
-          `INSERT INTO teamcruz.aluno_faixa_grau (aluno_faixa_id, grau_num, dt_concessao)
+          `INSERT INTO aluno_faixa_grau (aluno_faixa_id, grau_num, dt_concessao)
            VALUES ($1, $2, $3)`,
           [alunoFaixaId, i, dataInicio],
         );
@@ -1892,7 +1892,7 @@ export class AlunosService {
 
     // Atualizar data_ultima_graduacao no aluno
     await this.dataSource.query(
-      `UPDATE teamcruz.alunos SET data_ultima_graduacao = $1 WHERE id = $2`,
+      `UPDATE alunos SET data_ultima_graduacao = $1 WHERE id = $2`,
       [dataInicio, alunoId],
     );
 
@@ -1904,3 +1904,4 @@ export class AlunosService {
     };
   }
 }
+

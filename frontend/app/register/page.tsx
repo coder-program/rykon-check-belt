@@ -22,8 +22,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { TeamCruzLogo } from "@/components/ui/teamcruz-logo";
 import { JiuJitsuWatermark } from "@/components/ui/jiujitsu-watermark";
+import Image from "next/image";
+import { useTenant } from "@/hooks/useTenant";
 import {
   Mail,
   Lock,
@@ -92,6 +93,7 @@ function RegisterPageContent() {
 
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { tenant } = useTenant();
 
   // Ler parâmetros da URL (vindo de convite)
   const unidadeFromUrl = searchParams?.get("unidade");
@@ -725,25 +727,41 @@ function RegisterPageContent() {
       {/* Marca d'água de fundo */}
       <JiuJitsuWatermark />
 
-      {/* Gradiente de fundo temático TeamCruz */}
-      <div className="absolute inset-0 bg-gradient-to-br from-gray-900 via-black to-red-900"></div>
+      {/* Gradiente de fundo temático */}
+      <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, #111827 0%, #000000 50%, ${tenant.corPrimaria ?? '#1a1a2e'} 100%)` }}></div>
 
       {/* Conteúdo principal */}
       <div className="relative z-10 min-h-screen flex items-center justify-center p-3 sm:p-4 md:p-6">
         <div className="w-full max-w-2xl">
-          <Card className="shadow-2xl border-2 border-red-600/20 bg-black/90 backdrop-blur-md">
+          <Card className="shadow-2xl border-2 bg-black/90 backdrop-blur-md" style={{ borderColor: `${tenant.corSecundaria ?? '#e94560'}33` }}>
             <CardHeader className="space-y-1 text-center pb-4 sm:pb-6 px-3 sm:px-6 pt-4 sm:pt-6">
-              {/* Logo TeamCruz */}
+              {/* Logo dinâmico */}
               <div className="flex justify-center mb-3 sm:mb-4">
-                <TeamCruzLogo size={60} />
+                {tenant.logoUrl ? (
+                  <div className="relative">
+                    <Image
+                      src={tenant.logoUrl}
+                      alt={`${tenant.nome} Logo`}
+                      width={60}
+                      height={60}
+                      className="rounded-full shadow-2xl border-4 border-white/20 hover:border-white/30 transition-all duration-300"
+                      priority
+                    />
+                    <div className="absolute inset-0 rounded-full bg-gradient-to-br from-white/10 to-transparent pointer-events-none"></div>
+                  </div>
+                ) : (
+                  <div className="w-16 h-16 rounded-full flex items-center justify-center text-white text-2xl font-bold" style={{ backgroundColor: tenant.corPrimaria ?? '#1a1a2e' }}>
+                    {tenant.nome?.charAt(0)?.toUpperCase() ?? 'A'}
+                  </div>
+                )}
               </div>
 
               <CardTitle className="text-xl sm:text-2xl font-bold text-white flex items-center justify-center gap-2">
-                <UserPlus className="h-5 w-5 sm:h-6 sm:w-6 text-red-400" />
+                <UserPlus className="h-5 w-5 sm:h-6 sm:w-6" style={{ color: tenant.corSecundaria ?? '#e94560' }} />
                 CRIAR CONTA
               </CardTitle>
               <CardDescription className="text-sm sm:text-base text-gray-300 mt-2">
-                Cadastre-se para acessar o sistema TeamCruz
+                Cadastre-se para acessar o sistema {tenant.nome ?? 'TeamCruz'}
               </CardDescription>
             </CardHeader>
 

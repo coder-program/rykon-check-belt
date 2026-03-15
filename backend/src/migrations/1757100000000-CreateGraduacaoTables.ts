@@ -1,4 +1,4 @@
-import { MigrationInterface, QueryRunner, Table, Index } from 'typeorm';
+﻿import { MigrationInterface, QueryRunner, Table, Index } from 'typeorm';
 
 export class CreateGraduacaoTables1757100000000 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -34,7 +34,6 @@ export class CreateGraduacaoTables1757100000000 implements MigrationInterface {
     await queryRunner.createTable(
       new Table({
         name: 'pessoas',
-        schema: 'teamcruz',
         columns: [
           {
             name: 'id',
@@ -232,7 +231,6 @@ export class CreateGraduacaoTables1757100000000 implements MigrationInterface {
     await queryRunner.createTable(
       new Table({
         name: 'faixa_def',
-        schema: 'teamcruz',
         columns: [
           {
             name: 'id',
@@ -302,7 +300,6 @@ export class CreateGraduacaoTables1757100000000 implements MigrationInterface {
     await queryRunner.createTable(
       new Table({
         name: 'aluno_faixa',
-        schema: 'teamcruz',
         columns: [
           {
             name: 'id',
@@ -371,8 +368,7 @@ export class CreateGraduacaoTables1757100000000 implements MigrationInterface {
           {
             name: 'FK_aluno_faixa_faixa_def',
             columnNames: ['faixa_def_id'],
-            referencedSchema: 'teamcruz',
-            referencedTableName: 'faixa_def',
+            referencedreferencedTableName: 'faixa_def',
             referencedColumnNames: ['id'],
             onDelete: 'RESTRICT',
           },
@@ -391,7 +387,6 @@ export class CreateGraduacaoTables1757100000000 implements MigrationInterface {
     await queryRunner.createTable(
       new Table({
         name: 'aluno_faixa_grau',
-        schema: 'teamcruz',
         columns: [
           {
             name: 'id',
@@ -439,16 +434,14 @@ export class CreateGraduacaoTables1757100000000 implements MigrationInterface {
           {
             name: 'FK_aluno_faixa_grau_aluno_faixa',
             columnNames: ['aluno_faixa_id'],
-            referencedSchema: 'teamcruz',
-            referencedTableName: 'aluno_faixa',
+            referencedreferencedTableName: 'aluno_faixa',
             referencedColumnNames: ['id'],
             onDelete: 'CASCADE',
           },
           {
             name: 'FK_aluno_faixa_grau_concedido_por',
             columnNames: ['concedido_por'],
-            referencedSchema: 'teamcruz',
-            referencedTableName: 'usuarios',
+            referencedreferencedTableName: 'usuarios',
             referencedColumnNames: ['id'],
             onDelete: 'SET NULL',
           },
@@ -461,7 +454,6 @@ export class CreateGraduacaoTables1757100000000 implements MigrationInterface {
     await queryRunner.createTable(
       new Table({
         name: 'aluno_graduacao',
-        schema: 'teamcruz',
         columns: [
           {
             name: 'id',
@@ -507,32 +499,28 @@ export class CreateGraduacaoTables1757100000000 implements MigrationInterface {
           {
             name: 'FK_aluno_graduacao_aluno',
             columnNames: ['aluno_id'],
-            referencedSchema: 'teamcruz',
-            referencedTableName: 'pessoas',
+            referencedreferencedTableName: 'pessoas',
             referencedColumnNames: ['id'],
             onDelete: 'CASCADE',
           },
           {
             name: 'FK_aluno_graduacao_faixa_origem',
             columnNames: ['faixa_origem_id'],
-            referencedSchema: 'teamcruz',
-            referencedTableName: 'faixa_def',
+            referencedreferencedTableName: 'faixa_def',
             referencedColumnNames: ['id'],
             onDelete: 'RESTRICT',
           },
           {
             name: 'FK_aluno_graduacao_faixa_destino',
             columnNames: ['faixa_destino_id'],
-            referencedSchema: 'teamcruz',
-            referencedTableName: 'faixa_def',
+            referencedreferencedTableName: 'faixa_def',
             referencedColumnNames: ['id'],
             onDelete: 'RESTRICT',
           },
           {
             name: 'FK_aluno_graduacao_concedido_por',
             columnNames: ['concedido_por'],
-            referencedSchema: 'teamcruz',
-            referencedTableName: 'usuarios',
+            referencedreferencedTableName: 'usuarios',
             referencedColumnNames: ['id'],
             onDelete: 'SET NULL',
           },

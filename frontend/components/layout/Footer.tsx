@@ -1,10 +1,12 @@
 "use client";
 
 import { useAuth } from "@/app/auth/AuthContext";
+import { useTenant } from "@/hooks/useTenant";
 import Image from "next/image";
 
 export default function Footer() {
   const { isAuthenticated } = useAuth();
+  const { tenant } = useTenant();
   const currentYear = new Date().getFullYear();
 
   // Não mostrar footer nas páginas públicas
@@ -16,27 +18,26 @@ export default function Footer() {
     <footer className="bg-gray-900 text-white mt-auto">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {/* TeamCruz Info */}
+          {/* Tenant Info */}
           <div className="space-y-4">
             <div className="flex items-center gap-3">
               <div className="relative w-12 h-12">
                 <Image
-                  src="/imgs/teamcruz.png"
-                  alt="TeamCruz Logo"
+                  src={tenant.logoUrl || "/imgs/teamcruz.png"}
+                  alt={`${tenant.nome} Logo`}
                   fill
                   className="object-contain"
                 />
               </div>
               <div>
-                <h3 className="text-lg font-bold">TeamCruz</h3>
-                <p className="text-sm text-gray-400">Jiu-Jitsu Academy</p>
+                <h3 className="text-lg font-bold">{tenant.nome}</h3>
               </div>
             </div>
             <p className="text-sm text-gray-400">
-              Sistema de gestão completo para academias de Jiu-Jitsu.
+              Sistema de gestão completo para academias.
             </p>
             <p className="text-sm text-gray-400">
-              © {currentYear} TeamCruz Jiu-Jitsu. Todos os direitos reservados.
+              © {currentYear} {tenant.nome}. Todos os direitos reservados.
             </p>
           </div>
 

@@ -44,7 +44,7 @@ export class DashboardFinanceiroService {
       if (!unidade_id && isFranqueado) {
         // Buscar franqueado_id na tabela franqueados
         const franqueadoResult = await this.dataSource.query(
-          'SELECT id FROM teamcruz.franqueados WHERE usuario_id = $1 LIMIT 1',
+          'SELECT id FROM franqueados WHERE usuario_id = $1 LIMIT 1',
           [user.id],
         );
 
@@ -159,7 +159,7 @@ export class DashboardFinanceiroService {
       if (unidadesIds.length > 0) {
         // Franqueado: buscar vendas de todas as unidades
         const franqueadoResult = await this.dataSource.query(
-          'SELECT id FROM teamcruz.franqueados WHERE usuario_id = $1 LIMIT 1',
+          'SELECT id FROM franqueados WHERE usuario_id = $1 LIMIT 1',
           [user.id],
         );
         const franqueado_id = franqueadoResult[0]?.id;
@@ -274,7 +274,7 @@ export class DashboardFinanceiroService {
     if (!unidade_id && isFranqueado) {
       // Buscar franqueado_id na tabela franqueados
       const franqueadoResult = await this.dataSource.query(
-        'SELECT id FROM teamcruz.franqueados WHERE usuario_id = $1 LIMIT 1',
+        'SELECT id FROM franqueados WHERE usuario_id = $1 LIMIT 1',
         [user.id],
       );
 
@@ -374,7 +374,7 @@ export class DashboardFinanceiroService {
       if (!unidade_id && isFranqueado) {
         // Buscar franqueado_id na tabela franqueados
         const franqueadoResult = await this.dataSource.query(
-          'SELECT id FROM teamcruz.franqueados WHERE usuario_id = $1 LIMIT 1',
+          'SELECT id FROM franqueados WHERE usuario_id = $1 LIMIT 1',
           [user.id],
         );
 
@@ -439,7 +439,7 @@ export class DashboardFinanceiroService {
       if (isFranqueado) {
         // Buscar franqueado_id na tabela franqueados
         const franqueadoResult = await this.dataSource.query(
-          'SELECT id FROM teamcruz.franqueados WHERE usuario_id = $1 LIMIT 1',
+          'SELECT id FROM franqueados WHERE usuario_id = $1 LIMIT 1',
           [user.id],
         );
 
@@ -540,3 +540,4 @@ export class DashboardFinanceiroService {
     }
   }
 }
+

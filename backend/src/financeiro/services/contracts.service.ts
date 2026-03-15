@@ -165,7 +165,7 @@ export class ContractsService {
   private async createDefaultContract(unidadeId: string, tipo: string, user: any): Promise<Contract> {
     // Buscar dados da unidade
     const unidade = await this.dataSource.query(
-      `SELECT nome, documento FROM teamcruz.unidades WHERE id = $1`,
+      `SELECT nome, documento FROM unidades WHERE id = $1`,
       [unidadeId]
     );
 
@@ -329,3 +329,4 @@ export class ContractsService {
     throw new ForbiddenException('Você não tem permissão para acessar contratos');
   }
 }
+

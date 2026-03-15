@@ -1,4 +1,4 @@
-import {
+﻿import {
   Entity,
   PrimaryGeneratedColumn,
   Column,
@@ -10,7 +10,7 @@ import {
 import { Usuario } from './usuario.entity';
 import { Permissao } from './permissao.entity';
 
-@Entity({ name: 'perfis', schema: 'teamcruz' })
+@Entity({ name: 'perfis' })
 export class Perfil {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -30,7 +30,6 @@ export class Perfil {
   @ManyToMany(() => Permissao, (permissao) => permissao.perfis)
   @JoinTable({
     name: 'perfil_permissoes',
-    schema: 'teamcruz',
     joinColumn: { name: 'perfil_id', referencedColumnName: 'id' },
     inverseJoinColumn: { name: 'permissao_id', referencedColumnName: 'id' },
   })

@@ -1,4 +1,4 @@
-import {
+﻿import {
   Entity,
   Column,
   PrimaryGeneratedColumn,
@@ -45,7 +45,7 @@ export interface CatracaConfig {
   };
 }
 
-@Entity({ name: 'unidades', schema: 'teamcruz' })
+@Entity({ name: 'unidades' })
 export class Unidade {
   @PrimaryGeneratedColumn('uuid')
   id: string;

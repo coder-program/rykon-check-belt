@@ -1,4 +1,4 @@
-import {
+﻿import {
   Entity,
   PrimaryGeneratedColumn,
   Column,
@@ -12,7 +12,7 @@ import { Perfil } from './perfil.entity';
 import { TipoPermissao } from './tipo-permissao.entity';
 import { NivelPermissao } from './nivel-permissao.entity';
 
-@Entity({ name: 'permissoes', schema: 'teamcruz' })
+@Entity({ name: 'permissoes' })
 export class Permissao {
   @PrimaryGeneratedColumn('uuid')
   id: string;

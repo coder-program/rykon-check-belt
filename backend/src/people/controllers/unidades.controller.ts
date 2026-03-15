@@ -38,7 +38,8 @@ export class UnidadesController {
     summary: 'Listar unidades ativas (público - sem autenticação)',
   })
   async listarAtivas(@Request() req) {
-    const result = await this.unidadesService.listarPublicasAtivas();
+    const schema = (req as any).tenantSchema || 'teamcruz';
+    const result = await this.unidadesService.listarPublicasAtivas(schema);
     return result;
   }
 

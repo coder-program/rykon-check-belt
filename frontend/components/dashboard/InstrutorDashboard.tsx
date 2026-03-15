@@ -114,6 +114,7 @@ export default function InstrutorDashboard() {
           {
             headers: {
               Authorization: `Bearer ${localStorage.getItem("token")}`,
+              "X-Tenant-ID": document.cookie.split(';').find(c => c.trim().startsWith('tenant-slug='))?.split('=')[1]?.trim() || 'teamcruz',
             },
           }
         );
@@ -134,6 +135,7 @@ export default function InstrutorDashboard() {
         {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("token")}`,
+            "X-Tenant-ID": document.cookie.split(';').find(c => c.trim().startsWith('tenant-slug='))?.split('=')[1]?.trim() || 'teamcruz',
           },
         }
       );
@@ -159,6 +161,7 @@ export default function InstrutorDashboard() {
         {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("token")}`,
+            "X-Tenant-ID": document.cookie.split(';').find(c => c.trim().startsWith('tenant-slug='))?.split('=')[1]?.trim() || 'teamcruz',
           },
         }
       );

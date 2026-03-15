@@ -1,4 +1,4 @@
-import {
+﻿import {
   Entity,
   Column,
   PrimaryGeneratedColumn,
@@ -19,7 +19,7 @@ export type StatusImplantacao =
   | 'CONCLUIDA'
   | 'PAUSADA';
 
-@Entity({ name: 'franqueado_contratos', schema: 'teamcruz' })
+@Entity({ name: 'franqueado_contratos' })
 export class FranqueadoContrato {
   @PrimaryGeneratedColumn('uuid')
   id!: string;

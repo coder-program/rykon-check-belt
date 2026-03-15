@@ -947,6 +947,7 @@ export default function AlunoDashboard({
           headers: {
             Authorization: `Bearer ${token}`,
             "Content-Type": "application/json",
+            "X-Tenant-ID": document.cookie.split(';').find(c => c.trim().startsWith('tenant-slug='))?.split('=')[1]?.trim() || 'teamcruz',
           },
           body: JSON.stringify({
             faixa_codigo: faixaInicial.faixa,

@@ -1,4 +1,4 @@
-import {
+﻿import {
   Entity,
   PrimaryGeneratedColumn,
   Column,
@@ -31,7 +31,7 @@ export enum StatusCompeticao {
   CANCELADA = 'CANCELADA',
 }
 
-@Entity({ name: 'competicoes', schema: 'teamcruz' })
+@Entity({ name: 'competicoes' })
 @Index(['data_inicio'])
 @Index(['tipo'])
 @Index(['status'])

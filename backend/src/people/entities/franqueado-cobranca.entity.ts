@@ -1,4 +1,4 @@
-import {
+﻿import {
   Entity,
   Column,
   PrimaryGeneratedColumn,
@@ -21,7 +21,7 @@ export type StatusCobranca =
 
 export type OrigemCobranca = 'AUTOMATICA' | 'MANUAL';
 
-@Entity({ name: 'franqueado_cobrancas', schema: 'teamcruz' })
+@Entity({ name: 'franqueado_cobrancas' })
 export class FranqueadoCobranca {
   @PrimaryGeneratedColumn('uuid')
   id!: string;

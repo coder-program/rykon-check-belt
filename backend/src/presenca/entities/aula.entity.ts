@@ -1,4 +1,4 @@
-import {
+﻿import {
   Entity,
   PrimaryGeneratedColumn,
   Column,
@@ -33,7 +33,7 @@ export enum TipoAula {
   LIVRE = 'LIVRE',
 }
 
-@Entity({ name: 'aulas', schema: 'teamcruz' })
+@Entity({ name: 'aulas' })
 @Index(['unidade_id', 'dia_semana', 'data_hora_inicio'])
 @Index(['professor_id'])
 @Index(['ativo'])

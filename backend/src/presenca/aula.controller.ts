@@ -32,7 +32,7 @@ export class AulaController {
    */
   private async getUnidadesDoFranqueado(userId: string): Promise<string[]> {
     const franqueado = await this.dataSource.query(
-      `SELECT id FROM teamcruz.franqueados WHERE usuario_id = $1`,
+      `SELECT id FROM franqueados WHERE usuario_id = $1`,
       [userId],
     );
 
@@ -41,7 +41,7 @@ export class AulaController {
     }
 
     const unidades = await this.dataSource.query(
-      `SELECT id FROM teamcruz.unidades WHERE franqueado_id = $1`,
+      `SELECT id FROM unidades WHERE franqueado_id = $1`,
       [franqueado[0].id],
     );
 
@@ -176,7 +176,7 @@ export class AulaController {
     // 🔥 Se foi passado alunoId na URL, buscar a unidade desse aluno
     if (!unidade_id && alunoId) {
       const alunoByAlunoId = await this.dataSource.query(
-        `SELECT unidade_id FROM teamcruz.alunos WHERE id = $1 AND status = 'ATIVO'`,
+        `SELECT unidade_id FROM alunos WHERE id = $1 AND status = 'ATIVO'`,
         [alunoId],
       );
 
@@ -189,7 +189,7 @@ export class AulaController {
     if (!unidade_id && req?.user?.id) {
       // Tentar buscar a unidade do aluno
       const aluno = await this.dataSource.query(
-        `SELECT unidade_id FROM teamcruz.alunos WHERE usuario_id = $1 AND status = 'ATIVO'`,
+        `SELECT unidade_id FROM alunos WHERE usuario_id = $1 AND status = 'ATIVO'`,
         [req.user.id],
       );
 
@@ -403,3 +403,4 @@ export class AulaController {
     return { message: 'Aula removida com sucesso' };
   }
 }
+

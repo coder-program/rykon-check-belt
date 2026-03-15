@@ -49,8 +49,8 @@ export class FranqueadosServiceSimplified {
         f.*,
         u.nome as usuario_nome,
         u.email as usuario_email
-      FROM teamcruz.franqueados f
-      LEFT JOIN teamcruz.usuarios u ON f.usuario_id = u.id
+      FROM franqueados f
+      LEFT JOIN usuarios u ON f.usuario_id = u.id
       ${whereClause}
       ORDER BY f.created_at DESC
       LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
@@ -59,7 +59,7 @@ export class FranqueadosServiceSimplified {
     // Query para contar total
     const countQuery = `
       SELECT COUNT(*) as total
-      FROM teamcruz.franqueados f
+      FROM franqueados f
       ${whereClause}
     `;
 
@@ -90,8 +90,8 @@ export class FranqueadosServiceSimplified {
         f.*,
         u.nome as usuario_nome,
         u.email as usuario_email
-      FROM teamcruz.franqueados f
-      LEFT JOIN teamcruz.usuarios u ON f.usuario_id = u.id
+      FROM franqueados f
+      LEFT JOIN usuarios u ON f.usuario_id = u.id
       WHERE f.id = $1
     `;
 
@@ -105,8 +105,8 @@ export class FranqueadosServiceSimplified {
         f.*,
         u.nome as usuario_nome,
         u.email as usuario_email
-      FROM teamcruz.franqueados f
-      LEFT JOIN teamcruz.usuarios u ON f.usuario_id = u.id
+      FROM franqueados f
+      LEFT JOIN usuarios u ON f.usuario_id = u.id
       WHERE f.usuario_id = $1
     `;
 
@@ -117,7 +117,7 @@ export class FranqueadosServiceSimplified {
   async create(body: CreateFranqueadoSimplifiedDto): Promise<Franqueado> {
     // Verificar se CPF já existe
     const checkCpfQuery = `
-      SELECT id, nome FROM teamcruz.franqueados
+      SELECT id, nome FROM franqueados
       WHERE cpf = $1
       LIMIT 1
     `;
@@ -133,7 +133,7 @@ export class FranqueadosServiceSimplified {
     }
 
     const query = `
-      INSERT INTO teamcruz.franqueados (
+      INSERT INTO franqueados (
         nome, cpf, email, telefone, usuario_id,
         endereco_id, situacao, ativo,
         created_at, updated_at
@@ -161,7 +161,7 @@ export class FranqueadosServiceSimplified {
     if (body.usuario_id && result[0].situacao === 'ATIVA') {
       try {
         await this.dataSource.query(
-          `UPDATE teamcruz.usuarios SET cadastro_completo = true WHERE id = $1`,
+          `UPDATE usuarios SET cadastro_completo = true WHERE id = $1`,
           [body.usuario_id],
         );
       } catch (error) {
@@ -217,7 +217,7 @@ export class FranqueadosServiceSimplified {
     params.push(id);
 
     const query = `
-      UPDATE teamcruz.franqueados
+      UPDATE franqueados
       SET ${fields.join(', ')}
       WHERE id = $${paramIndex}
       RETURNING *
@@ -229,7 +229,7 @@ export class FranqueadosServiceSimplified {
     if (result[0] && result[0].usuario_id && result[0].situacao === 'ATIVA') {
       try {
         await this.dataSource.query(
-          `UPDATE teamcruz.usuarios SET cadastro_completo = true WHERE id = $1`,
+          `UPDATE usuarios SET cadastro_completo = true WHERE id = $1`,
           [result[0].usuario_id],
         );
       } catch (error) {
@@ -241,7 +241,7 @@ export class FranqueadosServiceSimplified {
   }
 
   async remove(id: string): Promise<void> {
-    const query = `DELETE FROM teamcruz.franqueados WHERE id = $1`;
+    const query = `DELETE FROM franqueados WHERE id = $1`;
     await this.dataSource.query(query, [id]);
   }
 
@@ -252,10 +252,10 @@ export class FranqueadosServiceSimplified {
         f.*,
         u.nome as usuario_nome,
         u.email as usuario_email
-      FROM teamcruz.franqueados f
-      LEFT JOIN teamcruz.usuarios u ON f.usuario_id = u.id
+      FROM franqueados f
+      LEFT JOIN usuarios u ON f.usuario_id = u.id
       WHERE EXISTS (
-        SELECT 1 FROM teamcruz.unidades un
+        SELECT 1 FROM unidades un
         WHERE un.id = $1 AND un.franqueado_id = f.id
       )
       AND f.ativo = true
@@ -264,3 +264,4 @@ export class FranqueadosServiceSimplified {
     return this.dataSource.query(query, [unidadeId]);
   }
 }
+

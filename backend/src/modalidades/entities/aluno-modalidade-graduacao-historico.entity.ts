@@ -1,4 +1,4 @@
-import {
+﻿import {
   Entity,
   PrimaryGeneratedColumn,
   Column,
@@ -20,7 +20,7 @@ export enum OrigemGraduacaoModalidade {
  * Histórico de graduações do aluno em modalidades não-BJJ.
  * Cada promoção registrada gera uma entrada aqui.
  */
-@Entity({ name: 'aluno_modalidade_graduacao_historico', schema: 'teamcruz' })
+@Entity({ name: 'aluno_modalidade_graduacao_historico' })
 export class AlunoModalidadeGraduacaoHistorico {
   @PrimaryGeneratedColumn('uuid')
   id: string;

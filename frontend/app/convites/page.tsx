@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import {
   aulaExperimentalApi,
   conviteApi,
@@ -25,6 +26,7 @@ import {
   Plus,
   Mail,
   Dumbbell,
+  ArrowLeft,
 } from "lucide-react";
 import {
   GiHighKick,
@@ -89,6 +91,7 @@ function getEsporteIcon(nome?: string): React.ReactNode {
 }
 
 export default function ConvitesPage() {
+  const router = useRouter();
   const [tab, setTab] = useState<TabType>("agendamentos");
   const [conviteModalOpen, setConviteModalOpen] = useState(false);
   const {
@@ -302,6 +305,12 @@ export default function ConvitesPage() {
         <div className="max-w-7xl mx-auto px-6 py-7">
           <div className="flex items-center justify-between gap-4 flex-wrap">
             <div className="flex items-center gap-4">
+              <button
+                onClick={() => router.back()}
+                className="w-9 h-9 rounded-lg border border-white/20 bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors backdrop-blur-sm shrink-0"
+              >
+                <ArrowLeft className="h-4 w-4 text-white" />
+              </button>
               <div className="w-11 h-11 rounded-xl bg-white/10 border border-white/20 flex items-center justify-center backdrop-blur-sm shrink-0">
                 <Mail className="h-5 w-5 text-white" />
               </div>

@@ -16,9 +16,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { TeamCruzLogo } from "@/components/ui/teamcruz-logo";
 import { JiuJitsuWatermark } from "@/components/ui/jiujitsu-watermark";
 import { Mail, Lock, AlertCircle, LogIn, Eye, EyeOff } from "lucide-react";
+import Image from "next/image";
+import { useTenant } from "@/hooks/useTenant";
 
 function LoginContent() {
   const [formData, setFormData] = useState({
@@ -28,6 +29,7 @@ function LoginContent() {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const { tenant } = useTenant();
   const [forgotPasswordEmail, setForgotPasswordEmail] = useState("");
   const [forgotPasswordLoading, setForgotPasswordLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -313,28 +315,44 @@ function LoginContent() {
       {/* Marca d'água de fundo */}
       <JiuJitsuWatermark />
 
-      {/* Gradiente de fundo temático TeamCruz */}
-      <div className="absolute inset-0 bg-gradient-to-br from-gray-900 via-black to-red-900"></div>
+      {/* Gradiente de fundo temático */}
+      <div className="absolute inset-0" style={{ background: `linear-gradient(135deg, #111827 0%, #000000 50%, ${tenant.corPrimaria ?? '#1a1a2e'} 100%)` }}></div>
 
       {/* Conteúdo principal */}
       <div className="relative z-10 min-h-screen flex items-center justify-center p-4">
         <div className="w-full max-w-md">
-          <Card className="shadow-2xl border-2 border-red-600/20 bg-black/90 backdrop-blur-md">
+          <Card className="shadow-2xl border-2 bg-black/90 backdrop-blur-md" style={{ borderColor: `${tenant.corSecundaria ?? '#e94560'}33` }}>
             <CardHeader className="space-y-1 text-center pb-8">
-              {/* Logo TeamCruz */}
+              {/* Logo dinâmico por tenant */}
               <div className="flex justify-center mb-6">
-                <TeamCruzLogo size={100} />
+                {tenant.logoUrl ? (
+                  <div className="relative">
+                    <Image
+                      src={tenant.logoUrl}
+                      alt={`${tenant.nome} Logo`}
+                      width={100}
+                      height={100}
+                      className="rounded-full shadow-2xl border-4 border-white/20 hover:border-white/30 transition-all duration-300"
+                      priority
+                    />
+                    <div className="absolute inset-0 rounded-full bg-gradient-to-br from-white/10 to-transparent pointer-events-none"></div>
+                  </div>
+                ) : (
+                  <div
+                    className="w-24 h-24 rounded-full flex items-center justify-center text-white text-4xl font-bold"
+                    style={{ backgroundColor: tenant.corPrimaria }}
+                  >
+                    {tenant.nome?.charAt(0)?.toUpperCase() ?? 'A'}
+                  </div>
+                )}
               </div>
 
               <CardTitle className="text-3xl font-bold text-white mb-2">
-                TEAM CRUZ
+                {tenant.nome?.toUpperCase()}
               </CardTitle>
-              <CardDescription className="text-red-400 font-medium text-lg">
-                BRAZILIAN JIU-JITSU
+              <CardDescription className="font-medium text-lg" style={{ color: tenant.corSecundaria }}>
+                Sistema de Gestão de Academia
               </CardDescription>
-              <p className="text-gray-300 text-sm mt-2">
-                Sistema de Gestão de Academia
-              </p>
             </CardHeader>
 
             <CardContent className="px-6">
@@ -355,7 +373,7 @@ function LoginContent() {
                       htmlFor="forgot-email"
                       className="flex items-center gap-2 text-gray-200"
                     >
-                      <Mail className="h-4 w-4 text-red-400" />
+                      <Mail className="h-4 w-4" style={{ color: tenant.corSecundaria ?? '#e94560' }} />
                       Email
                     </Label>
                     <Input
@@ -365,17 +383,18 @@ function LoginContent() {
                       onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                         setForgotPasswordEmail(e.target.value)
                       }
-                      placeholder="seu.email@teamcruz.com.br"
+                      placeholder="seu.email@academia.com.br"
                       required
                       disabled={forgotPasswordLoading}
-                      className="h-12 bg-gray-800/50 border-gray-600 text-white placeholder-gray-400 focus:border-red-500 focus:ring-red-500"
+                      className="h-12 bg-gray-800/50 border-gray-600 text-white placeholder-gray-400 focus:border-gray-500 focus:ring-gray-500"
                     />
                   </div>
 
                   <div className="space-y-3">
                     <Button
                       type="submit"
-                      className="w-full h-12 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-bold tracking-wide border border-red-500 shadow-lg shadow-red-900/50"
+                      className="w-full h-12 text-white font-bold tracking-wide shadow-lg"
+                      style={{ background: tenant.corSecundaria ?? '#e94560', borderColor: tenant.corSecundaria ?? '#e94560' }}
                       disabled={forgotPasswordLoading}
                     >
                       {forgotPasswordLoading ? (
@@ -417,7 +436,7 @@ function LoginContent() {
                       htmlFor="emailOrUsername"
                       className="flex items-center gap-2 text-gray-200"
                     >
-                      <Mail className="h-4 w-4 text-red-400" />
+                      <Mail className="h-4 w-4" style={{ color: tenant.corSecundaria ?? '#e94560' }} />
                       E-mail ou Username
                     </Label>
                     <Input
@@ -426,10 +445,10 @@ function LoginContent() {
                       name="emailOrUsername"
                       value={formData.emailOrUsername}
                       onChange={handleChange}
-                      placeholder="seu.email@teamcruz.com.br ou seu.username"
+                      placeholder="seu.email@academia.com.br ou seu.username"
                       required
                       disabled={isLoading}
-                      className="h-12 bg-gray-800/50 border-gray-600 text-white placeholder-gray-400 focus:border-red-500 focus:ring-red-500"
+                      className="h-12 bg-gray-800/50 border-gray-600 text-white placeholder-gray-400 focus:border-gray-500 focus:ring-gray-500"
                     />
                   </div>
 
@@ -438,7 +457,7 @@ function LoginContent() {
                       htmlFor="password"
                       className="flex items-center gap-2 text-gray-200"
                     >
-                      <Lock className="h-4 w-4 text-red-400" />
+                      <Lock className="h-4 w-4" style={{ color: tenant.corSecundaria ?? '#e94560' }} />
                       Senha
                     </Label>
                     <div className="relative">
@@ -451,12 +470,12 @@ function LoginContent() {
                         placeholder="Digite sua senha"
                         required
                         disabled={isLoading}
-                        className="h-12 bg-gray-800/50 border-gray-600 text-white placeholder-gray-400 focus:border-red-500 focus:ring-red-500 pr-12"
+                        className="h-12 bg-gray-800/50 border-gray-600 text-white placeholder-gray-400 focus:border-gray-500 focus:ring-gray-500 pr-12"
                       />
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-400 transition-colors"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-200 transition-colors"
                         disabled={isLoading}
                       >
                         {showPassword ? (
@@ -470,7 +489,8 @@ function LoginContent() {
 
                   <Button
                     type="submit"
-                    className="w-full h-12 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-bold tracking-wide border border-red-500 shadow-lg shadow-red-900/50"
+                    className="w-full h-12 text-white font-bold tracking-wide shadow-lg"
+                    style={{ background: tenant.corSecundaria ?? '#e94560', borderColor: tenant.corSecundaria ?? '#e94560' }}
                     disabled={isLoading}
                   >
                     {isLoading ? (
@@ -494,7 +514,8 @@ function LoginContent() {
                   Não tem uma conta?{" "}
                   <Link
                     href="/register"
-                    className="text-red-400 hover:text-red-300 font-medium transition-colors"
+                    className="font-medium transition-colors hover:opacity-80"
+                    style={{ color: tenant.corSecundaria ?? '#e94560' }}
                   >
                     Cadastre-se aqui
                   </Link>
@@ -508,7 +529,8 @@ function LoginContent() {
                 <button
                   type="button"
                   onClick={() => setShowForgotPassword(true)}
-                  className="text-red-400 hover:text-red-300 transition-colors bg-transparent border-none cursor-pointer"
+                  className="font-medium transition-colors hover:opacity-80 bg-transparent border-none cursor-pointer"
+                  style={{ color: tenant.corSecundaria ?? '#e94560' }}
                 >
                   Esqueceu sua senha?
                 </button>
@@ -525,7 +547,8 @@ function LoginContent() {
                       });
                     }, 50);
                   }}
-                  className="text-red-400 hover:text-red-300 transition-colors bg-transparent border-none cursor-pointer"
+                  className="font-medium transition-colors hover:opacity-80 bg-transparent border-none cursor-pointer"
+                  style={{ color: tenant.corSecundaria ?? '#e94560' }}
                 >
                   Suporte Técnico
                 </button>
@@ -552,11 +575,11 @@ function LoginContent() {
                     id="support"
                     className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-full max-w-md mx-4"
                   >
-                    <div className="rounded-lg border-2 border-red-600/30 bg-gray-900 shadow-2xl">
+                    <div className="rounded-lg border-2 bg-gray-900 shadow-2xl" style={{ borderColor: `${tenant.corSecundaria ?? '#e94560'}4d` }}>
                       {/* Header */}
                       <div className="flex items-center justify-between border-b border-gray-700 p-4">
                         <div className="flex items-center gap-2">
-                          <Mail className="h-5 w-5 text-red-400" />
+                          <Mail className="h-5 w-5" style={{ color: tenant.corSecundaria ?? '#e94560' }} />
                           <h3 className="font-bold text-white text-lg">
                             Suporte Técnico
                           </h3>
@@ -575,7 +598,7 @@ function LoginContent() {
                               );
                             }
                           }}
-                          className="text-gray-400 hover:text-red-400 transition-colors"
+                          className="text-gray-400 hover:text-gray-200 transition-colors"
                           aria-label="Fechar"
                         >
                           <span className="text-2xl">×</span>
@@ -604,7 +627,7 @@ function LoginContent() {
                               e: React.ChangeEvent<HTMLInputElement>
                             ) => setSupportEmail(e.target.value)}
                             placeholder="seu.email@exemplo.com"
-                            className="bg-gray-800/50 border-gray-600 text-white placeholder-gray-400 focus:border-red-500 focus:ring-red-500"
+                            className="bg-gray-800/50 border-gray-600 text-white placeholder-gray-400 focus:border-gray-500 focus:ring-gray-500"
                           />
                         </div>
 
@@ -623,7 +646,7 @@ function LoginContent() {
                             ) => setSupportMessage(e.target.value)}
                             placeholder="Ex: Não consigo fazer login, minha senha não está funcionando..."
                             rows={5}
-                            className="w-full rounded-md bg-gray-800/50 border border-gray-600 text-white placeholder-gray-400 px-3 py-2 focus:border-red-500 focus:ring-1 focus:ring-red-500 resize-none"
+                            className="w-full rounded-md bg-gray-800/50 border border-gray-600 text-white placeholder-gray-400 px-3 py-2 focus:border-gray-500 focus:ring-1 focus:ring-gray-500 resize-none"
                           />
                         </div>
                       </div>
@@ -632,7 +655,7 @@ function LoginContent() {
                       <div className="border-t border-gray-700 p-4 space-y-3">
                         <a
                           href={`https://wa.me/5511960656955?text=${encodeURIComponent(
-                            `Olá, preciso de suporte no login do Team Cruz.\n\nMeu email: ${
+                            `Olá, preciso de suporte no login do ${tenant.nome ?? 'sistema'}.\n\nMeu email: ${
                               supportEmail || "(não informado)"
                             }\n\nProblema: ${
                               supportMessage || "Problema com acesso ao sistema"
@@ -652,7 +675,7 @@ function LoginContent() {
 
               {/* Rodapé */}
               <div className="text-center text-xs text-gray-500 border-t border-gray-700 pt-4">
-                <p>© 2025 Team Cruz Brazilian Jiu-Jitsu</p>
+                <p>© 2025 {tenant.nome ?? 'Sistema de Gestão'}</p>
                 <p className="mt-1">Aqui ninguém treina sozinho</p>
               </div>
             </CardFooter>

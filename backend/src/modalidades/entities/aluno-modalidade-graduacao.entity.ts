@@ -1,4 +1,4 @@
-import {
+﻿import {
   Entity,
   PrimaryGeneratedColumn,
   Column,
@@ -16,7 +16,7 @@ import { ModalidadeNivel } from './modalidade-nivel.entity';
  * Cada aluno matriculado em uma modalidade com tipo_graduacao != NENHUM
  * tem um registro ativo aqui.
  */
-@Entity({ name: 'aluno_modalidade_graduacao', schema: 'teamcruz' })
+@Entity({ name: 'aluno_modalidade_graduacao' })
 export class AlunoModalidadeGraduacao {
   @PrimaryGeneratedColumn('uuid')
   id: string;

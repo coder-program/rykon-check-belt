@@ -1,8 +1,8 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, Unique } from 'typeorm';
+﻿import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, Unique } from 'typeorm';
 import { Unidade } from '../../people/entities/unidade.entity';
 import { Convenio } from './convenio.entity';
 
-@Entity({ schema: 'teamcruz', name: 'configuracoes_convenio_unidade' })
+@Entity({ name: 'configuracoes_convenio_unidade' })
 @Unique('unique_unidade_convenio', ['unidade_id', 'convenio_id'])
 export class ConfiguracaoConvenioUnidade {
   @PrimaryGeneratedColumn('uuid')

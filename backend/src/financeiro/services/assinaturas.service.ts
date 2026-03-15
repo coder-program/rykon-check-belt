@@ -232,7 +232,7 @@ export class AssinaturasService {
       if (isFranqueado) {
         // Buscar franqueado_id correto
         const franqueadoResult = await this.dataSource.query(
-          `SELECT id FROM teamcruz.franqueados WHERE usuario_id = $1 LIMIT 1`,
+          `SELECT id FROM franqueados WHERE usuario_id = $1 LIMIT 1`,
           [user.id],
         );
         const franqueadoId = franqueadoResult[0]?.id || null;
@@ -807,4 +807,5 @@ export class AssinaturasService {
     };
   }
 }
+
 

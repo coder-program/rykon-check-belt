@@ -1,4 +1,4 @@
-import {
+﻿import {
   Entity,
   PrimaryGeneratedColumn,
   Column,
@@ -20,7 +20,7 @@ export enum DiaSemana {
   SABADO = 6,
 }
 
-@Entity({ name: 'horarios_turma', schema: 'teamcruz' })
+@Entity({ name: 'horarios_turma' })
 @Index(['turma_id'])
 @Index(['dia_semana'])
 @Index(['ativo'])

@@ -13,6 +13,7 @@ export class DashboardController {
   @ApiOperation({ summary: 'Obter estatísticas gerais do dashboard' })
   @ApiResponse({ status: 200, description: 'Estatísticas obtidas com sucesso' })
   async getStats(@Request() req, @Query('unidadeId') unidadeId?: string) {
-    return this.dashboardService.getStats(req.user.id, unidadeId);
+    const schema = req.tenantSchema || 'teamcruz';
+    return this.dashboardService.getStats(req.user.id, unidadeId, schema);
   }
 }

@@ -270,7 +270,7 @@ export class NotificacoesService {
     urgencia: string,
     tentativaTexto: string,
   ): string {
-    const frontendUrl = process.env.FRONTEND_URL || 'https://app.teamcruz.com.br';
+    const frontendUrl = process.env.FRONTEND_URL || 'https://app.com.br';
 
     return `
 ${urgencia} *Falha no Pagamento Automático*
@@ -309,7 +309,7 @@ Equipe TeamCruz 🥋
     fatura: Fatura,
     assinatura: Assinatura,
   ): string {
-    const frontendUrl = process.env.FRONTEND_URL || 'https://app.teamcruz.com.br';
+    const frontendUrl = process.env.FRONTEND_URL || 'https://app.com.br';
     const proximaCobranca = assinatura?.proxima_cobranca
       ? dayjs(assinatura.proxima_cobranca).format('DD/MM/YYYY')
       : 'em breve';
@@ -345,7 +345,7 @@ Equipe TeamCruz
     urgencia: string,
     texto: string,
   ): string {
-    const frontendUrl = process.env.FRONTEND_URL || 'https://app.teamcruz.com.br';
+    const frontendUrl = process.env.FRONTEND_URL || 'https://app.com.br';
 
     return `
 ${urgencia} *Cartão de Crédito Vencendo*

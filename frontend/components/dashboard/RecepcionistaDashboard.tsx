@@ -156,6 +156,7 @@ export default function RecepcionistaDashboard() {
         {
           headers: {
             Authorization: `Bearer ${token}`,
+            "X-Tenant-ID": document.cookie.split(';').find(c => c.trim().startsWith('tenant-slug='))?.split('=')[1]?.trim() || 'teamcruz',
           },
         }
       );
@@ -197,6 +198,7 @@ export default function RecepcionistaDashboard() {
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${localStorage.getItem("token")}`,
+            "X-Tenant-ID": document.cookie.split(';').find(c => c.trim().startsWith('tenant-slug='))?.split('=')[1]?.trim() || 'teamcruz',
           },
           body: JSON.stringify({
             aluno_id: alunoId,

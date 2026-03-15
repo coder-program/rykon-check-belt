@@ -1,4 +1,4 @@
-import {
+﻿import {
   Entity,
   Column,
   PrimaryGeneratedColumn,
@@ -12,7 +12,7 @@ import { FranqueadoContrato } from './franqueado-contrato.entity';
 export type StatusModulo = 'ATIVO' | 'INATIVO' | 'CANCELADO' | 'PENDENTE';
 export type TipoModulo = 'base' | 'extra';
 
-@Entity({ name: 'franqueado_modulos_contratados', schema: 'teamcruz' })
+@Entity({ name: 'franqueado_modulos_contratados' })
 export class FranqueadoModuloContratado {
   @PrimaryGeneratedColumn('uuid')
   id!: string;

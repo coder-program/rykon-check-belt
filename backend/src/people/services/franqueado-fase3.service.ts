@@ -198,7 +198,7 @@ export class FranqueadoFase3Service {
     // Buscar unidades pelo franqueado_id (a partir da relação franqueados -> unidades)
     // Usamos uma query raw para não precisar injetar mais repositórios
     const unidades: { id: string }[] = await this.snapshotRepo.query(
-      `SELECT id FROM teamcruz.unidades WHERE franqueado_id = $1`,
+      `SELECT id FROM unidades WHERE franqueado_id = $1`,
       [contrato.franqueado_id],
     );
 
@@ -217,3 +217,4 @@ export class FranqueadoFase3Service {
     return { gerados, erros };
   }
 }
+

@@ -1,4 +1,4 @@
-import {
+﻿import {
   Entity,
   PrimaryGeneratedColumn,
   Column,
@@ -11,7 +11,7 @@ import {
 import { Unidade } from './unidade.entity';
 
 @Unique(['unidade_id', 'modalidade_id'])
-@Entity({ name: 'config_aula_experimental', schema: 'teamcruz' })
+@Entity({ name: 'config_aula_experimental' })
 export class ConfigAulaExperimental {
   @PrimaryGeneratedColumn('uuid')
   id: string;

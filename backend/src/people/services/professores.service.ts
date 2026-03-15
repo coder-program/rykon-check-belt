@@ -66,8 +66,8 @@ export class ProfessoresService {
           `(
             person.id IN (
               SELECT DISTINCT pu.professor_id
-              FROM teamcruz.professor_unidades pu
-              INNER JOIN teamcruz.unidades u ON u.id = pu.unidade_id
+              FROM professor_unidades pu
+              INNER JOIN unidades u ON u.id = pu.unidade_id
               WHERE u.franqueado_id = :franqueadoId
               AND pu.ativo = true
               AND pu.professor_id IS NOT NULL
@@ -75,8 +75,8 @@ export class ProfessoresService {
             OR
             person.usuario_id IN (
               SELECT DISTINCT pu.usuario_id
-              FROM teamcruz.professor_unidades pu
-              INNER JOIN teamcruz.unidades u ON u.id = pu.unidade_id
+              FROM professor_unidades pu
+              INNER JOIN unidades u ON u.id = pu.unidade_id
               WHERE u.franqueado_id = :franqueadoId
               AND pu.ativo = true
               AND pu.usuario_id IS NOT NULL
@@ -231,7 +231,7 @@ export class ProfessoresService {
     try {
       // 1. ✅ Verificar se a unidade existe e está ativa
       const unidadeData = await queryRunner.manager.query(
-        `SELECT id, nome, status FROM teamcruz.unidades WHERE id = $1`,
+        `SELECT id, nome, status FROM unidades WHERE id = $1`,
         [dto.unidade_id],
       );
 
@@ -332,7 +332,7 @@ export class ProfessoresService {
       // Se já existe registro com usuario_id (criado na criação do usuário),
       // atualizar professor_id. Caso contrário, criar novo registro.
       const existingVinculo = await queryRunner.manager.query(
-        `SELECT * FROM teamcruz.professor_unidades
+        `SELECT * FROM professor_unidades
          WHERE usuario_id = $1 AND unidade_id = $2 LIMIT 1`,
         [dto.usuario_id, dto.unidade_id],
       );
@@ -340,7 +340,7 @@ export class ProfessoresService {
       if (existingVinculo && existingVinculo.length > 0) {
         // Atualizar registro existente com professor_id
         await queryRunner.manager.query(
-          `UPDATE teamcruz.professor_unidades
+          `UPDATE professor_unidades
            SET professor_id = $1, is_principal = true, ativo = true, updated_at = NOW()
            WHERE usuario_id = $2 AND unidade_id = $3`,
           [savedProfessor.id, dto.usuario_id, dto.unidade_id],
@@ -348,7 +348,7 @@ export class ProfessoresService {
       } else {
         // Criar novo vínculo na unidade principal
         await queryRunner.manager.query(
-          `INSERT INTO teamcruz.professor_unidades
+          `INSERT INTO professor_unidades
            (professor_id, usuario_id, unidade_id, is_principal, ativo)
            VALUES ($1, $2, $3, true, true)`,
           [savedProfessor.id, dto.usuario_id, dto.unidade_id],
@@ -658,7 +658,7 @@ export class ProfessoresService {
   private async getFranqueadoIdByUser(user: any): Promise<string | null> {
     if (!user?.id) return null;
     const result = await this.dataSource.query(
-      `SELECT id FROM teamcruz.franqueados WHERE usuario_id = $1 LIMIT 1`,
+      `SELECT id FROM franqueados WHERE usuario_id = $1 LIMIT 1`,
       [user.id],
     );
     return result[0]?.id || null;
@@ -669,7 +669,7 @@ export class ProfessoresService {
 
     // Buscar unidade onde o usuário é gerente via tabela gerente_unidades
     const result = await this.dataSource.query(
-      `SELECT unidade_id FROM teamcruz.gerente_unidades
+      `SELECT unidade_id FROM gerente_unidades
        WHERE usuario_id = $1 AND ativo = true LIMIT 1`,
       [user.id],
     );
@@ -681,9 +681,10 @@ export class ProfessoresService {
     franqueadoId: string,
   ): Promise<string[]> {
     const result = await this.dataSource.query(
-      `SELECT id FROM teamcruz.unidades WHERE franqueado_id = $1`,
+      `SELECT id FROM unidades WHERE franqueado_id = $1`,
       [franqueadoId],
     );
     return result.map((r: any) => r.id);
   }
 }
+

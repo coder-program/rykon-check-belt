@@ -1,4 +1,4 @@
-import {
+﻿import {
   Entity,
   PrimaryGeneratedColumn,
   Column,
@@ -17,7 +17,7 @@ export enum TipoContrato {
   OUTRO = 'OUTRO',
 }
 
-@Entity('contratos_unidades', { schema: 'teamcruz' })
+@Entity('contratos_unidades')
 export class ContratoUnidade {
   @PrimaryGeneratedColumn('uuid')
   id: string;

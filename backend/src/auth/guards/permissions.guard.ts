@@ -18,7 +18,19 @@ export class PermissionsGuard implements CanActivate {
 
     const { user } = context.switchToHttp().getRequest();
 
-    if (!user || !user.permissions) {
+    if (!user) {
+      return false;
+    }
+
+    // Perfil master tem bypass total — não depende de permissões específicas
+    const perfisNomes: string[] = (user.perfis || []).map((p: any) =>
+      typeof p === 'string' ? p.toLowerCase() : (p?.nome || '').toLowerCase(),
+    );
+    if (perfisNomes.includes('master')) {
+      return true;
+    }
+
+    if (!user.permissions) {
       return false;
     }
 

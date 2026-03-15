@@ -1,4 +1,4 @@
-import {
+﻿import {
   Entity,
   PrimaryGeneratedColumn,
   Column,
@@ -14,7 +14,7 @@ import { Modalidade } from './modalidade.entity';
  * Ex: Muay Thai → Nível 1, 2, 3
  * Ex: Judo → Kyu 5, 4, 3, 2, 1
  */
-@Entity({ name: 'modalidade_niveis', schema: 'teamcruz' })
+@Entity({ name: 'modalidade_niveis' })
 export class ModalidadeNivel {
   @PrimaryGeneratedColumn('uuid')
   id: string;

@@ -271,7 +271,7 @@ export class VendasService {
       // Verificar se tem WhatsApp API configurado
       const config = await this.dataSource.query(
         `SELECT whatsapp_api_url, whatsapp_api_token
-         FROM teamcruz.configuracoes_cobranca
+         FROM configuracoes_cobranca
          LIMIT 1`,
       );
 
@@ -504,3 +504,4 @@ ${linkPagamento ? `🔗 *Link de Pagamento:*\n${linkPagamento}\n\n` : ''}Qualque
     };
   }
 }
+

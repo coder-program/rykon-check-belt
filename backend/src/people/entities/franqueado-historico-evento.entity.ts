@@ -1,4 +1,4 @@
-import {
+﻿import {
   Entity,
   Column,
   PrimaryGeneratedColumn,
@@ -23,7 +23,7 @@ export type TipoEvento =
  * Auditoria e rastreabilidade de eventos por franqueado.
  * Alimenta a aba "Histórico" na tela de detalhe do franqueado.
  */
-@Entity({ name: 'franqueado_historico_eventos', schema: 'teamcruz' })
+@Entity({ name: 'franqueado_historico_eventos' })
 @Index('idx_fhe_franqueado', ['franqueado_id'])
 @Index('idx_fhe_tipo', ['tipo_evento'])
 export class FranqueadoHistoricoEvento {

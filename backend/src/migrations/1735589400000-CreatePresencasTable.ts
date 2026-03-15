@@ -1,4 +1,4 @@
-import { MigrationInterface, QueryRunner, Table, Index } from 'typeorm';
+﻿import { MigrationInterface, QueryRunner, Table, Index } from 'typeorm';
 
 export class CreatePresencasTable1735589400000 implements MigrationInterface {
   name = 'CreatePresencasTable1735589400000';
@@ -32,7 +32,6 @@ export class CreatePresencasTable1735589400000 implements MigrationInterface {
     await queryRunner.createTable(
       new Table({
         name: 'presencas',
-        schema: 'teamcruz',
         columns: [
           {
             name: 'id',
@@ -135,32 +134,28 @@ export class CreatePresencasTable1735589400000 implements MigrationInterface {
           {
             name: 'FK_presenca_pessoa',
             columnNames: ['pessoa_id'],
-            referencedSchema: 'teamcruz',
-            referencedTableName: 'pessoas',
+            referencedreferencedTableName: 'pessoas',
             referencedColumnNames: ['id'],
             onDelete: 'CASCADE',
           },
           {
             name: 'FK_presenca_unidade',
             columnNames: ['unidade_id'],
-            referencedSchema: 'teamcruz',
-            referencedTableName: 'unidades',
+            referencedreferencedTableName: 'unidades',
             referencedColumnNames: ['id'],
             onDelete: 'SET NULL',
           },
           {
             name: 'FK_presenca_responsavel',
             columnNames: ['responsavel_checkin_id'],
-            referencedSchema: 'teamcruz',
-            referencedTableName: 'pessoas',
+            referencedreferencedTableName: 'pessoas',
             referencedColumnNames: ['id'],
             onDelete: 'SET NULL',
           },
           {
             name: 'FK_presenca_validador',
             columnNames: ['validado_por'],
-            referencedSchema: 'teamcruz',
-            referencedTableName: 'usuarios',
+            referencedreferencedTableName: 'usuarios',
             referencedColumnNames: ['id'],
             onDelete: 'SET NULL',
           },

@@ -1,4 +1,4 @@
-import {
+﻿import {
   Entity,
   PrimaryGeneratedColumn,
   Column,
@@ -7,7 +7,7 @@ import {
 } from 'typeorm';
 import { Person } from '../../../people/entities/person.entity';
 
-@Entity({ name: 'presencas', schema: 'teamcruz' })
+@Entity({ name: 'presencas' })
 export class Presenca {
   @PrimaryGeneratedColumn('uuid')
   id: string;

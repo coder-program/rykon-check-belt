@@ -1,4 +1,4 @@
-import {
+﻿import {
   Entity,
   PrimaryGeneratedColumn,
   Column,
@@ -6,7 +6,7 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 
-@Entity('campanhas', { schema: 'teamcruz' })
+@Entity('campanhas')
 export class Campanha {
   @PrimaryGeneratedColumn('uuid')
   id: string;
