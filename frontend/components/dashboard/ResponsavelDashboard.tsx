@@ -18,6 +18,7 @@ import { useState } from "react";
 import toast from "react-hot-toast";
 import DependenteForm from "@/components/alunos/DependenteForm";
 import { http } from "@/lib/api";
+import { useTenant } from "@/hooks/useTenant";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api";
 
@@ -70,6 +71,7 @@ interface Aluno {
 
 export default function ResponsavelDashboard() {
   const { user } = useAuth();
+  const { tenant, loading: tenantLoading } = useTenant();
   const router = useRouter();
   const [loadingCheckin, setLoadingCheckin] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -496,12 +498,12 @@ export default function ResponsavelDashboard() {
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 mb-4 sm:mb-8">
           <Card
             className="cursor-pointer hover:shadow-lg transition-shadow bg-gradient-to-br from-yellow-50 to-yellow-100 border-yellow-200"
-            onClick={() => router.push("/teamcruz")}
+            onClick={() => router.push(`/${tenant.slug}`)}
           >
             <CardContent className="pt-4 sm:pt-6 flex flex-col items-center text-center">
               <Trophy className="h-8 w-8 sm:h-10 sm:w-10 text-yellow-600 mb-2" />
               <h3 className="text-sm sm:text-base font-semibold text-gray-900">
-                TeamCruz Jiu-Jitsu
+                {tenantLoading ? '' : tenant.nome}
               </h3>
               <p className="text-xs text-gray-600 mt-1">
                 Ranking, aulas e check-in

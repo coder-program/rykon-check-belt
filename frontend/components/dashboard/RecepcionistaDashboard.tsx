@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { useAuth } from "@/app/auth/AuthContext";
 import { useRouter } from "next/navigation";
+import { useTenant } from "@/hooks/useTenant";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { listUnidades, listAlunos, listUnidadeModalidades } from "@/lib/peopleApi";
 import ModalidadeSelectorModal, { ModalidadeChip } from "@/components/dashboard/ModalidadeSelectorModal";
@@ -48,6 +49,7 @@ interface CheckInModalData {
 
 export default function RecepcionistaDashboard() {
   const { user } = useAuth();
+  const { tenant } = useTenant();
   const router = useRouter();
   const queryClient = useQueryClient();
   const [searchAluno, setSearchAluno] = useState("");
@@ -291,10 +293,10 @@ export default function RecepcionistaDashboard() {
       color: "bg-blue-500",
     },
     {
-      title: "TeamCruz Dashboard",
+      title: `${tenant.nome} Dashboard`,
       description: "Ver estatísticas e visão geral",
       icon: BarChart3,
-      action: () => router.push("/teamcruz"),
+      action: () => router.push(`/${tenant.slug}`),
       color: "bg-red-600",
       show: isJiuJitsuSelected,
     },

@@ -6,7 +6,7 @@ import Image from "next/image";
 
 export default function Footer() {
   const { isAuthenticated } = useAuth();
-  const { tenant } = useTenant();
+  const { tenant, loading: tenantLoading } = useTenant();
   const currentYear = new Date().getFullYear();
 
   // Não mostrar footer nas páginas públicas
@@ -22,22 +22,30 @@ export default function Footer() {
           <div className="space-y-4">
             <div className="flex items-center gap-3">
               <div className="relative w-12 h-12">
-                <Image
-                  src={tenant.logoUrl || "/imgs/teamcruz.png"}
-                  alt={`${tenant.nome} Logo`}
-                  fill
-                  className="object-contain"
-                />
+                {tenantLoading ? (
+                  <div className="w-12 h-12 rounded-full bg-gray-700 animate-pulse" />
+                ) : tenant.logoUrl ? (
+                  <Image
+                    src={tenant.logoUrl}
+                    alt={`${tenant.nome} Logo`}
+                    fill
+                    className="object-contain"
+                  />
+                ) : (
+                  <div className="w-12 h-12 rounded-full bg-gray-700 flex items-center justify-center">
+                    <span className="text-white font-bold text-lg">{tenant.nome?.charAt(0)?.toUpperCase() ?? '?'}</span>
+                  </div>
+                )}
               </div>
               <div>
-                <h3 className="text-lg font-bold">{tenant.nome}</h3>
+                <h3 className="text-lg font-bold">{tenantLoading ? '' : tenant.nome}</h3>
               </div>
             </div>
             <p className="text-sm text-gray-400">
               Sistema de gestão completo para academias.
             </p>
             <p className="text-sm text-gray-400">
-              © {currentYear} {tenant.nome}. Todos os direitos reservados.
+              © {currentYear} {tenantLoading ? '' : tenant.nome}. Todos os direitos reservados.
             </p>
           </div>
 

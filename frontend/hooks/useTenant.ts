@@ -8,6 +8,7 @@ export interface TenantConfig {
   logoUrl: string | null;
   corPrimaria: string;
   corSecundaria: string;
+  lojaUrl: string | null;
 }
 
 const DEFAULT_TENANT: TenantConfig = {
@@ -16,6 +17,7 @@ const DEFAULT_TENANT: TenantConfig = {
   logoUrl: null,
   corPrimaria: '#111827',
   corSecundaria: '#dc2626',
+  lojaUrl: null,
 };
 
 /** Lê o slug do cookie (setado pelo middleware Next.js) */
@@ -27,26 +29,19 @@ export function getTenantSlug(): string {
   return match?.split('=')[1]?.toLowerCase().trim() || 'teamcruz';
 }
 
-/** Cria o estado inicial de forma síncrona, com o slug já correto do cookie */
-function getInitialTenant(): TenantConfig {
-  if (typeof window === 'undefined') return DEFAULT_TENANT;
-  const slug = getTenantSlug();
-  if (slug === 'teamcruz') return DEFAULT_TENANT;
-  // Slug diferente de teamcruz: retorna placeholder com o slug correto
-  // O nome/cores reais chegam no fetch logo adiante
-  return { ...DEFAULT_TENANT, slug };
-}
-
 /**
  * Hook para acessar a configuração do tenant atual.
  *
+ * Estado inicial sempre é DEFAULT_TENANT — idêntico no servidor e no cliente,
+ * o que evita hydration mismatch. O `loading: true` inicial garante que os
+ * componentes exibam skeleton até o fetch completar, nunca o nome errado.
+ *
  * Uso:
  *   const { tenant, loading } = useTenant();
- *   <img src={tenant.logoUrl} />
- *   <h1 style={{ color: tenant.corPrimaria }}>{tenant.nome}</h1>
+ *   {loading ? <Skeleton /> : <h1>{tenant.nome}</h1>}
  */
 export function useTenant() {
-  const [tenant, setTenant] = useState<TenantConfig>(getInitialTenant);
+  const [tenant, setTenant] = useState<TenantConfig>(DEFAULT_TENANT);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -60,7 +55,7 @@ export function useTenant() {
         return r.json();
       })
       .then((config: TenantConfig) => setTenant(config))
-      .catch(() => setTenant({ ...DEFAULT_TENANT, slug }))
+      .catch(() => setTenant({ ...DEFAULT_TENANT, slug, nome: slug, lojaUrl: null }))
       .finally(() => setLoading(false));
   }, []);
 

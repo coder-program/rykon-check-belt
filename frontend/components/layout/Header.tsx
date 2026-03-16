@@ -12,7 +12,7 @@ import { useTenant } from "@/hooks/useTenant";
 export default function Header() {
   const { user, logout, isAuthenticated } = useAuth();
   const router = useRouter();
-  const { tenant } = useTenant();
+  const { tenant, loading: tenantLoading } = useTenant();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
   const [logoutAllDialogOpen, setLogoutAllDialogOpen] = useState(false);
@@ -140,7 +140,7 @@ export default function Header() {
             <div
               className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
               onClick={() => router.push("/dashboard")}
-              title={tenant.nome}
+              title={tenantLoading ? '' : tenant.nome}
             >
               <div className="relative w-10 h-10 sm:w-12 sm:h-12">
                 {tenant.logoUrl ? (
@@ -151,10 +151,12 @@ export default function Header() {
                     className="object-contain"
                     priority
                   />
+                ) : tenantLoading ? (
+                  <div className="w-full h-full rounded-full bg-gray-700 animate-pulse" />
                 ) : (
                   <div className="w-full h-full rounded-full bg-gradient-to-br from-gray-700 to-gray-900 flex items-center justify-center">
                     <span className="text-white font-bold text-lg">
-                      {tenant.nome?.charAt(0)?.toUpperCase() ?? 'A'}
+                      {tenant.nome?.charAt(0)?.toUpperCase() ?? '?'}
                     </span>
                   </div>
                 )}

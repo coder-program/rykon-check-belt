@@ -3,6 +3,7 @@
 import React from "react";
 import { useAuth } from "@/app/auth/AuthContext";
 import { useRouter } from "next/navigation";
+import { useTenant } from "@/hooks/useTenant";
 import { useQuery } from "@tanstack/react-query";
 import { listUnidades, listAlunos, listUnidadeModalidades } from "@/lib/peopleApi";
 import ModalidadeSelectorModal, { ModalidadeChip } from "@/components/dashboard/ModalidadeSelectorModal";
@@ -36,6 +37,7 @@ import {
 } from "lucide-react";
 export default function GerenteDashboard() {
   const { user } = useAuth();
+  const { tenant } = useTenant();
   const router = useRouter();
 
   // Buscar a unidade do gerente
@@ -182,10 +184,10 @@ export default function GerenteDashboard() {
       color: "bg-blue-500",
     },
     {
-      title: "TeamCruz Dashboard",
+      title: `${tenant.nome} Dashboard`,
       description: "Ver estatísticas e visão geral",
       icon: BarChart3,
-      action: () => router.push("/teamcruz"),
+      action: () => router.push(`/${tenant.slug}`),
       color: "bg-red-600",
       show: isJiuJitsuSelected,
     },

@@ -11,9 +11,11 @@ import GerenteDashboard from "@/components/dashboard/GerenteDashboard";
 import RecepcionistaDashboard from "@/components/dashboard/RecepcionistaDashboard";
 import ResponsavelDashboard from "@/components/dashboard/ResponsavelDashboard";
 import { Loader2 } from "lucide-react";
+import { useTenant } from "@/hooks/useTenant";
 
 export default function DashboardPage() {
   const { user, logout, loading, isAuthenticated } = useAuth();
+  const { tenant, loading: tenantLoading } = useTenant();
   const router = useRouter();
 
   const hasPerfil = useCallback(
@@ -77,7 +79,7 @@ export default function DashboardPage() {
         <div className="text-center">
           <Loader2 className="mx-auto h-12 w-12 text-blue-500 animate-spin mb-4" />
           <h2 className="text-xl font-semibold text-gray-900 mb-2">
-            TeamCruz Jiu-Jitsu
+            {tenantLoading ? <div className="h-6 w-40 mx-auto rounded bg-gray-200 animate-pulse" /> : tenant.nome}
           </h2>
           <p className="text-gray-600">Verificando autenticação...</p>
         </div>

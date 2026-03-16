@@ -32,6 +32,9 @@ export class Tenant {
   @Column({ nullable: true, name: 'cor_secundaria', default: '#dc2626' })
   corSecundaria: string;
 
+  @Column({ nullable: true, name: 'loja_url' })
+  lojaUrl: string;
+
   @Column({ nullable: true, name: 'dominio_customizado' })
   dominioCustomizado: string;
 

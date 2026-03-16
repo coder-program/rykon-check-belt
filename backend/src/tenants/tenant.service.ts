@@ -42,6 +42,7 @@ export class TenantService {
       logoUrl: tenant.logoUrl,
       corPrimaria: tenant.corPrimaria ?? '#111827',
       corSecundaria: tenant.corSecundaria ?? '#dc2626',
+      lojaUrl: tenant.lojaUrl ?? null,
     };
   }
 }

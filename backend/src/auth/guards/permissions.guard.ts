@@ -22,11 +22,12 @@ export class PermissionsGuard implements CanActivate {
       return false;
     }
 
-    // Perfil master tem bypass total — não depende de permissões específicas
+    // Perfis admin têm bypass total — não dependem de permissões específicas
+    const ADMIN_PERFIS = ['master', 'admin', 'admin_sistema', 'super_admin'];
     const perfisNomes: string[] = (user.perfis || []).map((p: any) =>
       typeof p === 'string' ? p.toLowerCase() : (p?.nome || '').toLowerCase(),
     );
-    if (perfisNomes.includes('master')) {
+    if (perfisNomes.some((p) => ADMIN_PERFIS.includes(p))) {
       return true;
     }
 

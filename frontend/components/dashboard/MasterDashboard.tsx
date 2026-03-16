@@ -40,7 +40,7 @@ interface DashboardStats {
 
 export default function MasterDashboard() {
   const { user } = useAuth();
-  const { tenant } = useTenant();
+  const { tenant, loading: tenantLoading } = useTenant();
   const router = useRouter();
   const [stats, setStats] = useState<DashboardStats>({
     totalUsuarios: 0,
@@ -148,7 +148,7 @@ export default function MasterDashboard() {
       title: "Sistema",
       description: "Sistema completo de controle de presença e graduação",
       icon: Trophy,
-      action: () => router.push("/teamcruz"),
+      action: () => router.push(`/${tenant.slug}`),
       color: "bg-red-500",
       badge: "Sistema",
     },
@@ -257,7 +257,7 @@ export default function MasterDashboard() {
             </h1>
           </div>
           <p className="text-gray-600">
-            Bem-vindo, {user?.nome}! Visão geral completa do sistema {tenant.nome}.
+            Bem-vindo, {user?.nome}! Visão geral completa do sistema {tenantLoading ? '' : tenant.nome}.
           </p>
         </div>
 

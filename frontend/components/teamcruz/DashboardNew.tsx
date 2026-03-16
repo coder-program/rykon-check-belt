@@ -9,6 +9,7 @@ import { listAlunos, listProfessores } from "@/lib/peopleApi";
 import { getAulasHoje } from "@/lib/aulasApi";
 import { getRankingAlunosFrequencia } from "@/lib/presencaApi";
 import { useAuth } from "@/app/auth/AuthContext";
+import { useTenant } from "@/hooks/useTenant";
 import {
   Card,
   CardContent,
@@ -552,6 +553,7 @@ function BeltTip({ faixa, graus }: { faixa: string; graus: number }) {
 export default function DashboardNew() {
   // Hook de autenticação
   const { user } = useAuth();
+  const { tenant } = useTenant();
 
   // Verificar se é gerente de unidade
   const isGerenteUnidade = React.useMemo(() => {
@@ -4115,27 +4117,37 @@ export default function DashboardNew() {
             >
               <Card className="bg-gradient-to-r from-red-600 to-black text-white border-0 max-w-2xl w-full">
                 <CardContent className="p-12 text-center">
-                  <img
-                    src="/imgs/teamcruzdois.png"
-                    alt="TeamCruz Logo"
-                    className="h-32 mx-auto mb-6"
-                  />
+                  {tenant.logoUrl ? (
+                    <img
+                      src={tenant.logoUrl}
+                      alt={`${tenant.nome} Logo`}
+                      className="h-32 mx-auto mb-6"
+                    />
+                  ) : (
+                    <div className="h-32 mx-auto mb-6 flex items-center justify-center">
+                      <ShoppingBag className="h-20 w-20 opacity-60" />
+                    </div>
+                  )}
                   <h2 className="text-4xl font-bold mb-4">
-                    Loja Virtual TeamCruz
+                    Loja Virtual {tenant.nome}
                   </h2>
                   <p className="text-xl opacity-90 mb-8">
                     Equipamentos, uniformes e produtos oficiais da equipe
                   </p>
-                  <a
-                    href="https://www.lojateamcruz.com.br/"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-3 bg-white text-red-600 px-8 py-4 rounded-lg text-lg font-bold hover:bg-gray-100 transition-all transform hover:scale-105 shadow-lg"
-                  >
-                    <ShoppingBag className="h-6 w-6" />
-                    Acessar Loja Virtual
-                    <ExternalLink className="h-6 w-6" />
-                  </a>
+                  {tenant.lojaUrl ? (
+                    <a
+                      href={tenant.lojaUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-3 bg-white text-red-600 px-8 py-4 rounded-lg text-lg font-bold hover:bg-gray-100 transition-all transform hover:scale-105 shadow-lg"
+                    >
+                      <ShoppingBag className="h-6 w-6" />
+                      Acessar Loja Virtual
+                      <ExternalLink className="h-6 w-6" />
+                    </a>
+                  ) : (
+                    <p className="text-white/60 text-base">Loja em breve</p>
+                  )}
                 </CardContent>
               </Card>
             </motion.div>

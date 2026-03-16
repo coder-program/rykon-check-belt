@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/app/auth/AuthContext";
 import { useRouter } from "next/navigation";
+import { useTenant } from "@/hooks/useTenant";
 import { useQuery } from "@tanstack/react-query";
 import {
   listUnidades,
@@ -46,6 +47,7 @@ import {
 
 export default function FranqueadoDashboard() {
   const { user } = useAuth();
+  const { tenant } = useTenant();
   const router = useRouter();
   const [expandedUnidadeId, setExpandedUnidadeId] = useState<string | null>(
     null
@@ -353,10 +355,10 @@ export default function FranqueadoDashboard() {
       color: "bg-blue-500",
     },
     {
-      title: "TeamCruz Dashboard",
+      title: `${tenant.nome} Dashboard`,
       description: "Ver estatísticas e visão geral",
       icon: BarChart3,
-      action: () => router.push("/teamcruz"),
+      action: () => router.push(`/${tenant.slug}`),
       color: "bg-red-600",
       show: isJiuJitsuSelected,
     },

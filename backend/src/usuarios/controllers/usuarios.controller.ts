@@ -21,8 +21,6 @@ import {
   ApiQuery,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
-import { PermissionsGuard } from '../../auth/guards/permissions.guard';
-import { Permissions } from '../../auth/decorators/permissions.decorator';
 
 @ApiTags('👥 Usuários')
 @ApiBearerAuth('JWT-auth')
@@ -83,8 +81,7 @@ export class UsuariosController {
     return this.usuariosService.findMyResponsavel(req.user.id);
   }
 
-  @UseGuards(JwtAuthGuard, PermissionsGuard)
-  @Permissions('usuarios:aprovar')
+  @UseGuards(JwtAuthGuard)
   @Get('pendentes/list')
   @ApiOperation({
     summary: 'Listar usuários com cadastro completo aguardando aprovação',
@@ -146,8 +143,7 @@ export class UsuariosController {
     return this.usuariosService.remove(id);
   }
 
-  @UseGuards(JwtAuthGuard, PermissionsGuard)
-  @Permissions('usuarios:aprovar')
+  @UseGuards(JwtAuthGuard)
   @Patch(':id/aprovar')
   @ApiOperation({ summary: 'Aprovar usuário e ativar sua conta' })
   aprovar(@Param('id') id: string) {

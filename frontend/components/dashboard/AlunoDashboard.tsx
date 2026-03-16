@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { useAuth } from "@/app/auth/AuthContext";
 import { useRouter } from "next/navigation";
+import { useTenant } from "@/hooks/useTenant";
 import { useQuery } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import {
@@ -236,6 +237,7 @@ export default function AlunoDashboard({
   showBackButton = false,
 }: AlunoDashboardProps = {}) {
   const { user } = useAuth();
+  const { tenant, loading: tenantLoading } = useTenant();
   const router = useRouter();
 
   // Determinar qual ID usar (prop ou user.id)
@@ -1087,7 +1089,7 @@ export default function AlunoDashboard({
       color: "bg-green-500",
     },
     ...(hasJiu ? [{
-      title: "TeamCruz Jiu-Jitsu",
+      title: tenantLoading ? '' : tenant.nome,
       description: "Ranking, aulas e check-in",
       icon: Trophy,
       action: () => {
@@ -1096,7 +1098,7 @@ export default function AlunoDashboard({
           params.set("modalidadeId", modalidadeSelector.selectedModalidade.id);
           params.set("modalidadeNome", modalidadeSelector.selectedModalidade.nome ?? "");
         }
-        router.push(`/teamcruz${params.toString() ? `?${params.toString()}` : ""}`);
+        router.push(`/${tenant.slug}${params.toString() ? `?${params.toString()}` : ""}`);
       },
       color: "bg-yellow-500",
     }] : []),

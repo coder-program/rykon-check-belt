@@ -33,7 +33,7 @@ function ResetPasswordContent() {
 
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { tenant } = useTenant();
+  const { tenant, loading: tenantLoading } = useTenant();
 
   useEffect(() => {
     const tokenFromUrl = searchParams.get("token");
@@ -127,9 +127,11 @@ function ResetPasswordContent() {
                 <Image src={tenant.logoUrl} alt={`${tenant.nome} Logo`} width={80} height={80} className="rounded-full shadow-2xl border-4 border-white/20 hover:border-white/30 transition-all duration-300" priority />
                 <div className="absolute inset-0 rounded-full bg-gradient-to-br from-white/10 to-transparent pointer-events-none"></div>
               </div>
+            ) : tenantLoading ? (
+              <div className="w-16 h-16 rounded-full bg-gray-700 animate-pulse mx-auto" />
             ) : (
               <div className="w-16 h-16 rounded-full flex items-center justify-center text-white text-2xl font-bold mx-auto" style={{ backgroundColor: tenant.corPrimaria ?? '#1a1a2e' }}>
-                {tenant.nome?.charAt(0)?.toUpperCase() ?? 'A'}
+                {tenant.nome?.charAt(0)?.toUpperCase() ?? '?'}
               </div>
             )}
             <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
@@ -172,9 +174,11 @@ function ResetPasswordContent() {
               <Image src={tenant.logoUrl} alt={`${tenant.nome} Logo`} width={80} height={80} className="rounded-full shadow-2xl border-4 border-white/20 hover:border-white/30 transition-all duration-300" priority />
               <div className="absolute inset-0 rounded-full bg-gradient-to-br from-white/10 to-transparent pointer-events-none"></div>
             </div>
+          ) : tenantLoading ? (
+            <div className="w-16 h-16 rounded-full bg-gray-700 animate-pulse mx-auto" />
           ) : (
             <div className="w-16 h-16 rounded-full flex items-center justify-center text-white text-2xl font-bold mx-auto" style={{ backgroundColor: tenant.corPrimaria ?? '#1a1a2e' }}>
-              {tenant.nome?.charAt(0)?.toUpperCase() ?? 'A'}
+              {tenant.nome?.charAt(0)?.toUpperCase() ?? '?'}
             </div>
           )}
           <CardTitle className="text-2xl font-bold text-white">

@@ -29,7 +29,7 @@ function LoginContent() {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
-  const { tenant } = useTenant();
+  const { tenant, loading: tenantLoading } = useTenant();
   const [forgotPasswordEmail, setForgotPasswordEmail] = useState("");
   const [forgotPasswordLoading, setForgotPasswordLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -337,18 +337,24 @@ function LoginContent() {
                     />
                     <div className="absolute inset-0 rounded-full bg-gradient-to-br from-white/10 to-transparent pointer-events-none"></div>
                   </div>
+                ) : tenantLoading ? (
+                  <div className="w-24 h-24 rounded-full bg-white/10 animate-pulse" />
                 ) : (
                   <div
                     className="w-24 h-24 rounded-full flex items-center justify-center text-white text-4xl font-bold"
                     style={{ backgroundColor: tenant.corPrimaria }}
                   >
-                    {tenant.nome?.charAt(0)?.toUpperCase() ?? 'A'}
+                    {tenant.nome?.charAt(0)?.toUpperCase() ?? '?'}
                   </div>
                 )}
               </div>
 
               <CardTitle className="text-3xl font-bold text-white mb-2">
-                {tenant.nome?.toUpperCase()}
+                {tenantLoading ? (
+                  <div className="h-8 w-48 mx-auto rounded bg-white/10 animate-pulse" />
+                ) : (
+                  tenant.nome?.toUpperCase()
+                )}
               </CardTitle>
               <CardDescription className="font-medium text-lg" style={{ color: tenant.corSecundaria }}>
                 Sistema de Gestão de Academia

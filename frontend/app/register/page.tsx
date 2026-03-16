@@ -93,7 +93,7 @@ function RegisterPageContent() {
 
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { tenant } = useTenant();
+  const { tenant, loading: tenantLoading } = useTenant();
 
   // Ler parâmetros da URL (vindo de convite)
   const unidadeFromUrl = searchParams?.get("unidade");
@@ -749,9 +749,11 @@ function RegisterPageContent() {
                     />
                     <div className="absolute inset-0 rounded-full bg-gradient-to-br from-white/10 to-transparent pointer-events-none"></div>
                   </div>
+                ) : tenantLoading ? (
+                  <div className="w-16 h-16 rounded-full bg-gray-700 animate-pulse" />
                 ) : (
                   <div className="w-16 h-16 rounded-full flex items-center justify-center text-white text-2xl font-bold" style={{ backgroundColor: tenant.corPrimaria ?? '#1a1a2e' }}>
-                    {tenant.nome?.charAt(0)?.toUpperCase() ?? 'A'}
+                    {tenant.nome?.charAt(0)?.toUpperCase() ?? '?'}
                   </div>
                 )}
               </div>
@@ -761,7 +763,7 @@ function RegisterPageContent() {
                 CRIAR CONTA
               </CardTitle>
               <CardDescription className="text-sm sm:text-base text-gray-300 mt-2">
-                Cadastre-se para acessar o sistema {tenant.nome ?? 'TeamCruz'}
+                Cadastre-se para acessar o sistema {tenantLoading ? '' : (tenant.nome ?? '')}
               </CardDescription>
             </CardHeader>
 
