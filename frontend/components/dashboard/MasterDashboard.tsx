@@ -246,17 +246,17 @@ export default function MasterDashboard() {
   ];
 
   return (
-    <div className="min-h-screen p-6" style={{ background: "linear-gradient(135deg, #eef2ff 0%, #e0e7ff 40%, #ede9fe 100%)" }}>
+    <div className="dashboard-master-content min-h-screen p-6">
       <div className="max-w-7xl mx-auto">
         {/* Bem-vindo */}
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-2">
             <Crown className="h-8 w-8 text-yellow-600" />
-            <h1 className="text-3xl font-bold text-gray-900">
+            <h1 className="text-3xl font-bold dashboard-title">
               Dashboard Master
             </h1>
           </div>
-          <p className="text-gray-600">
+          <p className="dashboard-subtitle">
             Bem-vindo, {user?.nome}! Visão geral completa do sistema {tenantLoading ? '' : tenant.nome}.
           </p>
         </div>

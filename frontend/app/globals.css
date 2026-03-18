@@ -1,13 +1,28 @@
 @import "tailwindcss";
 @plugin "daisyui";
 
-/* Forçar esquema de cores light para prevenir modo escuro do navegador */
+/* ====================================
+   SISTEMA DE TEMA (CLARO/ESCURO)
+   ==================================== */
+
+/* Suporte a ambos os temas */
 :root {
-  color-scheme: light only;
+  color-scheme: light dark;
 }
 
 html {
   color-scheme: light;
+  /* Transição suave entre temas */
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+html.dark {
+  color-scheme: dark;
+}
+
+/* Transição suave para elementos que mudam com o tema */
+* {
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
 }
 
 :root {
@@ -133,16 +148,13 @@ html {
     @apply bg-background text-foreground;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    color-scheme: light;
   }
 
-  /* Forçar cores dos inputs para prevenir inversão do modo escuro */
+  /* Adaptação de inputs para ambos os temas */
   input,
   textarea,
   select {
-    color-scheme: light;
-    background-color: white !important;
-    color: #1e293b !important;
+    @apply bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100;
   }
 
   input:-webkit-autofill,
@@ -152,6 +164,268 @@ html {
     -webkit-box-shadow: 0 0 0 30px white inset !important;
     -webkit-text-fill-color: #1e293b !important;
   }
+
+  html.dark input:-webkit-autofill,
+  html.dark input:-webkit-autofill:hover,
+  html.dark input:-webkit-autofill:focus,
+  html.dark input:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 30px #1f2937 inset !important;
+    -webkit-text-fill-color: #f3f4f6 !important;
+  }
+}
+
+/* ====================================
+   SISTEMA DE TEMA - APLICAÇÃO GLOBAL
+   ==================================== */
+
+/* TEMA CLARO - Classes no HTML */
+html,
+html.light {
+  background-color: #ffffff !important;
+}
+
+/* TEMA ESCURO - Classes no HTML */
+html.dark {
+  background-color: #111827 !important; /* gray-900 */
+}
+
+/* TEMA CLARO - Classes no BODY */
+body,
+body.theme-light {
+  background-color: #f9fafb !important; /* gray-50 */
+  color: #111827 !important; /* gray-900 */
+}
+
+/* TEMA ESCURO - Classes no BODY */
+body.theme-dark {
+  background-color: #111827 !important; /* gray-900 */
+  color: #f3f4f6 !important; /* gray-100 */
+}
+
+/* ====================================
+   MAIN CONTENT - Fundo principal
+   ==================================== */
+
+/* Main no tema claro */
+main,
+body.theme-light main,
+html.light main {
+  background-color: #f9fafb !important; /* gray-50 */
+  color: #111827 !important;
+}
+
+/* Main no tema escuro */
+body.theme-dark main,
+html.dark main {
+  background-color: #111827 !important; /* gray-900 */
+  color: #f3f4f6 !important;
+}
+
+/* ====================================
+   CARDS - Cartões e painéis
+   ==================================== */
+
+/* Cards no tema claro */
+body.theme-light .bg-white,
+html.light .bg-white {
+  background-color: #ffffff !important;
+  color: #111827 !important;
+}
+
+/* Cards no tema escuro */
+body.theme-dark .bg-white,
+html.dark .bg-white {
+  background-color: #1f2937 !important; /* gray-800 */
+  color: #f3f4f6 !important;
+}
+
+/* ====================================
+   HEADER / NAVBAR
+   ==================================== */
+
+/* Header no tema claro */
+body.theme-light header,
+html.light header {
+  background-color: #ffffff !important;
+  border-color: #e5e7eb !important; /* gray-200 */
+}
+
+/* Header no tema escuro */
+body.theme-dark header,
+html.dark header {
+  background-color: #1f2937 !important; /* gray-800 */
+  border-color: #374151 !important; /* gray-700 */
+  color: #f3f4f6 !important;
+}
+
+/* ====================================
+   TEXTOS
+   ==================================== */
+
+/* Textos no tema escuro */
+body.theme-dark .text-gray-900,
+html.dark .text-gray-900 {
+  color: #f3f4f6 !important; /* gray-100 */
+}
+
+body.theme-dark .text-gray-800,
+html.dark .text-gray-800 {
+  color: #e5e7eb !important; /* gray-200 */
+}
+
+body.theme-dark .text-gray-700,
+html.dark .text-gray-700 {
+  color: #d1d5db !important; /* gray-300 */
+}
+
+body.theme-dark .text-gray-600,
+html.dark .text-gray-600 {
+  color: #9ca3af !important; /* gray-400 */
+}
+
+body.theme-dark .text-gray-500,
+html.dark .text-gray-500 {
+  color: #6b7280 !important; /* gray-500 */
+}
+
+/* APENAS textos em NEGRITO que têm cores ESCURAS (invisíveis no fundo escuro) viram BRANCOS */
+body.theme-dark .text-gray-900.font-bold,
+body.theme-dark .text-gray-900.font-semibold,
+body.theme-dark .text-gray-800.font-bold,
+body.theme-dark .text-gray-800.font-semibold,
+html.dark .text-gray-900.font-bold,
+html.dark .text-gray-900.font-semibold,
+html.dark .text-gray-800.font-bold,
+html.dark .text-gray-800.font-semibold {
+  color: #ffffff !important; /* Branco para textos escuros em negrito */
+}
+
+/* ====================================
+   BACKGROUNDS
+   ==================================== */
+
+body.theme-dark .bg-gray-50,
+html.dark .bg-gray-50 {
+  background-color: #111827 !important; /* gray-900 */
+}
+
+body.theme-dark .bg-gray-100,
+html.dark .bg-gray-100 {
+  background-color: #1f2937 !important; /* gray-800 */
+}
+
+body.theme-dark .bg-gray-200,
+html.dark .bg-gray-200 {
+  background-color: #374151 !important; /* gray-700 */
+}
+
+/* ====================================
+   BORDAS
+   ==================================== */
+
+body.theme-dark .border-gray-200,
+html.dark .border-gray-200 {
+  border-color: #374151 !important; /* gray-700 */
+}
+
+body.theme-dark .border-gray-300,
+html.dark .border-gray-300 {
+  border-color: #4b5563 !important; /* gray-600 */
+}
+
+/* ====================================
+   FOOTER
+   ==================================== */
+
+/* Footer no tema claro */
+body.theme-light footer,
+html.light footer {
+  background-color: #ffffff !important;
+  color: #111827 !important;
+  border-color: #e5e7eb !important;
+}
+
+/* Footer no tema escuro */
+body.theme-dark footer,
+html.dark footer {
+  background-color: #111827 !important;
+  color: #f3f4f6 !important;
+  border-color: #374151 !important;
+}
+
+/* ====================================
+   DASHBOARD - Gradientes de fundo
+   ==================================== */
+
+/* Dashboard no tema claro - Gradiente azul suave */
+.dashboard-master-content,
+body.theme-light .dashboard-master-content,
+html.light .dashboard-master-content {
+  background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 40%, #ede9fe 100%) !important;
+}
+
+/* Dashboard no tema escuro - Gradiente escuro */
+body.theme-dark .dashboard-master-content,
+html.dark .dashboard-master-content {
+  background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 40%, #1e293b 100%) !important;
+}
+
+/* ====================================
+   PÁGINAS ADMINISTRATIVAS - Gradientes
+   ==================================== */
+
+/* Páginas admin no tema claro - Gradiente roxo suave */
+.admin-page-content {
+  background: linear-gradient(160deg, #f5f3ff 0%, #ede9fe 30%, #f3f4f6 100%) !important;
+}
+
+/* Páginas admin no tema escuro - Gradiente escuro roxo */
+body.theme-dark .admin-page-content,
+html.dark .admin-page-content {
+  background: linear-gradient(160deg, #1e1b4b 0%, #2d1b69 30%, #1e293b 100%) !important;
+}
+
+/* Título do dashboard - apenas se tiver classe específica dashboard-title */
+.dashboard-title {
+  /* Mantém cor original no claro */
+}
+
+body.theme-dark .dashboard-title,
+html.dark .dashboard-title {
+  color: #ffffff !important; /* Branco no escuro apenas para este título específico */
+}
+
+/* Subtítulo do dashboard */
+.dashboard-subtitle {
+  /* Mantém cor original */
+}
+
+body.theme-dark .dashboard-subtitle,
+html.dark .dashboard-subtitle {
+  color: #d1d5db !important;
+}
+
+/* Status cards no tema escuro */
+body.theme-dark .bg-green-50,
+html.dark .bg-green-50 {
+  background-color: #064e3b !important; /* green-900 */
+  color: #d1fae5 !important; /* green-100 */
+}
+
+body.theme-dark .text-green-600,
+html.dark .text-green-600 {
+  color: #34d399 !important; /* green-400 */
+}
+
+/* Cards de ação urgente no tema escuro */
+body.theme-dark .bg-yellow-50,
+html.dark .bg-yellow-50 {
+  background-color: #78350f !important; /* yellow-900 */
+}
+
+body.theme-dark .ring-yellow-400,
+html.dark .ring-yellow-400 {
+  --tw-ring-color: #fbbf24 !important; /* yellow-400 */
 }
 
 /* Estilos do UsuariosManager do projeto original (global) */
@@ -165,6 +439,12 @@ html {
   color: #2c3e50;
   margin-bottom: 30px;
   text-align: center;
+}
+
+/* Header h1 no modo escuro - fica branco para visibilidade */
+body.theme-dark .header h1,
+html.dark .header h1 {
+  color: #ffffff !important;
 }
 
 .tabs {
@@ -206,6 +486,12 @@ html {
 .tab-header h2 {
   color: #2c3e50;
   margin: 0;
+}
+
+/* Tab header h2 no modo escuro */
+body.theme-dark .tab-header h2,
+html.dark .tab-header h2 {
+  color: #ffffff !important;
 }
 
 .btn-primary {
@@ -251,6 +537,13 @@ th {
   text-transform: uppercase;
   font-size: 12px;
   letter-spacing: 1px;
+}
+
+/* Headers de tabela no modo escuro */
+body.theme-dark th,
+html.dark th {
+  background-color: #1f2937 !important;
+  color: #e5e7eb !important;
 }
 
 tbody tr:hover {

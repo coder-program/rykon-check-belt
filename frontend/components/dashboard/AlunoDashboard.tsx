@@ -1137,7 +1137,7 @@ export default function AlunoDashboard({
         allowAll={false}
         onSelect={modalidadeSelector.selectModalidade}
       />
-    <div className="min-h-screen p-3 sm:p-6" style={{ background: "linear-gradient(135deg, #eef2ff 0%, #e0e7ff 40%, #ede9fe 100%)"}}>
+    <div className="dashboard-master-content min-h-screen p-3 sm:p-6">
       <div className="max-w-7xl mx-auto">
         {/* Botão Voltar para Meus Dados (se estiver visualizando dependente) */}
         {alunoId && alunoId !== user?.id && (

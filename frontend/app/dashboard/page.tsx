@@ -75,13 +75,13 @@ export default function DashboardPage() {
   // Mostrar loading durante verificação
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
         <div className="text-center">
           <Loader2 className="mx-auto h-12 w-12 text-blue-500 animate-spin mb-4" />
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">
-            {tenantLoading ? <div className="h-6 w-40 mx-auto rounded bg-gray-200 animate-pulse" /> : tenant.nome}
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
+            {tenantLoading ? <div className="h-6 w-40 mx-auto rounded bg-gray-200 dark:bg-gray-700 animate-pulse" /> : tenant.nome}
           </h2>
-          <p className="text-gray-600">Verificando autenticação...</p>
+          <p className="text-gray-600 dark:text-gray-400">Verificando autenticação...</p>
         </div>
       </div>
     );
@@ -143,11 +143,11 @@ export default function DashboardPage() {
   }, 100);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
       <div className="text-center">
         <Loader2 className="mx-auto h-12 w-12 text-red-500 animate-spin mb-4" />
-        <h3 className="text-lg font-semibold mb-2">Perfil não reconhecido</h3>
-        <p className="text-gray-600">Redirecionando para login...</p>
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">Perfil não reconhecido</h3>
+        <p className="text-gray-600 dark:text-gray-400">Redirecionando para login...</p>
       </div>
     </div>
   );

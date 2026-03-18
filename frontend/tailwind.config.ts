@@ -1,7 +1,7 @@
 import type { Config } from "tailwindcss";
 
 const config: Config = {
-  darkMode: false, // Desabilitado para garantir tema consistente
+  darkMode: "class", // Habilitado com estratégia 'class' para controle manual via JS
   theme: {
     extend: {
       colors: {

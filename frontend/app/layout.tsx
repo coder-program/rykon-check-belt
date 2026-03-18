@@ -9,6 +9,7 @@ import { ProfileCompletionGuard } from "@/components/auth/ProfileCompletionGuard
 import { TokenExpirationChecker } from "@/components/auth/TokenExpirationChecker";
 import LayoutContent from "@/components/layout/LayoutContent";
 import { FetchInterceptorSetup } from "@/components/FetchInterceptorSetup";
+import { ThemeProvider } from "@/components/theme/ThemeProvider";
 
 // Usar fontes do sistema como fallback
 const fontVariables = "font-sans";
@@ -56,39 +57,99 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-title" content="TeamCruz" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="theme-color" content="#dc2626" />
+        {/* Script para prevenir flash de tema incorreto - executa antes do React hidratar */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                console.log("🚀 Script de tema carregado");
+                try {
+                  const theme = localStorage.getItem('theme') || 'system';
+                  console.log("🚀 Tema salvo:", theme);
+                  
+                  const isDark = theme === 'dark' || 
+                    (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+                  
+                  console.log("🚀 Aplicar dark?", isDark);
+                  
+                  // Aplicar no HTML
+                  if (isDark) {
+                    document.documentElement.classList.add('dark');
+                    document.documentElement.classList.remove('light');
+                  } else {
+                    document.documentElement.classList.remove('dark');
+                    document.documentElement.classList.add('light');
+                  }
+                  
+                  // Aplicar no BODY (executar após DOM carregar)
+                  if (document.body) {
+                    if (isDark) {
+                      document.body.classList.add('theme-dark');
+                      document.body.classList.remove('theme-light');
+                      document.body.setAttribute('data-theme', 'dark');
+                    } else {
+                      document.body.classList.add('theme-light');
+                      document.body.classList.remove('theme-dark');
+                      document.body.setAttribute('data-theme', 'light');
+                    }
+                  } else {
+                    // Se body não existe ainda, aplicar quando carregar
+                    document.addEventListener('DOMContentLoaded', function() {
+                      if (isDark) {
+                        document.body.classList.add('theme-dark');
+                        document.body.classList.remove('theme-light');
+                        document.body.setAttribute('data-theme', 'dark');
+                      } else {
+                        document.body.classList.add('theme-light');
+                        document.body.classList.remove('theme-dark');
+                        document.body.setAttribute('data-theme', 'light');
+                      }
+                    });
+                  }
+                  
+                  console.log("🚀 Classes finais:", document.documentElement.className);
+                } catch (e) {
+                  console.error("🚀 Erro ao aplicar tema:", e);
+                }
+              })();
+            `,
+          }}
+        />
       </head>
       <body
         className={`${fontVariables} antialiased flex flex-col min-h-screen`}
       >
-        <QueryProvider>
-          <AuthProvider>
-            <FetchInterceptorSetup />
-            <TokenExpirationChecker />
-            <ProfileCompletionGuard>
-              <LayoutContent>{children}</LayoutContent>
-            </ProfileCompletionGuard>
-            <Toaster
-              position="top-right"
-              toastOptions={{
-                duration: 4000,
-                style: {
-                  background: "#363636",
-                  color: "#fff",
-                },
-                success: {
+        <ThemeProvider>
+          <QueryProvider>
+            <AuthProvider>
+              <FetchInterceptorSetup />
+              <TokenExpirationChecker />
+              <ProfileCompletionGuard>
+                <LayoutContent>{children}</LayoutContent>
+              </ProfileCompletionGuard>
+              <Toaster
+                position="top-right"
+                toastOptions={{
+                  duration: 4000,
                   style: {
-                    background: "green",
+                    background: "#363636",
+                    color: "#fff",
                   },
-                },
-                error: {
-                  style: {
-                    background: "red",
+                  success: {
+                    style: {
+                      background: "green",
+                    },
                   },
-                },
-              }}
-            />
-          </AuthProvider>
-        </QueryProvider>
+                  error: {
+                    style: {
+                      background: "red",
+                    },
+                  },
+                }}
+              />
+            </AuthProvider>
+          </QueryProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

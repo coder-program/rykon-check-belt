@@ -8,6 +8,7 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { useTenant } from "@/hooks/useTenant";
+import { ThemeSelector } from "@/components/theme/ThemeSelector";
 
 export default function Header() {
   const { user, logout, isAuthenticated } = useAuth();
@@ -237,6 +238,9 @@ export default function Header() {
                 <span className="hidden lg:inline">Encerrar Todas</span>
               </Button> */}
 
+              {/* Seletor de Tema */}
+              <ThemeSelector />
+
               {/* Sair */}
               <Button
                 variant="outline"
@@ -312,6 +316,11 @@ export default function Header() {
                   <UserX className="h-4 w-4 mr-2" />
                   Encerrar Todas as Sessões
                 </Button> */}
+
+                {/* Seletor de Tema Mobile */}
+                <div className="px-4 py-2">
+                  <ThemeSelector />
+                </div>
 
                 <Button
                   variant="outline"

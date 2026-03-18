@@ -331,7 +331,7 @@ export default function RecepcionistaDashboard() {
   ];
 
   return (
-    <div className="min-h-screen p-6" style={{ background: "linear-gradient(135deg, #eef2ff 0%, #e0e7ff 40%, #ede9fe 100%)" }}>
+    <div className="dashboard-master-content min-h-screen p-6">
       {/* Modal seletor de modalidade */}
       <ModalidadeSelectorModal
         open={modalidadeSelector.showSelector}
