@@ -391,7 +391,7 @@ export class FaturasService {
     if (fatura.status === StatusFatura.PAGA || fatura.status === StatusFatura.CANCELADA) {
       throw new BadRequestException('Não é possível alterar o vencimento de faturas pagas ou canceladas.');
     }
-    fatura.data_vencimento = new Date(novaData);
+    fatura.data_vencimento = dayjs.tz(novaData, 'America/Sao_Paulo').startOf('day').toDate();
     return await this.faturaRepository.save(fatura);
   }
 
