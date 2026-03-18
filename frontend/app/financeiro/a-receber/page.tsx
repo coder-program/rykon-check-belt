@@ -135,6 +135,54 @@ export default function ContasAReceber() {
   const [loadingTokenPay, setLoadingTokenPay] = useState(false);
   const [tokenPayError, setTokenPayError] = useState<string | null>(null);
 
+  // ── Edição inline de vencimento ───────────────────────────────────
+  const [editandoVencimento, setEditandoVencimento] = useState<string | null>(null);
+  const [novoVencimento, setNovoVencimento] = useState("");
+  const [salvandoVencimento, setSalvandoVencimento] = useState(false);
+  const [podeEditarVencimento, setPodeEditarVencimento] = useState(false);
+
+  useEffect(() => {
+    const userData = localStorage.getItem("user");
+    if (userData) {
+      const user = JSON.parse(userData);
+      const perfis: string[] = (user.perfis || []).map((p: any) =>
+        typeof p === "string" ? p.toLowerCase() : (p?.nome || "").toLowerCase()
+      );
+      const pode = perfis.some((p) =>
+        ["franqueado", "master", "gerente", "admin"].includes(p)
+      );
+      setPodeEditarVencimento(pode);
+    }
+  }, []);
+
+  const handleAlterarVencimento = async (faturaId: string) => {
+    if (!novoVencimento) return;
+    setSalvandoVencimento(true);
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/faturas/${faturaId}/alterar-vencimento`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ data_vencimento: novoVencimento }),
+        }
+      );
+      if (response.ok) {
+        toast.success("Vencimento alterado com sucesso!");
+        setEditandoVencimento(null);
+        carregarFaturas();
+      } else {
+        const err = await response.json().catch(() => ({}));
+        toast.error(err.message || "Erro ao alterar vencimento");
+      }
+    } catch {
+      toast.error("Erro ao alterar vencimento");
+    } finally {
+      setSalvandoVencimento(false);
+    }
+  };
+
   useEffect(() => {
     carregarFaturas();
   }, [unidadeSelecionada]);
@@ -789,7 +837,51 @@ export default function ContasAReceber() {
                         {getStatusBadge(fatura.status)}
                       </td>
                       <td className="px-4 py-3 text-gray-600">
-                        {formatarData(fatura.data_vencimento)}
+                        {podeEditarVencimento && ["PENDENTE", "ATRASADA"].includes(fatura.status) ? (
+                          editandoVencimento === fatura.id ? (
+                            <div className="flex items-center gap-1">
+                              <input
+                                type="date"
+                                autoFocus
+                                value={novoVencimento}
+                                onChange={(e) => setNovoVencimento(e.target.value)}
+                                className="border rounded px-1 py-0.5 text-xs w-32 focus:outline-none focus:ring-1 focus:ring-blue-400"
+                              />
+                              <button
+                                onClick={() => handleAlterarVencimento(fatura.id)}
+                                disabled={salvandoVencimento}
+                                className="text-green-600 hover:text-green-800 disabled:opacity-50 text-xs font-bold"
+                                title="Confirmar"
+                              >
+                                {salvandoVencimento ? "..." : "✓"}
+                              </button>
+                              <button
+                                onClick={() => setEditandoVencimento(null)}
+                                className="text-gray-400 hover:text-gray-600 text-xs"
+                                title="Cancelar"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              className="flex items-center gap-1 group hover:text-blue-700"
+                              title="Clique para alterar vencimento"
+                              onClick={() => {
+                                const d = fatura.data_vencimento
+                                  ? new Date(fatura.data_vencimento).toISOString().split("T")[0]
+                                  : "";
+                                setNovoVencimento(d);
+                                setEditandoVencimento(fatura.id);
+                              }}
+                            >
+                              <span>{formatarData(fatura.data_vencimento)}</span>
+                              <Pencil className="h-3 w-3 opacity-0 group-hover:opacity-100 text-blue-500" />
+                            </button>
+                          )
+                        ) : (
+                          formatarData(fatura.data_vencimento)
+                        )}
                       </td>
                       <td className="px-4 py-3">
                         {info ? (

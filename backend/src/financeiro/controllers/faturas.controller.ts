@@ -150,6 +150,14 @@ export class FaturasController {
     return this.faturasService.cancelar(id, motivo);
   }
 
+  @Patch(':id/alterar-vencimento')
+  alterarVencimento(
+    @Param('id') id: string,
+    @Body('data_vencimento') data_vencimento: string,
+  ) {
+    return this.faturasService.alterarVencimento(id, data_vencimento);
+  }
+
   @Patch(':id/reverter-pendente')
   reverterParaPendente(@Param('id') id: string) {
     return this.faturasService.reverterParaPendente(id);

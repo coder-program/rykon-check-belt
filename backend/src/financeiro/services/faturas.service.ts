@@ -383,6 +383,18 @@ export class FaturasService {
     return fatura;
   }
 
+  async alterarVencimento(id: string, novaData: string): Promise<Fatura> {
+    if (!novaData || isNaN(Date.parse(novaData))) {
+      throw new BadRequestException('Data de vencimento inválida.');
+    }
+    const fatura = await this.findOne(id);
+    if (fatura.status === StatusFatura.PAGA || fatura.status === StatusFatura.CANCELADA) {
+      throw new BadRequestException('Não é possível alterar o vencimento de faturas pagas ou canceladas.');
+    }
+    fatura.data_vencimento = new Date(novaData);
+    return await this.faturaRepository.save(fatura);
+  }
+
   async reverterParaPendente(id: string): Promise<Fatura> {
     const fatura = await this.findOne(id);
     if (fatura.status !== StatusFatura.PAGA) {
