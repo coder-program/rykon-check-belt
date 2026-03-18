@@ -23,8 +23,11 @@ export default function LayoutContent({
   // Verificar se a rota começa com /cadastro/ (rotas de convite)
   const isCadastroRoute = pathname?.startsWith("/cadastro/");
 
+  // Rotas de painel TV — sem header/footer
+  const isTvRoute = pathname?.startsWith("/tv/");
+
   const shouldShowHeaderFooter =
-    !pagesWithoutHeaderFooter.includes(pathname) && !isCadastroRoute;
+    !pagesWithoutHeaderFooter.includes(pathname) && !isCadastroRoute && !isTvRoute;
 
   if (shouldShowHeaderFooter) {
     return (

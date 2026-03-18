@@ -31,6 +31,7 @@ import { TenantModule } from './tenants/tenant.module';
 import { TenantMiddleware } from './common/middleware/tenant.middleware';
 import { TenantSchemaSubscriber } from './common/tenant-schema.subscriber';
 import { TenantQueryPatcherService } from './common/tenant-query-patcher.service';
+import { TimerModule } from './timer/timer.module';
 
 @Module({
   imports: [
@@ -116,6 +117,7 @@ import { TenantQueryPatcherService } from './common/tenant-query-patcher.service
     PaytimeModule,
     HubUnidadeModule,
     TenantModule,
+    TimerModule,
   ],
   providers: [TenantQueryPatcherService],
 })

@@ -59,6 +59,11 @@ export default function HorariosPage() {
     }
   }, [authLoading, user, router]);
 
+  useEffect(() => {
+    loadHorarios();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   if (shouldBlock) return null;
   
   // Wait for authentication check
@@ -88,10 +93,6 @@ export default function HorariosPage() {
     { key: "gi", label: "Gi" },
     { key: "nogi", label: "NoGi" },
   ];
-
-  useEffect(() => {
-    loadHorarios();
-  }, []);
 
   const loadHorarios = async () => {
     try {

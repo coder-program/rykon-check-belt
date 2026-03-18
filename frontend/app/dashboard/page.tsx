@@ -131,6 +131,11 @@ export default function DashboardPage() {
     return <InstrutorDashboard />;
   }
 
+  if (hasPerfil("timer_panel")) {
+    router.push("/timer");
+    return null;
+  }
+
   if (hasPerfil("responsavel")) {
     // Responsável tem dashboard próprio para gerenciar filhos
     return <ResponsavelDashboard />;

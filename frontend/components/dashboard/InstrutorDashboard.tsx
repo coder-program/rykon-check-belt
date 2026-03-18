@@ -29,6 +29,7 @@ import {
   CheckCircle,
   Award,
   Mail,
+  Timer,
 } from "lucide-react";
 import ConviteModal from "@/components/convites/ConviteModal";
 
@@ -245,6 +246,13 @@ export default function InstrutorDashboard() {
       icon: BookOpen,
       action: () => router.push("/relatorio-presencas"),
       color: "bg-teal-500",
+    },
+    {
+      title: "Cronômetro",
+      description: "Painel de timer para TV",
+      icon: Timer,
+      action: () => router.push("/timer"),
+      color: "bg-orange-500",
     },
   ];
 

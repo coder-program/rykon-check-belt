@@ -86,7 +86,6 @@ export default function PageProfessores() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
-  if (shouldBlock) return null;
   // Função para obter a cor do status
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -295,6 +294,8 @@ export default function PageProfessores() {
   });
 
   const items = (query.data?.pages || []).flatMap((page) => page.items);
+
+  if (shouldBlock) return null;
 
   if (query.isError) {
     return (

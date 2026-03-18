@@ -112,7 +112,7 @@ async function provisionTenant(
           t.typname,
           pg_get_expr(ad.adbin, ad.adrelid) AS col_default
         FROM pg_attribute a
-        JOIN pg_class     c  ON c.oid = a.attrelid
+        JOIN pg_class     c  ON c.oid = a.attrelid AND c.relkind = 'r'
         JOIN pg_namespace cn ON cn.oid = c.relnamespace AND cn.nspname = $1
         JOIN pg_type      t  ON t.oid = a.atttypid
         JOIN pg_namespace tn ON tn.oid = t.typnamespace AND tn.nspname = 'teamcruz'
@@ -121,13 +121,21 @@ async function provisionTenant(
       `, [schemaName]);
 
     for (const { table_name, column_name, typname, col_default } of crossCols) {
+      // Drop DEFAULT first — PostgreSQL rejects ALTER TYPE when column has a
+      // DEFAULT that still references the old (teamcruz) enum type.
+      if (col_default) {
+        await ds.query(`
+          ALTER TABLE "${schemaName}"."${table_name}"
+            ALTER COLUMN "${column_name}" DROP DEFAULT
+        `);
+      }
       // ALTER TYPE — use local enum instead of teamcruz one
       await ds.query(`
         ALTER TABLE "${schemaName}"."${table_name}"
           ALTER COLUMN "${column_name}" TYPE "${schemaName}"."${typname}"
           USING "${column_name}"::text::"${schemaName}"."${typname}"
       `);
-      // Fix default if it referenced the old teamcruz enum
+      // Restore default pointing to the new schema enum
       if (col_default) {
         const fixedDefault = col_default.replace(
           /::teamcruz\."?[\w]+"?/g,
@@ -236,7 +244,12 @@ async function provisionTenant(
     await ds.query(`SET search_path TO "${schemaName}", public`);
     await ds.query(`
       INSERT INTO "${schemaName}".faixa_def
-      SELECT * FROM teamcruz.faixa_def
+        (id, codigo, nome_exibicao, cor_hex, ordem, graus_max, aulas_por_grau, categoria, ativo, created_at, updated_at)
+      SELECT
+        id, codigo, nome_exibicao, cor_hex, ordem, graus_max, aulas_por_grau,
+        categoria::text::"${schemaName}".categoria_faixa_enum,
+        ativo, created_at, updated_at
+      FROM teamcruz.faixa_def
       ON CONFLICT DO NOTHING
     `);
 

@@ -85,8 +85,6 @@ export default function GraduacaoPage() {
   const [graduacaoParaAprovar, setGraduacaoParaAprovar] = useState<any>(null);
   const [observacaoAprovacao, setObservacaoAprovacao] = useState("");
 
-  if (shouldBlock) return null;
-
   // Queries
   const { data: proximosGraduar, isLoading: loadingProximos } = useQuery({
     queryKey: ["proximos-graduar"],
@@ -138,6 +136,8 @@ export default function GraduacaoPage() {
     queryKey: ["pendentes-aprovacao"],
     queryFn: () => getPendentesAprovacao({ pageSize: 50 }),
   });
+
+  if (shouldBlock) return null;
 
   // Funções
   const handleGraduar = async (alunoId: string) => {
