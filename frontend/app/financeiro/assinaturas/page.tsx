@@ -47,6 +47,7 @@ import {
   Landmark,
   Wallet,
   DollarSign,
+  Pencil,
 } from "lucide-react";
 import FiltroUnidade from "@/components/financeiro/FiltroUnidade";
 import AtualizarCartaoModal from "@/components/financeiro/AtualizarCartaoModal";
@@ -100,6 +101,10 @@ export default function Assinaturas() {
   const [unidades, setUnidades] = useState<Unidade[]>([]);
   const [alunos, setAlunos] = useState<Aluno[]>([]);
   const [isFranqueado, setIsFranqueado] = useState(false);
+  const [isGerente, setIsGerente] = useState(false);
+  const [editandoDiaVenc, setEditandoDiaVenc] = useState<string | null>(null);
+  const [novoDia, setNovoDia] = useState("");
+  const [salvandoDia, setSalvandoDia] = useState(false);
   const [filteredAssinaturas, setFilteredAssinaturas] = useState<Assinatura[]>(
     []
   );
@@ -164,6 +169,12 @@ export default function Assinaturas() {
           (typeof p === "object" && p?.nome?.toLowerCase() === "franqueado")
       );
       setIsFranqueado(franqueadoDetected);
+
+      const gerenteDetected = user.perfis?.some((p: any) => {
+        const nome = (typeof p === "string" ? p : p?.nome)?.toLowerCase();
+        return nome && ["gerente", "gerente_unidade"].includes(nome);
+      });
+      setIsGerente(gerenteDetected);
 
       // Determinar unidade_id baseado no filtro
       const unidadeAtual =
@@ -291,6 +302,31 @@ export default function Assinaturas() {
       tipo: "confirmacao",
       onConfirm,
     });
+  };
+
+  const salvarDiaVencimento = async (assinaturaId: string) => {
+    const dia = parseInt(novoDia);
+    if (!dia || dia < 1 || dia > 31) return;
+    setSalvandoDia(true);
+    try {
+      const token = localStorage.getItem("token");
+      const { http } = await import("@/lib/api");
+      await http.patch(
+        `/financeiro/assinaturas/${assinaturaId}/alterar-dia-vencimento`,
+        { dia_vencimento: dia },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setAssinaturas((prev) =>
+        prev.map((a) =>
+          a.id === assinaturaId ? { ...a, dia_vencimento: dia } : a
+        )
+      );
+      setEditandoDiaVenc(null);
+    } catch {
+      // silencioso: mantém o estado de edição aberto para tentar novamente
+    } finally {
+      setSalvandoDia(false);
+    }
   };
 
   const filtrarAssinaturas = () => {
@@ -912,7 +948,56 @@ export default function Assinaturas() {
                         </span>
                       </td>
                       <td className="px-4 py-3 text-center text-gray-700 font-medium">
-                        dia {assinatura.dia_vencimento}
+                        {(isFranqueado || isGerente) && editandoDiaVenc === assinatura.id ? (
+                          <div className="flex items-center justify-center gap-1">
+                            <input
+                              type="number"
+                              min={1}
+                              max={31}
+                              value={novoDia}
+                              onChange={(e) => setNovoDia(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") salvarDiaVencimento(assinatura.id);
+                                if (e.key === "Escape") setEditandoDiaVenc(null);
+                              }}
+                              className="w-14 border border-blue-400 rounded px-1 py-0.5 text-center text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                              autoFocus
+                              disabled={salvandoDia}
+                            />
+                            <button
+                              onClick={() => salvarDiaVencimento(assinatura.id)}
+                              disabled={salvandoDia}
+                              className="text-green-600 hover:text-green-800 disabled:opacity-50"
+                              title="Salvar"
+                            >
+                              ✓
+                            </button>
+                            <button
+                              onClick={() => setEditandoDiaVenc(null)}
+                              disabled={salvandoDia}
+                              className="text-red-500 hover:text-red-700 disabled:opacity-50"
+                              title="Cancelar"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="group flex items-center justify-center gap-1">
+                            <span>dia {assinatura.dia_vencimento}</span>
+                            {(isFranqueado || isGerente) && (
+                              <button
+                                onClick={() => {
+                                  setEditandoDiaVenc(assinatura.id);
+                                  setNovoDia(String(assinatura.dia_vencimento));
+                                }}
+                                className="opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-blue-600"
+                                title="Editar dia de vencimento"
+                              >
+                                <Pencil className="h-3 w-3" />
+                              </button>
+                            )}
+                          </div>
+                        )}
                       </td>
                       <td className="px-4 py-3 text-gray-600">
                         {formatarData(assinatura.data_inicio)}

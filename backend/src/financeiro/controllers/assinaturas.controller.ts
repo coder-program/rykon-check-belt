@@ -251,6 +251,27 @@ export class AssinaturasController {
     return resultado;
   }
 
+  @Patch(':id/alterar-dia-vencimento')
+  async alterarDiaVencimento(
+    @Param('id') id: string,
+    @Body() body: { dia_vencimento: number },
+    @Request() req,
+  ) {
+    const dia = Number(body.dia_vencimento);
+    if (!dia || dia < 1 || dia > 31) {
+      throw new Error('dia_vencimento deve ser entre 1 e 31');
+    }
+    const user = req.user;
+    const perfisPermitidos = ['master', 'franqueado', 'gerente', 'gerente_unidade', 'admin'];
+    const temPermissao = user?.perfis?.some((p: any) =>
+      perfisPermitidos.includes((typeof p === 'string' ? p : p?.nome)?.toLowerCase()),
+    );
+    if (!temPermissao) {
+      throw new Error('Sem permissão para alterar dia de vencimento');
+    }
+    return this.assinaturasService.alterarDiaVencimento(id, dia);
+  }
+
   @Patch(':id/registrar-falha')
   @ApiOperation({ 
     summary: '[SCHEDULER] Registra falha de cobrança',

@@ -329,6 +329,15 @@ export class AssinaturasService {
     return await this.assinaturaRepository.save(assinatura);
   }
 
+  async alterarDiaVencimento(id: string, dia_vencimento: number): Promise<Assinatura> {
+    const assinatura = await this.assinaturaRepository.findOne({ where: { id } });
+    if (!assinatura) {
+      throw new NotFoundException(`Assinatura ${id} não encontrada`);
+    }
+    assinatura.dia_vencimento = dia_vencimento;
+    return await this.assinaturaRepository.save(assinatura);
+  }
+
   async cancelar(
     id: string,
     cancelarDto: CancelarAssinaturaDto,
