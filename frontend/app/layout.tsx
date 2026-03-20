@@ -24,14 +24,14 @@ const fontVariables = "font-sans";
 // });
 
 export const metadata: Metadata = {
-  title: "TeamCruz Jiu-Jitsu - Sistema de Gestão",
+  title: "RykonFit - Sistema de Gestão",
   description:
-    "Sistema de controle de presença e graduação da TeamCruz Jiu-Jitsu",
+    "Sistema de gestão de academias e modalidades de luta",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "TeamCruz",
+    title: "RykonFit",
   },
 };
 
@@ -53,7 +53,7 @@ export default function RootLayout({
         <link rel="manifest" href="/manifest.json" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-        <meta name="apple-mobile-web-app-title" content="TeamCruz" />
+        <meta name="apple-mobile-web-app-title" content="RykonFit" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="theme-color" content="#dc2626" />
       </head>
