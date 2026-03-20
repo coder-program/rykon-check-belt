@@ -86,7 +86,7 @@ export interface StatusRecadosNaoLidos {
 // ========================== HELPERS ==========================
 
 export function getYouTubeId(url: string): string | null {
-  const m = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/);
+  const m = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/shorts\/)([^&\n?#]+)/);
   return m ? m[1] : null;
 }
 

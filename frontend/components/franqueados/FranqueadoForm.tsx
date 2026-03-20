@@ -475,7 +475,7 @@ export default function FranqueadoForm({
                         })
                       }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="TeamCruz São Paulo (apenas letras)"
+                      placeholder="São Paulo (apenas letras)"
                     />
                   </div>
 
@@ -513,7 +513,7 @@ export default function FranqueadoForm({
                         })
                       }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="TeamCruz São Paulo Ltda"
+                      placeholder="São Paulo Ltda"
                     />
                   </div>
 
@@ -531,7 +531,7 @@ export default function FranqueadoForm({
                         })
                       }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="TeamCruz SP"
+                      placeholder="SP"
                     />
                   </div>
 

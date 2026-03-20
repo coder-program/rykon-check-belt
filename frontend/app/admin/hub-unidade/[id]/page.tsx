@@ -74,6 +74,7 @@ export default function HubAdminPage() {
   const [videoEdit, setVideoEdit] = useState<UnidadeVideo | null>(null);
   const [videoForm, setVideoForm] = useState({ titulo: "", url_youtube: "", descricao: "", modalidade_id: "", ativo: true, ordem: 0 });
   const [videoDeleteTarget, setVideoDeleteTarget] = useState<UnidadeVideo | null>(null);
+  const [videoPlayer, setVideoPlayer] = useState<UnidadeVideo | null>(null);
 
   const savVideo = useMutation({
     mutationFn: () =>
@@ -269,11 +270,13 @@ export default function HubAdminPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {(videosQ.data ?? []).map((v) => (
                 <div key={v.id} className="bg-gray-900 rounded-xl overflow-hidden border border-gray-800">
-                  <div className="relative aspect-video bg-black">
+                  <div className="relative aspect-video bg-black cursor-pointer group" onClick={() => setVideoPlayer(v)}>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={getThumbnailUrl(v.url_youtube)} alt={v.titulo} className="w-full h-full object-cover opacity-80" />
+                    <img src={getThumbnailUrl(v.url_youtube)} alt={v.titulo} className="w-full h-full object-cover opacity-80 group-hover:opacity-60 transition-opacity" />
                     <div className="absolute inset-0 flex items-center justify-center">
-                      <Play className="text-white opacity-80" size={36} />
+                      <div className="bg-black/50 rounded-full p-3 group-hover:bg-red-600/80 transition-colors">
+                        <Play className="text-white" size={28} fill="white" />
+                      </div>
                     </div>
                     {!v.ativo && (
                       <div className="absolute top-2 right-2 bg-gray-900/80 text-yellow-400 text-xs px-2 py-1 rounded">Inativo</div>
@@ -704,6 +707,31 @@ export default function HubAdminPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* ============================================================
+          MODAL PLAYER VÍDEO
+      ============================================================ */}
+      <Dialog open={!!videoPlayer} onOpenChange={(open) => { if (!open) setVideoPlayer(null); }}>
+        <DialogContent className="bg-gray-950 text-white border-gray-800 max-w-3xl p-0 overflow-hidden" aria-describedby={undefined}>
+          <DialogHeader className="px-4 pt-4 pb-2">
+            <DialogTitle className="text-base">{videoPlayer?.titulo}</DialogTitle>
+          </DialogHeader>
+          {videoPlayer && getYouTubeId(videoPlayer.url_youtube) && (
+            <div className="aspect-video w-full">
+              <iframe
+                key={videoPlayer.id}
+                src={`https://www.youtube.com/embed/${getYouTubeId(videoPlayer.url_youtube)}?autoplay=1&rel=0`}
+                className="w-full h-full"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
+            </div>
+          )}
+          {videoPlayer?.descricao && (
+            <p className="px-4 py-3 text-sm text-gray-300">{videoPlayer.descricao}</p>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* ============================================================
           MODALS RECADO
