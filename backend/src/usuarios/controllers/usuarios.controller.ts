@@ -156,4 +156,27 @@ export class UsuariosController {
   rejeitar(@Param('id') id: string) {
     return this.usuariosService.rejectUser(id);
   }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch(':id/reset-senha')
+  @ApiOperation({ summary: 'Redefinir senha de um usuário (gerente/franqueado/master)' })
+  async resetSenha(
+    @Param('id') id: string,
+    @Body() body: { nova_senha: string },
+    @Request() req,
+  ) {
+    const perfisPermitidos = ['master', 'franqueado', 'gerente_unidade', 'gerente', 'admin'];
+    const perfisUsuario: string[] = (req.user?.perfis ?? []).map((p: any) =>
+      (typeof p === 'string' ? p : p.nome ?? '').toLowerCase(),
+    );
+    const temPermissao = perfisUsuario.some((p) => perfisPermitidos.includes(p));
+    if (!temPermissao) {
+      throw new UnauthorizedException('Sem permissão para redefinir senha de usuários');
+    }
+    if (!body.nova_senha || body.nova_senha.length < 6) {
+      throw new UnauthorizedException('A nova senha deve ter ao menos 6 caracteres');
+    }
+    await this.usuariosService.update(id, { password: body.nova_senha } as any);
+    return { message: 'Senha redefinida com sucesso' };
+  }
 }

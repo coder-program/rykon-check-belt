@@ -17,6 +17,7 @@ import {
   Users,
   GraduationCap,
   ArrowLeft,
+  KeyRound,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import AlunoForm from "@/components/alunos/AlunoForm";
@@ -229,6 +230,9 @@ function AlunosContent() {
   const [categoria, setCategoria] = useState("todos");
   const [showModal, setShowModal] = useState(false);
   const [editingAluno, setEditingAluno] = useState<any>(null);
+  const [resetSenhaAluno, setResetSenhaAluno] = useState<any>(null);
+  const [novaSenha, setNovaSenha] = useState("");
+  const [confirmaSenha, setConfirmaSenha] = useState("");
   const [formData, setFormData] = useState<AlunoFormData>({
     nome_completo: "",
     cpf: "",
@@ -420,6 +424,24 @@ function AlunosContent() {
       toast.success("Aluno removido com sucesso!", {
         duration: 3000,
       });
+    },
+  });
+
+  const resetSenhaMutation = useMutation({
+    mutationFn: ({ usuarioId, senha }: { usuarioId: string; senha: string }) =>
+      http(`/usuarios/${usuarioId}/reset-senha`, {
+        method: "PATCH",
+        body: { nova_senha: senha },
+        auth: true,
+      }),
+    onSuccess: () => {
+      toast.success("Senha redefinida com sucesso!");
+      setResetSenhaAluno(null);
+      setNovaSenha("");
+      setConfirmaSenha("");
+    },
+    onError: (error: any) => {
+      toast.error(error?.message || "Erro ao redefinir senha");
     },
   });
 
@@ -892,6 +914,19 @@ function AlunosContent() {
                           >
                             <Edit2 className="h-4 w-4 text-blue-600" />
                           </button>
+                          {(isFranqueado || isGerenteUnidade || isSuperAdmin) && (
+                            <button
+                              onClick={() => {
+                                setResetSenhaAluno(aluno);
+                                setNovaSenha("");
+                                setConfirmaSenha("");
+                              }}
+                              className="p-2 hover:bg-yellow-100 rounded-lg transition-colors"
+                              title="Redefinir Senha"
+                            >
+                              <KeyRound className="h-4 w-4 text-yellow-600" />
+                            </button>
+                          )}
                           {!isSuperAdmin && !isFranqueado && !isGerenteUnidade && (
                             <button
                               onClick={() => {
@@ -972,6 +1007,72 @@ function AlunosContent() {
                   </div>
                 </div>
               )}
+
+            {/* Modal Redefinir Senha */}
+            {resetSenhaAluno && (
+              <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+                <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm p-6">
+                  <h2 className="text-lg font-bold mb-1 flex items-center gap-2">
+                    <KeyRound className="h-5 w-5 text-yellow-600" />
+                    Redefinir Senha
+                  </h2>
+                  <p className="text-sm text-gray-500 mb-4">
+                    Definir nova senha para{" "}
+                    <span className="font-medium text-gray-800">{resetSenhaAluno.nome_completo}</span>
+                  </p>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Nova senha</label>
+                      <input
+                        type="password"
+                        className="input input-bordered w-full"
+                        placeholder="Mínimo 6 caracteres"
+                        value={novaSenha}
+                        onChange={(e) => setNovaSenha(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Confirmar nova senha</label>
+                      <input
+                        type="password"
+                        className="input input-bordered w-full"
+                        placeholder="Repita a senha"
+                        value={confirmaSenha}
+                        onChange={(e) => setConfirmaSenha(e.target.value)}
+                      />
+                    </div>
+                    {novaSenha && confirmaSenha && novaSenha !== confirmaSenha && (
+                      <p className="text-xs text-red-600">As senhas não coincidem</p>
+                    )}
+                  </div>
+                  <div className="flex gap-3 mt-5">
+                    <button
+                      onClick={() => { setResetSenhaAluno(null); setNovaSenha(""); setConfirmaSenha(""); }}
+                      className="btn btn-outline flex-1"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      disabled={
+                        resetSenhaMutation.isPending ||
+                        novaSenha.length < 6 ||
+                        novaSenha !== confirmaSenha
+                      }
+                      onClick={() => {
+                        if (resetSenhaAluno?.usuario_id) {
+                          resetSenhaMutation.mutate({ usuarioId: resetSenhaAluno.usuario_id, senha: novaSenha });
+                        } else {
+                          toast.error("Este aluno não possui conta de usuário vinculada");
+                        }
+                      }}
+                      className="btn btn-warning flex-1"
+                    >
+                      {resetSenhaMutation.isPending ? "Salvando..." : "Redefinir Senha"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Modal */}
             {showModal && (
